@@ -149,7 +149,7 @@ protected:
 	cgv::render::mesh_render_info mesh_info;
 	bool have_new_mesh = false;
 	bool show_face = false;
-	bool direct_write = true;
+	bool direct_write = false;
 
 public:
 	void init_cameras(vr::vr_kit* kit_ptr);
