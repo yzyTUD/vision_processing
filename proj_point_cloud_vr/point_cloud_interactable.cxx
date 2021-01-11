@@ -130,6 +130,16 @@ bool point_cloud_interactable::read_pc_with_dialog(bool append) {
 	return true;
 }
 
+bool point_cloud_interactable::read_pc_with_dialog_queue(bool append) {
+	if (!append)
+		pc.clear_all();
+	std::vector<std::string> f_names;
+	cgv::gui::files_open_dialog(f_names, "Open", "Point Cloud:*");
+	for(auto& f:f_names)
+		open(f);
+	return true;
+}
+
 bool point_cloud_interactable::read_pc_subsampled_with_dialog() {
 	std::string f = cgv::gui::file_open_dialog("Open", "Point Cloud:*");
 	pc.clear_all();

@@ -12,6 +12,7 @@
 #include <cgv/render/frame_buffer.h>
 #include <chrono>
 #include <cgv/base/import.h>
+#include <cgv\gui\file_dialog.h>
 
 ///@ingroup VR
 ///@{
@@ -143,6 +144,13 @@ protected:
 	bool render_pc = false;
 	bool force_correct_num_pcs = true;
 
+	typedef cgv::media::mesh::simple_mesh<float> mesh_type;
+	mesh_type M;
+	cgv::render::mesh_render_info mesh_info;
+	bool have_new_mesh = false;
+	bool show_face = false;
+	bool direct_write = true;
+
 public:
 	void init_cameras(vr::vr_kit* kit_ptr);
 
@@ -191,6 +199,8 @@ public:
 	///
 	void read_pc();
 
+	void read_pc_queue();
+
 	void read_pc_append();
 
 	void write_read_pc_to_file();
@@ -210,12 +220,16 @@ public:
 	void append_current_shot_to_stored_cloud();
 
 	void write_stored_pc_to_file();
+
+	void write_stored_pc_to_file_direct();
 	///
 	void print_cloud_info();
 	///
 	void auto_conduct_nml_estimation_leica();
 
 	void clean_all_pcs();
+
+	void read_mesh();
 
 	void create_gui();
 };

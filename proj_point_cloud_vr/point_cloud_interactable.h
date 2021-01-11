@@ -132,6 +132,8 @@ public:
 	///
 	bool read_pc_with_dialog(bool append);
 
+	bool read_pc_with_dialog_queue(bool append);
+
 	bool read_pc_subsampled_with_dialog();
 	/// read .campose file 
 	bool read_pc_campose();

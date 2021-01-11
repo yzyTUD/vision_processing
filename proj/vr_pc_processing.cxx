@@ -474,15 +474,15 @@ bool vr_pc_processing::init(cgv::render::context& ctx)
 	if (!seethrough.build_program(ctx, "seethrough.glpr"))
 		cgv::gui::message("could not build seethrough program");
 	
-	cgv::media::mesh::simple_mesh<> M;
-//#ifdef 1
-	if (M.read("D:/data/surface/meshes/obj/Max-Planck_lowres.obj")) {
-//#else
-//	if (M.read("D:/data/surface/meshes/obj/Max-Planck_highres.obj")) {
-//#endif
-		MI.construct(ctx, M);
-		MI.bind(ctx, ctx.ref_surface_shader_program(true), true);
-	}
+//	cgv::media::mesh::simple_mesh<> M;
+////#ifdef 1
+//	if (M.read("D:/data/surface/meshes/obj/Max-Planck_lowres.obj")) {
+////#else
+////	if (M.read("D:/data/surface/meshes/obj/Max-Planck_highres.obj")) {
+////#endif
+//		MI.construct(ctx, M);
+//		MI.bind(ctx, ctx.ref_surface_shader_program(true), true);
+//	}
 
 	cgv::gui::connect_vr_server(true);
 
@@ -688,6 +688,30 @@ void vr_pc_processing::init_frame(cgv::render::context& ctx)
 			}
 		}
 	}
+
+	if (have_new_mesh) {
+		// auto-compute mesh normals if not available
+		if (!M.has_normals())
+			M.compute_vertex_normals();
+		// [re-]compute mesh render info
+		mesh_info.destruct(ctx);
+		mesh_info.construct(ctx, M);
+		// bind mesh attributes to standard surface shader program
+		mesh_info.bind(ctx, ctx.ref_surface_shader_program(true), true);
+		mesh_info.bind_wireframe(ctx, ref_rounded_cone_renderer(ctx).ref_prog(), true);
+		// ensure that materials are presented in gui
+		//post_recreate_gui();
+		have_new_mesh = false;
+
+		// focus view on new mesh
+		/*clipped_view* view_ptr = dynamic_cast<clipped_view*>(find_view_as_node());
+		if (view_ptr) {
+			box3 box = M.compute_box();
+			view_ptr->set_scene_extent(box);
+			view_ptr->set_focus(box.get_center());
+			view_ptr->set_y_extent_at_focus(box.get_extent().length());
+		}*/
+	}
 }
 
 void vr_pc_processing::draw(cgv::render::context& ctx)
@@ -697,6 +721,13 @@ void vr_pc_processing::draw(cgv::render::context& ctx)
 		point_cloud_kit->draw(ctx);
 	//one_shot_360pc->draw(ctx);
 	//stored_cloud->draw(ctx);
+
+	if (show_face) {
+		glDisable(GL_CULL_FACE);
+		// choose a shader program and configure it based on current settings
+		shader_program& prog = ctx.ref_surface_shader_program(true);
+		mesh_info.draw_all(ctx, true, false);
+	}
 
 	if (vr_view_ptr) {
 		if ((!shared_texture && camera_tex.is_created()) || (shared_texture && camera_tex_id != -1)) {
@@ -825,6 +856,14 @@ void vr_pc_processing::draw(cgv::render::context& ctx)
 
 void vr_pc_processing::finish_draw(cgv::render::context& ctx)
 {
+
+	if (show_face) {
+		glDisable(GL_CULL_FACE);
+		// choose a shader program and configure it based on current settings
+		shader_program& prog = ctx.ref_surface_shader_program(true);
+		mesh_info.draw_all(ctx, false, true);
+	}
+
 	return;
 	if ((!shared_texture && camera_tex.is_created()) || (shared_texture && camera_tex_id != -1)) {
 		cgv::render::shader_program& prog = ctx.ref_default_shader_program(true);
@@ -865,6 +904,10 @@ void vr_pc_processing::read_campose() {
 ///  read the whole pc with out rendering 
 void vr_pc_processing::read_pc() {
 	point_cloud_kit->read_pc_with_dialog(false);
+}
+
+void vr_pc_processing::read_pc_queue() {
+	point_cloud_kit->read_pc_with_dialog_queue(false);
 }
 
 void vr_pc_processing::read_pc_append() {
@@ -910,6 +953,10 @@ void vr_pc_processing::write_stored_pc_to_file() {
 	stored_cloud->write_pc_to_file();
 }
 
+void vr_pc_processing::write_stored_pc_to_file_direct() {
+	stored_cloud->pc.write(cgv::base::ref_data_path_list()[0] + "/output.txt");
+}
+
 void vr_pc_processing::print_cloud_info() {
 	std::cout << "point_cloud_kit: " << point_cloud_kit->pc.get_nr_points() << std::endl;
 	std::cout << "one_shot_360pc: " << one_shot_360pc->pc.get_nr_points() << std::endl;
@@ -930,7 +977,10 @@ void vr_pc_processing::auto_conduct_nml_estimation_leica() {
 	//
 	align_leica_scans_with_cgv();
 	print_cloud_info();
-	write_stored_pc_to_file();
+	if (direct_write)
+		write_stored_pc_to_file_direct();
+	else
+		write_stored_pc_to_file();
 }
 
 void vr_pc_processing::clean_all_pcs() {
@@ -940,12 +990,21 @@ void vr_pc_processing::clean_all_pcs() {
 	std::cout << "all pcs cleared" << std::endl;
 }
 
+void vr_pc_processing::read_mesh() {
+	std::string f = cgv::gui::file_open_dialog("Open", "Meshes:*");
+	M.read(f);
+	have_new_mesh = true;
+	show_face = true;
+	post_redraw();
+}
+
 void vr_pc_processing::create_gui() {
 	/*
 	*	functionalities:
 			pc merging 
 			large scale pc nml computing 
 			pc rendering in vr (not optimized)
+			mesh loader 
 	*/
 	add_decorator("vr_pc_processing", "heading", "level=2");
 	if (begin_tree_node("pc merging tool", new bool, false, "level=3")) {
@@ -955,6 +1014,7 @@ void vr_pc_processing::create_gui() {
 	
 	if (begin_tree_node("large scale pc nml computing", new bool, false, "level=3")) {
 		connect_copy(add_button("read_pc")->click, rebind(this, &vr_pc_processing::read_pc));
+		connect_copy(add_button("read_pc_queue")->click, rebind(this, &vr_pc_processing::read_pc_queue));
 		connect_copy(add_button("read_campose")->click, rebind(this, &vr_pc_processing::read_campose));
 		connect_copy(add_button("auto_conduct_nml_estimation_leica")->click, rebind(this, &vr_pc_processing::auto_conduct_nml_estimation_leica));
 		connect_copy(add_button("clean_all_pcs")->click, rebind(this, &vr_pc_processing::clean_all_pcs));
@@ -967,6 +1027,11 @@ void vr_pc_processing::create_gui() {
 		connect_copy(add_button("write_stored_pc_to_file")->click, rebind(this, &vr_pc_processing::write_stored_pc_to_file));
 		connect_copy(add_control("render_pc", render_pc, "check")->value_change, rebind(static_cast<drawable*>(this), &vr_pc_processing::post_redraw));
 		connect_copy(add_control("force_correct_num_pcs", force_correct_num_pcs, "check")->value_change, rebind(static_cast<drawable*>(this), &vr_pc_processing::post_redraw));
+		connect_copy(add_control("direct_write", direct_write, "check")->value_change, rebind(static_cast<drawable*>(this), &vr_pc_processing::post_redraw));
+	}
+
+	if (begin_tree_node("mesh tools", new bool, false, "level=3")) {
+		connect_copy(add_button("read_mesh")->click, rebind(this, &vr_pc_processing::read_mesh));
 	}
 }
 
