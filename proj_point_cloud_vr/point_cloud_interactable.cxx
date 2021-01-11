@@ -16,6 +16,7 @@
 #include <cgv/reflect/reflect_extern.h>
 #include <cgv_gl/gl/gl.h>
 #include <cgv/utils/tokenizer.h>
+#include <libs\cgv_gl\sphere_renderer.h>
 
 #define FILE_OPEN_TITLE "Open Point Cloud"
 #define FILE_APPEND_TITLE "Append Point Cloud"
@@ -121,12 +122,51 @@ bool point_cloud_interactable::open_or_append(cgv::gui::event& e, const std::str
 	return res;
 }
 /// 
-bool point_cloud_interactable::read_pc_with_dialog() {
+bool point_cloud_interactable::read_pc_with_dialog(bool append) {
 	std::string f = cgv::gui::file_open_dialog("Open", "Point Cloud:*");
-	pc.clear_all();
+	if(!append)
+		pc.clear_all();
 	open(f);
+	return true;
 }
 
+bool point_cloud_interactable::read_pc_subsampled_with_dialog() {
+	std::string f = cgv::gui::file_open_dialog("Open", "Point Cloud:*");
+	pc.clear_all();
+	pc.read_pts_subsampled(f,0.05);
+	show_point_begin = 0;
+	show_point_end = pc.get_nr_points();
+	pc.has_clrs = true;
+	return true;
+}
+
+void point_cloud_interactable::write_pc_to_file() {
+	/*auto microsecondsUTC = std::chrono::duration_cast<std::chrono::microseconds>(
+		std::chrono::system_clock::now().time_since_epoch()).count();
+	std::string filename_base = cgv::base::ref_data_path_list()[0] + "\\object_scanns\\pointcloud_all_" + std::to_string(microsecondsUTC);
+	std::string filename = filename_base + ".obj";*/
+	std::string f = cgv::gui::file_save_dialog("Open", "Save Point Cloud:*");
+	pc.write(f);
+}
+
+bool point_cloud_interactable::read_pc_campose() {
+	std::string f = cgv::gui::file_open_dialog("Open", "Point Cloud:*");
+	pc.read_campose(f);
+	return true;
+}
+
+void point_cloud_interactable::align_leica_scans_with_cgv() {
+	quat rz = quat(vec3(0, 0, 1), 25 * M_PI / 180);
+	quat rx = quat(vec3(1, 0, 0), -90 * M_PI / 180);
+	quat r_align = rx * rz;
+	for (auto& t : pc.list_cam_translation) {
+		r_align.rotate(t);
+		t = t + vec3(0, 1, 0);
+	}
+	pc.rotate(r_align);
+	// approximate 1m from ground 
+	pc.translate(vec3(0,1,0));
+}
 
 ///
 void point_cloud_interactable::prepare_grow(bool read_from_file, std::vector<rgba>* psc, int max_num_regions) {
@@ -642,6 +682,20 @@ void point_cloud_interactable::clear_all() {
 	pc_last.clear_all();
 	pc_to_be_append.clear_all();
 	num_of_pcs = 0;
+
+	tmppc.clear_all();
+	is_highlighting = false;
+	crs_srs_pc.clear_all();
+	crs_tgt_pc.clear_all();
+	pc_last_subsampled.clear_all();
+	pc_to_be_append_subsampled.clear_all();
+	rotation.identity();
+	translation.zeros();
+	icp_filter_type = cgv::pointcloud::ICP::RANDOM_SAMPLING;
+	region_id_and_seeds.clear();
+	region_id_and_nml.clear();
+
+	// todo: reset vars here ...
 }
 ///
 void point_cloud_interactable::interact_callback(double t, double dt)
@@ -779,9 +833,23 @@ bool point_cloud_interactable::get_picked_point(int x, int y, unsigned& index)
 
 void point_cloud_interactable::compute_normals()
 {
+	// already has nmls or too few points are given 
+	if (pc.has_normals())
+		return;
+	if (pc.get_nr_points() < 31) {
+		std::cout << "too few points for nml computing!" << std::endl;
+		return;
+	}
+	// rebuild ds for nml computation 
+	// normal estimation
+	ng.clear();
+	tree_ds_out_of_date = true;
 	if (ng.empty())
 		build_neighbor_graph();
 	ne.compute_weighted_normals(reorient_normals && pc.has_normals());
+	// orient to camera position if cam position present 
+	if (pc.has_cam_posi)
+		orient_normals_to_view_point_vr(pc.cam_posi);
 	on_point_cloud_change_callback(PCC_NORMALS);
 	post_redraw();
 }
@@ -1009,14 +1077,12 @@ void point_cloud_interactable::init_frame(cgv::render::context& ctx)
 }
 void point_cloud_interactable::draw(cgv::render::context& ctx)
 {
-	if (pc.get_nr_points() == 0)
-		return;
-
-	glVertexPointer(3, GL_FLOAT, 0, &(pc.pnt(0).x()));
-	glEnableClientState(GL_VERTEX_ARRAY);
-	draw_graph(ctx);
-	glDisableClientState(GL_VERTEX_ARRAY);
-
+	if (pc.get_nr_points() != 0) {
+		glVertexPointer(3, GL_FLOAT, 0, &(pc.pnt(0).x()));
+		glEnableClientState(GL_VERTEX_ARRAY);
+		draw_graph(ctx);
+		glDisableClientState(GL_VERTEX_ARRAY);
+	}
 
 	/*if (interact_state != IS_DRAW_FULL_FRAME)
 		std::swap(show_point_step, interact_point_step);*/
@@ -1029,6 +1095,15 @@ void point_cloud_interactable::draw(cgv::render::context& ctx)
 	//}
 	//else
 	//	interact_state = IS_FULL_FRAME;
+
+	// render the cameras with information read from .campose file 
+	if (pc.render_cams) {
+		auto& sr = ref_sphere_renderer(ctx);
+		sr.set_render_style(pc.srs);
+		sr.set_position_array(ctx, pc.list_cam_translation);
+		sr.set_color_array(ctx, pc.list_clrs);
+		sr.render(ctx, 0, pc.list_cam_translation.size());
+	}
 }
 
 

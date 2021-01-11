@@ -10,6 +10,8 @@
 #include <cgv/render/shader_program.h>
 #include <cgv_gl/rounded_cone_renderer.h>
 #include <cgv/render/frame_buffer.h>
+#include <chrono>
+#include <cgv/base/import.h>
 
 ///@ingroup VR
 ///@{
@@ -136,6 +138,10 @@ protected:
 
 	boxgui_interactable* b_interactable = new boxgui_interactable();
 	point_cloud_interactable* point_cloud_kit = new point_cloud_interactable();
+	point_cloud_interactable* one_shot_360pc = new point_cloud_interactable();
+	point_cloud_interactable* stored_cloud = new point_cloud_interactable();
+	bool render_pc = false;
+	bool force_correct_num_pcs = true;
 
 public:
 	void init_cameras(vr::vr_kit* kit_ptr);
@@ -184,6 +190,32 @@ public:
 
 	///
 	void read_pc();
+
+	void read_pc_append();
+
+	void write_read_pc_to_file();
+
+	void read_campose();
+
+	void align_leica_scans_with_cgv();
+
+	void rotate_x();
+
+	void rotate_z();
+
+	bool load_next_shot();
+
+	void compute_nmls_if_is_required();
+
+	void append_current_shot_to_stored_cloud();
+
+	void write_stored_pc_to_file();
+	///
+	void print_cloud_info();
+	///
+	void auto_conduct_nml_estimation_leica();
+
+	void clean_all_pcs();
 
 	void create_gui();
 };

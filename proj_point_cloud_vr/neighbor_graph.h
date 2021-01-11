@@ -76,8 +76,10 @@ struct CGV_API neighbor_graph : public std::vector<std::vector<graph_location::I
 		resize(n);
 		nr_half_edges = 0;
 		for (Idx i = 0; i < (Idx)n; ++i) {
-			if (i % 10000 == 0)
-				std::cout << "build ng " << i << " nr half edges = " << nr_half_edges << std::endl;
+			if (i % 1000 == 0)
+				printf("%d Percent done.\r", (int)(100.0 * i / (n - 1)));
+			/*if (i % 10000 == 0)
+				std::cout << "build ng " << i << " nr half edges = " << nr_half_edges << std::endl;*/
 			knn.extract_neighbors(i, k, at(i));
 			if (he_stats)
 				he_stats->update(k);

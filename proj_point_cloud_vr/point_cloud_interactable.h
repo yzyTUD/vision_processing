@@ -130,7 +130,15 @@ public:
 	/// open or append depending on event that triggered this function
 	bool open_or_append(cgv::gui::event& e, const std::string& file_name);
 	///
-	bool read_pc_with_dialog();
+	bool read_pc_with_dialog(bool append);
+
+	bool read_pc_subsampled_with_dialog();
+	/// read .campose file 
+	bool read_pc_campose();
+
+	void align_leica_scans_with_cgv();
+
+	void write_pc_to_file();
 	
 	/*region growing related*/
 	///

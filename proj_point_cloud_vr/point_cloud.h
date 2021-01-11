@@ -7,6 +7,7 @@
 #include <cgv/math/quaternion.h>
 #include <cgv/media/color.h>
 #include <cgv/media/axis_aligned_box.h>
+#include <libs\cgv_gl\sphere_renderer.h>
 
 #include "lib_begin.h"
 
@@ -122,9 +123,12 @@ protected:
 	/// container for local features 
 	std::vector<Dir> F;
 
+	///
 	std::vector<cgv::type::uint8_type> point_selection;
+	///
 	std::vector<bool> point_selection_visited;
 
+	///
 	enum P_C {
 		ORI = 0,
 		VISUAL_MARK = 1,
@@ -213,7 +217,13 @@ protected:
 		Colors are transformed to 32-bit floats in the range [0,1] and alpha components are ignored. */
 	bool read_ply(const std::string& file_name);
 	///
+	bool read_pts(const std::string& file_name);
+	///
 	bool read_txt(const std::string& file_name);
+	///
+	bool read_pts_subsampled(const std::string& file_name, float percentage);
+	///
+	bool read_campose(const std::string& file_name);
 	/// write ascii format, see read_ascii for format description
 	bool write_ascii(const std::string& file_name, bool write_nmls = true) const;
 	/// write binary format, see read_bin for format description
@@ -222,14 +232,40 @@ protected:
 	bool write_obj(const std::string& file_name) const;
 	/// write ply format, see read_ply for format description
 	bool write_ply(const std::string& file_name) const;
+	///
+	bool write_ptsn(const std::string& file_name) const;
 public:
+	///
 	bool has_cam_posi = false;
+	///
 	bool has_selection = false;
+	///
 	cgv::math::fvec<float, 3> cam_posi;
+
+	/// read from .campose file, 10.01.2021
+	int num_of_shots;
+	///
+	std::vector<int> list_point_idx;
+	///
+	std::vector<cgv::math::quaternion<float>> list_cam_rotation;
+	///
+	std::vector<cgv::math::fvec<float, 3>> list_cam_translation;
+	///
+	bool render_cams = false;
+	///
+	std::vector<cgv::media::color<float, cgv::media::RGB>> list_clrs;
+	///
+	cgv::render::sphere_render_style srs;
+	///
+	int cur_shot = 0;
+	int num_points = 0;
+
 	/// construct empty point cloud
 	point_cloud();
 	/// construct and read file with the read method
 	point_cloud(const std::string& file_name);
+
+	void clear_all_for_get_next_shot();
 
 	/**@name operations */
 	//@{
@@ -237,8 +273,12 @@ public:
 	void clear();
 	// 
 	void clear_all();
+	/// 
+	void clear_campose();
 	/// append another point cloud
 	void append(const point_cloud& pc);
+	///
+	bool get_next_shot(const point_cloud& pc);
 	/// remove all points (including normals and colors) outside of the given box 
 	void clip(const Box clip_box);
 	///

@@ -8,6 +8,7 @@
 #include <cgv/media/mesh/obj_reader.h>
 #include <fstream>
 #include <cgv\base\import.h>
+#include <random>
 
 #pragma warning(disable:4996)
 
@@ -243,12 +244,16 @@ point_cloud::point_cloud(const string& file_name)
 
 	read(file_name);
 }
-void point_cloud::clear_all() {
+void point_cloud::clear_all_for_get_next_shot() {
 	P.clear();
 	N.clear();
 	C.clear();
 	T.clear();
 	I.clear();
+	F.clear();
+
+	point_selection.clear();
+	point_selection_visited.clear();
 
 	/// container to store  one component index per point
 	component_indices.clear();
@@ -259,8 +264,42 @@ void point_cloud::clear_all() {
 	component_boxes.clear();
 	component_pixel_ranges.clear();
 
+	has_clrs = false;
+	has_nmls = false;
+	has_texcrds = false;
+	has_pixcrds = false;
+	has_comps = false;
+	has_comp_trans = false;
+	has_comp_clrs = false;
+	has_features = false;
+
+	comp_box_out_of_date.clear();
+	comp_pixrng_out_of_date.clear();
+	/// flag to remember whether bounding box is out of date and will be recomputed in the box() method
+	box_out_of_date = true;
+	/// flag to remember whether pixel coordinate range is out of date and will be recomputed in the pixel_range() method
+	pixel_range_out_of_date = true;
+}
+
+void point_cloud::clear_all() {
+	P.clear();
+	N.clear();
+	C.clear();
+	T.clear();
+	I.clear();
+	F.clear();
+
 	point_selection.clear();
 	point_selection_visited.clear();
+
+	/// container to store  one component index per point
+	component_indices.clear();
+	components.clear();
+	component_colors.clear();
+	component_rotations.clear();
+	component_translations.clear();
+	component_boxes.clear();
+	component_pixel_ranges.clear();
 
 	has_clrs = false;
 	has_nmls = false;
@@ -269,9 +308,33 @@ void point_cloud::clear_all() {
 	has_comps = false;
 	has_comp_trans = false;
 	has_comp_clrs = false;
+	has_features = false;
 
+	comp_box_out_of_date.clear();
+	comp_pixrng_out_of_date.clear();
+	/// flag to remember whether bounding box is out of date and will be recomputed in the box() method
 	box_out_of_date = true;
+	/// flag to remember whether pixel coordinate range is out of date and will be recomputed in the pixel_range() method
 	pixel_range_out_of_date = true;
+
+	/// reset all vars 
+	has_cam_posi = false;
+	has_selection = false;
+	num_of_shots = 0;
+	list_point_idx.clear();
+	list_cam_rotation.clear();
+	list_cam_translation.clear();
+	render_cams = false;
+	list_clrs.clear();
+	cur_shot = 0;
+	num_points = 0;
+}
+
+void point_cloud::clear_campose() {
+	num_of_shots = 0;
+	list_point_idx.clear();
+	list_cam_rotation.clear();
+	list_cam_translation.clear();
 }
 void point_cloud::clear()
 {
@@ -301,13 +364,48 @@ void point_cloud::clear()
 	box_out_of_date = true;
 	pixel_range_out_of_date = true;
 }
+
+/// read from list_point_idx.at(cur_shot) to list_point_idx.at(cur_shot + 1)
+/// not trying to append, clear before loading  
+/// no normal information
+bool point_cloud::get_next_shot(const point_cloud& pc) {
+	if (pc.get_nr_points() == 0)
+		return false;
+	// diff. version of clear_all may help
+	Cnt n = pc.list_point_idx.at(cur_shot);
+	has_clrs = pc.has_colors();
+	P.reserve(n);
+	C.reserve(n);
+	int start = cur_shot == 0 ? 0 : num_points;
+	int end = cur_shot == 0 ? n : num_points + n;
+	for(int i = start ; i < end && i< pc.get_nr_points(); i++) {
+		P.push_back(pc.pnt(i));
+		C.push_back(pc.clr(i));
+	}
+	if (end > pc.get_nr_points()) {
+		std::cout << "point cloud may be subsampled! nmls may not correct! " << std::endl;
+		return false;
+	}
+	has_cam_posi = true;
+	cam_posi = pc.list_cam_translation.at(cur_shot);
+	cur_shot++;
+	num_points += n;
+
+	box_out_of_date = true;
+	return true;
+}
+
 /// append another point cloud
 void point_cloud::append(const point_cloud& pc)
 {
-	has_selection = pc.has_selection;
-
 	if (pc.get_nr_points() == 0)
 		return;
+	has_selection = pc.has_selection;
+	has_nmls = pc.has_normals();
+	has_clrs = pc.has_colors();
+	has_texcrds = pc.has_texture_coordinates();
+	//...
+
 	Cnt old_n = (Cnt)P.size();
 	Cnt n = (Cnt)P.size() + pc.get_nr_points();
 	if (has_selection)
@@ -514,7 +612,7 @@ void point_cloud::rotate(const Qat& qat, Idx ci)
 {
 	for (Idx e = end_index(ci), i = begin_index(ci); i < e; ++i)
 		pnt(i) = qat.apply(pnt(i));
-	if (has_normals()) {
+	if (has_normals()) {  // rotate nmls if present 
 		for (Idx e = end_index(ci), i = begin_index(ci); i < e; ++i)
 			nml(i) = qat.apply(nml(i));
 	}
@@ -649,8 +747,12 @@ bool point_cloud::read(const string& _file_name)
 		success = read_obj(_file_name);
 	if (ext == "ply")
 		success = read_ply(_file_name);
-	if (ext == "txt")
+	if (ext == "pts") 
+		success = read_pts(_file_name); 
+	if (ext == "txt") // I merged 
 		success = read_txt(_file_name);
+	if (ext == "campose")
+		success = read_campose(_file_name);
 	if (success) {
 		if (N.size() > 0)
 			has_nmls = true;
@@ -805,6 +907,8 @@ bool point_cloud::write(const string& _file_name)
 		return write_obj(_file_name);
 	if (ext == "ply")
 		return write_ply(_file_name);
+	if (ext == "txt") // pts with normal
+		return write_ptsn(_file_name);
 	cerr << "unknown extension <." << ext << ">." << endl;
 	return false;
 }
@@ -1165,14 +1269,13 @@ bool point_cloud::read_bin(const string& file_name)
 }
 
 /// read ascii file with lines of the form x y z I r g b intensity and color values, where intensity values are ignored
-bool point_cloud::read_txt(const std::string& file_name)
+bool point_cloud::read_pts(const std::string& file_name)
 {
 	string content;
 	cgv::utils::stopwatch watch;
 	if (!cgv::utils::file::read(file_name, content, true))
 		return false;
 	std::cout << "read data from disk "; watch.add_time();
-	clear();
 	vector<line> lines;
 	split_to_lines(content, lines);
 	std::cout << "split data into " << lines.size() << " lines. ";	watch.add_time();
@@ -1213,6 +1316,197 @@ bool point_cloud::read_txt(const std::string& file_name)
 			cout << "read " << P.size() << " points" << endl;
 	}
 	watch.add_time();
+	return true;
+}
+
+
+/// read ascii file with lines of the form x y z I r g b intensity and color values, where intensity values are ignored
+bool point_cloud::read_txt(const std::string& file_name)
+{
+	string content;
+	cgv::utils::stopwatch watch;
+	if (!cgv::utils::file::read(file_name, content, true))
+		return false;
+	std::cout << "read data from disk "; watch.add_time();
+	vector<line> lines;
+	split_to_lines(content, lines);
+	std::cout << "split data into " << lines.size() << " lines. ";	watch.add_time();
+
+	bool do_parse = false;
+	unsigned i;
+	for (i = 0; i < lines.size(); ++i) {
+		if (lines[i].empty())
+			continue;
+
+		if (false) {
+			Pnt p;
+			int c[3], I;
+			char tmp = lines[i].end[0];
+			content[lines[i].end - content.c_str()] = 0;
+			if (sscanf(lines[i].begin, "%f %f %f %f %f %f", &p[0], &p[1], &p[2], c, c + 1, c + 2) == 6) {
+				P.push_back(p);
+				C.push_back(Clr(byte_to_color_component(c[0]), byte_to_color_component(c[1]), byte_to_color_component(c[2])));
+			}
+			content[lines[i].end - content.c_str()] = tmp;
+		}
+		else {
+			vector<token> numbers;
+			tokenizer(lines[i]).bite_all(numbers);
+			double values[9]; // only support P,C,N for now 
+			unsigned n = (int)numbers.size();
+			unsigned j;
+			for (j = 0; j < n; ++j) {
+				if (!is_double(numbers[j].begin, numbers[j].end, values[j]))
+					break;
+			}
+			if (j >= 3)
+				P.push_back(Pnt((Crd)values[0], (Crd)values[1], (Crd)values[2]));
+			if (j >= 6) {
+				C.push_back(Clr(float_to_color_component(values[3]), float_to_color_component(values[4]), float_to_color_component(values[5])));
+				has_clrs = true;
+			}
+			if (j >= 9) {
+				N.push_back(Nml((Crd)values[6], (Crd)values[7], (Crd)values[8]));
+				has_nmls = true;
+			}
+		}
+		if ((P.size() % 100000) == 0)
+			cout << "read " << P.size() << " points" << endl;
+	}
+	watch.add_time();
+	return true;
+}
+
+bool point_cloud::read_pts_subsampled(const std::string& file_name, float percentage)
+{
+	string content;
+	cgv::utils::stopwatch watch;
+	if (!cgv::utils::file::read(file_name, content, true))
+		return false;
+	std::cout << "read data from disk "; watch.add_time();
+	clear_all();
+	vector<line> lines;
+	split_to_lines(content, lines);
+	std::cout << "split data into " << lines.size() << " lines. ";	watch.add_time();
+
+	std::default_random_engine g;
+	std::uniform_real_distribution<float> d(0, 1);
+
+	bool do_parse = false;
+	unsigned i;
+	for (i = 0; i < lines.size(); ++i) {
+		// sample 30 persent of the points 
+		if( d(g) > percentage)
+			continue;
+
+		if (lines[i].empty())
+			continue;
+
+		if (true) {
+			Pnt p;
+			int c[3], I;
+			char tmp = lines[i].end[0];
+			content[lines[i].end - content.c_str()] = 0;
+			if (sscanf(lines[i].begin, "%f %f %f %d %d %d %d", &p[0], &p[1], &p[2], &I, c, c + 1, c + 2) == 7) {
+				P.push_back(p);
+				C.push_back(Clr(byte_to_color_component(c[0]), byte_to_color_component(c[1]), byte_to_color_component(c[2])));
+			}
+			content[lines[i].end - content.c_str()] = tmp;
+		}
+		else {
+			vector<token> numbers;
+			tokenizer(lines[i]).bite_all(numbers);
+			double values[7];
+			unsigned n = min(7, (int)numbers.size());
+			unsigned j;
+			for (j = 0; j < n; ++j) {
+				if (!is_double(numbers[j].begin, numbers[j].end, values[j]))
+					break;
+			}
+			if (j >= 3)
+				P.push_back(Pnt((Crd)values[0], (Crd)values[1], (Crd)values[2]));
+			if (j >= 6)
+				C.push_back(Clr(float_to_color_component(values[3]), float_to_color_component(values[4]), float_to_color_component(values[5])));
+		}
+		if ((P.size() % 100000) == 0)
+			cout << "read " << P.size() << " points" << endl;
+	}
+	watch.add_time();
+	return true;
+}
+
+/// todo: change clear_all to clear and change api calls in vr_scanning 
+bool point_cloud::read_campose(const std::string& file_name) {
+	string content;
+	cgv::utils::stopwatch watch;
+	if (!cgv::utils::file::read(file_name, content, true))
+		return false;
+	std::cout << "read data from disk "; watch.add_time();
+	// clear cooresp. lists within the function 
+	clear_campose();
+	vector<line> lines;
+	split_to_lines(content, lines);
+	std::cout << "split data into " << lines.size() << " lines. ";	watch.add_time();
+	std::vector<token> tokens;
+	std::vector<token>& t = tokens;
+	cgv::math::fvec<double, 4> rot(0, 0, 0, 0);
+	cgv::math::fvec<double, 3> trans(0, 0, 0);
+	int num_of_points_total = 0;
+	for (int i = 0; i < lines.size(); ++i) {
+		if (lines[i].empty())
+			continue;
+		tokenizer(lines[i]).bite_all(tokens);
+		if (tokens.size() == 0)
+			continue;
+		switch (tokens[0][0]) {
+			case 'n':
+				if (tokens[0][1] == 's') {
+					t = tokens;
+					int n;
+					is_integer(t[1].begin, t[1].end, n);
+					num_of_shots = n;
+					break;
+				}
+				if (tokens[0][1] == 'p') {
+					t = tokens;
+					int n;
+					is_integer(t[1].begin, t[1].end, n);
+					list_point_idx.push_back(n);
+					num_of_points_total += n;
+					break;
+				}
+			case 'r':
+				t = tokens;
+				cgv::utils::is_double(t[1].begin, t[1].end, rot(0)) &&
+					cgv::utils::is_double(t[2].begin, t[2].end, rot(1)) &&
+					cgv::utils::is_double(t[3].begin, t[3].end, rot(2)) &&
+					cgv::utils::is_double(t[4].begin, t[4].end, rot(3));
+				// w x y z
+				list_cam_rotation.push_back(cgv::math::quaternion<float>(rot(0), rot(1), rot(2), rot(3)));
+				break;
+			case 't':
+				t = tokens;
+				cgv::utils::is_double(t[1].begin, t[1].end, trans(0)) &&
+					cgv::utils::is_double(t[2].begin, t[2].end, trans(1)) &&
+					cgv::utils::is_double(t[3].begin, t[3].end, trans(2));
+				list_cam_translation.push_back(trans);
+				break;
+		}
+		tokens.clear();
+	}
+	
+	std::cout << "num_of_points_total = " << num_of_points_total << std::endl;
+	std::cout << "num_of_shots = " << this->num_of_shots << std::endl;
+	for (int i = 0; i < num_of_shots; i++) 
+		list_clrs.push_back(cgv::media::color<float, cgv::media::RGB>(0,1,0));
+	srs.radius = 0.1f;
+	cgv::math::quaternion<float> inv_quat = list_cam_rotation.at(0).inverse();
+	// align to the frame of the first point 
+	for (int i = 1; i < num_of_shots; i++) {
+		list_cam_rotation.at(i) = inv_quat * list_cam_rotation.at(i);
+		inv_quat.rotate(list_cam_translation.at(i));
+	}
+	render_cams = true;
 	return true;
 }
 
@@ -1493,6 +1787,28 @@ bool point_cloud::write_bin(const std::string& file_name) const
 		}
 	}
 	return fclose(fp) == 0 && success;
+}
+
+
+bool point_cloud::write_ptsn(const std::string& file_name) const
+{
+	ofstream os(file_name.c_str());
+	if (os.fail())
+		return false;
+	unsigned int i;
+	os << P.size() << endl;
+	for (i = 0; i < P.size(); ++i) {
+		os
+			<< P[i][0] << " " << P[i][1] << " " << P[i][2] << " ";
+			if (has_colors())
+				os << color_component_to_float(C[i][0]) << " " << color_component_to_float(C[i][1]) << " " << color_component_to_float(C[i][2]) << " ";
+			if (has_normals())
+				os << N[i][0] << " " << N[i][1] << " " << N[i][2];
+			os << endl;
+		if ((i % 100000) == 0)
+			cout << "wrote " << i << " points" << endl;
+	}
+	return !os.fail();
 }
 
 bool point_cloud::write_obj(const std::string& file_name) const

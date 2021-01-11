@@ -272,7 +272,7 @@ vr_pc_processing::vr_pc_processing()
 	use_matrix = true;
 	show_seethrough = false;
 	set_name("vr_pc_processing");
-	build_scene(5, 7, 3, 0.2f, 0.8f, 0.8f, 0.72f, 0.03f);
+	//build_scene(5, 7, 3, 0.2f, 0.8f, 0.8f, 0.72f, 0.03f);
 	vr_view_ptr = 0;
 	ray_length = 2;
 	last_kit_handle = 0;
@@ -528,7 +528,29 @@ bool vr_pc_processing::init(cgv::render::context& ctx)
 	point_cloud_kit->do_auto_view = false;
 	point_cloud_kit->pc.create_colors();
 
+	one_shot_360pc->surfel_style.point_size = 0.2f;
+	one_shot_360pc->surfel_style.halo_color_strength = 0.0f;
+	one_shot_360pc->surfel_style.percentual_halo_width = 25.0f;
+	one_shot_360pc->surfel_style.blend_points = true;
+	one_shot_360pc->surfel_style.blend_width_in_pixel = 1.0f;
+	one_shot_360pc->show_neighbor_graph = false;
+	one_shot_360pc->show_box = false;
+	one_shot_360pc->do_auto_view = false;
+	one_shot_360pc->pc.create_colors();
+
+	stored_cloud->surfel_style.point_size = 0.2f;
+	stored_cloud->surfel_style.halo_color_strength = 0.0f;
+	stored_cloud->surfel_style.percentual_halo_width = 25.0f;
+	stored_cloud->surfel_style.blend_points = true;
+	stored_cloud->surfel_style.blend_width_in_pixel = 1.0f;
+	stored_cloud->show_neighbor_graph = false;
+	stored_cloud->show_box = false;
+	stored_cloud->do_auto_view = false;
+	stored_cloud->pc.create_colors();
+
 	point_cloud_kit->init(ctx);
+	one_shot_360pc->init(ctx);
+	stored_cloud->init(ctx);
 
 	return true;
 }
@@ -539,12 +561,16 @@ void vr_pc_processing::clear(cgv::render::context& ctx)
 	cgv::render::ref_sphere_renderer(ctx, -1);
 	cgv::render::ref_rounded_cone_renderer(ctx, -1);
 	point_cloud_kit->clear(ctx);
+	one_shot_360pc->clear(ctx);
+	stored_cloud->clear(ctx);
 }
 
 void vr_pc_processing::init_frame(cgv::render::context& ctx)
 {
 	b_interactable->init_frame(ctx);
 	point_cloud_kit->init_frame(ctx);
+	one_shot_360pc->init_frame(ctx);
+	stored_cloud->init_frame(ctx);
 
 	if (label_fbo.get_width() != label_resolution) {
 		label_tex.destruct(ctx);
@@ -667,19 +693,11 @@ void vr_pc_processing::init_frame(cgv::render::context& ctx)
 void vr_pc_processing::draw(cgv::render::context& ctx)
 {
 	b_interactable->draw(ctx);
-	point_cloud_kit->draw(ctx);
+	if(render_pc)
+		point_cloud_kit->draw(ctx);
+	//one_shot_360pc->draw(ctx);
+	//stored_cloud->draw(ctx);
 
-	if (MI.is_constructed()) {
-		dmat4 R;
-		mesh_orientation.put_homogeneous_matrix(R);
-		ctx.push_modelview_matrix();
-		ctx.mul_modelview_matrix(
-			cgv::math::translate4<double>(mesh_location)*
-			cgv::math::scale4<double>(mesh_scale, mesh_scale, mesh_scale) *
-			R);
-		MI.draw_all(ctx);
-		ctx.pop_modelview_matrix();
-	}
 	if (vr_view_ptr) {
 		if ((!shared_texture && camera_tex.is_created()) || (shared_texture && camera_tex_id != -1)) {
 			if (vr_view_ptr->get_rendered_vr_kit() != 0 && vr_view_ptr->get_rendered_vr_kit() == vr_view_ptr->get_current_vr_kit()) {
@@ -803,70 +821,6 @@ void vr_pc_processing::draw(cgv::render::context& ctx)
 			}
 		}
 	}
-	cgv::render::box_renderer& renderer = cgv::render::ref_box_renderer(ctx);
-
-	// draw dynamic boxes 
-	renderer.set_render_style(movable_style);
-	renderer.set_box_array(ctx, movable_boxes);
-	renderer.set_color_array(ctx, movable_box_colors);
-	renderer.set_translation_array(ctx, movable_box_translations);
-	renderer.set_rotation_array(ctx, movable_box_rotations);
-	if (renderer.validate_and_enable(ctx)) {
-		if (show_seethrough) {
-			glColorMask(GL_FALSE, GL_FALSE, GL_FALSE, GL_FALSE);
-			renderer.draw(ctx, 0, 3);
-			glColorMask(GL_TRUE, GL_TRUE, GL_TRUE, GL_TRUE);
-			renderer.draw(ctx, 3, movable_boxes.size() - 3);
-		}
-		else
-			renderer.draw(ctx, 0, movable_boxes.size());
-	}
-	renderer.disable(ctx);
-
-	// draw static boxes
-	renderer.set_render_style(style);
-	renderer.set_box_array(ctx, boxes);
-	renderer.set_color_array(ctx, box_colors);
-	renderer.render(ctx, 0, boxes.size());
-
-
-	// draw intersection points
-	if (!intersection_points.empty()) {
-		auto& sr = cgv::render::ref_sphere_renderer(ctx);
-		sr.set_position_array(ctx, intersection_points);
-		sr.set_color_array(ctx, intersection_colors);
-		sr.set_render_style(srs);
-		sr.render(ctx, 0, intersection_points.size());
-	}
-
-	// draw label
-	if (vr_view_ptr && label_tex.is_created()) {
-		cgv::render::shader_program& prog = ctx.ref_default_shader_program(true);
-		int pi = prog.get_position_index();
-		int ti = prog.get_texcoord_index();
-		vec3 p(0, 1.5f, 0);
-		vec3 y = label_upright ? vec3(0, 1.0f, 0) : normalize(vr_view_ptr->get_view_up_dir_of_kit());
-		vec3 x = normalize(cross(vec3(vr_view_ptr->get_view_dir_of_kit()), y));
-		float w = 0.5f, h = 0.5f;
-		std::vector<vec3> P;
-		std::vector<vec2> T;
-		P.push_back(p - 0.5f * w * x - 0.5f * h * y); T.push_back(vec2(0.0f, 0.0f));
-		P.push_back(p + 0.5f * w * x - 0.5f * h * y); T.push_back(vec2(1.0f, 0.0f));
-		P.push_back(p - 0.5f * w * x + 0.5f * h * y); T.push_back(vec2(0.0f, 1.0f));
-		P.push_back(p + 0.5f * w * x + 0.5f * h * y); T.push_back(vec2(1.0f, 1.0f));
-		cgv::render::attribute_array_binding::set_global_attribute_array(ctx, pi, P);
-		cgv::render::attribute_array_binding::enable_global_array(ctx, pi);
-		cgv::render::attribute_array_binding::set_global_attribute_array(ctx, ti, T);
-		cgv::render::attribute_array_binding::enable_global_array(ctx, ti);
-		prog.enable(ctx);
-		label_tex.enable(ctx);
-		ctx.set_color(rgb(1, 1, 1));
-		glDrawArrays(GL_TRIANGLE_STRIP, 0, (GLsizei)P.size());
-		label_tex.disable(ctx);
-		prog.disable(ctx);
-		cgv::render::attribute_array_binding::disable_global_array(ctx, pi);
-		cgv::render::attribute_array_binding::disable_global_array(ctx, ti);
-	}
 }
 
 void vr_pc_processing::finish_draw(cgv::render::context& ctx)
@@ -904,14 +858,116 @@ void vr_pc_processing::finish_draw(cgv::render::context& ctx)
 	}
 }
 
+void vr_pc_processing::read_campose() {
+	point_cloud_kit->read_pc_campose();
+}
+
+///  read the whole pc with out rendering 
 void vr_pc_processing::read_pc() {
-	point_cloud_kit->read_pc_with_dialog();
+	point_cloud_kit->read_pc_with_dialog(false);
+}
+
+void vr_pc_processing::read_pc_append() {
+	point_cloud_kit->read_pc_with_dialog(true);
+}
+
+void vr_pc_processing::write_read_pc_to_file() {
+	point_cloud_kit->write_pc_to_file();
+}
+
+void  vr_pc_processing::align_leica_scans_with_cgv() {
+	point_cloud_kit->align_leica_scans_with_cgv();
+	stored_cloud->align_leica_scans_with_cgv();
+}
+
+void  vr_pc_processing::rotate_x() {
+	point_cloud_kit->pc.rotate(quat(vec3(1, 0, 0), 5 * M_PI / 180));
+	std::cout << "rotate 5 degree around x!" << std::endl;
+}
+
+void  vr_pc_processing::rotate_z() {
+	point_cloud_kit->pc.rotate(quat(vec3(0, 0, 1), 5 * M_PI / 180));
+	std::cout << "rotate 5 degree around z!" << std::endl;
+}
+
+bool vr_pc_processing::load_next_shot() {
+	one_shot_360pc->pc.clear_all_for_get_next_shot();
+	return one_shot_360pc->pc.get_next_shot(point_cloud_kit->pc);
+}
+
+void vr_pc_processing::compute_nmls_if_is_required() {
+	one_shot_360pc->compute_normals();
+}
+
+void vr_pc_processing::append_current_shot_to_stored_cloud() {
+	stored_cloud->append_frame(one_shot_360pc->pc, false);
+	/// it is logical to have multiple clean functions 
+	one_shot_360pc->pc.clear_all_for_get_next_shot();
+}
+
+///
+void vr_pc_processing::write_stored_pc_to_file() {
+	stored_cloud->write_pc_to_file();
+}
+
+void vr_pc_processing::print_cloud_info() {
+	std::cout << "point_cloud_kit: " << point_cloud_kit->pc.get_nr_points() << std::endl;
+	std::cout << "one_shot_360pc: " << one_shot_360pc->pc.get_nr_points() << std::endl;
+	std::cout << "stored_cloud: " << stored_cloud->pc.get_nr_points() << std::endl;
+}
+
+void vr_pc_processing::auto_conduct_nml_estimation_leica() {
+	int loop_num = point_cloud_kit->pc.num_of_shots;
+	int i = 0;
+	while (i < loop_num) {
+		bool succ = load_next_shot();
+		if (!succ && force_correct_num_pcs)
+			return;
+		compute_nmls_if_is_required();
+		append_current_shot_to_stored_cloud();
+		i++;
+	}
+	//
+	align_leica_scans_with_cgv();
+	print_cloud_info();
+	write_stored_pc_to_file();
+}
+
+void vr_pc_processing::clean_all_pcs() {
+	point_cloud_kit->clear_all();
+	one_shot_360pc->clear_all();
+	stored_cloud->clear_all();
+	std::cout << "all pcs cleared" << std::endl;
 }
 
 void vr_pc_processing::create_gui() {
+	/*
+	*	functionalities:
+			pc merging 
+			large scale pc nml computing 
+			pc rendering in vr (not optimized)
+	*/
 	add_decorator("vr_pc_processing", "heading", "level=2");
-	connect_copy(add_button("read_pc")->click, rebind(this, &vr_pc_processing::read_pc));
-	add_gui("normal_style", point_cloud_kit->normal_style);
+	if (begin_tree_node("pc merging tool", new bool, false, "level=3")) {
+		connect_copy(add_button("read_pc_append")->click, rebind(this, &vr_pc_processing::read_pc_append));
+		connect_copy(add_button("write_read_pc_to_file")->click, rebind(this, &vr_pc_processing::write_read_pc_to_file));
+	}
+	
+	if (begin_tree_node("large scale pc nml computing", new bool, false, "level=3")) {
+		connect_copy(add_button("read_pc")->click, rebind(this, &vr_pc_processing::read_pc));
+		connect_copy(add_button("read_campose")->click, rebind(this, &vr_pc_processing::read_campose));
+		connect_copy(add_button("auto_conduct_nml_estimation_leica")->click, rebind(this, &vr_pc_processing::auto_conduct_nml_estimation_leica));
+		connect_copy(add_button("clean_all_pcs")->click, rebind(this, &vr_pc_processing::clean_all_pcs));
+		connect_copy(add_button("rotate_x")->click, rebind(this, &vr_pc_processing::rotate_x));
+		connect_copy(add_button("rotate_z")->click, rebind(this, &vr_pc_processing::rotate_z));
+		connect_copy(add_button("load_next_shot")->click, rebind(this, &vr_pc_processing::load_next_shot));
+		connect_copy(add_button("compute_nmls_intermediate_pc")->click, rebind(this, &vr_pc_processing::compute_nmls_if_is_required));
+		connect_copy(add_button("append_current_shot_to_stored_cloud")->click, rebind(this, &vr_pc_processing::append_current_shot_to_stored_cloud));
+		connect_copy(add_button("align_leica_scans_with_cgv")->click, rebind(this, &vr_pc_processing::align_leica_scans_with_cgv));
+		connect_copy(add_button("write_stored_pc_to_file")->click, rebind(this, &vr_pc_processing::write_stored_pc_to_file));
+		connect_copy(add_control("render_pc", render_pc, "check")->value_change, rebind(static_cast<drawable*>(this), &vr_pc_processing::post_redraw));
+		connect_copy(add_control("force_correct_num_pcs", force_correct_num_pcs, "check")->value_change, rebind(static_cast<drawable*>(this), &vr_pc_processing::post_redraw));
+	}
 }
 
 #include <cgv/base/register.h>
