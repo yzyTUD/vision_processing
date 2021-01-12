@@ -170,6 +170,7 @@ protected:
 	friend class point_cloud_viewer;
 	friend class gl_point_cloud_drawable;
 	friend class vr_rgbd;
+
 private:
 	mutable std::vector<bool> comp_box_out_of_date;
 	mutable std::vector<bool> comp_pixrng_out_of_date;
@@ -220,6 +221,10 @@ protected:
 	bool read_pts(const std::string& file_name);
 	///
 	bool read_txt(const std::string& file_name);
+	/// downsampling according to a rate from 0 to 1 
+	void downsampling(int scale);
+
+	void downsampling_expected_num_of_points(int num_of_points_wanted);
 	///
 	bool read_pts_subsampled(const std::string& file_name, float percentage);
 	///
@@ -258,7 +263,10 @@ public:
 	cgv::render::sphere_render_style srs;
 	///
 	int cur_shot = 0;
+	///
 	int num_points = 0;
+	/// 
+	bool write_reflectance = true;
 
 	/// construct empty point cloud
 	point_cloud();

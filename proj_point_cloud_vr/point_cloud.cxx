@@ -1316,6 +1316,7 @@ bool point_cloud::read_pts(const std::string& file_name)
 			cout << "read " << P.size() << " points" << endl;
 	}
 	watch.add_time();
+	has_clrs = true;
 	return true;
 }
 
@@ -1334,6 +1335,8 @@ bool point_cloud::read_txt(const std::string& file_name)
 
 	bool do_parse = false;
 	unsigned i;
+	int total_num_of_points_in_header = 0;
+	bool the_first_read = true;
 	for (i = 0; i < lines.size(); ++i) {
 		if (lines[i].empty())
 			continue;
@@ -1359,22 +1362,127 @@ bool point_cloud::read_txt(const std::string& file_name)
 				if (!is_double(numbers[j].begin, numbers[j].end, values[j]))
 					break;
 			}
-			if (j >= 3)
-				P.push_back(Pnt((Crd)values[0], (Crd)values[1], (Crd)values[2]));
-			if (j >= 6) {
-				C.push_back(Clr(float_to_color_component(values[3]), float_to_color_component(values[4]), float_to_color_component(values[5])));
-				has_clrs = true;
+			if (j == 1) {
+				// the first line, total number of points will be read 
+				total_num_of_points_in_header = (int)values[0];
 			}
-			if (j >= 9) {
-				N.push_back(Nml((Crd)values[6], (Crd)values[7], (Crd)values[8]));
-				has_nmls = true;
+			else {
+				// rem: make sure that num of points are read 
+				if (the_first_read && total_num_of_points_in_header>0) {
+					if (j >= 3) {
+						P.push_back(Pnt((Crd)values[0], (Crd)values[1], (Crd)values[2]));
+						P.resize(total_num_of_points_in_header);
+					}
+					if (j >= 6) {
+						C.push_back(Clr(float_to_color_component(values[3]), float_to_color_component(values[4]), float_to_color_component(values[5])));
+						C.resize(total_num_of_points_in_header);
+						has_clrs = true;
+					}
+					if (j >= 9) {
+						N.push_back(Nml((Crd)values[6], (Crd)values[7], (Crd)values[8]));
+						N.resize(total_num_of_points_in_header);
+						has_nmls = true;
+					}
+					the_first_read = false;
+				}
+				else {
+					// the following lines 
+					P[i - 1] = Pnt((Crd)values[0], (Crd)values[1], (Crd)values[2]);
+					if (has_clrs)
+						C[i - 1] = Clr(float_to_color_component(values[3]), float_to_color_component(values[4]), float_to_color_component(values[5]));
+					if (has_nmls)
+						N[i - 1] = Nml((Crd)values[6], (Crd)values[7], (Crd)values[8]);
+				}
 			}
 		}
-		if ((P.size() % 100000) == 0)
-			cout << "read " << P.size() << " points" << endl;
+		// i-1 num of points read 
+		if (((i-1) % 100000) == 0)
+			cout << "read " << i - 1  << " points" << endl;
 	}
 	watch.add_time();
 	return true;
+}
+
+
+// factor is 1/step, regular sampling 
+void point_cloud::downsampling_expected_num_of_points(int num_of_points_wanted) {
+
+	if (num_of_points_wanted <= 1 || num_of_points_wanted > get_nr_points()) {
+		std::cout << "too few or too many points wanted!" << std::endl;
+		return;
+	}
+
+	std::default_random_engine g;
+	std::uniform_real_distribution<float> d(0, 1);
+
+	vector<Pnt> tmp_P;
+	vector<Clr> tmp_C;
+	vector<Nml> tmp_N;
+
+	tmp_P.resize(num_of_points_wanted);
+	if (has_colors())
+		tmp_C.resize(num_of_points_wanted);
+	if (has_normals()) 
+		tmp_N.resize(num_of_points_wanted);
+
+	for (int i = 0; i < num_of_points_wanted; i++) {
+		// just sample once, not three times 
+		int r_idx = d(g) * P.size();
+		tmp_P[i] = P.at(r_idx);
+		if (has_colors()) 
+			tmp_C[i] = C.at(r_idx);
+		if (has_normals()) 
+			tmp_N[i] = N.at(r_idx);
+	}
+
+	P = tmp_P;
+	if (has_colors())
+		C = tmp_C;
+	if (has_normals())
+		N = tmp_N;
+
+	box_out_of_date = true;
+}
+
+// factor is 1/step, regular sampling 
+void point_cloud::downsampling(int step) {
+
+	if (step <= 1)
+		return; 
+
+	int cnt = 0;
+	vector<Pnt> tmp_P(P.size() / step);
+	std::copy_if(P.begin(), P.end(), tmp_P.begin(),
+		[&cnt, &step](Pnt i)->bool {return ++cnt % step == 0;});
+	P.resize(tmp_P.size());
+	P = tmp_P;
+
+	if (has_selection) {
+		cnt = 0;
+		std::vector<cgv::type::uint8_type> tmp_selection(point_selection.size() / step);
+		std::copy_if(point_selection.begin(), point_selection.end(), tmp_selection.begin(),
+			[&cnt, &step](cgv::type::uint8_type i)->bool {return ++cnt % step == 0; });
+		point_selection.resize(tmp_selection.size());
+		point_selection = tmp_selection;
+	}
+	if (has_normals()) {
+		cnt = 0;
+		vector<Nml> tmp_N(N.size() / step);
+		std::copy_if(N.begin(), N.end(), tmp_N.begin(),
+			[&cnt, &step](Nml i)->bool {return ++cnt % step == 0; });
+		N.resize(tmp_N.size());
+		N = tmp_N;
+	}
+	if (has_colors()) {
+		cnt = 0;
+		vector<Clr> tmp_C(C.size() / step);
+		std::copy_if(C.begin(), C.end(), tmp_C.begin(),
+			[&cnt, &step](Clr i)->bool {return ++cnt % step == 0; });
+		C.resize(tmp_C.size());
+		C = tmp_C;
+	}
+
+	box_out_of_date = true;
 }
 
 bool point_cloud::read_pts_subsampled(const std::string& file_name, float percentage)
@@ -1432,6 +1540,7 @@ bool point_cloud::read_pts_subsampled(const std::string& file_name, float percen
 			cout << "read " << P.size() << " points" << endl;
 	}
 	watch.add_time();
+	has_clrs = true;
 	return true;
 }
 
@@ -1803,7 +1912,9 @@ bool point_cloud::write_ptsn(const std::string& file_name) const
 			if (has_colors())
 				os << color_component_to_float(C[i][0]) << " " << color_component_to_float(C[i][1]) << " " << color_component_to_float(C[i][2]) << " ";
 			if (has_normals())
-				os << N[i][0] << " " << N[i][1] << " " << N[i][2];
+				os << N[i][0] << " " << N[i][1] << " " << N[i][2] << " ";
+			if (write_reflectance)
+				os << "1 ";
 			os << endl;
 		if ((i % 100000) == 0)
 			cout << "wrote " << i << " points" << endl;

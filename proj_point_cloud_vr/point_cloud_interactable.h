@@ -123,6 +123,8 @@ public:
 	bool save(const std::string& fn);
 	/// open a new point cloud
 	bool open(const std::string& fn);
+	///
+	void downsampling(int step, int num_of_points_wanted, int which_strategy);
 	/// open a new point cloud by reading all point cloud files in given directory
 	bool open_directory(const std::string& dn);
 	/// open and append a new point cloud by reading file with name fn
@@ -301,7 +303,7 @@ public:
 	void handle_args(std::vector<std::string>& args);
 	/// process key and mouse events
 	bool handle(cgv::gui::event& e);
-	/// used to update all dependent variables in case of changes to the point cloud
+	/// used to update all dependent variables in case of changes to the point cloud, managememt function 
 	virtual void on_point_cloud_change_callback(PointCloudChangeEvent pcc_event);
 	/// used to update all dependent variables in case of changes to member variables
 	void on_set(void* member_ptr);

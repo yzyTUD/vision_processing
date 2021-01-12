@@ -1,0 +1,13 @@
+
+    vr_pc_processing tool 
+        done:
+            boxgui 
+        totest:
+        todo:
+            skybox header
+            vr rendering 
+            functions:
+                more reading/writting functions/ format support reading to meshlab
+                downsampling for 3d surface recon. with meshlab 
+                add reflectance
+

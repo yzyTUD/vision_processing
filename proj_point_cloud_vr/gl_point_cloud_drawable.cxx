@@ -54,9 +54,10 @@ bool gl_point_cloud_drawable::read(const std::string& _file_name)
 		cerr << "could not read point cloud " << fn << endl;
 		return false;
 	}
-	show_point_begin = 0;
-	show_point_end = pc.get_nr_points();
-
+	// these are managed by interactable, do not use drawable saparately for me 
+	//show_point_begin = 0;
+	//show_point_end = pc.get_nr_points();
+	std::cout << "points read: " << pc.get_nr_points() << std::endl;
 	post_redraw();
 	return true;
 }

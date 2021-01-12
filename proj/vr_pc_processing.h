@@ -151,6 +151,10 @@ protected:
 	bool show_face = false;
 	bool direct_write = false;
 
+	int step = 1;
+	int num_of_points_wanted = 1;
+	int strategy = 1;
+
 public:
 	void init_cameras(vr::vr_kit* kit_ptr);
 
@@ -202,6 +206,11 @@ public:
 	void read_pc_queue();
 
 	void read_pc_append();
+
+	///
+	void downsampling();
+
+	void add_reflectance();
 
 	void write_read_pc_to_file();
 

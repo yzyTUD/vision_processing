@@ -901,7 +901,8 @@ void vr_pc_processing::read_campose() {
 	point_cloud_kit->read_pc_campose();
 }
 
-///  read the whole pc with out rendering 
+/* start pc reading and point_cloud_kit processing tool */
+///  read the whole pc to point_cloud_kit
 void vr_pc_processing::read_pc() {
 	point_cloud_kit->read_pc_with_dialog(false);
 }
@@ -913,7 +914,19 @@ void vr_pc_processing::read_pc_queue() {
 void vr_pc_processing::read_pc_append() {
 	point_cloud_kit->read_pc_with_dialog(true);
 }
+// perform actions to point_cloud_kit
 
+/// 
+void vr_pc_processing::downsampling() {
+	point_cloud_kit->downsampling(step, num_of_points_wanted, strategy);
+}
+
+void vr_pc_processing::add_reflectance() {
+	// = true;
+}
+
+//
+///
 void vr_pc_processing::write_read_pc_to_file() {
 	point_cloud_kit->write_pc_to_file();
 }
@@ -933,6 +946,8 @@ void  vr_pc_processing::rotate_z() {
 	std::cout << "rotate 5 degree around z!" << std::endl;
 }
 
+/* end point_cloud_kit processing tool*/
+/// load one shot from point_cloud_kit according to .campose file  
 bool vr_pc_processing::load_next_shot() {
 	one_shot_360pc->pc.clear_all_for_get_next_shot();
 	return one_shot_360pc->pc.get_next_shot(point_cloud_kit->pc);
@@ -1009,6 +1024,12 @@ void vr_pc_processing::create_gui() {
 	add_decorator("vr_pc_processing", "heading", "level=2");
 	if (begin_tree_node("pc merging tool", new bool, false, "level=3")) {
 		connect_copy(add_button("read_pc_append")->click, rebind(this, &vr_pc_processing::read_pc_append));
+		add_member_control(this, "[0]step", step, "value_slider","min=1;max=1000;log=false;ticks=true;");
+		add_member_control(this, "[1]num_of_points_wanted", num_of_points_wanted, "value_slider", "min=1;max=100000000;log=false;ticks=true;");
+		add_member_control(this, "which_strategy", strategy, "value_slider", "min=0;max=1;log=false;ticks=true;");
+		connect_copy(add_button("downsampling")->click, rebind(this, &vr_pc_processing::downsampling));
+		/// only for point_cloud_kit
+		add_member_control(this, "write_reflectance", point_cloud_kit->pc.write_reflectance, "check");
 		connect_copy(add_button("write_read_pc_to_file")->click, rebind(this, &vr_pc_processing::write_read_pc_to_file));
 	}
 	
@@ -1025,7 +1046,6 @@ void vr_pc_processing::create_gui() {
 		connect_copy(add_button("append_current_shot_to_stored_cloud")->click, rebind(this, &vr_pc_processing::append_current_shot_to_stored_cloud));
 		connect_copy(add_button("align_leica_scans_with_cgv")->click, rebind(this, &vr_pc_processing::align_leica_scans_with_cgv));
 		connect_copy(add_button("write_stored_pc_to_file")->click, rebind(this, &vr_pc_processing::write_stored_pc_to_file));
-		connect_copy(add_control("render_pc", render_pc, "check")->value_change, rebind(static_cast<drawable*>(this), &vr_pc_processing::post_redraw));
 		connect_copy(add_control("force_correct_num_pcs", force_correct_num_pcs, "check")->value_change, rebind(static_cast<drawable*>(this), &vr_pc_processing::post_redraw));
 		connect_copy(add_control("direct_write", direct_write, "check")->value_change, rebind(static_cast<drawable*>(this), &vr_pc_processing::post_redraw));
 	}
@@ -1033,6 +1053,8 @@ void vr_pc_processing::create_gui() {
 	if (begin_tree_node("mesh tools", new bool, false, "level=3")) {
 		connect_copy(add_button("read_mesh")->click, rebind(this, &vr_pc_processing::read_mesh));
 	}
+
+	connect_copy(add_control("render_pc", render_pc, "check")->value_change, rebind(static_cast<drawable*>(this), &vr_pc_processing::post_redraw));
 }
 
 #include <cgv/base/register.h>

@@ -58,10 +58,22 @@ bool point_cloud_interactable::open(const std::string& fn)
 		cgv::gui::message(std::string("could not read ") + fn);
 		return false;
 	}
+	// manage vars after change of the point cloud 
 	on_point_cloud_change_callback(PCC_NEW_POINT_CLOUD);
 	update_file_name(fn);
 	return true;
 }
+
+void point_cloud_interactable::downsampling(int step, int num_of_points_wanted, int which_strategy) {
+	if(which_strategy == 0)
+		pc.downsampling(step);
+	if(which_strategy == 1)
+		pc.downsampling_expected_num_of_points(num_of_points_wanted);
+	std::cout << "points remind:" << pc.get_nr_points() << std::endl;
+	on_point_cloud_change_callback(PCC_POINTS_RESIZE);
+	post_redraw();
+}
+
 bool point_cloud_interactable::open_directory(const std::string& dn)
 {
 	std::vector<std::string> file_names;
@@ -146,7 +158,6 @@ bool point_cloud_interactable::read_pc_subsampled_with_dialog() {
 	pc.read_pts_subsampled(f,0.05);
 	show_point_begin = 0;
 	show_point_end = pc.get_nr_points();
-	pc.has_clrs = true;
 	return true;
 }
 
