@@ -155,6 +155,9 @@ protected:
 	int num_of_points_wanted = 1;
 	int strategy = 1;
 
+	rgb surface_color = rgb(0.4);
+	CullingMode cull_mode;
+
 public:
 	void init_cameras(vr::vr_kit* kit_ptr);
 

@@ -723,10 +723,37 @@ void vr_pc_processing::draw(cgv::render::context& ctx)
 	//stored_cloud->draw(ctx);
 
 	if (show_face) {
-		glDisable(GL_CULL_FACE);
+		// remember current culling setting
+		GLboolean is_culling = glIsEnabled(GL_CULL_FACE);
+		GLint cull_face;
+		glGetIntegerv(GL_CULL_FACE_MODE, &cull_face);
+
+		// ensure that opengl culling is identical to shader program based culling
+		if (cull_mode > 0) {
+			glEnable(GL_CULL_FACE);
+			glCullFace(cull_mode == CM_BACKFACE ? GL_BACK : GL_FRONT);
+		}
+		else
+			glDisable(GL_CULL_FACE);
+
 		// choose a shader program and configure it based on current settings
 		shader_program& prog = ctx.ref_surface_shader_program(true);
+		prog.set_uniform(ctx, "culling_mode", (int)cull_mode);
+		prog.set_uniform(ctx, "map_color_to_material", (int)CM_COLOR_FRONT);
+		//prog.set_uniform(ctx, "illumination_mode", (int)illumination_mode);
+		// set default surface color for color mapping which only affects 
+		// rendering if mesh does not have per vertex colors and color_mapping is on
+		prog.set_attribute(ctx, prog.get_color_index(), surface_color);
+
+		// render the mesh from the vertex buffers with selected program
 		mesh_info.draw_all(ctx, true, false);
+
+		// recover opengl culling mode
+		if (is_culling)
+			glEnable(GL_CULL_FACE);
+		else
+			glDisable(GL_CULL_FACE);
+		glCullFace(cull_face);
 	}
 
 	if (vr_view_ptr) {
@@ -1052,6 +1079,8 @@ void vr_pc_processing::create_gui() {
 
 	if (begin_tree_node("mesh tools", new bool, false, "level=3")) {
 		connect_copy(add_button("read_mesh")->click, rebind(this, &vr_pc_processing::read_mesh));
+		add_member_control(this, "cull mode", cull_mode, "dropdown", "enums='none,back,front'");
+		add_member_control(this, "", surface_color, "", "w=42");
 	}
 
 	connect_copy(add_control("render_pc", render_pc, "check")->value_change, rebind(static_cast<drawable*>(this), &vr_pc_processing::post_redraw));
