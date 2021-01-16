@@ -29,6 +29,7 @@
 
 #include "boxgui_interactable.h"
 #include "point_cloud_interactable.h"
+#include "vr_kit_skybox.h"
 
 class vr_pc_processing :
 	public cgv::base::node,
@@ -157,6 +158,8 @@ protected:
 
 	rgb surface_color = rgb(0.4);
 	CullingMode cull_mode;
+
+	vr_kit_skybox* skybox_kit = new vr_kit_skybox();
 
 public:
 	void init_cameras(vr::vr_kit* kit_ptr);

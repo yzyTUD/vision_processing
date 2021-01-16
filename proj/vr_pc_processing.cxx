@@ -468,6 +468,8 @@ bool vr_pc_processing::handle(cgv::gui::event& e)
 
 bool vr_pc_processing::init(cgv::render::context& ctx)
 {
+	skybox_kit->init(ctx);
+
 	if (!cgv::utils::has_option("NO_OPENVR"))
 		ctx.set_gamma(1.0f);
 
@@ -716,6 +718,8 @@ void vr_pc_processing::init_frame(cgv::render::context& ctx)
 
 void vr_pc_processing::draw(cgv::render::context& ctx)
 {
+	skybox_kit->draw(ctx);
+
 	b_interactable->draw(ctx);
 	if(render_pc)
 		point_cloud_kit->draw(ctx);
