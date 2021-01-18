@@ -261,6 +261,8 @@ public:
 	std::vector<cgv::media::color<float, cgv::media::RGB>> list_clrs;
 	///
 	cgv::render::sphere_render_style srs;
+
+	//cgv::render::box_render_style brs;
 	///
 	int cur_shot = 0;
 	///

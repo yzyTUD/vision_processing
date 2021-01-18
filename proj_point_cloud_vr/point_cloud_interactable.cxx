@@ -178,8 +178,9 @@ bool point_cloud_interactable::read_pc_campose(cgv::render::context& ctx) {
 	// prepare for rendering 
 	for (int i = 0; i < pc.num_of_shots; i++) {
 		vr_kit_image_renderer tmp_renderer;
-		std::string panorama_fn = cgv::utils::file::get_path(f) + "/campose_panorama/" + std::to_string(i + 1) + ".jpeg";
-		std::cout << panorama_fn << std::endl;
+		std::string folder_name = cgv::utils::file::drop_extension(cgv::utils::file::get_file_name(f));
+		std::string panorama_fn = cgv::utils::file::get_path(f) + "/" + folder_name + "_panorama/apb_" + std::to_string(i + 1) + ".jpeg";
+		std::cout << panorama_fn << std::endl; //pc.list_cam_rotation.at(i)
 		tmp_renderer.bind_image_to_camera_position(ctx, panorama_fn, pc.list_cam_rotation.at(i), pc.list_cam_translation.at(i));
 		image_renderer_list.push_back(tmp_renderer);
 	}
@@ -193,6 +194,9 @@ void point_cloud_interactable::align_leica_scans_with_cgv() {
 	for (auto& t : pc.list_cam_translation) {
 		r_align.rotate(t);
 		t = t + vec3(0, 1, 0);
+	}
+	for (auto& r : pc.list_cam_rotation) {
+		r = r_align * r;
 	}
 	pc.rotate(r_align);
 	// approximate 1m from ground 
@@ -1132,11 +1136,15 @@ void point_cloud_interactable::draw(cgv::render::context& ctx)
 		for (auto render_kit : image_renderer_list) {
 			render_kit.draw(ctx);
 		}
-		//auto& sr = ref_sphere_renderer(ctx);
-		//sr.set_render_style(pc.srs);
-		//sr.set_position_array(ctx, pc.list_cam_translation);
+		//std::vector<box3> boxlist;
+		//for (auto t : pc.list_cam_translation) {
+		//	boxlist.push_back(box3(t - vec3(0.1), t + vec3(0.1)));
+		//}
+		//auto& sr = ref_box_renderer(ctx);
+		////sr.set_render_style(pc.brs);
+		//sr.set_box_array(ctx, boxlist);
 		//sr.set_color_array(ctx, pc.list_clrs);
-		//sr.render(ctx, 0, pc.list_cam_translation.size());
+		//sr.render(ctx, 0, boxlist.size());
 	}
 }
 

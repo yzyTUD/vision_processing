@@ -194,8 +194,8 @@ public:
 				ctx.mul_modelview_matrix(cgv::math::scale4<double>((double)w / h, 1, 1));
 			ctx.mul_modelview_matrix(cgv::math::translate4(trans)
 				* rot_mat
-				* cgv::math::rotate4<double>(-90, 1, 0, 0) 
-				* cgv::math::scale4<double>(-scale_factor, scale_factor, scale_factor));
+				* cgv::math::scale4<double>(-scale_factor, scale_factor, scale_factor)
+			);
 			if(render_frame)
 				if (frame_width > 0) {
 					ctx.ref_default_shader_program().enable(ctx);
