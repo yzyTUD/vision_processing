@@ -1119,11 +1119,11 @@ void point_cloud_interactable::draw(cgv::render::context& ctx)
 
 	// render the cameras with information read from .campose file 
 	if (pc.render_cams) {
-		auto& sr = ref_sphere_renderer(ctx);
+		/*auto& sr = ref_sphere_renderer(ctx);
 		sr.set_render_style(pc.srs);
 		sr.set_position_array(ctx, pc.list_cam_translation);
 		sr.set_color_array(ctx, pc.list_clrs);
-		sr.render(ctx, 0, pc.list_cam_translation.size());
+		sr.render(ctx, 0, pc.list_cam_translation.size());*/
 	}
 }
 
