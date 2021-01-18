@@ -111,11 +111,15 @@ public:
 	}
 	void bind_image_to_camera_position(cgv::render::context& ctx, std::string fn, quat rot, vec3 t) {
 		object = SPHERE;
-		if (!t_ptr->create_from_image(ctx, fn, &w, &h)) {
-			std::cout << "could not read" << std::endl;
-			exit(0);
-		}
-		t_ptr->set_mag_filter(TF_NEAREST);
+		int di = mat.add_image_file(fn);
+		mat.set_diffuse_index(di);
+		if (mat.ensure_textures(ctx))
+			t_ptr = mat.get_texture(di);
+		//if (!t_ptr->create_from_image(ctx, fn, &w, &h)) {
+		//	std::cout << "could not read" << std::endl;
+		//	exit(0);
+		//}
+		t_ptr->set_mag_filter(cgv::render::TextureFilter::TF_NEAREST);
 		rot.put_homogeneous_matrix(rot_mat);
 		trans = t;
 		update_member(&w);
@@ -170,7 +174,10 @@ public:
 		switch (object) {
 		case CUBE:	ctx.tesselate_unit_cube(false, wireframe); break;
 		case SPHERE:
-			ctx.tesselate_unit_sphere(25, false, wireframe); break;
+			glDisable(GL_CULL_FACE);
+			ctx.tesselate_unit_sphere(25, false, wireframe); 
+			glEnable(GL_CULL_FACE);
+			break;
 		case SQUARE:
 			glDisable(GL_CULL_FACE);
 			ctx.tesselate_unit_square(false, wireframe); break;

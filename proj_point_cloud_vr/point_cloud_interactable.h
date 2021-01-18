@@ -10,6 +10,7 @@
 #include "neighbor_graph.h"
 #include "normal_estimator.h"
 #include "ICP.h"
+#include "vr_kit_image_renderer.h"
 #include <queue>
 
 #include "lib_begin.h"
@@ -105,6 +106,8 @@ public:
 	///
 	std::vector<vec3> region_id_and_nml;
 
+	std::vector<vr_kit_image_renderer> image_renderer_list;
+
 	/// path of last opened or saved file
 	std::string data_path;
 	/// file name without path nor extension of current file
@@ -138,7 +141,7 @@ public:
 
 	bool read_pc_subsampled_with_dialog();
 	/// read .campose file 
-	bool read_pc_campose();
+	bool read_pc_campose(cgv::render::context& ctx);
 
 	void align_leica_scans_with_cgv();
 

@@ -170,9 +170,19 @@ void point_cloud_interactable::write_pc_to_file() {
 	pc.write(f);
 }
 
-bool point_cloud_interactable::read_pc_campose() {
+bool point_cloud_interactable::read_pc_campose(cgv::render::context& ctx) {
 	std::string f = cgv::gui::file_open_dialog("Open", "Point Cloud:*");
 	pc.read_campose(f);
+	//alig with cgv fram
+	align_leica_scans_with_cgv();
+	// prepare for rendering 
+	for (int i = 0; i < pc.num_of_shots; i++) {
+		vr_kit_image_renderer tmp_renderer;
+		std::string panorama_fn = cgv::utils::file::get_path(f) + "/campose_panorama/" + std::to_string(i + 1) + ".jpeg";
+		std::cout << panorama_fn << std::endl;
+		tmp_renderer.bind_image_to_camera_position(ctx, panorama_fn, pc.list_cam_rotation.at(i), pc.list_cam_translation.at(i));
+		image_renderer_list.push_back(tmp_renderer);
+	}
 	return true;
 }
 
@@ -1119,11 +1129,14 @@ void point_cloud_interactable::draw(cgv::render::context& ctx)
 
 	// render the cameras with information read from .campose file 
 	if (pc.render_cams) {
-		/*auto& sr = ref_sphere_renderer(ctx);
-		sr.set_render_style(pc.srs);
-		sr.set_position_array(ctx, pc.list_cam_translation);
-		sr.set_color_array(ctx, pc.list_clrs);
-		sr.render(ctx, 0, pc.list_cam_translation.size());*/
+		for (auto render_kit : image_renderer_list) {
+			render_kit.draw(ctx);
+		}
+		//auto& sr = ref_sphere_renderer(ctx);
+		//sr.set_render_style(pc.srs);
+		//sr.set_position_array(ctx, pc.list_cam_translation);
+		//sr.set_color_array(ctx, pc.list_clrs);
+		//sr.render(ctx, 0, pc.list_cam_translation.size());
 	}
 }
 

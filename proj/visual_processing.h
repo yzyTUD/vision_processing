@@ -29,7 +29,7 @@
 
 #include "vr_kit_boxgui.h"
 #include "vr_kit_skybox.h"
-#include "vr_kit_image_renderer.h"
+//#include "vr_kit_image_renderer.h"
 #include "point_cloud_interactable.h"
 
 class visual_processing :
@@ -163,7 +163,7 @@ protected:
 	CullingMode cull_mode;
 
 	vr_kit_skybox* skybox_kit = new vr_kit_skybox();
-	vr_kit_image_renderer* image_renderer_kit = new vr_kit_image_renderer();
+	//vr_kit_image_renderer* image_renderer_kit = new vr_kit_image_renderer();
 
 public:
 	void init_cameras(vr::vr_kit* kit_ptr);

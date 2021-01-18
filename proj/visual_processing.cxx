@@ -174,7 +174,7 @@ bool visual_processing::handle(cgv::gui::event& e)
 bool visual_processing::init(cgv::render::context& ctx)
 {
 	skybox_kit->init(ctx);
-	image_renderer_kit->init(ctx);
+	//image_renderer_kit->init(ctx);
 
 	cgv::gui::connect_vr_server(true);
 	auto view_ptr = find_view_as_node();
@@ -342,8 +342,8 @@ void visual_processing::draw(cgv::render::context& ctx)
 		}
 	}
 
-	if(render_img)
-		image_renderer_kit->draw(ctx);
+	//if(render_img)
+	//	image_renderer_kit->draw(ctx);
 
 	if (vr_view_ptr) {
 		std::vector<vec3> P;
@@ -401,7 +401,7 @@ void visual_processing::finish_draw(cgv::render::context& ctx)
 }
 
 void visual_processing::read_campose() {
-	point_cloud_kit->read_pc_campose();
+	point_cloud_kit->read_pc_campose(*get_context());
 }
 
 /* start pc reading and point_cloud_kit processing tool */
@@ -531,10 +531,10 @@ void visual_processing::write_mesh() {
 }
 
 void visual_processing::load_image_from_bin_files() {
-	std::string f = cgv::gui::file_open_dialog("Open", "Images:*");
-	image_renderer_kit->bind_image_to_camera_position(*get_context(),f,quat(),vec3(0,1,0));
-	render_img = true;
-	post_redraw();
+	//std::string f = cgv::gui::file_open_dialog("Open", "Images:*");
+	//image_renderer_kit->bind_image_to_camera_position(*get_context(),f,quat(),vec3(0,1,0));
+	//render_img = true;
+	//post_redraw();
 }
 
 void visual_processing::create_gui() {
@@ -579,9 +579,9 @@ void visual_processing::create_gui() {
 	}
 
 	if (begin_tree_node("Image Processing", render_img, false, "level=3")) {
-		connect_copy(add_button("load_image")->click, rebind(this, &visual_processing::load_image_from_bin_files));
-		add_member_control(this, "apply_aspect", image_renderer_kit->apply_aspect, "check");
-		add_member_control(this, "render_frame", image_renderer_kit->render_frame, "check");
+		//connect_copy(add_button("load_image")->click, rebind(this, &visual_processing::load_image_from_bin_files));
+		//add_member_control(this, "apply_aspect", image_renderer_kit->apply_aspect, "check");
+		//add_member_control(this, "render_frame", image_renderer_kit->render_frame, "check");
 	}
 
 	connect_copy(add_control("render_pc", render_pc, "check")->value_change, rebind(static_cast<drawable*>(this), &visual_processing::post_redraw));

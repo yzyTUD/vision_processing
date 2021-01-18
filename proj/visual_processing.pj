@@ -2,7 +2,7 @@
 projectType="application_plugin";
 projectName="visual_processing";
 //referenceDeps = 0;
-projectGUID="A4FABF05-EA35-4DBB-85EA-CE5C331BE693";
+projectGUID="ACC9344E-144E-4E1B-B1E3-0402F339D6FE";
 
 addIncDirs=[INPUT_DIR, CGV_DIR."/libs", CGV_DIR."/test", INPUT_DIR."/../proj_point_cloud_vr"];
 addProjectDirs=[CGV_DIR."/plugins", CGV_DIR."/libs", CGV_DIR."/test", INPUT_DIR."/../proj_point_cloud_vr"];
