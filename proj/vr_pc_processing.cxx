@@ -760,6 +760,16 @@ void vr_pc_processing::draw(cgv::render::context& ctx)
 		glCullFace(cull_face);
 	}
 
+
+	if (show_wireframe) {
+		rounded_cone_renderer& cr = ref_rounded_cone_renderer(ctx);
+		cr.set_render_style(cone_style);
+		if (cr.enable(ctx)) {
+			mesh_info.draw_wireframe(ctx);
+			cr.disable(ctx);
+		}
+	}
+
 	if (vr_view_ptr) {
 		if ((!shared_texture && camera_tex.is_created()) || (shared_texture && camera_tex_id != -1)) {
 			if (vr_view_ptr->get_rendered_vr_kit() != 0 && vr_view_ptr->get_rendered_vr_kit() == vr_view_ptr->get_current_vr_kit()) {
@@ -1037,11 +1047,25 @@ void vr_pc_processing::clean_all_pcs() {
 }
 
 void vr_pc_processing::read_mesh() {
+	M.clear();
 	std::string f = cgv::gui::file_open_dialog("Open", "Meshes:*");
 	M.read(f);
 	have_new_mesh = true;
 	show_face = true;
+	show_wireframe = true;
+
+	cone_style.radius = 0.5f * float(0.05 * sqrt(M.compute_box().get_extent().sqr_length() / M.get_nr_positions()));
+	cone_style.surface_color = rgb(0.6f, 0.5f, 0.4f);
 	post_redraw();
+}
+
+void vr_pc_processing::randomize_texcoordi() {
+	M.randomize_texcoordi();
+}
+
+void vr_pc_processing::write_mesh() {
+	std::string f = cgv::gui::file_save_dialog("Save", "Meshes:*");
+	M.write_with_materials(f);
 }
 
 void vr_pc_processing::create_gui() {
@@ -1084,7 +1108,12 @@ void vr_pc_processing::create_gui() {
 	if (begin_tree_node("mesh tools", new bool, false, "level=3")) {
 		connect_copy(add_button("read_mesh")->click, rebind(this, &vr_pc_processing::read_mesh));
 		add_member_control(this, "cull mode", cull_mode, "dropdown", "enums='none,back,front'");
+		add_member_control(this, "show_face", show_face, "check");
+		add_member_control(this, "show_wireframe", show_wireframe, "check");
 		add_member_control(this, "", surface_color, "", "w=42");
+		//randomize_texcoordi
+		connect_copy(add_button("randomize_texcoordi")->click, rebind(this, &vr_pc_processing::randomize_texcoordi));
+		connect_copy(add_button("write_mesh")->click, rebind(this, &vr_pc_processing::write_mesh));
 	}
 
 	connect_copy(add_control("render_pc", render_pc, "check")->value_change, rebind(static_cast<drawable*>(this), &vr_pc_processing::post_redraw));

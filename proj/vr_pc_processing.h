@@ -151,6 +151,7 @@ protected:
 	bool have_new_mesh = false;
 	bool show_face = false;
 	bool direct_write = false;
+	bool show_wireframe = false;
 
 	int step = 1;
 	int num_of_points_wanted = 1;
@@ -245,6 +246,10 @@ public:
 	void clean_all_pcs();
 
 	void read_mesh();
+
+	void randomize_texcoordi();
+
+	void write_mesh();
 
 	void create_gui();
 };
