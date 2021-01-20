@@ -27,10 +27,12 @@
 #include <vr_view_interactor.h>
 #include <vr_render_helpers.h>
 
+#include "point_cloud_interactable.h"
 #include "vr_kit_boxgui.h"
 #include "vr_kit_skybox.h"
 //#include "vr_kit_image_renderer.h"
-#include "point_cloud_interactable.h"
+#include "vr_kit_teleportation.h"
+#include "vr_kit_roller_coaster.h"
 
 class visual_processing :
 	public cgv::base::node,
@@ -165,6 +167,10 @@ protected:
 	vr_kit_skybox* skybox_kit = new vr_kit_skybox();
 	//vr_kit_image_renderer* image_renderer_kit = new vr_kit_image_renderer();
 
+	vr_kit_teleportation* teleportation_kit = new vr_kit_teleportation();
+	vr_kit_roller_coaster_1* roller_coaster_kit_1 = nullptr;
+		//= new vr_kit_roller_coaster_1();
+
 public:
 	void init_cameras(vr::vr_kit* kit_ptr);
 
@@ -245,6 +251,8 @@ public:
 	void write_mesh();
 
 	void load_image_from_bin_files();
+
+	void update_paras_roller_coaster_kit_1();
 
 	void create_gui();
 };

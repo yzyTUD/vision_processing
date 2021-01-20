@@ -1,0 +1,33 @@
+
+type(vr_emulator):current_kit_index=0
+type(vr_emulator):tracker_1_attachment=1
+type(vr_emulator):tracker_1_position.coords[0]=0
+type(vr_emulator):tracker_1_position.coords[1]=0.2
+type(vr_emulator):tracker_1_position.coords[2]=-0.1
+type(vr_emulator):tracker_1_orientation.coords[0]=1
+type(vr_emulator):tracker_1_orientation.coords[1]=0
+type(vr_emulator):tracker_1_orientation.coords[2]=0
+type(vr_emulator):tracker_1_orientation.coords[3]=0
+type(vr_emulator):body_position.coords[0]=-0.10
+type(vr_emulator):body_position.coords[1]=-0.60
+type(vr_emulator):body_position.coords[2]=0.935
+type(vr_emulator):right_hand_position.coords[0]=-0.575
+type(vr_emulator):right_hand_position.coords[1]=0.249
+type(vr_emulator):right_hand_position.coords[2]=-0.2391
+type(vr_emulator):right_hand_orientation.coords[0]=0.49
+type(vr_emulator):right_hand_orientation.coords[1]=0
+type(vr_emulator):right_hand_orientation.coords[2]=0
+type(vr_emulator):right_hand_orientation.coords[3]=0.8717
+type(vr_emulator):left_hand_position.coords[0]=0.575
+type(vr_emulator):left_hand_position.coords[1]=0.249
+type(vr_emulator):left_hand_position.coords[2]=-0.2391
+type(vr_emulator):left_hand_orientation.coords[0]=0.49
+type(vr_emulator):left_hand_orientation.coords[1]=0
+type(vr_emulator):left_hand_orientation.coords[2]=0
+type(vr_emulator):left_hand_orientation.coords[3]=0.8717
+
+//name(vr interactor):separate_view=false;none_separate_view=2
+name(vr interactor):hmd_vis_type=1
+//name(vr interactor):controller_vis_type=2
+//name(vr interactor):tracker_vis_type=2
+name(vr interactor):blit_vr_views=false;blit_width=400;blit_aspect_scale=1.3

@@ -168,6 +168,7 @@ void visual_processing::on_set(void* member_ptr)
 bool visual_processing::handle(cgv::gui::event& e)
 {
 	b_interactable->handle(e);
+	teleportation_kit->handle(e);
 	return false;
 }
 
@@ -203,6 +204,8 @@ bool visual_processing::init(cgv::render::context& ctx)
 			vr_view_ptr->set_blit_vr_view_width(200);
 		}
 	}
+
+	teleportation_kit->set_vr_view_ptr(vr_view_ptr);
 
 	cgv::render::ref_box_renderer(ctx, 1);
 	cgv::render::ref_sphere_renderer(ctx, 1);
@@ -345,49 +348,9 @@ void visual_processing::draw(cgv::render::context& ctx)
 	//if(render_img)
 	//	image_renderer_kit->draw(ctx);
 
-	if (vr_view_ptr) {
-		std::vector<vec3> P;
-		std::vector<float> R;
-		std::vector<rgb> C;
-		const vr::vr_kit_state* state_ptr = vr_view_ptr->get_current_vr_state();
-		if (state_ptr) {
-			for (int ci = 0; ci < 4; ++ci) if (state_ptr->controller[ci].status == vr::VRS_TRACKED) {
-				vec3 ray_origin, ray_direction;
-				state_ptr->controller[ci].put_ray(&ray_origin(0), &ray_direction(0));
-				P.push_back(ray_origin);
-				R.push_back(0.002f);
-				P.push_back(ray_origin + ray_length * ray_direction);
-				R.push_back(0.003f);
-				rgb c(float(1 - ci), 0.5f * (int)state[ci], float(ci));
-				C.push_back(c);
-				C.push_back(c);
-			}
-		}
-		if (P.size() > 0) {
-			auto& cr = cgv::render::ref_rounded_cone_renderer(ctx);
-			cr.set_render_style(cone_style);
-			//cr.set_eye_position(vr_view_ptr->get_eye_of_kit());
-			cr.set_position_array(ctx, P);
-			cr.set_color_array(ctx, C);
-			cr.set_radius_array(ctx, R);
-			if (!cr.render(ctx, 0, P.size())) {
-				cgv::render::shader_program& prog = ctx.ref_default_shader_program();
-				int pi = prog.get_position_index();
-				int ci = prog.get_color_index();
-				cgv::render::attribute_array_binding::set_global_attribute_array(ctx, pi, P);
-				cgv::render::attribute_array_binding::enable_global_array(ctx, pi);
-				cgv::render::attribute_array_binding::set_global_attribute_array(ctx, ci, C);
-				cgv::render::attribute_array_binding::enable_global_array(ctx, ci);
-				glLineWidth(3);
-				prog.enable(ctx);
-				glDrawArrays(GL_LINES, 0, (GLsizei)P.size());
-				prog.disable(ctx);
-				cgv::render::attribute_array_binding::disable_global_array(ctx, pi);
-				cgv::render::attribute_array_binding::disable_global_array(ctx, ci);
-				glLineWidth(1);
-			}
-		}
-	}
+	if(roller_coaster_kit_1)
+		roller_coaster_kit_1->draw(ctx);
+
 }
 
 void visual_processing::finish_draw(cgv::render::context& ctx)
@@ -398,6 +361,8 @@ void visual_processing::finish_draw(cgv::render::context& ctx)
 		shader_program& prog = ctx.ref_surface_shader_program(true);
 		mesh_info.draw_all(ctx, false, true);
 	}
+	if (teleportation_kit)
+		teleportation_kit->finish_draw(ctx);
 }
 
 void visual_processing::read_campose() {
@@ -539,7 +504,7 @@ void visual_processing::load_image_from_bin_files() {
 
 void visual_processing::create_gui() {
 	add_decorator("visual_processing", "heading", "level=2");
-	if (begin_tree_node("Point Cloud Merging Tool", new bool, false, "level=3")) {
+	if (begin_tree_node("Point Cloud Merging Tool", strategy, false, "level=3")) {
 		connect_copy(add_button("read_pc_append")->click, rebind(this, &visual_processing::read_pc_append));
 		add_member_control(this, "[0]step", step, "value_slider","min=1;max=1000;log=false;ticks=true;");
 		add_member_control(this, "[1]num_of_points_wanted", num_of_points_wanted, "value_slider", "min=1;max=100000000;log=false;ticks=true;");
@@ -550,7 +515,7 @@ void visual_processing::create_gui() {
 		connect_copy(add_button("write_read_pc_to_file")->click, rebind(this, &visual_processing::write_read_pc_to_file));
 	}
 	
-	if (begin_tree_node("Point Cloud Nml Computing", new bool, false, "level=3")) {
+	if (begin_tree_node("Point Cloud Nml Computing", direct_write, false, "level=3")) {
 		connect_copy(add_button("read_pc")->click, rebind(this, &visual_processing::read_pc));
 		connect_copy(add_button("read_pc_queue")->click, rebind(this, &visual_processing::read_pc_queue));
 		connect_copy(add_button("read_campose")->click, rebind(this, &visual_processing::read_campose));
@@ -567,7 +532,7 @@ void visual_processing::create_gui() {
 		connect_copy(add_control("direct_write", direct_write, "check")->value_change, rebind(static_cast<drawable*>(this), &visual_processing::post_redraw));
 	}
 
-	if (begin_tree_node("Meshing Tools", new bool, false, "level=3")) {
+	if (begin_tree_node("Meshing Tools", cull_mode, false, "level=3")) {
 		connect_copy(add_button("read_mesh")->click, rebind(this, &visual_processing::read_mesh));
 		add_member_control(this, "cull mode", cull_mode, "dropdown", "enums='none,back,front'");
 		add_member_control(this, "show_face", show_face, "check");
@@ -583,8 +548,24 @@ void visual_processing::create_gui() {
 		//add_member_control(this, "apply_aspect", image_renderer_kit->apply_aspect, "check");
 		//add_member_control(this, "render_frame", image_renderer_kit->render_frame, "check");
 	}
-
 	connect_copy(add_control("render_pc", render_pc, "check")->value_change, rebind(static_cast<drawable*>(this), &visual_processing::post_redraw));
+
+	if(teleportation_kit)
+	if (begin_tree_node("Teleportation tool", teleportation_kit->is_lifting, false, "level=3")) {
+		add_member_control(this, "is_lifting", teleportation_kit->is_lifting, "check");
+		add_member_control(this, "enable_gravity", teleportation_kit->enable_gravity, "check");
+	}
+
+	if(roller_coaster_kit_1!=nullptr)
+	if (begin_tree_node("Roller Coaster 1", roller_coaster_kit_1->para_y, false, "level=3")) {
+		add_member_control(roller_coaster_kit_1, "para_x_0", roller_coaster_kit_1->para_x_0, "value_slider", "min=1;max=100;log=false;ticks=false;");
+		add_member_control(roller_coaster_kit_1, "para_z_0", roller_coaster_kit_1->para_z_0, "value_slider", "min=1;max=100;log=false;ticks=false;");
+		add_member_control(roller_coaster_kit_1, "para_x", roller_coaster_kit_1->para_x, "value_slider", "min=1;max=100;log=false;ticks=false;");
+		add_member_control(roller_coaster_kit_1, "para_y", roller_coaster_kit_1->para_y, "value_slider", "min=1;max=100;log=false;ticks=false;");
+		add_member_control(roller_coaster_kit_1, "para_z", roller_coaster_kit_1->para_z, "value_slider", "min=1;max=100;log=false;ticks=false;");
+		add_member_control(roller_coaster_kit_1, "speed_factor", roller_coaster_kit_1->speed_factor, "value_slider", "min=1;max=30;log=false;ticks=false;");
+		add_member_control(roller_coaster_kit_1, "resolution", roller_coaster_kit_1->resolution, "value_slider", "min=800;max=2000;log=false;ticks=false;");
+	}
 }
 
 #include <cgv/base/register.h>
