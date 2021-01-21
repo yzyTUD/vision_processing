@@ -1,6 +1,5 @@
 #pragma once
 #include "vr_photo.h"
-
 #include <cgv/signal/rebind.h>
 #include <cgv/base/register.h>
 #include <cgv/math/ftransform.h>
@@ -11,11 +10,8 @@
 #include <cgv_gl/sphere_renderer.h>
 #include <cgv/media/mesh/simple_mesh.h>
 #include <cg_vr/vr_events.h>
-
 #include <random>
-
 #include "vr_kit_intersection.h"
-
 
 void vr_photo::init_cameras(vr::vr_kit* kit_ptr)
 {

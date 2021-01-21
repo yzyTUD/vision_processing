@@ -36,8 +36,7 @@ using namespace cgv::render;
 #include <vr_render_helpers.h>
 #include <cg_vr/vr_events.h>
 
-#include "boxgui.h"
-#include "intersection.h"
+#include "vr_kit_intersection.h"
 
 ///@ingroup VR
 ///@{

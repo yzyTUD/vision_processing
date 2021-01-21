@@ -21,7 +21,7 @@ using namespace cgv::render;
 #include <vr_view_interactor.h>
 #include <vr_render_helpers.h>
 #include <cg_vr/vr_events.h>
-#include <intersection.h>
+#include <vr_kit_intersection.h>
 
 class vr_kit_teleportation :
 	public base,    // base class of all to be registered classes

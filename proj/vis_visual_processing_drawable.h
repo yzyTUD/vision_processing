@@ -14,7 +14,7 @@
 
 #include <random>
 
-#include "intersection.h"
+#include "vr_kit_intersection.h"
 
 
 void visual_processing::init_cameras(vr::vr_kit* kit_ptr)
