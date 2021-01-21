@@ -1,4 +1,5 @@
-#include "visual_processing.h"
+#pragma once
+#include "vis_visual_processing.h"
 
 #include <cgv/signal/rebind.h>
 #include <cgv/base/register.h>
@@ -569,5 +570,4 @@ void visual_processing::create_gui() {
 }
 
 #include <cgv/base/register.h>
-
 cgv::base::object_registration<visual_processing> vr_pc_processing_reg("visual_processing");
