@@ -153,7 +153,7 @@ visual_processing::visual_processing()
 	ray_length = 2;
 	connect(cgv::gui::ref_vr_server().on_device_change, this, &visual_processing::on_device_change);
 	connect(cgv::gui::ref_vr_server().on_status_change, this, &visual_processing::on_status_change);
-
+	register_object(base_ptr(mesh_kit), "");
 }
 	
 void visual_processing::stream_help(std::ostream& os) {
@@ -267,103 +267,23 @@ void visual_processing::init_frame(cgv::render::context& ctx)
 	one_shot_360pc->init_frame(ctx);
 	stored_cloud->init_frame(ctx);
 	//image_renderer_kit->init_frame(ctx);
-
-	if (have_new_mesh) {
-		// auto-compute mesh normals if not available
-		if (!M.has_normals())
-			M.compute_vertex_normals();
-		// [re-]compute mesh render info
-		mesh_info.destruct(ctx);
-		mesh_info.construct(ctx, M);
-		// bind mesh attributes to standard surface shader program
-		mesh_info.bind(ctx, ctx.ref_surface_shader_program(true), true);
-		mesh_info.bind_wireframe(ctx, ref_rounded_cone_renderer(ctx).ref_prog(), true);
-		// ensure that materials are presented in gui
-		//post_recreate_gui();
-		have_new_mesh = false;
-
-		// focus view on new mesh
-		/*clipped_view* view_ptr = dynamic_cast<clipped_view*>(find_view_as_node());
-		if (view_ptr) {
-			box3 box = M.compute_box();
-			view_ptr->set_scene_extent(box);
-			view_ptr->set_focus(box.get_center());
-			view_ptr->set_y_extent_at_focus(box.get_extent().length());
-		}*/
-	}
+	//if (mesh_kit) mesh_kit->init_frame(ctx);
 }
 
 void visual_processing::draw(cgv::render::context& ctx)
 {
-	skybox_kit->draw(ctx);
-
-	b_interactable->draw(ctx);
-
-	if(render_pc)
-		point_cloud_kit->draw(ctx);
-
-	if (show_face) {
-		// remember current culling setting
-		GLboolean is_culling = glIsEnabled(GL_CULL_FACE);
-		GLint cull_face;
-		glGetIntegerv(GL_CULL_FACE_MODE, &cull_face);
-
-		// ensure that opengl culling is identical to shader program based culling
-		if (cull_mode > 0) {
-			glEnable(GL_CULL_FACE);
-			glCullFace(cull_mode == CM_BACKFACE ? GL_BACK : GL_FRONT);
-		}
-		else
-			glDisable(GL_CULL_FACE);
-
-		// choose a shader program and configure it based on current settings
-		shader_program& prog = ctx.ref_surface_shader_program(true);
-		prog.set_uniform(ctx, "culling_mode", (int)cull_mode);
-		prog.set_uniform(ctx, "map_color_to_material", (int)CM_COLOR_FRONT);
-		//prog.set_uniform(ctx, "illumination_mode", (int)illumination_mode);
-		// set default surface color for color mapping which only affects 
-		// rendering if mesh does not have per vertex colors and color_mapping is on
-		prog.set_attribute(ctx, prog.get_color_index(), surface_color);
-
-		// render the mesh from the vertex buffers with selected program
-		mesh_info.draw_all(ctx, true, false);
-
-		// recover opengl culling mode
-		if (is_culling)
-			glEnable(GL_CULL_FACE);
-		else
-			glDisable(GL_CULL_FACE);
-		glCullFace(cull_face);
-	}
-
-
-	if (show_wireframe) {
-		rounded_cone_renderer& cr = ref_rounded_cone_renderer(ctx);
-		cr.set_render_style(cone_style);
-		if (cr.enable(ctx)) {
-			mesh_info.draw_wireframe(ctx);
-			cr.disable(ctx);
-		}
-	}
-
-	//if(render_img)
-	//	image_renderer_kit->draw(ctx);
-
-	if(roller_coaster_kit_1)
-		roller_coaster_kit_1->draw(ctx);
-
+	if(skybox_kit) skybox_kit->draw(ctx);
+	if(b_interactable) b_interactable->draw(ctx);
+	if(render_pc) point_cloud_kit->draw(ctx);
+	//if (mesh_kit) mesh_kit->draw(ctx);
+	//if(render_img) image_renderer_kit->draw(ctx);
+	if(roller_coaster_kit_1) roller_coaster_kit_1->draw(ctx);
 }
 
 void visual_processing::finish_draw(cgv::render::context& ctx)
 {
-	if (show_face) {
-		glDisable(GL_CULL_FACE);
-		// choose a shader program and configure it based on current settings
-		shader_program& prog = ctx.ref_surface_shader_program(true);
-		mesh_info.draw_all(ctx, false, true);
-	}
-	if (teleportation_kit)
-		teleportation_kit->finish_draw(ctx);
+	//if (mesh_kit) mesh_kit->finish_draw(ctx);
+	if (teleportation_kit) teleportation_kit->finish_draw(ctx);
 }
 
 void visual_processing::read_campose() {
@@ -474,28 +394,6 @@ void visual_processing::clean_all_pcs() {
 	std::cout << "all pcs cleared" << std::endl;
 }
 
-void visual_processing::read_mesh() {
-	M.clear();
-	std::string f = cgv::gui::file_open_dialog("Open", "Meshes:*");
-	M.read(f);
-	have_new_mesh = true;
-	show_face = true;
-	show_wireframe = true;
-
-	cone_style.radius = 0.5f * float(0.05 * sqrt(M.compute_box().get_extent().sqr_length() / M.get_nr_positions()));
-	cone_style.surface_color = rgb(0.6f, 0.5f, 0.4f);
-	post_redraw();
-}
-
-void visual_processing::randomize_texcoordi() {
-	M.randomize_texcoordi();
-}
-
-void visual_processing::write_mesh() {
-	std::string f = cgv::gui::file_save_dialog("Save", "Meshes:*");
-	M.write_with_materials(f);
-}
-
 void visual_processing::load_image_from_bin_files() {
 	//std::string f = cgv::gui::file_open_dialog("Open", "Images:*");
 	//image_renderer_kit->bind_image_to_camera_position(*get_context(),f,quat(),vec3(0,1,0));
@@ -533,17 +431,6 @@ void visual_processing::create_gui() {
 		connect_copy(add_control("direct_write", direct_write, "check")->value_change, rebind(static_cast<drawable*>(this), &visual_processing::post_redraw));
 	}
 
-	if (begin_tree_node("Meshing Tools", cull_mode, false, "level=3")) {
-		connect_copy(add_button("read_mesh")->click, rebind(this, &visual_processing::read_mesh));
-		add_member_control(this, "cull mode", cull_mode, "dropdown", "enums='none,back,front'");
-		add_member_control(this, "show_face", show_face, "check");
-		add_member_control(this, "show_wireframe", show_wireframe, "check");
-		add_member_control(this, "", surface_color, "", "w=42");
-		//randomize_texcoordi
-		connect_copy(add_button("randomize_texcoordi")->click, rebind(this, &visual_processing::randomize_texcoordi));
-		connect_copy(add_button("write_mesh")->click, rebind(this, &visual_processing::write_mesh));
-	}
-
 	if (begin_tree_node("Image Processing", render_img, false, "level=3")) {
 		//connect_copy(add_button("load_image")->click, rebind(this, &visual_processing::load_image_from_bin_files));
 		//add_member_control(this, "apply_aspect", image_renderer_kit->apply_aspect, "check");
@@ -551,7 +438,7 @@ void visual_processing::create_gui() {
 	}
 	connect_copy(add_control("render_pc", render_pc, "check")->value_change, rebind(static_cast<drawable*>(this), &visual_processing::post_redraw));
 
-	if(teleportation_kit)
+	if(teleportation_kit!=nullptr)
 	if (begin_tree_node("Teleportation tool", teleportation_kit->is_lifting, false, "level=3")) {
 		add_member_control(this, "is_lifting", teleportation_kit->is_lifting, "check");
 		add_member_control(this, "enable_gravity", teleportation_kit->enable_gravity, "check");

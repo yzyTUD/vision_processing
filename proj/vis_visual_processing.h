@@ -30,6 +30,7 @@
 #include "point_cloud_interactable.h"
 #include "vr_kit_boxgui.h"
 #include "vr_kit_skybox.h"
+#include "vis_kit_meshes.h"
 //#include "vr_kit_image_renderer.h"
 #include "vr_kit_teleportation.h"
 #include "vr_kit_roller_coaster.h"
@@ -147,22 +148,12 @@ protected:
 	point_cloud_interactable* stored_cloud = new point_cloud_interactable();
 	bool render_pc = false;
 	bool force_correct_num_pcs = true;
-
-	typedef cgv::media::mesh::simple_mesh<float> mesh_type;
-	mesh_type M;
-	cgv::render::mesh_render_info mesh_info;
-	bool have_new_mesh = false;
-	bool show_face = false;
 	bool direct_write = false;
-	bool show_wireframe = false;
 	bool render_img = false;
 
 	int step = 1;
 	int num_of_points_wanted = 1;
 	int strategy = 1;
-
-	rgb surface_color = rgb(0.4);
-	CullingMode cull_mode;
 
 	vr_kit_skybox* skybox_kit = new vr_kit_skybox();
 	//vr_kit_image_renderer* image_renderer_kit = new vr_kit_image_renderer();
@@ -170,6 +161,7 @@ protected:
 	vr_kit_teleportation* teleportation_kit = new vr_kit_teleportation();
 	vr_kit_roller_coaster_1* roller_coaster_kit_1 = nullptr;
 		//= new vr_kit_roller_coaster_1();
+	vis_kit_meshes* mesh_kit = new vis_kit_meshes();
 
 public:
 	void init_cameras(vr::vr_kit* kit_ptr);
@@ -244,15 +236,7 @@ public:
 
 	void clean_all_pcs();
 
-	void read_mesh();
-
-	void randomize_texcoordi();
-
-	void write_mesh();
-
 	void load_image_from_bin_files();
-
-	void update_paras_roller_coaster_kit_1();
 
 	void create_gui();
 };
