@@ -275,13 +275,14 @@ void visual_processing::init_frame(cgv::render::context& ctx)
 
 void visual_processing::draw(cgv::render::context& ctx)
 {
-	if(skybox_kit) skybox_kit->draw(ctx);
-	if(b_interactable) b_interactable->draw(ctx);
-	if(render_pc) point_cloud_kit->draw(ctx);
+	if (skybox_kit) skybox_kit->draw(ctx);
+	if (b_interactable) b_interactable->draw(ctx);
+	if (render_pc) point_cloud_kit->draw(ctx);
 	//if (mesh_kit) mesh_kit->draw(ctx);
-	//if(render_img) image_renderer_kit->draw(ctx);
-	if(roller_coaster_kit_1) roller_coaster_kit_1->draw(ctx);
+	//if (render_img) image_renderer_kit->draw(ctx);
+	if (roller_coaster_kit_1) roller_coaster_kit_1->draw(ctx);
 	if (draw_kit && vr_view_ptr) draw_kit->render_trajectory(ctx );
+	if (motioncap_kit) motioncap_kit->draw(ctx);
 }
 
 void visual_processing::finish_draw(cgv::render::context& ctx)

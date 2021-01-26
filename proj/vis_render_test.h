@@ -24,23 +24,6 @@ class render_test :
 	public drawable // registers for drawing with opengl
 {
 private:
-	/// flag used to represent the state of the extensible gui node
-	bool toggle;
-protected:
-	/// whether animation is turned on
-	bool animate;
-	/// rotation angle around y-axis in degrees
-	double angle;
-	/// rotation speed in degrees per second
-	double speed;
-	/// recursion depth
-	unsigned int rec_depth;
-	/// resolution of smooth shapes
-	int resolution;
-	///
-	cgv::media::illum::surface_material material;
-	/// different shape types
-	enum Shape { CUBE, PRI, TET, OCT, DOD, ICO, CYL, CONE, DISK, ARROW, SPHERE } shp;
 public:
 	/// initialize rotation angle
 	render_test()
@@ -61,7 +44,7 @@ public:
 	/// return the type name of the class derived from base
 	std::string get_type_name() const
 	{
-		return "simple_cube";
+		return "render_test";
 	}
 	/// show statistic information
 	void stream_stats(std::ostream& os)
@@ -91,12 +74,5 @@ public:
 	/// overload the create gui method
 	void create_gui()
 	{
-		add_decorator("Simple Cube GUI", "heading", "level=1"); // level=1 is default and can be skipped
-		add_member_control(this, "recursion depth", rec_depth, "value_slider", "min=1;max=8;ticks=true");
-		/// use a selection gui element to directly manipulate the shape enum
-		add_member_control(this, "shape", shp, "dropdown", "enums='CUBE,PRI,TET,OCT,DOD,ICO,CYL,CONE,DISK,ARROW,SPHERE'");
 	}
 };
-
-#include <cgv/base/register.h>
-cgv::base::object_registration<render_test> render_test_reg("render_test");

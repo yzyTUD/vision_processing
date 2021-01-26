@@ -35,6 +35,7 @@
 #include "vr_kit_teleportation.h"
 #include "vr_kit_roller_coaster.h"
 #include "vr_kit_draw.h"
+#include "vr_kit_motioncap.h"
 
 class visual_processing :
 	public cgv::base::node,
@@ -164,6 +165,7 @@ protected:
 		//= new vr_kit_roller_coaster_1();
 	vis_kit_meshes* mesh_kit = new vis_kit_meshes();
 	vr_kit_draw* draw_kit = new vr_kit_draw();
+	vr_kit_motioncap* motioncap_kit = new vr_kit_motioncap();
 
 public:
 	void init_cameras(vr::vr_kit* kit_ptr);
