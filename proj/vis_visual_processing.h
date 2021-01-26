@@ -34,6 +34,7 @@
 //#include "vr_kit_image_renderer.h"
 #include "vr_kit_teleportation.h"
 #include "vr_kit_roller_coaster.h"
+#include "vr_kit_draw.h"
 
 class visual_processing :
 	public cgv::base::node,
@@ -162,6 +163,7 @@ protected:
 	vr_kit_roller_coaster_1* roller_coaster_kit_1 = nullptr;
 		//= new vr_kit_roller_coaster_1();
 	vis_kit_meshes* mesh_kit = new vis_kit_meshes();
+	vr_kit_draw* draw_kit = new vr_kit_draw();
 
 public:
 	void init_cameras(vr::vr_kit* kit_ptr);
@@ -239,6 +241,11 @@ public:
 	void load_image_from_bin_files();
 
 	void create_gui();
+
+	/// wrappers 
+	void write_trajectory() { draw_kit->write_trajectory(); }
+	void read_trajectory() { draw_kit->read_trajectory(); }
+	void clear_drawing() { draw_kit->clear_drawing(); }
 };
 
 ///@}

@@ -170,6 +170,7 @@ bool visual_processing::handle(cgv::gui::event& e)
 {
 	b_interactable->handle(e);
 	teleportation_kit->handle(e);
+	draw_kit->handle(e);
 	return false;
 }
 
@@ -207,6 +208,7 @@ bool visual_processing::init(cgv::render::context& ctx)
 	}
 
 	teleportation_kit->set_vr_view_ptr(vr_view_ptr);
+	draw_kit->set_vr_view_ptr(vr_view_ptr);
 
 	cgv::render::ref_box_renderer(ctx, 1);
 	cgv::render::ref_sphere_renderer(ctx, 1);
@@ -246,6 +248,7 @@ bool visual_processing::init(cgv::render::context& ctx)
 	point_cloud_kit->init(ctx);
 	one_shot_360pc->init(ctx);
 	stored_cloud->init(ctx);
+	draw_kit->init(ctx);
 
 	return true;
 }
@@ -278,6 +281,7 @@ void visual_processing::draw(cgv::render::context& ctx)
 	//if (mesh_kit) mesh_kit->draw(ctx);
 	//if(render_img) image_renderer_kit->draw(ctx);
 	if(roller_coaster_kit_1) roller_coaster_kit_1->draw(ctx);
+	if (draw_kit && vr_view_ptr) draw_kit->render_trajectory(ctx );
 }
 
 void visual_processing::finish_draw(cgv::render::context& ctx)
@@ -403,7 +407,7 @@ void visual_processing::load_image_from_bin_files() {
 
 void visual_processing::create_gui() {
 	add_decorator("visual_processing", "heading", "level=2");
-	if (begin_tree_node("Point Cloud Merging Tool", strategy, false, "level=3")) {
+	if (begin_tree_node("Point Cloud Merging Tool", strategy, true, "level=3")) {
 		connect_copy(add_button("read_pc_append")->click, rebind(this, &visual_processing::read_pc_append));
 		add_member_control(this, "[0]step", step, "value_slider","min=1;max=1000;log=false;ticks=true;");
 		add_member_control(this, "[1]num_of_points_wanted", num_of_points_wanted, "value_slider", "min=1;max=100000000;log=false;ticks=true;");
@@ -414,7 +418,7 @@ void visual_processing::create_gui() {
 		connect_copy(add_button("write_read_pc_to_file")->click, rebind(this, &visual_processing::write_read_pc_to_file));
 	}
 	
-	if (begin_tree_node("Point Cloud Nml Computing", direct_write, false, "level=3")) {
+	if (begin_tree_node("Point Cloud Nml Computing", direct_write, true, "level=3")) {
 		connect_copy(add_button("read_pc")->click, rebind(this, &visual_processing::read_pc));
 		connect_copy(add_button("read_pc_queue")->click, rebind(this, &visual_processing::read_pc_queue));
 		connect_copy(add_button("read_campose")->click, rebind(this, &visual_processing::read_campose));
@@ -431,7 +435,7 @@ void visual_processing::create_gui() {
 		connect_copy(add_control("direct_write", direct_write, "check")->value_change, rebind(static_cast<drawable*>(this), &visual_processing::post_redraw));
 	}
 
-	if (begin_tree_node("Image Processing", render_img, false, "level=3")) {
+	if (begin_tree_node("Image Processing", render_img, true, "level=3")) {
 		//connect_copy(add_button("load_image")->click, rebind(this, &visual_processing::load_image_from_bin_files));
 		//add_member_control(this, "apply_aspect", image_renderer_kit->apply_aspect, "check");
 		//add_member_control(this, "render_frame", image_renderer_kit->render_frame, "check");
@@ -439,13 +443,13 @@ void visual_processing::create_gui() {
 	connect_copy(add_control("render_pc", render_pc, "check")->value_change, rebind(static_cast<drawable*>(this), &visual_processing::post_redraw));
 
 	if(teleportation_kit!=nullptr)
-	if (begin_tree_node("Teleportation tool", teleportation_kit->is_lifting, false, "level=3")) {
+	if (begin_tree_node("Teleportation tool", teleportation_kit->is_lifting, true, "level=3")) {
 		add_member_control(this, "is_lifting", teleportation_kit->is_lifting, "check");
 		add_member_control(this, "enable_gravity", teleportation_kit->enable_gravity, "check");
 	}
 
 	if(roller_coaster_kit_1!=nullptr)
-	if (begin_tree_node("Roller Coaster 1", roller_coaster_kit_1->para_y, false, "level=3")) {
+	if (begin_tree_node("Roller Coaster 1", roller_coaster_kit_1->para_y, true, "level=3")) {
 		add_member_control(roller_coaster_kit_1, "para_x_0", roller_coaster_kit_1->para_x_0, "value_slider", "min=1;max=100;log=false;ticks=false;");
 		add_member_control(roller_coaster_kit_1, "para_z_0", roller_coaster_kit_1->para_z_0, "value_slider", "min=1;max=100;log=false;ticks=false;");
 		add_member_control(roller_coaster_kit_1, "para_x", roller_coaster_kit_1->para_x, "value_slider", "min=1;max=100;log=false;ticks=false;");
@@ -453,6 +457,15 @@ void visual_processing::create_gui() {
 		add_member_control(roller_coaster_kit_1, "para_z", roller_coaster_kit_1->para_z, "value_slider", "min=1;max=100;log=false;ticks=false;");
 		add_member_control(roller_coaster_kit_1, "speed_factor", roller_coaster_kit_1->speed_factor, "value_slider", "min=1;max=30;log=false;ticks=false;");
 		add_member_control(roller_coaster_kit_1, "resolution", roller_coaster_kit_1->resolution, "value_slider", "min=800;max=2000;log=false;ticks=false;");
+	}
+
+	if(draw_kit)
+	if (begin_tree_node("Mocap kit", draw_kit->nr_edges, true, "level=3")) {
+		connect_copy(add_button("write_trajectory")->click, rebind(this, &visual_processing::write_trajectory));
+		connect_copy(add_button("read_trajectory")->click, rebind(this, &visual_processing::read_trajectory));
+		connect_copy(add_button("clear_drawing")->click, rebind(this, &visual_processing::clear_drawing));
+		add_member_control(this, "start_drawing", draw_kit->enable_drawing, "check");
+		add_member_control(this, "render_enable_drawing", draw_kit->render_enable_drawing, "check");
 	}
 }
 
