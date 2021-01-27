@@ -168,10 +168,11 @@ void visual_processing::on_set(void* member_ptr)
 	
 bool visual_processing::handle(cgv::gui::event& e)
 {
-	b_interactable->handle(e);
-	teleportation_kit->handle(e);
-	if(draw_kit!=nullptr)draw_kit->handle(e);
-	motioncap_kit->handle(e);
+	if (b_interactable != nullptr)b_interactable->handle(e);
+	if (teleportation_kit != nullptr)teleportation_kit->handle(e);
+	if (draw_kit != nullptr)draw_kit->handle(e);
+	if (motioncap_kit != nullptr)motioncap_kit->handle(e);
+	if (manipulation_kit != nullptr)manipulation_kit->handle(e);
 	return false;
 }
 
@@ -208,8 +209,9 @@ bool visual_processing::init(cgv::render::context& ctx)
 		}
 	}
 
-	teleportation_kit->set_vr_view_ptr(vr_view_ptr);
-	if (draw_kit != nullptr)draw_kit->set_vr_view_ptr(vr_view_ptr);
+	if (teleportation_kit != nullptr) teleportation_kit->set_vr_view_ptr(vr_view_ptr);
+	if (draw_kit != nullptr) draw_kit->set_vr_view_ptr(vr_view_ptr);
+	if (manipulation_kit != nullptr) manipulation_kit->set_vr_view_ptr(vr_view_ptr);
 
 	cgv::render::ref_box_renderer(ctx, 1);
 	cgv::render::ref_sphere_renderer(ctx, 1);
@@ -251,8 +253,8 @@ bool visual_processing::init(cgv::render::context& ctx)
 	stored_cloud->init(ctx);
 	if (draw_kit != nullptr) draw_kit->init(ctx);
 
-	data_store_kit->initialize();
 	motioncap_kit->set_data_ptr(data_store_kit);
+	manipulation_kit->set_data_ptr(data_store_kit);
 
 	return true;
 }
@@ -483,7 +485,7 @@ void visual_processing::create_gui() {
 	if (begin_tree_node("Mocap kit", show_motioncap_kit, true, "level=3")) {
 		connect_copy(add_button("save_to_tj_file")->click, rebind(this, &visual_processing::save_to_tj_file));
 		connect_copy(add_button("read_tj_file")->click, rebind(this, &visual_processing::read_tj_file));
-		add_member_control(this, "start_rec", motioncap_kit->rec_pose, "check");
+		add_member_control(this, "start_rec", data_store_kit->rec_pose, "check");
 		//add_member_control(this, "replay", motioncap_kit->replay, "check");
 		add_member_control(this, "instanced_redraw", motioncap_kit->instanced_redraw, "check");
 		connect_copy(add_button("start_replay_all")->click, rebind(this, &visual_processing::start_replay_all));

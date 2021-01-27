@@ -37,7 +37,7 @@ class vr_kit_motioncap :
 {
 private:
 	// just store a pointer here 
-	vis_kit_data_store* data_ptr;
+	vis_kit_data_store_shared* data_ptr;
 
 	int left_rgbd_controller_index = 0;
 	int right_rgbd_controller_index = 1;
@@ -53,15 +53,15 @@ private:
 	int cur_frame = 0;
 	int num_of_frames = 0;
 public:
-	bool rec_pose = false;
-	bool replay = false;
+	//bool rec_pose = false;
+	//bool replay = false;
 	bool instanced_redraw = true;
 	/// initialize rotation angle
 	vr_kit_motioncap()
 	{
 		connect(get_animation_trigger().shoot, this, &vr_kit_motioncap::timer_event);	
 	}
-	void set_data_ptr(vis_kit_data_store* d_ptr) {
+	void set_data_ptr(vis_kit_data_store_shared* d_ptr) {
 		data_ptr = d_ptr;
 	}
 	/// 
@@ -123,44 +123,19 @@ public:
 	/// declare timer_event method to connect the shoot signal of the trigger
 	void timer_event(double t, double dt)
 	{
-		if (rec_pose) {
-			if (data_ptr) {
-				for (auto& t : data_ptr->trackable_list) {
-					std::map<std::string, motion_storage_per_device>::iterator mt = data_ptr->motion_storage.find(t.get_name());
-					if ( mt == data_ptr->motion_storage.end()) {
-						// not found, init
-						motion_storage_per_device* ms = new motion_storage_per_device();
-						data_ptr->motion_storage.insert(std::pair<std::string, motion_storage_per_device>(t.get_name(),*ms));
-					}
-					else {
-						vec3 posi;
-						quat orie;
-						t.get_position_orientation(posi,orie);
-						mt->second.device_posi.push_back(posi);
-						mt->second.device_orie.push_back(orie);
-					}
-				}
-				// add here
-			}
-
+		if (!data_ptr)
+			return;
+		if (data_ptr->rec_pose) {
+			// this can maintain unchanged when adding more trackables
+			data_ptr->upload_to_motion_storage();
 		}
-		if (replay) {
+		if (data_ptr->is_replay) { 
 			if (cur_frame >= num_of_frames)
 				cur_frame = 0;
-			if (data_ptr) {
-				for (auto& t : data_ptr->trackable_list) {
-					std::map<std::string, motion_storage_per_device>::iterator mt = data_ptr->motion_storage_read.find(t.get_name());
-					if (mt == data_ptr->motion_storage_read.end()) {
-						// not found
-						continue;
-					}
-					else {
-						t.set_position_orientation_read(mt->second.device_posi.at(cur_frame),mt->second.device_orie.at(cur_frame));
-					}
-				}
-				// add here
-			}
-
+			// this can maintain unchanged when adding more trackables
+			data_ptr->download_from_motion_storage_read_per_frame(cur_frame);
+			data_ptr->download_from_trackable_list();
+			
 			std::cout << "cur_frame: " << cur_frame << std::endl;
 			cur_frame++;
 		}
@@ -182,19 +157,18 @@ public:
 
 	}
 	void start_replay_all() {
-		replay = true;
 		if (!data_ptr)
 			return;
-		for (auto& t : data_ptr->trackable_list)
-			t.replay = true;
-		num_of_frames = data_ptr->motion_storage_read.find(data_ptr->trackable_list.at(0).get_name())->second.device_posi.size();
-		// add here 
+		// this can maintain unchanged when adding more trackables
+		num_of_frames = data_ptr->motion_storage_read.find(data_ptr->trackable_list.at(0).get_name())
+			->second.device_posi.size();
+		data_ptr->enable_replay_all();
 	}
 	///
 	bool save_to_tj_file() {
 		if (!data_ptr)
 			return false;
-		rec_pose = false;
+		data_ptr->rec_pose = false;
 		auto microsecondsUTC = std::chrono::duration_cast<std::chrono::microseconds>(
 			std::chrono::system_clock::now().time_since_epoch()).count();
 		auto& fn = data_ptr->data_dir + "/mocap_trajectory/motioncap_" + std::to_string(microsecondsUTC) + ".tj";
@@ -203,6 +177,10 @@ public:
 			return false;
 		for (std::map<std::string, motion_storage_per_device>::iterator it = data_ptr->motion_storage.begin(); it != data_ptr->motion_storage.end(); ++it){
 			os << "d " << it->first << endl;
+			if(it->second.has_box)
+				os << "b " << it->second.b.get_min_pnt() <<" "<< it->second.b.get_max_pnt() << endl;
+			if (it->second.has_color)
+				os << "c " << it->second.color << endl;
 			os << "n " << it->second.device_posi.size() << endl;
 			for (int i = 0; i < it->second.device_posi.size(); i++) {
 				os << "p " << it->second.device_posi.at(i) << endl;
@@ -236,6 +214,18 @@ public:
 				ss >> c;
 				data_ptr->motion_storage_read.insert(std::pair<std::string, motion_storage_per_device>(c,*(new motion_storage_per_device())));
 				current_device_name = c;
+			}
+			if (c._Equal("b")) {
+				vec3 t_min_pnt;
+				ss >> t_min_pnt;
+				vec3 t_max_pnt;
+				ss >> t_max_pnt;
+				data_ptr->motion_storage_read.find(current_device_name)->second.b = box3(t_min_pnt,t_max_pnt);
+			}
+			if (c._Equal("c")) {
+				vec3 tmp_col;
+				ss >> tmp_col;
+				data_ptr->motion_storage_read.find(current_device_name)->second.color = rgb(tmp_col.x(), tmp_col.y(), tmp_col.z());
 			}
 			if (c._Equal("p")) {
 				vec3 tmp_vec3;

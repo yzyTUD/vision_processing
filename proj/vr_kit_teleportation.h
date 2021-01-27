@@ -92,7 +92,7 @@ public:
 		srs.radius = sphere_scale.x();
 		srs.map_color_to_material = cgv::render::CM_COLOR_AND_OPACITY;
 		srs.material.set_brdf_type(cgv::media::illum::BT_PHONG);
-		mode = interaction_mode::CLIMB;
+		mode = interaction_mode::None;
 		connect(get_animation_trigger().shoot, this, &vr_kit_teleportation::timer_event);
 		configure_the_handhold_sphere(vec3(0,0,-0.2),0.03);
 	}
@@ -333,7 +333,7 @@ public:
 	void finish_draw(context& ctx) {
 		if (mode == interaction_mode::None)
 		{
-
+			render_a_handhold_box(ctx); // as right hand indicator 
 		}
 		if (mode == interaction_mode::TELEPORT) //do nothing for now
 		{
@@ -384,7 +384,17 @@ public:
 			ctx.tesselate_arrow(cur_right_hand_posi, points.at(0),0.1f, 2.0f, 0.5f);
 			prog.disable(ctx);
 		}
+	}
 
+	void render_a_handhold_box(cgv::render::context& ctx) {
+		if (points.size()) {
+			auto& prog = ctx.ref_surface_shader_program();
+			prog.set_uniform(ctx, "map_color_to_material", 3);
+			prog.enable(ctx);
+			ctx.set_color(rgb(0.4));
+			ctx.tesselate_box(box3(points.at(0) - vec3(0.01), points.at(0) + vec3(0.01)),false,false);
+			prog.disable(ctx);
+		}
 	}
 
 	void render_lines_for_controllers(cgv::render::context& ctx) {

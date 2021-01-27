@@ -10,6 +10,7 @@
 #include <cgv/gui/provider.h>
 #include <cgv/math/ftransform.h>
 #include <cgv/media/illum/surface_material.h>
+#include "vis_kit_datastore.h"
 
 using namespace cgv::base;
 using namespace cgv::reflect;
@@ -24,11 +25,15 @@ class render_test :
 	public drawable // registers for drawing with opengl
 {
 private:
+	vis_kit_data_store_shared* data_ptr;
 public:
 	/// initialize rotation angle
 	render_test()
 	{
 		connect(get_animation_trigger().shoot, this, &render_test::timer_event);
+	}
+	void set_data_ptr(vis_kit_data_store_shared* d_ptr) {
+		data_ptr = d_ptr;
 	}
 	/// 
 	void on_set(void* member_ptr)

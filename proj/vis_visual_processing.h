@@ -164,7 +164,7 @@ protected:
 	vis_kit_meshes* mesh_kit = new vis_kit_meshes();
 	vr_kit_draw* draw_kit = nullptr; //= new vr_kit_draw();
 	vr_kit_motioncap* motioncap_kit = new vr_kit_motioncap();
-	vis_kit_data_store* data_store_kit = new vis_kit_data_store();
+	vis_kit_data_store_shared* data_store_kit = new vis_kit_data_store_shared();
 	vr_kit_manipulation* manipulation_kit = new vr_kit_manipulation();
 
 public:
@@ -249,9 +249,9 @@ public:
 	void read_trajectory() { draw_kit->read_trajectory(); }
 	void clear_drawing() { draw_kit->clear_drawing(); }
 
+	void start_replay_all() { motioncap_kit->start_replay_all(); }
 	void save_to_tj_file() { motioncap_kit->save_to_tj_file(); }
 	void read_tj_file() { motioncap_kit->read_tj_file(); }
-	void start_replay_all() { motioncap_kit->start_replay_all(); }
 };
 
 ///@}

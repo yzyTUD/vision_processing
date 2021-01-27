@@ -21,7 +21,10 @@ protected:
 	vec3 posi;
 	quat orie;
 	vec3 read_posi;
+	quat read_quat;
 	mat4 read_mat;
+	rgb color;
+	std::string time_stemp;
 public:
 	bool replay;
 	trackable(std::string n) {
@@ -35,13 +38,27 @@ public:
 		p = posi;
 		q = orie;
 	}
+	void get_position_orientation_read(vec3& p, quat& q) {
+		p = read_posi;
+		q = read_quat;
+	}
 	void set_position_orientation_write(vec3 p, quat q) {
 		posi = p;
 		orie = q;
 	}
+	void set_ori_direct_manipulation(quat o) {
+		orie = o;
+	}
 	void set_position_orientation_read(vec3 p, quat q) {
 		read_posi = p;
+		read_quat = q;
 		read_mat = q.get_homogeneous_matrix();
+	}
+	void set_color(rgb c) {
+		color = c;
+	}
+	rgb get_color() {
+		return color;
 	}
 	void draw(context& ctx){}
 };
@@ -50,15 +67,24 @@ class trackable_photo : public trackable {
 public:
 	box3 b;
 	cgv::render::texture tex;
-	trackable_photo(std::string n) :trackable(n) {}
+	trackable_photo(std::string n, box3 ori_b) :trackable(n) { b = ori_b; }
+	void set_box(box3 read_b) {
+		b = read_b;
+	}
 };
 
 class trackable_box : public trackable {
 public:
 	box3 b;
-	trackable_box(std::string n) :trackable(n) {}
-};
+	trackable_box(std::string n, box3 ori_b) :trackable(n) { b = ori_b; }
+	void set_box(box3 read_b) {
+		b = read_b;
+	}
+	box3 get_box() {
+		return b;
+	}
 
+};
 class trackable_mesh : public trackable {
 public:
 	cgv::render::mesh_render_info mesh_info;
