@@ -164,7 +164,8 @@ protected:
 	vr_kit_roller_coaster_1* roller_coaster_kit_1 = nullptr;
 		//= new vr_kit_roller_coaster_1();
 	vis_kit_meshes* mesh_kit = new vis_kit_meshes();
-	vr_kit_draw* draw_kit = new vr_kit_draw();
+	vr_kit_draw* draw_kit = nullptr;
+		//= new vr_kit_draw();
 	vr_kit_motioncap* motioncap_kit = new vr_kit_motioncap();
 
 public:
@@ -248,6 +249,9 @@ public:
 	void write_trajectory() { draw_kit->write_trajectory(); }
 	void read_trajectory() { draw_kit->read_trajectory(); }
 	void clear_drawing() { draw_kit->clear_drawing(); }
+
+	void save_to_tj_file() { motioncap_kit->save_to_tj_file(); }
+	void read_tj_file() { motioncap_kit->read_tj_file(); }
 };
 
 ///@}

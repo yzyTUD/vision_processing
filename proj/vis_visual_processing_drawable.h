@@ -170,7 +170,8 @@ bool visual_processing::handle(cgv::gui::event& e)
 {
 	b_interactable->handle(e);
 	teleportation_kit->handle(e);
-	draw_kit->handle(e);
+	if(draw_kit!=nullptr)draw_kit->handle(e);
+	motioncap_kit->handle(e);
 	return false;
 }
 
@@ -208,7 +209,7 @@ bool visual_processing::init(cgv::render::context& ctx)
 	}
 
 	teleportation_kit->set_vr_view_ptr(vr_view_ptr);
-	draw_kit->set_vr_view_ptr(vr_view_ptr);
+	if (draw_kit != nullptr)draw_kit->set_vr_view_ptr(vr_view_ptr);
 
 	cgv::render::ref_box_renderer(ctx, 1);
 	cgv::render::ref_sphere_renderer(ctx, 1);
@@ -248,7 +249,7 @@ bool visual_processing::init(cgv::render::context& ctx)
 	point_cloud_kit->init(ctx);
 	one_shot_360pc->init(ctx);
 	stored_cloud->init(ctx);
-	draw_kit->init(ctx);
+	if (draw_kit != nullptr) draw_kit->init(ctx);
 
 	return true;
 }
@@ -281,8 +282,12 @@ void visual_processing::draw(cgv::render::context& ctx)
 	//if (mesh_kit) mesh_kit->draw(ctx);
 	//if (render_img) image_renderer_kit->draw(ctx);
 	if (roller_coaster_kit_1) roller_coaster_kit_1->draw(ctx);
-	if (draw_kit && vr_view_ptr) draw_kit->render_trajectory(ctx );
-	if (motioncap_kit) motioncap_kit->draw(ctx);
+	if (draw_kit!=nullptr) draw_kit->render_trajectory(ctx);
+	if (motioncap_kit!=nullptr) motioncap_kit->draw(ctx);
+
+	if (motioncap_kit != nullptr)
+	if (motioncap_kit->instanced_redraw)
+		post_redraw();
 }
 
 void visual_processing::finish_draw(cgv::render::context& ctx)
@@ -460,13 +465,23 @@ void visual_processing::create_gui() {
 		add_member_control(roller_coaster_kit_1, "resolution", roller_coaster_kit_1->resolution, "value_slider", "min=800;max=2000;log=false;ticks=false;");
 	}
 
-	if(draw_kit)
-	if (begin_tree_node("Mocap kit", draw_kit->nr_edges, true, "level=3")) {
+	if (draw_kit != nullptr)
+	if (begin_tree_node("Draw kit", draw_kit->nr_edges, true, "level=3")) {
 		connect_copy(add_button("write_trajectory")->click, rebind(this, &visual_processing::write_trajectory));
 		connect_copy(add_button("read_trajectory")->click, rebind(this, &visual_processing::read_trajectory));
 		connect_copy(add_button("clear_drawing")->click, rebind(this, &visual_processing::clear_drawing));
 		add_member_control(this, "start_drawing", draw_kit->enable_drawing, "check");
 		add_member_control(this, "render_enable_drawing", draw_kit->render_enable_drawing, "check");
+	}
+
+	bool show_motioncap_kit = motioncap_kit != nullptr;
+	if(show_motioncap_kit)
+	if (begin_tree_node("Mocap kit", show_motioncap_kit, true, "level=3")) {
+		connect_copy(add_button("save_to_tj_file")->click, rebind(this, &visual_processing::save_to_tj_file));
+		connect_copy(add_button("read_tj_file")->click, rebind(this, &visual_processing::read_tj_file));
+		add_member_control(this, "start_rec", motioncap_kit->rec_pose, "check");
+		add_member_control(this, "replay", motioncap_kit->replay, "check");
+		add_member_control(this, "instanced_redraw", motioncap_kit->instanced_redraw, "check");
 	}
 }
 
