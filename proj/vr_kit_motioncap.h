@@ -124,37 +124,43 @@ public:
 	void timer_event(double t, double dt)
 	{
 		if (rec_pose) {
-			if(data_ptr)
-			for (auto& t : data_ptr->trackable_list) {
-				std::map<std::string, motion_storage_per_device>::iterator mt = data_ptr->motion_storage.find(t.get_name());
-				if ( mt == data_ptr->motion_storage.end()) {
-					// not found, init
-					motion_storage_per_device* ms = new motion_storage_per_device();
-					data_ptr->motion_storage.insert(std::pair<std::string, motion_storage_per_device>(t.get_name(),*ms));
+			if (data_ptr) {
+				for (auto& t : data_ptr->trackable_list) {
+					std::map<std::string, motion_storage_per_device>::iterator mt = data_ptr->motion_storage.find(t.get_name());
+					if ( mt == data_ptr->motion_storage.end()) {
+						// not found, init
+						motion_storage_per_device* ms = new motion_storage_per_device();
+						data_ptr->motion_storage.insert(std::pair<std::string, motion_storage_per_device>(t.get_name(),*ms));
+					}
+					else {
+						vec3 posi;
+						quat orie;
+						t.get_position_orientation(posi,orie);
+						mt->second.device_posi.push_back(posi);
+						mt->second.device_orie.push_back(orie);
+					}
 				}
-				else {
-					vec3 posi;
-					quat orie;
-					t.get_position_orientation(posi,orie);
-					mt->second.device_posi.push_back(posi);
-					mt->second.device_orie.push_back(orie);
-				}
+				// add here
 			}
+
 		}
 		if (replay) {
 			if (cur_frame >= num_of_frames)
 				cur_frame = 0;
-			if(data_ptr)
-			for (auto& t : data_ptr->trackable_list) {
-				std::map<std::string, motion_storage_per_device>::iterator mt = data_ptr->motion_storage_read.find(t.get_name());
-				if (mt == data_ptr->motion_storage_read.end()) {
-					// not found
-					continue;
+			if (data_ptr) {
+				for (auto& t : data_ptr->trackable_list) {
+					std::map<std::string, motion_storage_per_device>::iterator mt = data_ptr->motion_storage_read.find(t.get_name());
+					if (mt == data_ptr->motion_storage_read.end()) {
+						// not found
+						continue;
+					}
+					else {
+						t.set_position_orientation_read(mt->second.device_posi.at(cur_frame),mt->second.device_orie.at(cur_frame));
+					}
 				}
-				else {
-					t.set_position_orientation_read(mt->second.device_posi.at(cur_frame),mt->second.device_orie.at(cur_frame));
-				}
+				// add here
 			}
+
 			std::cout << "cur_frame: " << cur_frame << std::endl;
 			cur_frame++;
 		}
@@ -163,14 +169,17 @@ public:
 	/// call this
 	void draw(context& ctx)
 	{
-		if(data_ptr)
-		for (auto& t : data_ptr->trackable_list) {
-			//trackable* tt = &t;
-			//trackable_mesh* tt = static_cast<trackable_mesh*>(&t);
-			//t.draw(ctx);
-			//TODO 
-			t.draw(ctx);
+		if (data_ptr) {
+			for (auto& t : data_ptr->trackable_list) {
+				//trackable* tt = &t;
+				//trackable_mesh* tt = static_cast<trackable_mesh*>(&t);
+				//t.draw(ctx);
+				//TODO 
+				t.draw(ctx);
+			}
+			// add here
 		}
+
 	}
 	void start_replay_all() {
 		replay = true;
@@ -179,6 +188,7 @@ public:
 		for (auto& t : data_ptr->trackable_list)
 			t.replay = true;
 		num_of_frames = data_ptr->motion_storage_read.find(data_ptr->trackable_list.at(0).get_name())->second.device_posi.size();
+		// add here 
 	}
 	///
 	bool save_to_tj_file() {
