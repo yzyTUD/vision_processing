@@ -144,7 +144,6 @@ protected:
 	vec2 extent_texcrd;
 	vec2 center_left;
 	vec2 center_right;
-
 	boxgui_interactable* b_interactable = new boxgui_interactable();
 	point_cloud_interactable* point_cloud_kit = new point_cloud_interactable();
 	point_cloud_interactable* one_shot_360pc = new point_cloud_interactable();
@@ -153,20 +152,15 @@ protected:
 	bool force_correct_num_pcs = true;
 	bool direct_write = false;
 	bool render_img = false;
-
 	int step = 1;
 	int num_of_points_wanted = 1;
 	int strategy = 1;
-
 	vr_kit_skybox* skybox_kit = new vr_kit_skybox();
 	//vr_kit_image_renderer* image_renderer_kit = new vr_kit_image_renderer();
-
 	vr_kit_teleportation* teleportation_kit = new vr_kit_teleportation();
-	vr_kit_roller_coaster_1* roller_coaster_kit_1 = nullptr;
-		//= new vr_kit_roller_coaster_1();
+	vr_kit_roller_coaster_1* roller_coaster_kit_1 = nullptr; //= new vr_kit_roller_coaster_1();
 	vis_kit_meshes* mesh_kit = new vis_kit_meshes();
-	vr_kit_draw* draw_kit = nullptr;
-		//= new vr_kit_draw();
+	vr_kit_draw* draw_kit = nullptr; //= new vr_kit_draw();
 	vr_kit_motioncap* motioncap_kit = new vr_kit_motioncap();
 	vis_kit_data_store* data_store_kit = new vis_kit_data_store();
 
