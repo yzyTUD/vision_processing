@@ -27,14 +27,7 @@ using namespace std;
 #include <cg_vr/vr_events.h>
 #include <vr_kit_intersection.h>
 #include "vis_kit_trackable.h"
-
-class motion_storage_per_device:public cgv::render::render_types {
-public:
-	int num_of_posi_rec = 0;
-	vector<vec3> device_posi;
-	vector<quat> device_orie;
-	vector<std::string> time_stemp;
-};
+#include "vis_kit_datastore.h"
 
 class vr_kit_motioncap :
 	public base,    // base class of all to be registered classes
@@ -43,10 +36,8 @@ class vr_kit_motioncap :
 	public drawable // registers for drawing with opengl
 {
 private:
-
-	std::map<std::string, motion_storage_per_device> motion_storage;
-	std::map<std::string, motion_storage_per_device> motion_storage_read;
-	std::vector<trackable_mesh> trackable_list;
+	// just store a pointer here 
+	vis_kit_data_store* data_ptr;
 
 	int left_rgbd_controller_index = 0;
 	int right_rgbd_controller_index = 1;
@@ -58,7 +49,6 @@ private:
 	quat cur_hmd_orie;
 	bool write_stemp = false;
 
-	std::string data_dir = std::string(getenv("CGV_DATA"));
 	bool have_new_mesh = false;
 	int cur_frame = 0;
 	int num_of_frames = 0;
@@ -70,13 +60,9 @@ public:
 	vr_kit_motioncap()
 	{
 		connect(get_animation_trigger().shoot, this, &vr_kit_motioncap::timer_event);	
-		trackable_mesh* tm;
-		tm = new trackable_mesh("left_hand", data_dir + "/vr_controller_vive_1_5.obj");
-		trackable_list.push_back(*tm);
-		tm = new trackable_mesh("right_hand", data_dir + "/vr_controller_vive_1_5.obj");
-		trackable_list.push_back(*tm);
-		tm = new trackable_mesh("hmd", data_dir + "/generic_hmd.obj");
-		trackable_list.push_back(*tm);
+	}
+	void set_data_ptr(vis_kit_data_store* d_ptr) {
+		data_ptr = d_ptr;
 	}
 	/// 
 	void on_set(void* member_ptr)
@@ -106,6 +92,8 @@ public:
 	/// call this 
 	bool handle(event& e)
 	{
+		if (!data_ptr)
+			return false;
 		if (e.get_kind() == cgv::gui::EID_POSE) {
 			cgv::gui::vr_pose_event& vrpe = static_cast<cgv::gui::vr_pose_event&>(e);
 			int ci = vrpe.get_trackable_index();
@@ -120,7 +108,7 @@ public:
 			cur_hmd_posi = mat34(3, 4, vrpe.get_state().hmd.pose) * vec4(0, 0, 0, 1.0f);
 			cur_hmd_orie = quat(reinterpret_cast<const mat3&>(vrpe.get_state().hmd.pose[0]));
 
-			for (auto& t : trackable_list) {
+			for (auto& t : data_ptr->trackable_list) {
 				if (t.get_name()._Equal("left_hand")) 
 					t.set_position_orientation_write(cur_left_hand_posi, cur_left_hand_orientation_quat);
 				if (t.get_name()._Equal("right_hand"))
@@ -136,12 +124,13 @@ public:
 	void timer_event(double t, double dt)
 	{
 		if (rec_pose) {
-			for (auto& t : trackable_list) {
-				std::map<std::string, motion_storage_per_device>::iterator mt = motion_storage.find(t.get_name());
-				if ( mt == motion_storage.end()) {
+			if(data_ptr)
+			for (auto& t : data_ptr->trackable_list) {
+				std::map<std::string, motion_storage_per_device>::iterator mt = data_ptr->motion_storage.find(t.get_name());
+				if ( mt == data_ptr->motion_storage.end()) {
 					// not found, init
 					motion_storage_per_device* ms = new motion_storage_per_device();
-					motion_storage.insert(std::pair<std::string, motion_storage_per_device>(t.get_name(),*ms));
+					data_ptr->motion_storage.insert(std::pair<std::string, motion_storage_per_device>(t.get_name(),*ms));
 				}
 				else {
 					vec3 posi;
@@ -155,9 +144,10 @@ public:
 		if (replay) {
 			if (cur_frame >= num_of_frames)
 				cur_frame = 0;
-			for (auto& t : trackable_list) {
-				std::map<std::string, motion_storage_per_device>::iterator mt = motion_storage_read.find(t.get_name());
-				if (mt == motion_storage_read.end()) {
+			if(data_ptr)
+			for (auto& t : data_ptr->trackable_list) {
+				std::map<std::string, motion_storage_per_device>::iterator mt = data_ptr->motion_storage_read.find(t.get_name());
+				if (mt == data_ptr->motion_storage_read.end()) {
 					// not found
 					continue;
 				}
@@ -173,7 +163,8 @@ public:
 	/// call this
 	void draw(context& ctx)
 	{
-		for (auto& t : trackable_list) {
+		if(data_ptr)
+		for (auto& t : data_ptr->trackable_list) {
 			//trackable* tt = &t;
 			//trackable_mesh* tt = static_cast<trackable_mesh*>(&t);
 			//t.draw(ctx);
@@ -183,20 +174,24 @@ public:
 	}
 	void start_replay_all() {
 		replay = true;
-		for (auto& t : trackable_list) 
+		if (!data_ptr)
+			return;
+		for (auto& t : data_ptr->trackable_list)
 			t.replay = true;
-		num_of_frames = motion_storage_read.find(trackable_list.at(0).get_name())->second.device_posi.size();
+		num_of_frames = data_ptr->motion_storage_read.find(data_ptr->trackable_list.at(0).get_name())->second.device_posi.size();
 	}
 	///
 	bool save_to_tj_file() {
+		if (!data_ptr)
+			return false;
 		rec_pose = false;
 		auto microsecondsUTC = std::chrono::duration_cast<std::chrono::microseconds>(
 			std::chrono::system_clock::now().time_since_epoch()).count();
-		auto& fn = data_dir + "/mocap_trajectory/motioncap_" + std::to_string(microsecondsUTC) + ".tj";
+		auto& fn = data_ptr->data_dir + "/mocap_trajectory/motioncap_" + std::to_string(microsecondsUTC) + ".tj";
 		std::ofstream os(fn);
 		if (os.fail())
 			return false;
-		for (std::map<std::string, motion_storage_per_device>::iterator it = motion_storage.begin(); it != motion_storage.end(); ++it){
+		for (std::map<std::string, motion_storage_per_device>::iterator it = data_ptr->motion_storage.begin(); it != data_ptr->motion_storage.end(); ++it){
 			os << "d " << it->first << endl;
 			os << "n " << it->second.device_posi.size() << endl;
 			for (int i = 0; i < it->second.device_posi.size(); i++) {
@@ -211,6 +206,8 @@ public:
 	}
 	///
 	bool read_tj_file() {
+		if (!data_ptr)
+			return false;
 		std::string f = cgv::gui::file_open_dialog("Open", "trajectory files:*");
 		std::ifstream is(f);
 		if (is.fail())
@@ -227,18 +224,18 @@ public:
 			ss >> c;
 			if (c._Equal("d")) {
 				ss >> c;
-				motion_storage_read.insert(std::pair<std::string, motion_storage_per_device>(c,*(new motion_storage_per_device())));
+				data_ptr->motion_storage_read.insert(std::pair<std::string, motion_storage_per_device>(c,*(new motion_storage_per_device())));
 				current_device_name = c;
 			}
 			if (c._Equal("p")) {
 				vec3 tmp_vec3;
 				ss >> tmp_vec3;
-				motion_storage_read.find(current_device_name)->second.device_posi.push_back(tmp_vec3);
+				data_ptr->motion_storage_read.find(current_device_name)->second.device_posi.push_back(tmp_vec3);
 			}
 			if (c._Equal("o")) {
 				quat tmp_ori;
 				ss >> tmp_ori;
-				motion_storage_read.find(current_device_name)->second.device_orie.push_back(tmp_ori);
+				data_ptr->motion_storage_read.find(current_device_name)->second.device_orie.push_back(tmp_ori);
 			}
 		}
 	}

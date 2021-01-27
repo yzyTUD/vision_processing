@@ -251,6 +251,9 @@ bool visual_processing::init(cgv::render::context& ctx)
 	stored_cloud->init(ctx);
 	if (draw_kit != nullptr) draw_kit->init(ctx);
 
+	data_store_kit->initialize();
+	motioncap_kit->set_data_ptr(data_store_kit);
+
 	return true;
 }
 

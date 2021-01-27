@@ -1,4 +1,4 @@
-
+#pragma once
 #include <cgv/render/drawable.h>
 #include <cgv/render/shader_program.h>
 #include <cgv_gl/gl/gl.h>

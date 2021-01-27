@@ -36,6 +36,7 @@
 #include "vr_kit_roller_coaster.h"
 #include "vr_kit_draw.h"
 #include "vr_kit_motioncap.h"
+#include "vis_kit_datastore.h"
 
 class visual_processing :
 	public cgv::base::node,
@@ -167,6 +168,7 @@ protected:
 	vr_kit_draw* draw_kit = nullptr;
 		//= new vr_kit_draw();
 	vr_kit_motioncap* motioncap_kit = new vr_kit_motioncap();
+	vis_kit_data_store* data_store_kit = new vis_kit_data_store();
 
 public:
 	void init_cameras(vr::vr_kit* kit_ptr);
