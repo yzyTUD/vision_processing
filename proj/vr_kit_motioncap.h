@@ -38,6 +38,7 @@ class vr_kit_motioncap :
 private:
 	// just store a pointer here 
 	vis_kit_data_store_shared* data_ptr;
+	vr_view_interactor* vr_view_ptr;
 
 	int left_rgbd_controller_index = 0;
 	int right_rgbd_controller_index = 1;
@@ -63,6 +64,9 @@ public:
 	}
 	void set_data_ptr(vis_kit_data_store_shared* d_ptr) {
 		data_ptr = d_ptr;
+	}
+	void set_vr_view_ptr(vr_view_interactor* p) {
+		vr_view_ptr = p;
 	}
 	/// 
 	void on_set(void* member_ptr)
@@ -94,6 +98,13 @@ public:
 	{
 		if (!data_ptr)
 			return false;
+		if (e.get_kind() == cgv::gui::EID_KEY) {
+			cgv::gui::vr_key_event& vrke = static_cast<cgv::gui::vr_key_event&>(e);
+			int ci = vrke.get_controller_index();
+			if (ci == left_rgbd_controller_index && vrke.get_key() == vr::VR_GRIP) {
+				data_ptr->rec_pose = !data_ptr->rec_pose;
+			}
+		}
 		if (e.get_kind() == cgv::gui::EID_POSE) {
 			cgv::gui::vr_pose_event& vrpe = static_cast<cgv::gui::vr_pose_event&>(e);
 			int ci = vrpe.get_trackable_index();
@@ -145,6 +156,8 @@ public:
 	void draw(context& ctx)
 	{
 		if (data_ptr) {
+			if (!data_ptr->rec_pose)
+				render_a_handhold_box(ctx);
 			for (auto& t : data_ptr->trackable_list) {
 				//trackable* tt = &t;
 				//trackable_mesh* tt = static_cast<trackable_mesh*>(&t);
@@ -156,6 +169,22 @@ public:
 		}
 
 	}
+	///
+	void render_a_handhold_box(cgv::render::context& ctx) {
+		if (!vr_view_ptr)
+			return;
+		vr::vr_kit_state* state_ptr = (vr::vr_kit_state*)vr_view_ptr->get_current_vr_state();
+		if (!state_ptr)
+			return;
+		vec3 p = mat34(3, 4, state_ptr->controller[right_rgbd_controller_index].pose) * vec4(0,0,-0.1, 1.0f);
+		auto& prog = ctx.ref_surface_shader_program();
+		prog.set_uniform(ctx, "map_color_to_material", 3);
+		prog.enable(ctx);
+		ctx.set_color(rgb(0.4));
+		ctx.tesselate_box(box3(p- vec3(0.01), p + vec3(0.01)), false, false);
+		prog.disable(ctx);
+	}
+	///
 	void start_replay_all() {
 		if (!data_ptr)
 			return;

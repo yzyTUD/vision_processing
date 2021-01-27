@@ -212,6 +212,7 @@ bool visual_processing::init(cgv::render::context& ctx)
 	if (teleportation_kit != nullptr) teleportation_kit->set_vr_view_ptr(vr_view_ptr);
 	if (draw_kit != nullptr) draw_kit->set_vr_view_ptr(vr_view_ptr);
 	if (manipulation_kit != nullptr) manipulation_kit->set_vr_view_ptr(vr_view_ptr);
+	if(motioncap_kit!=nullptr) motioncap_kit->set_vr_view_ptr(vr_view_ptr);
 
 	cgv::render::ref_box_renderer(ctx, 1);
 	cgv::render::ref_sphere_renderer(ctx, 1);

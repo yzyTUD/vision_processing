@@ -222,15 +222,6 @@ public:
 				//if (vrke.get_action() == cgv::gui::KA_PRESS)
 					enable_gravity = !enable_gravity;
 			}
-			//if (ci == right_rgbd_controller_index && vrke.get_key() == vr::VR_GRIP)
-			//{
-			//	if (vrke.get_action() == cgv::gui::KA_PRESS) {
-			//		vec3 origin, direction;
-			//		vrke.get_state().controller[right_rgbd_controller_index].put_ray(&origin(0), &direction(0));
-			//		vec3 posi = compute_ray_plane_intersection_point(origin, direction);
-			//		vr_view_ptr->set_tracking_origin(vec3(posi.x(),vr_view_ptr->get_tracking_origin().y(), posi.z()));
-			//	}
-			//}
 			return true;
 		}
 		case cgv::gui::EID_THROTTLE:
@@ -296,7 +287,6 @@ public:
 				cur_right_hand_rot_quat = vrpe.get_quaternion();
 				vrpe.get_quaternion().put_matrix(cur_right_hand_rot_as_mat);
 				has_ctrl_posi = true;
-
 				//if (mode == interaction_mode::CLIMB && hand_touching) {
 				//	if (accept_event) {
 				//		vec3 from_origin_to_current = vrpe.get_position() - touching_origin;
@@ -333,7 +323,7 @@ public:
 	void finish_draw(context& ctx) {
 		if (mode == interaction_mode::None)
 		{
-			render_a_handhold_box(ctx); // as right hand indicator 
+
 		}
 		if (mode == interaction_mode::TELEPORT) //do nothing for now
 		{
@@ -354,8 +344,8 @@ public:
 		sphere_scale = vec3(radii, radii, radii);
 		srs.radius = radii;
 		points.push_back(vec3(0));
-		//points.push_back(vec3(0));
 		point_colors.push_back(rgba(0.4f, 0.4f, 0.4f, 0.5f));
+		//points.push_back(vec3(0));
 		//point_colors.push_back(rgba(0.4f, 0.4f, 0.4f, 0.5f));
 	}
 
