@@ -252,6 +252,7 @@ public:
 
 	void save_to_tj_file() { motioncap_kit->save_to_tj_file(); }
 	void read_tj_file() { motioncap_kit->read_tj_file(); }
+	void start_replay_all() { motioncap_kit->start_replay_all(); }
 };
 
 ///@}

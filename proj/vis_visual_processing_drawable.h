@@ -480,8 +480,9 @@ void visual_processing::create_gui() {
 		connect_copy(add_button("save_to_tj_file")->click, rebind(this, &visual_processing::save_to_tj_file));
 		connect_copy(add_button("read_tj_file")->click, rebind(this, &visual_processing::read_tj_file));
 		add_member_control(this, "start_rec", motioncap_kit->rec_pose, "check");
-		add_member_control(this, "replay", motioncap_kit->replay, "check");
+		//add_member_control(this, "replay", motioncap_kit->replay, "check");
 		add_member_control(this, "instanced_redraw", motioncap_kit->instanced_redraw, "check");
+		connect_copy(add_button("start_replay_all")->click, rebind(this, &visual_processing::start_replay_all));
 	}
 }
 

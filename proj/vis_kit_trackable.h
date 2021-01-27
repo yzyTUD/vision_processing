@@ -23,17 +23,27 @@ protected:
 	vec3 read_posi;
 	mat4 read_mat;
 public:
+	bool replay;
 	trackable(std::string n) {
 		name = n;
+		replay = false;
+	}
+	std::string get_name() {
+		return name;
 	}
 	void get_position_orientation(vec3& p,quat& q) {
 		p = posi;
 		q = orie;
 	}
-	void set_position_orientation(vec3 p, quat q) {
+	void set_position_orientation_write(vec3 p, quat q) {
 		posi = p;
 		orie = q;
 	}
+	void set_position_orientation_read(vec3 p, quat q) {
+		read_posi = p;
+		read_mat = q.get_homogeneous_matrix();
+	}
+	void draw(context& ctx){}
 };
 
 class trackable_photo : public trackable {
@@ -51,10 +61,39 @@ public:
 
 class trackable_mesh : public trackable {
 public:
-	cgv::render::mesh_render_info MI_l_hand;
-	mesh_type M_l_hand;
+	cgv::render::mesh_render_info mesh_info;
+	mesh_type mesh;
 	std::string mesh_dir;
+
+	bool have_new_mesh;
 	trackable_mesh(std::string n,std::string m_dir):trackable(n) {
 		mesh_dir = m_dir;
+		mesh.read(mesh_dir);
+		have_new_mesh = true;
+	}
+	void draw(context& ctx) {
+		if (have_new_mesh) {
+			//
+			if (!mesh.has_normals())
+				mesh.compute_vertex_normals();
+			mesh_info.destruct(ctx);
+			mesh_info.construct(ctx, mesh);
+			mesh_info.bind(ctx, ctx.ref_surface_shader_program(true), true);
+			have_new_mesh = false;
+		}
+		if (replay)
+		if (mesh_info.is_constructed()) {
+			glDisable(GL_CULL_FACE);
+			shader_program& prog = ctx.ref_surface_shader_program(true);
+			prog.set_uniform(ctx, "map_color_to_material", (int)cgv::render::ColorMapping::CM_COLOR);
+			prog.set_attribute(ctx, prog.get_color_index(), rgb(0.4));
+			//
+			ctx.push_modelview_matrix();
+			ctx.mul_modelview_matrix(translate4(read_posi) * read_mat);
+			mesh_info.draw_all(ctx, false, true);
+			ctx.pop_modelview_matrix();
+
+			glEnable(GL_CULL_FACE);
+		}
 	}
 };
