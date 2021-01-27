@@ -37,6 +37,7 @@
 #include "vr_kit_draw.h"
 #include "vr_kit_motioncap.h"
 #include "vis_kit_datastore.h"
+#include "vr_kit_manipulation.h"
 
 class visual_processing :
 	public cgv::base::node,
@@ -155,6 +156,7 @@ protected:
 	int step = 1;
 	int num_of_points_wanted = 1;
 	int strategy = 1;
+
 	vr_kit_skybox* skybox_kit = new vr_kit_skybox();
 	//vr_kit_image_renderer* image_renderer_kit = new vr_kit_image_renderer();
 	vr_kit_teleportation* teleportation_kit = new vr_kit_teleportation();
@@ -163,6 +165,7 @@ protected:
 	vr_kit_draw* draw_kit = nullptr; //= new vr_kit_draw();
 	vr_kit_motioncap* motioncap_kit = new vr_kit_motioncap();
 	vis_kit_data_store* data_store_kit = new vis_kit_data_store();
+	vr_kit_manipulation* manipulation_kit = new vr_kit_manipulation();
 
 public:
 	void init_cameras(vr::vr_kit* kit_ptr);

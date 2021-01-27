@@ -287,6 +287,7 @@ void visual_processing::draw(cgv::render::context& ctx)
 	if (roller_coaster_kit_1) roller_coaster_kit_1->draw(ctx);
 	if (draw_kit!=nullptr) draw_kit->render_trajectory(ctx);
 	if (motioncap_kit!=nullptr) motioncap_kit->draw(ctx);
+	if (manipulation_kit!=nullptr) manipulation_kit->draw(ctx);
 
 	if (motioncap_kit != nullptr)
 	if (motioncap_kit->instanced_redraw)
