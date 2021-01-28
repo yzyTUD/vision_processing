@@ -57,7 +57,7 @@ public:
 		tex.create_from_image(ctx, fn, &w, &h);
 		ratio = (float)w / h;
 
-		tex_index = material.add_texture_reference(tex);
+		tex_index = material.add_image_file(fn);
 		material.set_diffuse_index(tex_index);
 
 		ext = b.get_extent();
@@ -125,6 +125,7 @@ public:
 		cgv::render::attribute_array_binding::set_global_attribute_array(ctx, ti, T);
 		cgv::render::attribute_array_binding::enable_global_array(ctx, ti);
 		prog.enable(ctx);
+		material.enable_textures(ctx);
 		ctx.enable_material(material);
 		//tex.enable(ctx);
 		glDrawArrays(GL_TRIANGLE_STRIP, 0, (GLsizei)P.size());

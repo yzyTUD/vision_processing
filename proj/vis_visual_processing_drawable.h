@@ -281,6 +281,7 @@ void visual_processing::init_frame(cgv::render::context& ctx)
 	stored_cloud->init_frame(ctx);
 	//image_renderer_kit->init_frame(ctx);
 	//if (mesh_kit) mesh_kit->init_frame(ctx);
+	if(imagebox_kit!=nullptr)imagebox_kit->init_frame(ctx);
 }
 
 void visual_processing::draw(cgv::render::context& ctx)

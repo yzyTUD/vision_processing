@@ -142,21 +142,26 @@ public:
 		fnl.push_back(data_ptr->data_dir + "/imir_images/image_2.jpg");
 		fnl.push_back(data_ptr->data_dir + "/imir_images/image_3.jpg");
 		fnl.push_back(data_ptr->data_dir + "/imir_images/image_4.jpg");
-		/*fnl.push_back(data_ptr->data_dir + "/csharp_classify/image_2.jpg");
-		fnl.push_back(data_ptr->data_dir + "/csharp_classify/image_2.jpg");
-		fnl.push_back(data_ptr->data_dir + "/csharp_classify/image_2.jpg");
-		fnl.push_back(data_ptr->data_dir + "/csharp_classify/image_2.jpg");
-		fnl.push_back(data_ptr->data_dir + "/csharp_classify/image_2.jpg");*/
-		//fnl.push_back(data_ptr->data_dir + "/img/3.jpg");
-		//fnl.push_back(data_ptr->data_dir + "/img/4.jpg");
-		//fnl.push_back(data_ptr->data_dir + "/img/5.jpg");
-		//fnl.push_back(data_ptr->data_dir + "/img/6.jpg");
-		//fnl.push_back(data_ptr->data_dir + "/img/7.jpg");
+		fnl.push_back(data_ptr->data_dir + "/imir_images/image_5.jpg");
+		fnl.push_back(data_ptr->data_dir + "/imir_images/image_6.jpg");
+		fnl.push_back(data_ptr->data_dir + "/imir_images/image_7.jpg");
+		fnl.push_back(data_ptr->data_dir + "/imir_images/image_8.jpg");
+		fnl.push_back(data_ptr->data_dir + "/imir_images/image_9.jpg");
+		fnl.push_back(data_ptr->data_dir + "/imir_images/image_10.jpg");
+		fnl.push_back(data_ptr->data_dir + "/imir_images/image_11.jpg");
 		init_given_a_list_of_file_names(ctx, &fnl);
 
 		data_ptr->iba->prepare_rendering_once();
 		data_ptr->imageboxes_init_to_trackable_list();
 		return true;
+	}
+	/// call this 
+	void init_frame(context& ctx) {
+		if (data_ptr == nullptr)
+			return;
+		for (auto& imgboxlist : data_ptr->iba->imagebox_list) {
+			imgboxlist.material.ensure_textures(ctx);
+		}
 	}
 	/// setting the view transform yourself
 	/// call this 
