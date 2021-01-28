@@ -1,3 +1,4 @@
+#pragma once
 #include <cgv/base/node.h>
 #include <cgv/math/ftransform.h>
 #include <cgv/signal/rebind.h>
@@ -279,8 +280,5 @@ public:
 	}
 
 };
-
-#include <cgv/base/register.h>
-
-cgv::base::factory_registration_1<vr_kit_image_renderer, int> tp_fac("new/render/textured primitive", 'T', 1024, true);
+//textured primitive", 'T', 1024, true);
 

@@ -352,5 +352,5 @@ bool gl_point_cloud_drawable::ensure_view_pointer()
 
 #ifdef REGISTER_SHADER_FILES
 #include <cgv/base/register.h>
-#include <point_cloud_shader_inc.h>
+//#include <point_cloud_shader_inc.h>
 #endif
