@@ -216,7 +216,7 @@ public:
 						// upload the posi/ ori of the images 
 						data_ptr->iba->update_posi_ori_img_given_idx(data_ptr->iba->posiarr[bi], data_ptr->iba->oriarr[bi],bi);
 						auto& t = data_ptr->trackable_imagebox_list.at(bi);
-						t.set_position_orientation_write(data_ptr->movable_box_translations[bi], data_ptr->movable_box_rotations[bi]);
+						t.set_position_orientation_write(data_ptr->iba->posiarr[bi], data_ptr->iba->oriarr[bi]);
 					}
 				}
 				else {// not grab
@@ -251,7 +251,7 @@ public:
 
 					// update state based on whether we have found at least 
 					// one intersection with controller ray
-					if (data_ptr->intersection_points.size() == i)
+					/*if (data_ptr->intersection_points.size() == i)
 						state[ci] = IS_NONE;
 					else
 						if (state[ci] == IS_NONE)
@@ -261,8 +261,9 @@ public:
 						state[ci] = IS_NONE;
 					else
 						if (state[ci] == IS_NONE)
-							state[ci] = IS_OVER;
+							state[ci] = IS_OVER;*/
 
+					state[ci] = IS_OVER;
 				}
 				post_redraw();
 			}

@@ -10,8 +10,8 @@ addProjectDeps=["cgv_utils", "cgv_type", "cgv_data", "cgv_base", "cgv_math",
 				"cgv_media", "cgv_gui", "cgv_render", "cmi_io",
 				"cgv_viewer", "cg_fltk", "crg_grid", "cg_ext", "cgv_gl", 
 				"crg_vr_view", 
-				"cg_vr", "vr_emulator","point_cloud_vr"];
-//"openvr_driver"
+				"cg_vr", "vr_emulator","point_cloud_vr","openvr_driver"];
+//
 
 addCommandLineArguments=[
 	'config:"'.INPUT_DIR.'/config.def"',

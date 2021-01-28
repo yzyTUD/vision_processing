@@ -128,6 +128,7 @@ public:
 
 			imagebox* ib = new imagebox(ctx, box3(-boxext, boxext), fn);
 			ib->set_posi_ori(t_p, t_q);
+			ib->set_color(rgb(d(g)));
 			data_ptr->iba->imagebox_list.push_back(*ib);
 		}
 	}

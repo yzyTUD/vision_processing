@@ -102,7 +102,11 @@ public:
 			cgv::gui::vr_key_event& vrke = static_cast<cgv::gui::vr_key_event&>(e);
 			int ci = vrke.get_controller_index();
 			if (ci == left_rgbd_controller_index && vrke.get_key() == vr::VR_GRIP) {
-				data_ptr->rec_pose = !data_ptr->rec_pose;
+				if (vrke.get_action() == cgv::gui::KA_PRESS) {
+					data_ptr->rec_pose = !data_ptr->rec_pose;
+					if (!data_ptr->rec_pose)
+						save_to_tj_file();
+				}
 			}
 		}
 		if (e.get_kind() == cgv::gui::EID_POSE) {
