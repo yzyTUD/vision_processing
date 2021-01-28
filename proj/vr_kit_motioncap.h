@@ -37,7 +37,7 @@ class vr_kit_motioncap :
 {
 private:
 	// just store a pointer here 
-	vis_kit_data_store_shared* data_ptr;
+	vis_kit_data_store_shared* data_ptr = nullptr;
 	vr_view_interactor* vr_view_ptr;
 
 	int left_rgbd_controller_index = 0;
@@ -96,7 +96,7 @@ public:
 	/// call this 
 	bool handle(event& e)
 	{
-		if (!data_ptr)
+		if (data_ptr==nullptr)
 			return false;
 		if (e.get_kind() == cgv::gui::EID_KEY) {
 			cgv::gui::vr_key_event& vrke = static_cast<cgv::gui::vr_key_event&>(e);
@@ -134,7 +134,7 @@ public:
 	/// declare timer_event method to connect the shoot signal of the trigger
 	void timer_event(double t, double dt)
 	{
-		if (!data_ptr)
+		if (data_ptr==nullptr)
 			return;
 		if (data_ptr->rec_pose) {
 			// this can maintain unchanged when adding more trackables
@@ -145,7 +145,7 @@ public:
 				cur_frame = 0;
 			// this can maintain unchanged when adding more trackables
 			data_ptr->download_from_motion_storage_read_per_frame(cur_frame);
-			data_ptr->download_from_trackable_list();
+			data_ptr->download_from_trackable_list_per_frame();
 			
 			std::cout << "cur_frame: " << cur_frame << std::endl;
 			cur_frame++;
@@ -186,7 +186,7 @@ public:
 	}
 	///
 	void start_replay_all() {
-		if (!data_ptr)
+		if (data_ptr==nullptr)
 			return;
 		// this can maintain unchanged when adding more trackables
 		num_of_frames = data_ptr->motion_storage_read.find(data_ptr->trackable_list.at(0).get_name())
@@ -195,7 +195,7 @@ public:
 	}
 	///
 	bool save_to_tj_file() {
-		if (!data_ptr)
+		if (data_ptr==nullptr)
 			return false;
 		data_ptr->rec_pose = false;
 		auto microsecondsUTC = std::chrono::duration_cast<std::chrono::microseconds>(
@@ -223,7 +223,7 @@ public:
 	}
 	///
 	bool read_tj_file() {
-		if (!data_ptr)
+		if (data_ptr==nullptr)
 			return false;
 		std::string f = cgv::gui::file_open_dialog("Open", "trajectory files:*");
 		std::ifstream is(f);

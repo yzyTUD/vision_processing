@@ -20,6 +20,7 @@ protected:
 	std::string name;
 	vec3 posi;
 	quat orie;
+
 	vec3 read_posi;
 	quat read_quat;
 	mat4 read_mat;

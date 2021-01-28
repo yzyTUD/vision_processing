@@ -483,6 +483,7 @@ public:
 	{
 		return true;
 	}
+	//
 	void btn_callback_test(){}
 	/// overload to handle events, return true if event was processed
 	bool handle(event& e)
@@ -555,7 +556,6 @@ public:
 					}
 
 					intersection_boxgui_indices.clear();
-					// pf- must have &! to modify 
 					for (auto& b : boxguibtns) { 
 						b.has_intersec = false;
 					}
@@ -629,15 +629,6 @@ public:
 	/// setting the view transform yourself
 	void draw(context& ctx)
 	{
-		/*ctx.push_modelview_matrix();
-		ctx.ref_default_shader_program().enable(ctx);
-		ctx.tesselate_unit_cube();
-		ctx.ref_default_shader_program().disable(ctx);
-		ctx.pop_modelview_matrix();*/
-
-		// push btns in boxgui to dynamic box list, treat 
-		// boxguibtns the same as moveble boxes
-		// render tex. in an other block
 		if (boxguibtns.size()) {
 			cgv::render::box_renderer& renderer = cgv::render::ref_box_renderer(ctx);
 			std::vector<box3> movable_btn;
@@ -649,7 +640,6 @@ public:
 					movable_btn.push_back(box3(-0.5f * btn.ext, 0.5f * btn.ext));
 					movable_btn_colors.push_back(btn.color);
 					cur_left_hand_dir.normalize();
-
 					if (btn.has_intersec && !btn.is_static)
 						movable_btn_translations.push_back(btn.trans + cur_left_hand_dir * 0.1);
 					else
@@ -687,12 +677,6 @@ public:
 					p2 = p2 + vec3(0, 0, 0.5 * btn.ext.z() + 0.01) + addi_offset;
 					p3 = p3 + vec3(0, 0, 0.5 * btn.ext.z() + 0.01) + addi_offset;
 					p4 = p4 + vec3(0, 0, 0.5 * btn.ext.z() + 0.01) + addi_offset;
-
-					/*quat tmp(vec3(0, 1, 0), var1);
-					tmp.rotate(p1);
-					tmp.rotate(p2);
-					tmp.rotate(p3);
-					tmp.rotate(p4);*/
 
 					// rotate and translate according to the gui boxes
 					btn.rot.rotate(p1);

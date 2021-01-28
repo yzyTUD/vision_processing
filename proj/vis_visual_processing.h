@@ -38,6 +38,7 @@
 #include "vr_kit_motioncap.h"
 #include "vis_kit_datastore.h"
 #include "vr_kit_manipulation.h"
+#include "vr_kit_imagebox.h"
 
 class visual_processing :
 	public cgv::base::node,
@@ -166,6 +167,7 @@ protected:
 	vr_kit_motioncap* motioncap_kit = new vr_kit_motioncap();
 	vis_kit_data_store_shared* data_store_kit = new vis_kit_data_store_shared();
 	vr_kit_manipulation* manipulation_kit = new vr_kit_manipulation();
+	vr_kit_imagebox* imagebox_kit = new vr_kit_imagebox();
 
 public:
 	void init_cameras(vr::vr_kit* kit_ptr);

@@ -18,6 +18,13 @@ using namespace cgv::gui;
 using namespace cgv::signal;
 using namespace cgv::render;
 
+#include <vr/vr_driver.h>
+#include <cg_vr/vr_server.h>
+#include <vr_view_interactor.h>
+#include <vr_render_helpers.h>
+#include <cg_vr/vr_events.h>
+#include "vr_kit_intersection.h"
+
 class render_test :
 	public base,    // base class of all to be registered classes
 	public provider, // is derived from tacker, which is not necessary as base anymore
@@ -25,7 +32,7 @@ class render_test :
 	public drawable // registers for drawing with opengl
 {
 private:
-	vis_kit_data_store_shared* data_ptr;
+	vis_kit_data_store_shared = nullptr;
 public:
 	/// initialize rotation angle
 	render_test()

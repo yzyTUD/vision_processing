@@ -209,10 +209,6 @@ bool visual_processing::init(cgv::render::context& ctx)
 		}
 	}
 
-	if (teleportation_kit != nullptr) teleportation_kit->set_vr_view_ptr(vr_view_ptr);
-	if (draw_kit != nullptr) draw_kit->set_vr_view_ptr(vr_view_ptr);
-	if (manipulation_kit != nullptr) manipulation_kit->set_vr_view_ptr(vr_view_ptr);
-	if(motioncap_kit!=nullptr) motioncap_kit->set_vr_view_ptr(vr_view_ptr);
 
 	cgv::render::ref_box_renderer(ctx, 1);
 	cgv::render::ref_sphere_renderer(ctx, 1);
@@ -249,13 +245,20 @@ bool visual_processing::init(cgv::render::context& ctx)
 	stored_cloud->do_auto_view = false;
 	stored_cloud->pc.create_colors();
 
+	if (teleportation_kit != nullptr) teleportation_kit->set_vr_view_ptr(vr_view_ptr);
+	if (draw_kit != nullptr) draw_kit->set_vr_view_ptr(vr_view_ptr);
+	if (manipulation_kit != nullptr) manipulation_kit->set_vr_view_ptr(vr_view_ptr);
+	if(motioncap_kit!=nullptr) motioncap_kit->set_vr_view_ptr(vr_view_ptr);
+
+	motioncap_kit->set_data_ptr(data_store_kit);
+	manipulation_kit->set_data_ptr(data_store_kit);
+	imagebox_kit->set_data_ptr(data_store_kit);
+
 	point_cloud_kit->init(ctx);
 	one_shot_360pc->init(ctx);
 	stored_cloud->init(ctx);
 	if (draw_kit != nullptr) draw_kit->init(ctx);
-
-	motioncap_kit->set_data_ptr(data_store_kit);
-	manipulation_kit->set_data_ptr(data_store_kit);
+	if (imagebox_kit != nullptr)imagebox_kit->init(ctx);
 
 	return true;
 }
@@ -291,6 +294,7 @@ void visual_processing::draw(cgv::render::context& ctx)
 	if (draw_kit!=nullptr) draw_kit->render_trajectory(ctx);
 	if (motioncap_kit!=nullptr) motioncap_kit->draw(ctx);
 	if (manipulation_kit!=nullptr) manipulation_kit->draw(ctx);
+	if (imagebox_kit != nullptr)imagebox_kit->draw(ctx);
 
 	if (motioncap_kit != nullptr)
 	if (motioncap_kit->instanced_redraw)

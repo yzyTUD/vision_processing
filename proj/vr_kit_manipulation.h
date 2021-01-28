@@ -25,7 +25,7 @@ class vr_kit_manipulation :
 	public drawable // registers for drawing with opengl
 {
 private:
-	vis_kit_data_store_shared* data_ptr;
+	vis_kit_data_store_shared* data_ptr = nullptr;
 	vr_view_interactor* vr_view_ptr;
 
 	// different interaction states for the controllers
@@ -83,7 +83,7 @@ public:
 	/// compute intersection points of controller ray with movable boxes
 	void compute_intersections(const vec3& origin, const vec3& direction, int ci, const rgb& color)
 	{
-		if (!data_ptr)
+		if (data_ptr==nullptr)
 			return;
 		for (size_t i = 0; i < data_ptr->movable_boxes.size(); ++i) {
 			vec3 origin_box_i = origin - data_ptr->movable_box_translations[i];
@@ -108,6 +108,32 @@ public:
 				data_ptr->intersection_colors.push_back(color);
 				data_ptr->intersection_box_indices.push_back((int)i);
 				data_ptr->intersection_controller_indices.push_back(ci);
+			}
+		}
+
+		for (size_t i = 0; i < data_ptr->iba->boxarr.size(); ++i) {
+			vec3 origin_box_i = origin - data_ptr->iba->posiarr[i];
+			data_ptr->iba->oriarr[i].inverse_rotate(origin_box_i);
+			vec3 direction_box_i = direction;
+			data_ptr->iba->oriarr[i].inverse_rotate(direction_box_i);
+			float t_result;
+			vec3  p_result;
+			vec3  n_result;
+			if (cgv::media::ray_axis_aligned_box_intersection(
+				origin_box_i, direction_box_i,
+				data_ptr->iba->boxarr[i],
+				t_result, p_result, n_result, 0.000001f)) {
+
+				// transform result back to world coordinates
+				data_ptr->iba->oriarr[i].rotate(p_result);
+				p_result += data_ptr->iba->posiarr[i];
+				data_ptr->iba->oriarr[i].rotate(n_result);
+
+				// store intersection information
+				data_ptr->ipimg.push_back(p_result);
+				data_ptr->icimg.push_back(color);
+				data_ptr->ibidximg.push_back((int)i);
+				data_ptr->icidximg.push_back(ci);
 			}
 		}
 	}
@@ -135,7 +161,7 @@ public:
 			// check for controller pose events
 			int ci = vrpe.get_trackable_index();
 			if (ci != -1) {
-				if (!data_ptr)
+				if (data_ptr==nullptr)
 					return false;
 				if (state[ci] == IS_GRAB) {
 					// in grab mode apply relative transformation to grabbed boxes
@@ -169,6 +195,29 @@ public:
 						auto& t = data_ptr->trackable_box_list.at(bi);
 						t.set_position_orientation_write(data_ptr->movable_box_translations[bi], data_ptr->movable_box_rotations[bi]);
 					}
+
+					for (size_t i = 0; i < data_ptr->ipimg.size(); ++i) {
+						if (data_ptr->icidximg[i] != ci)
+							continue;
+						// extract box index
+						unsigned bi = data_ptr->ibidximg[i];
+						// update translation with position change and rotation
+						data_ptr->iba->posiarr[bi] =
+							rotation * (data_ptr->iba->posiarr[bi] - last_pos) + pos;
+						// update orientation with rotation, note that quaternions
+						// need to be multiplied in oposite order. In case of matrices
+						// one would write box_orientation_matrix *= rotation
+						data_ptr->iba->oriarr[bi] = quat(rotation) * data_ptr->iba->oriarr[bi];
+						// update intersection points
+						data_ptr->ipimg[i] = rotation * (data_ptr->ipimg[i] - last_pos) + pos;
+
+						// update trackable_box_list at the same time , setter 
+						// upload_to_trackable_list
+						// upload the posi/ ori of the images 
+						data_ptr->iba->update_posi_ori_img_given_idx(data_ptr->iba->posiarr[bi], data_ptr->iba->oriarr[bi],bi);
+						auto& t = data_ptr->trackable_imagebox_list.at(bi);
+						t.set_position_orientation_write(data_ptr->movable_box_translations[bi], data_ptr->movable_box_rotations[bi]);
+					}
 				}
 				else {// not grab
 					// clear intersections of current controller 
@@ -183,6 +232,17 @@ public:
 						else
 							++i;
 					}
+					int ii = 0;
+					while (ii < data_ptr->ipimg.size()) {
+						if (data_ptr->icidximg[ii] == ci) {
+							data_ptr->ipimg.erase(data_ptr->ipimg.begin() + ii);
+							data_ptr->icimg.erase(data_ptr->icimg.begin() + ii);
+							data_ptr->ibidximg.erase(data_ptr->ibidximg.begin() + ii);
+							data_ptr->icidximg.erase(data_ptr->icidximg.begin() + ii);
+						}
+						else
+							++ii;
+					}
 
 					// compute intersections
 					vec3 origin, direction;
@@ -196,6 +256,13 @@ public:
 					else
 						if (state[ci] == IS_NONE)
 							state[ci] = IS_OVER;
+
+					if (data_ptr->ipimg.size() == ii)
+						state[ci] = IS_NONE;
+					else
+						if (state[ci] == IS_NONE)
+							state[ci] = IS_OVER;
+
 				}
 				post_redraw();
 			}
@@ -216,22 +283,22 @@ public:
 				for (int i = 0; i < data_ptr->movable_box_rotations.size(); i++) {
 					data_ptr->movable_box_rotations.at(i) = quat(sin(t), sin(t), sin(t), sin(t));
 				}
-				data_ptr->upload_to_trackable_list_ori();
+				data_ptr->test_upload_to_trackable_list_ori();
 			}
 		}
 	}
 	/// setting the view transform yourself
 	void draw(context& ctx)
 	{
-		if (!data_ptr)
+		if (data_ptr==nullptr)
 			return;
-		if (!data_ptr->is_replay) 
-			render_lines_for_controllers(ctx);
+		//if (!data_ptr->is_replay) 
+		render_lines_for_controllers(ctx);
 		render_random_boxes(ctx);
 
 	}
 	void gen_random_movable_boxes() {
-		if (!data_ptr)
+		if (data_ptr==nullptr)
 			return;
 		float tw = 0.8f;
 		float td = 0.8f;
