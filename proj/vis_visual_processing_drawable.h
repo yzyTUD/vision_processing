@@ -154,6 +154,7 @@ visual_processing::visual_processing()
 	connect(cgv::gui::ref_vr_server().on_device_change, this, &visual_processing::on_device_change);
 	connect(cgv::gui::ref_vr_server().on_status_change, this, &visual_processing::on_status_change);
 	register_object(base_ptr(mesh_kit), "");
+	register_object(base_ptr(light_kit), "");
 }
 	
 void visual_processing::stream_help(std::ostream& os) {
@@ -259,6 +260,12 @@ bool visual_processing::init(cgv::render::context& ctx)
 	stored_cloud->init(ctx);
 	if (draw_kit != nullptr) draw_kit->init(ctx);
 	if (imagebox_kit != nullptr)imagebox_kit->init(ctx);
+
+	// light sources are not ava. now 
+	//ctx.disable_light_source(ctx.get_enabled_light_source_handle(0));
+	//std::map<void*, std::pair<cgv::media::illum::light_source, context::light_source_status> >* 
+	//cgv::media::illum::light_source ls = ctx.get_light_source(ctx.get_enabled_light_source_handle(0));
+	//ctx.disable_light_source(ctx.get_enabled_light_source_handle(0));
 
 	return true;
 }

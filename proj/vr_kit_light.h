@@ -25,7 +25,7 @@ using namespace cgv::render;
 #include <cg_vr/vr_events.h>
 #include "vr_kit_intersection.h"
 
-class render_test :
+class vr_kit_light :
 	public base,    // base class of all to be registered classes
 	public provider, // is derived from tacker, which is not necessary as base anymore
 	public event_handler, // necessary to receive events
@@ -33,11 +33,13 @@ class render_test :
 {
 private:
 	vis_kit_data_store_shared* data_ptr = nullptr;
+
+	bool light_changed = false; 
 public:
 	/// initialize rotation angle
-	render_test()
+	vr_kit_light()
 	{
-		connect(get_animation_trigger().shoot, this, &render_test::timer_event);
+		connect(get_animation_trigger().shoot, this, &vr_kit_light::timer_event);
 	}
 	void set_data_ptr(vis_kit_data_store_shared* d_ptr) {
 		data_ptr = d_ptr;
@@ -56,7 +58,7 @@ public:
 	/// return the type name of the class derived from base
 	std::string get_type_name() const
 	{
-		return "render_test";
+		return "vr_kit_light";
 	}
 	/// show statistic information
 	void stream_stats(std::ostream& os)
@@ -78,13 +80,29 @@ public:
 	/// setting the view transform yourself
 	void draw(context& ctx)
 	{
-		auto& prog = ctx.ref_surface_shader_program();
-		prog.enable(ctx);
-		ctx.tesselate_unit_cube();
-		prog.disable(ctx);
+		if (!light_changed && ctx.get_nr_light_sources()>0) {
+			//cgv::media::illum::light_source ls = ctx.get_light_source(ctx.get_enabled_light_source_handle(0));
+			//ctx.disable_light_source(ctx.get_enabled_light_source_handle(0));
+
+			auto lss = ctx.ref_light_sources();
+			for (auto it = lss->begin(); it != lss->end(); ++it) {
+				it->second.first.set_local_to_eye(false);
+				it->second.first.set_ambient_scale(0.2);
+			}
+
+			ctx.on_lights_changed();
+
+			auto& prog = ctx.ref_surface_shader_program();
+			prog.enable(ctx);
+			ctx.tesselate_unit_cube();
+			prog.disable(ctx);
+
+			light_changed = true;
+		}
 	}
 	/// overload the create gui method
 	void create_gui()
 	{
 	}
+
 };
