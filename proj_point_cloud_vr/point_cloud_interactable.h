@@ -141,7 +141,9 @@ public:
 
 	bool read_pc_subsampled_with_dialog();
 	/// read .campose file 
-	bool read_pc_campose(cgv::render::context& ctx);
+	bool read_pc_campose(cgv::render::context& ctx, quat initialcamq);
+
+	void apply_further_transformation(int which, quat q, vec3 t);
 
 	void align_leica_scans_with_cgv();
 

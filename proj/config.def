@@ -1,7 +1,7 @@
 //show all
 
 //name(main):state="fullscreen(2)"
-name(main):selected="visual_processing"
+//name(main):selected="visual_processing"
 
 
 name(vr interactor):hmd_scale=1.0;hmd_mesh_file_name="generic_hmd.obj"

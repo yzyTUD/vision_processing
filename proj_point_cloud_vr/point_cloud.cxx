@@ -1609,12 +1609,13 @@ bool point_cloud::read_campose(const std::string& file_name) {
 	for (int i = 0; i < num_of_shots; i++) 
 		list_clrs.push_back(cgv::media::color<float, cgv::media::RGB>(0,1,0));
 	srs.radius = 0.1f;
-	cgv::math::quaternion<float> inv_quat = list_cam_rotation.at(0).inverse();
+	//cgv::math::quaternion<float> inv_quat = list_cam_rotation.at(0).inverse();
 	// align to the frame of the first point 
-	for (int i = 1; i < num_of_shots; i++) {
-		list_cam_rotation.at(i) = inv_quat * list_cam_rotation.at(i);
-		inv_quat.rotate(list_cam_translation.at(i));
-	}
+	//for (int i = 1; i < num_of_shots; i++) {
+	//	list_cam_rotation.at(i) = inv_quat * list_cam_rotation.at(i);
+	//	inv_quat.rotate(list_cam_translation.at(i));
+	//}
+	list_cam_rotation.at(0) = cgv::math::quaternion<float>(); // uv test 
 	render_cams = true;
 	return true;
 }

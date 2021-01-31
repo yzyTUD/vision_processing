@@ -40,6 +40,7 @@
 #include "vr_kit_manipulation.h"
 #include "vr_kit_imagebox.h"
 #include <vr_kit_light.h>
+#include "vis_kit_selection.h"
 
 class visual_processing :
 	public cgv::base::node,
@@ -53,7 +54,6 @@ protected:
 		IS_OVER,
 		IS_GRAB
 	};
-
 	
 	// store the scene as colored boxes
 	std::vector<box3> boxes;
@@ -147,6 +147,17 @@ protected:
 	vec2 extent_texcrd;
 	vec2 center_left;
 	vec2 center_right;
+
+	// for seelction tool 
+	int pick_point_index = -1;
+	cgv::render::sphere_render_style sphere_style;
+	bool in_picking = false;
+	cgv::render::view* view_ptr = nullptr;
+
+	// alignment
+	quat initial_cam_alinmentq = quat(vec3(0, 1, 0), -115 * M_PI / 180);
+	quat addi_alignq = quat();
+
 	boxgui_interactable* b_interactable = new boxgui_interactable();
 	point_cloud_interactable* point_cloud_kit = new point_cloud_interactable();
 	point_cloud_interactable* one_shot_360pc = new point_cloud_interactable();
@@ -159,19 +170,22 @@ protected:
 	int num_of_points_wanted = 1;
 	int strategy = 1;
 
-	vr_kit_skybox* skybox_kit = new vr_kit_skybox();
-	//vr_kit_image_renderer* image_renderer_kit = new vr_kit_image_renderer();
-	vr_kit_teleportation* teleportation_kit = new vr_kit_teleportation();
-	vr_kit_roller_coaster_1* roller_coaster_kit_1 = nullptr; //= new vr_kit_roller_coaster_1();
-	vis_kit_meshes* mesh_kit = new vis_kit_meshes();
-	vr_kit_draw* draw_kit = nullptr; //= new vr_kit_draw();
-	vr_kit_motioncap* motioncap_kit = new vr_kit_motioncap();
-	vis_kit_data_store_shared* data_store_kit = new vis_kit_data_store_shared();
-	vr_kit_manipulation* manipulation_kit = new vr_kit_manipulation();
-	vr_kit_imagebox* imagebox_kit = new vr_kit_imagebox();
 	vr_kit_light* light_kit = new vr_kit_light();
+	vr_kit_skybox* skybox_kit = new vr_kit_skybox();
+	vr_kit_teleportation* teleportation_kit = new vr_kit_teleportation();
+	vis_kit_data_store_shared* data_ptr = new vis_kit_data_store_shared();
+
+	vr_kit_roller_coaster_1* roller_coaster_kit_1 = nullptr; 
+	vis_kit_meshes* mesh_kit = nullptr;
+	vr_kit_draw* draw_kit = nullptr; 
+	vr_kit_motioncap* motioncap_kit = nullptr; 
+	vr_kit_manipulation* manipulation_kit = nullptr;
+	vr_kit_imagebox* imagebox_kit = nullptr;
+	vis_kit_selection* selection_kit = nullptr;
+
 
 public:
+
 	void init_cameras(vr::vr_kit* kit_ptr);
 
 	void start_camera();
@@ -192,7 +206,94 @@ public:
 	void stream_help(std::ostream& os);
 
 	void on_set(void* member_ptr);
-	
+
+	bool self_reflect(cgv::reflect::reflection_handler& rh)
+	{
+		return
+			rh.reflect_member("pick_point_index", pick_point_index);
+	}
+
+	void init_6_points_picking() {
+		data_ptr->pick_points.push_back(vec3(1));
+		data_ptr->pick_colors.push_back(rgb(0, 1, 0));
+		data_ptr->pick_points.push_back(vec3(1));
+		data_ptr->pick_colors.push_back(rgb(1, 1, 0));
+
+		data_ptr->pick_points.push_back(vec3(1));
+		data_ptr->pick_colors.push_back(rgb(0, 1, 0));
+		data_ptr->pick_points.push_back(vec3(1));
+		data_ptr->pick_colors.push_back(rgb(1, 1, 0));
+
+		data_ptr->pick_points.push_back(vec3(1));
+		data_ptr->pick_colors.push_back(rgb(0, 1, 0));
+		data_ptr->pick_points.push_back(vec3(1));
+		data_ptr->pick_colors.push_back(rgb(1, 1, 0));
+		pick_point_index = 0;
+	}
+	/// selection tool, pick points from 0-6
+	bool on_pick(const cgv::gui::mouse_event& me)
+	{
+		if (!view_ptr)
+			return false;
+		if (!data_ptr)
+			return false;		
+		if (pick_point_index == -1)
+			return false;
+		dvec3 pick_point;
+		double window_z;
+		if (!get_world_location(me.get_x(), me.get_y(), *view_ptr, pick_point, &window_z) ||
+			window_z > 0.999)
+			return false;
+		//pick_point_index indicates which to pick from 0-6 eg.
+		bool already_picked = false;
+		double pick_dist = 0;
+		double pick_dist_threshold = 1.2 * sphere_style.radius * sphere_style.radius_scale;
+		for (int i = 0; i < (int)data_ptr->pick_points.size(); ++i) {
+			double dist = (data_ptr->pick_points[i] - vec3(pick_point)).length();
+			if (dist < pick_dist_threshold) {
+				/*if (pick_point_index == -1 || dist < pick_dist) {
+					pick_dist = dist;
+					pick_point_index = i;
+				}*/
+				already_picked = true;
+			}
+		}
+		if (!already_picked) { 
+			// move the points 
+			/*pick_point_index = data_ptr->pick_points.size();
+			data_ptr->pick_points.push_back(pick_point);
+			data_ptr->pick_colors.push_back(rgb(0, 1, 0));*/
+			data_ptr->pick_points[pick_point_index] = pick_point;
+			//pick_point_index++;
+			return true;
+		}
+		return false;
+
+	}
+	// some prob. with the depth information, TODO 
+	bool on_drag(const cgv::gui::mouse_event& me)
+	{
+		if (!view_ptr)
+			return false;
+		if (!data_ptr)
+			return false;
+		if (pick_point_index == -1)
+			return false;
+		dvec3 pick_point;
+		double window_z;
+		if (!get_world_location(me.get_x(), me.get_y(), *view_ptr, pick_point, &window_z) ||
+			window_z > 0.999) {
+			data_ptr->pick_colors[pick_point_index] = rgb(0, 1, 0);
+			pick_point_index = -1;
+			post_redraw();
+			return false;
+		}
+		data_ptr->pick_points[pick_point_index] = pick_point;
+		data_ptr->pick_colors[pick_point_index] = rgb(1, 0, 0);
+		post_redraw();
+		return true;
+	}
+
 	bool init(cgv::render::context& ctx);
 
 	void clear(cgv::render::context& ctx);
@@ -221,6 +322,8 @@ public:
 	void write_read_pc_to_file();
 
 	void read_campose();
+
+	void apply_further_transformation();
 
 	void align_leica_scans_with_cgv();
 
@@ -256,6 +359,74 @@ public:
 	void start_replay_all() { motioncap_kit->start_replay_all(); }
 	void save_to_tj_file() { motioncap_kit->save_to_tj_file(); }
 	void read_tj_file() { motioncap_kit->read_tj_file(); }
+	void compute_coordinates_with_rot_correction() { 
+		quat rotq;
+		mat3 rotation_mat;
+		vec3 translation_vec;
+
+		vec3 p1 = data_ptr->pick_points.at(0);
+		vec3 p2 = data_ptr->pick_points.at(2);
+		vec3 p3 = data_ptr->pick_points.at(4);
+
+		vec3 q1 = data_ptr->pick_points.at(1);
+		vec3 q2 = data_ptr->pick_points.at(3);
+		vec3 q3 = data_ptr->pick_points.at(5);
+
+		vec3 source_center = vec3(0);
+		source_center += p1;
+		source_center += p2;
+		source_center += p3;
+		source_center /= 3;
+
+		vec3 target_center = vec3(0);
+		target_center += q1;
+		target_center += q2;
+		target_center += q3;
+		target_center /= 3;
+
+		mat3 fA;
+		fA.zeros();			
+		cgv::math::mat<float> U, V;
+		cgv::math::diag_mat<float> Sigma;
+		U.zeros();
+		V.zeros();
+		Sigma.zeros();
+		fA += mat3(q1 - target_center, p1 - source_center);
+		fA += mat3(q2 - target_center, p2 - source_center);
+		fA += mat3(q3 - target_center, p3 - source_center);
+
+		///cast fA to A
+		cgv::math::mat<float> A(3, 3, &fA(0, 0));
+		cgv::math::svd(A, U, Sigma, V);
+		mat3 fU(3, 3, &U(0, 0)), fV(3, 3, &V(0, 0));
+
+		///get new R and t
+		rotation_mat = fU * cgv::math::transpose(fV);
+		cgv::math::mat<float> R(3, 3, &rotation_mat(0, 0));
+		if (cgv::math::det(R) < 0) {
+			// multiply the 1,1...-1 diag matrix 
+			mat3 fS;
+			fS.zeros();
+			fS(0, 0) = 1;
+			fS(1, 1) = 1;
+			fS(2, 2) = -1;
+			rotation_mat = fU * fS * cgv::math::transpose(fV);
+		}
+		rotq = quat(rotation_mat);
+		translation_vec = target_center - rotation_mat * source_center;
+
+		//vec3 view_up_dir = vec3(0, 1, 0);
+		//cgv::render::render_types::dmat3 R = cgv::math::build_orthogonal_frame(p1, view_up_dir);
+		//R.transpose();
+		//R = cgv::math::build_orthogonal_frame(p2, view_up_dir) * R;
+		//cgv::render::render_types::dvec3 daxis;
+		//double dangle;
+		//int res = cgv::math::decompose_rotation_to_axis_and_angle(R, daxis, dangle);
+		//addi_alignq = quat(daxis, dangle);
+
+		//initial_cam_alinmentq
+		mesh_kit->compute_coordinates_with_rot_correction(rotq, translation_vec);
+	}
 };
 
 ///@}

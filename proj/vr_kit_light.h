@@ -87,7 +87,7 @@ public:
 			auto lss = ctx.ref_light_sources();
 			for (auto it = lss->begin(); it != lss->end(); ++it) {
 				it->second.first.set_local_to_eye(false);
-				it->second.first.set_ambient_scale(0.2);
+				it->second.first.set_ambient_scale(0.1);
 			}
 
 			ctx.on_lights_changed();

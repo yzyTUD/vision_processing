@@ -148,12 +148,25 @@ void visual_processing::on_device_change(void* kit_handle, bool attach)
 }
 visual_processing::visual_processing() 
 {
+	//roller_coaster_kit_1 = new vr_kit_roller_coaster_1();
+	//draw_kit = new vr_kit_draw();
+	mesh_kit = new vis_kit_meshes();
+	register_object(base_ptr(mesh_kit), "");
+	//selection_kit = new vis_kit_selection();
+	/*imagebox_kit = new vr_kit_imagebox();
+	motioncap_kit = new vr_kit_motioncap();
+	manipulation_kit = new vr_kit_manipulation();*/
+
 	set_name("visual_processing");
 	vr_view_ptr = 0;
-	ray_length = 2;
+	view_ptr = 0;
+	ray_length = 2;		
+	// for selection tool 
+	sphere_style.map_color_to_material = CM_COLOR_AND_OPACITY;
+	sphere_style.surface_color = rgb(0.8f, 0.4f, 0.4f);
+	sphere_style.radius = 0.01;
 	connect(cgv::gui::ref_vr_server().on_device_change, this, &visual_processing::on_device_change);
 	connect(cgv::gui::ref_vr_server().on_status_change, this, &visual_processing::on_status_change);
-	register_object(base_ptr(mesh_kit), "");
 	register_object(base_ptr(light_kit), "");
 }
 	
@@ -166,16 +179,6 @@ void visual_processing::on_set(void* member_ptr)
 	update_member(member_ptr);
 	post_redraw();
 }
-	
-bool visual_processing::handle(cgv::gui::event& e)
-{
-	if (b_interactable != nullptr)b_interactable->handle(e);
-	if (teleportation_kit != nullptr)teleportation_kit->handle(e);
-	if (draw_kit != nullptr)draw_kit->handle(e);
-	if (motioncap_kit != nullptr)motioncap_kit->handle(e);
-	if (manipulation_kit != nullptr)manipulation_kit->handle(e);
-	return false;
-}
 
 bool visual_processing::init(cgv::render::context& ctx)
 {
@@ -183,7 +186,7 @@ bool visual_processing::init(cgv::render::context& ctx)
 	//image_renderer_kit->init(ctx);
 
 	cgv::gui::connect_vr_server(true);
-	auto view_ptr = find_view_as_node();
+	view_ptr = find_view_as_node();
 	if (view_ptr) {
 		view_ptr->set_eye_keep_view_angle(dvec3(0, 4, -4));
 		// if the view points to a vr_view_interactor
@@ -246,20 +249,26 @@ bool visual_processing::init(cgv::render::context& ctx)
 	stored_cloud->do_auto_view = false;
 	stored_cloud->pc.create_colors();
 
+	// set the view ptrs 
 	if (teleportation_kit != nullptr) teleportation_kit->set_vr_view_ptr(vr_view_ptr);
 	if (draw_kit != nullptr) draw_kit->set_vr_view_ptr(vr_view_ptr);
 	if (manipulation_kit != nullptr) manipulation_kit->set_vr_view_ptr(vr_view_ptr);
-	if(motioncap_kit!=nullptr) motioncap_kit->set_vr_view_ptr(vr_view_ptr);
+	if (motioncap_kit != nullptr) motioncap_kit->set_vr_view_ptr(vr_view_ptr);
 
-	motioncap_kit->set_data_ptr(data_store_kit);
-	manipulation_kit->set_data_ptr(data_store_kit);
-	imagebox_kit->set_data_ptr(data_store_kit);
+	// set the data ptrs 
+	if (motioncap_kit != nullptr) motioncap_kit->set_data_ptr(data_ptr);
+	if (manipulation_kit != nullptr)manipulation_kit->set_data_ptr(data_ptr);
+	if (imagebox_kit != nullptr) imagebox_kit->set_data_ptr(data_ptr);
+
+	// set the context ptrs 
+	if (selection_kit != nullptr) selection_kit->set_context_str(get_context());
 
 	point_cloud_kit->init(ctx);
 	one_shot_360pc->init(ctx);
 	stored_cloud->init(ctx);
 	if (draw_kit != nullptr) draw_kit->init(ctx);
-	if (imagebox_kit != nullptr)imagebox_kit->init(ctx);
+	if (imagebox_kit != nullptr) imagebox_kit->init(ctx);
+
 
 	// light sources are not ava. now 
 	//ctx.disable_light_source(ctx.get_enabled_light_source_handle(0));
@@ -267,7 +276,65 @@ bool visual_processing::init(cgv::render::context& ctx)
 	//cgv::media::illum::light_source ls = ctx.get_light_source(ctx.get_enabled_light_source_handle(0));
 	//ctx.disable_light_source(ctx.get_enabled_light_source_handle(0));
 
+	init_6_points_picking();
+
 	return true;
+}
+	
+bool visual_processing::handle(cgv::gui::event& e)
+{
+	if (b_interactable != nullptr)b_interactable->handle(e);
+	if (teleportation_kit != nullptr)teleportation_kit->handle(e);
+	if (draw_kit != nullptr)draw_kit->handle(e);
+	if (motioncap_kit != nullptr) motioncap_kit->handle(e);
+	if (manipulation_kit != nullptr) manipulation_kit->handle(e); 
+	// selection tool 
+	if (!data_ptr)
+		return false;
+	if (e.get_kind() == EID_MOUSE) {
+		auto& me = static_cast<cgv::gui::mouse_event&>(e);
+		//on_pick(me);
+		switch (me.get_action()) {
+			case MA_PRESS:
+				if (me.get_button() == MB_LEFT_BUTTON && me.get_modifiers() == EM_CTRL) {
+					if (!view_ptr)
+						return false;
+					in_picking = true;
+					on_pick(me);
+					post_redraw();
+					return true;
+				}
+				break;
+			case MA_DRAG:
+				if (in_picking) {
+					on_pick(me);
+					post_redraw();
+				}
+				break;
+			case MA_RELEASE:
+				if (me.get_button() == MB_LEFT_BUTTON && me.get_modifiers() == EM_CTRL) {
+					/*if (in_picking && pick_point_index != -1) {
+						data_ptr->pick_colors[pick_point_index] = rgb(0, 1, 0);
+						pick_point_index = -1;
+						post_redraw();
+					}*/
+					in_picking = false;
+					return true;
+				}
+				break;
+		}
+	}
+	if (e.get_kind() == EID_KEY) {
+		auto& ke = static_cast<key_event&>(e);
+		if (ke.get_action() != KA_RELEASE) {
+			switch (ke.get_key()) {
+			// next and previous point
+			case 'N': pick_point_index++;  on_set(&pick_point_index); return true;
+			case 'P': pick_point_index--;  on_set(&pick_point_index); return true;
+			}
+		}
+	}
+	return false;
 }
 
 void visual_processing::clear(cgv::render::context& ctx)
@@ -286,8 +353,6 @@ void visual_processing::init_frame(cgv::render::context& ctx)
 	point_cloud_kit->init_frame(ctx);
 	one_shot_360pc->init_frame(ctx);
 	stored_cloud->init_frame(ctx);
-	//image_renderer_kit->init_frame(ctx);
-	//if (mesh_kit) mesh_kit->init_frame(ctx);
 	if(imagebox_kit!=nullptr)imagebox_kit->init_frame(ctx);
 }
 
@@ -296,8 +361,6 @@ void visual_processing::draw(cgv::render::context& ctx)
 	if (skybox_kit) skybox_kit->draw(ctx);
 	if (b_interactable) b_interactable->draw(ctx);
 	if (render_pc) point_cloud_kit->draw(ctx);
-	//if (mesh_kit) mesh_kit->draw(ctx);
-	//if (render_img) image_renderer_kit->draw(ctx);
 	if (roller_coaster_kit_1) roller_coaster_kit_1->draw(ctx);
 	if (draw_kit!=nullptr) draw_kit->render_trajectory(ctx);
 	if (motioncap_kit!=nullptr) motioncap_kit->draw(ctx);
@@ -305,18 +368,70 @@ void visual_processing::draw(cgv::render::context& ctx)
 	if (imagebox_kit != nullptr)imagebox_kit->draw(ctx);
 
 	if (motioncap_kit != nullptr)
-	if (motioncap_kit->instanced_redraw)
-		post_redraw();
+		if (motioncap_kit->instanced_redraw)
+			post_redraw();
 }
 
 void visual_processing::finish_draw(cgv::render::context& ctx)
 {
-	//if (mesh_kit) mesh_kit->finish_draw(ctx);
-	if (teleportation_kit) teleportation_kit->finish_draw(ctx);
+	if (teleportation_kit) teleportation_kit->finish_draw(ctx); 
+	
+	// selection tool
+	if (!view_ptr)
+		return;
+	if (!data_ptr)
+		return;
+	//glEnable(GL_BLEND);
+	//glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
+	sphere_renderer& sr = ref_sphere_renderer(ctx);
+	if (view_ptr)
+		sr.set_y_view_angle(float(view_ptr->get_y_view_angle()));
+	sr.set_render_style(sphere_style);
+
+	sphere_style.radius = float(0.1 * sqrt(mesh_kit->B.get_extent().sqr_length() / mesh_kit->M.get_nr_positions()));
+	if (!data_ptr->pick_points.empty()) {
+		sr.set_position_array(ctx, data_ptr->pick_points);
+		sr.set_color_array(ctx, data_ptr->pick_colors);
+		sr.validate_and_enable(ctx);
+		glDrawArrays(GL_POINTS, 0, (GLsizei)data_ptr->pick_points.size());
+		sr.disable(ctx);
+	}
+	//glDepthMask(GL_FALSE); 
+	//if (pick_point_index != -1) {
+	//	glDisable(GL_BLEND);
+	//	glDisable(GL_DEPTH_TEST);
+	//	vec3 p = data_ptr->pick_points[pick_point_index];
+	//	if (view_ptr)
+	//		p += 1.5f * sphere_style.radius * sphere_style.radius_scale * vec3(view_ptr->get_view_up_dir());
+	//	std::stringstream ss;
+	//	ss << "[" << p << "]";
+	//	ss.flush();
+
+	//	ctx.set_color(rgb(0.1f, 0.1f, 0.1f));
+	//	ctx.set_cursor(p.to_vec(), ss.str(), (TextAlignment)TA_BOTTOM, 0, 0);
+	//	ctx.output_stream() << ss.str();
+	//	ctx.output_stream().flush();
+
+	//	ctx.set_color(rgb(0.9f, 0.9f, 0.9f));
+	//	ctx.set_cursor(p.to_vec(), ss.str(), (TextAlignment)TA_BOTTOM, 1, -1);
+	//	ctx.output_stream() << ss.str();
+	//	ctx.output_stream().flush();
+
+	//	glEnable(GL_DEPTH_TEST);
+	//	glEnable(GL_BLEND);
+	//}
+	//glDepthMask(GL_TRUE);
+	//glDisable(GL_BLEND);
 }
 
 void visual_processing::read_campose() {
-	point_cloud_kit->read_pc_campose(*get_context());
+	point_cloud_kit->read_pc_campose(*get_context(), quat());
+	render_pc = true;
+}
+
+// for a visual feedback 
+void visual_processing::apply_further_transformation() {
+	point_cloud_kit->apply_further_transformation(0, quat(), vec3(1));
 }
 
 /* start pc reading and point_cloud_kit processing tool */
@@ -460,10 +575,9 @@ void visual_processing::create_gui() {
 		connect_copy(add_control("direct_write", direct_write, "check")->value_change, rebind(static_cast<drawable*>(this), &visual_processing::post_redraw));
 	}
 
-	if (begin_tree_node("Image Processing", render_img, true, "level=3")) {
-		//connect_copy(add_button("load_image")->click, rebind(this, &visual_processing::load_image_from_bin_files));
-		//add_member_control(this, "apply_aspect", image_renderer_kit->apply_aspect, "check");
-		//add_member_control(this, "render_frame", image_renderer_kit->render_frame, "check");
+	if (begin_tree_node("Mesh Tool (partial)", render_img, true, "level=3")) {
+		//compute_coordinates_with_rot_correction
+		connect_copy(add_button("compute_coordinates_with_rot_correction")->click, rebind(this, &visual_processing::compute_coordinates_with_rot_correction));
 	}
 	connect_copy(add_control("render_pc", render_pc, "check")->value_change, rebind(static_cast<drawable*>(this), &visual_processing::post_redraw));
 
@@ -498,10 +612,14 @@ void visual_processing::create_gui() {
 	if (begin_tree_node("Mocap kit", show_motioncap_kit, true, "level=3")) {
 		connect_copy(add_button("save_to_tj_file")->click, rebind(this, &visual_processing::save_to_tj_file));
 		connect_copy(add_button("read_tj_file")->click, rebind(this, &visual_processing::read_tj_file));
-		add_member_control(this, "start_rec", data_store_kit->rec_pose, "check");
+		add_member_control(this, "start_rec", data_ptr->rec_pose, "check");
 		//add_member_control(this, "replay", motioncap_kit->replay, "check");
 		add_member_control(this, "instanced_redraw", motioncap_kit->instanced_redraw, "check");
 		connect_copy(add_button("start_replay_all")->click, rebind(this, &visual_processing::start_replay_all));
+	}
+
+	if (begin_tree_node("Selection kit", pick_point_index, true, "level=3")) {
+		add_member_control(this, "pick_point_index", pick_point_index, "value_slider", "min=0;max=5;log=false;ticks=true;");
 	}
 }
 

@@ -56,6 +56,7 @@ public:
 	float scale_factor = 0.2;
 
 	mat4 rot_mat;
+	quat rotq;
 	vec3 trans;
 
 	vr_kit_image_renderer(int _n = 1024) :
@@ -76,7 +77,7 @@ public:
 		texture_v_offset = 0;
 		texture_selection = ALHAMBRA;
 		boost_animation = false;
-		rot_mat.zeros();
+		rot_mat.identity();
 		trans = vec3(0);
 	}
 
@@ -122,8 +123,13 @@ public:
 		//}
 		t_ptr->set_mag_filter(cgv::render::TextureFilter::TF_NEAREST);
 		rot.put_homogeneous_matrix(rot_mat);
+		rotq = rot;
 		trans = t;
 		update_member(&w);
+	}
+	void apply_further_transformation(quat q,vec3 t) {
+		trans = trans + t;
+		rotq = q * rotq;
 	}
 	bool init(cgv::render::context& ctx)
 	{

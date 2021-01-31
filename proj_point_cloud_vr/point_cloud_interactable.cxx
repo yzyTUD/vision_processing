@@ -170,7 +170,7 @@ void point_cloud_interactable::write_pc_to_file() {
 	pc.write(f);
 }
 
-bool point_cloud_interactable::read_pc_campose(cgv::render::context& ctx) {
+bool point_cloud_interactable::read_pc_campose(cgv::render::context& ctx, quat initialcamq) {
 	std::string f = cgv::gui::file_open_dialog("Open", "Point Cloud:*");
 	pc.read_campose(f);
 	//alig with cgv fram
@@ -179,12 +179,16 @@ bool point_cloud_interactable::read_pc_campose(cgv::render::context& ctx) {
 	for (int i = 0; i < pc.num_of_shots; i++) {
 		vr_kit_image_renderer tmp_renderer;
 		std::string folder_name = cgv::utils::file::drop_extension(cgv::utils::file::get_file_name(f));
-		std::string panorama_fn = cgv::utils::file::get_path(f) + "/" + folder_name + "_panorama/apb_" + std::to_string(i + 1) + ".jpeg";
-		std::cout << panorama_fn << std::endl; //pc.list_cam_rotation.at(i)
-		tmp_renderer.bind_image_to_camera_position(ctx, panorama_fn, pc.list_cam_rotation.at(i), pc.list_cam_translation.at(i));
+		std::string panorama_fn = cgv::utils::file::get_path(f) + "/pano/apb_" + std::to_string(i + 1) + ".jpg";
+		std::cout << panorama_fn << std::endl; //pc.list_cam_rotation.at(i) //initialcamq * pc.list_cam_rotation.at(i)
+		tmp_renderer.bind_image_to_camera_position(ctx, panorama_fn, quat(), pc.list_cam_translation.at(i));
 		image_renderer_list.push_back(tmp_renderer);
 	}
 	return true;
+}
+
+void point_cloud_interactable::apply_further_transformation(int which, quat q, vec3 t) {
+	image_renderer_list.at(which).apply_further_transformation(q, t);
 }
 
 void point_cloud_interactable::align_leica_scans_with_cgv() {
@@ -193,7 +197,7 @@ void point_cloud_interactable::align_leica_scans_with_cgv() {
 	quat r_align = rx * rz;
 	for (auto& t : pc.list_cam_translation) {
 		r_align.rotate(t);
-		t = t + vec3(0, 1, 0);
+		t = t + vec3(0, 0.6, 0);
 	}
 	for (auto& r : pc.list_cam_rotation) {
 		r = r_align * r;

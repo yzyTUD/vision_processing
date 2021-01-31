@@ -225,6 +225,9 @@ public:
 
 	imagebox_array* iba;
 
+	std::vector<vec3> pick_points;
+	std::vector<rgb> pick_colors;
+
 	bool is_replay = false;
 	bool rec_pose = false;
 

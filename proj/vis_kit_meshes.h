@@ -36,6 +36,8 @@ public:
 	rgb surface_color = rgb(0.4);
 	CullingMode cull_mode;
 	ColorMapping color_mapping;
+	IlluminationMode illumination_mode;
+	bool use_texture = false;
 
 	///
 	cgv::render::mesh_render_info mesh_info;
@@ -65,7 +67,10 @@ public:
 	mat3 mesh_rotation_matrix;	
 	vec3 mesh_translation_vector;
 
-
+	float rx = 0;
+	float ry = 0;
+	float rz = 0;
+	float h = 0;
 
 public:
 	/// initialize rotation angle
@@ -96,6 +101,8 @@ public:
 	///
 	bool init(context& ctx)
 	{
+		illumination_mode = IlluminationMode::IM_ONE_SIDED;
+		color_mapping = CM_COLOR;
 		if (!mesh_prog.build_program(ctx, "mesh.glpr", true))
 			abort();
 		if (!mesh_prog_smoothing.build_program(ctx, "mesh.glpr", true))
@@ -192,6 +199,8 @@ public:
 				shader_program& prog = mesh_prog;
 				prog.set_uniform(ctx, "culling_mode", (int)cull_mode);
 				prog.set_uniform(ctx, "map_color_to_material", (int)color_mapping);
+				//
+				prog.set_uniform(ctx, "use_texture", use_texture);
 				//prog.set_uniform(ctx, "illumination_mode", (int)illumination_mode);
 				// set default surface color for color mapping which only affects 
 				// rendering if mesh does not have per vertex colors and color_mapping is on
@@ -254,11 +263,34 @@ public:
 		have_new_mesh = true;
 		show_face = true;
 		show_wireframe = true;
+		compute_coordinates();
+		post_redraw();
+	}
+	void apply_transform_for_test() {
+		/*quat rz = quat(vec3(0, 0, 1), 25 * M_PI / 180);
+		quat rx = quat(vec3(1, 0, 0), -90 * M_PI / 180);
+		quat r_align = rx * rz;*/
+
+		mat3 r;
+		r.identity();
+		//r_align.put_matrix(r);
+		M.transform(r,vec3(0,0.6,0));
+		have_new_mesh = true;
 		post_redraw();
 	}
 	///
 	void randomize_coordinates() {
 		M.randomize_texcoordi();
+	}	///
+	void compute_coordinates() {
+		M.compute_texcoordi(rx,ry,h,quat(),vec3(0));
+		have_new_mesh = true;
+		post_redraw();
+	}
+	void compute_coordinates_with_rot_correction(quat alignq, vec3 alignt) {
+		M.compute_texcoordi(rx, ry, h, alignq, alignt);
+		have_new_mesh = true;
+		post_redraw();
 	}
 	///
 	void generate_demo_surface() {
@@ -729,6 +761,8 @@ public:
 	{
 		if (begin_tree_node("Meshing IO", show_face, true, "level=3")) {
 			connect_copy(add_button("read_mesh")->click, rebind(this, &vis_kit_meshes::load_mesh));
+			//apply_transform_for_test
+			connect_copy(add_button("apply_transform_for_test")->click, rebind(this, &vis_kit_meshes::apply_transform_for_test));
 			connect_copy(add_button("read_mesh_HE")->click, rebind(this, &vis_kit_meshes::read_mesh_and_construct_HEMesh));
 			connect_copy(add_button("write_mesh")->click, rebind(this, &vis_kit_meshes::write_to_obj));
 		}
@@ -736,11 +770,17 @@ public:
 			connect_copy(add_button("generate_demo_surface")->click, cgv::signal::rebind(this, &vis_kit_meshes::generate_demo_surface));
 			connect_copy(add_button("generate_dini_surface")->click, cgv::signal::rebind(this, &vis_kit_meshes::generate_dini_surface));
 			connect_copy(add_button("randomize_texcoordi")->click, rebind(this, &vis_kit_meshes::randomize_coordinates));
+			connect_copy(add_button("compute_coordinates")->click, rebind(this, &vis_kit_meshes::compute_coordinates));
+			add_member_control(this, "rx", rx, "value_slider", "min=-60;max=60;log=false;ticks=false;");
+			add_member_control(this, "ry", ry, "value_slider", "min=-60;max=60;log=false;ticks=false;");
+			add_member_control(this, "rz", h, "value_slider", "min=-60;max=60;log=false;ticks=false;");
 			connect_copy(add_button("apply_smoothing")->click, rebind(this, &vis_kit_meshes::apply_smoothing));
 			connect_copy(add_button("test_ray_highlight_triangle")->click, rebind(this, &vis_kit_meshes::test_ray_highlight_triangle));
 		}
 		if (begin_tree_node("Meshing Rendering", cull_mode, true, "level=3")) {
 			add_member_control(this, "cull mode", cull_mode, "dropdown", "enums='none,back,front'");
+			//use_texture
+			add_member_control(this, "use_texture", use_texture, "check");
 			add_member_control(this, "show_vertices", show_vertices, "check");
 			add_member_control(this, "show_face", show_face, "check");
 			add_member_control(this, "show_wireframe", show_wireframe, "check");
@@ -753,6 +793,7 @@ public:
 				align("\b");
 				end_tree_node(color_mapping);
 			}
+			add_member_control(this, "illumination", illumination_mode, "dropdown", "enums='none,one sided,two sided'");
 		}
 	}
 };
