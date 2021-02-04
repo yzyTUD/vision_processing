@@ -4,8 +4,8 @@ projectName="core_visual_computing";
 //referenceDeps = 0;
 projectGUID="ACC9344E-144E-4E1B-B1E3-0402F339D6FE";
 
-addIncDirs=[INPUT_DIR, CGV_DIR."/libs", CGV_DIR."/test", INPUT_DIR."/../proj_point_cloud_vr"];
-addProjectDirs=[CGV_DIR."/plugins", CGV_DIR."/libs", CGV_DIR."/test", INPUT_DIR."/../proj_point_cloud_vr"];
+addIncDirs=[INPUT_DIR, CGV_DIR."/libs", CGV_DIR."/test", INPUT_DIR."/../lib_point_cloud_kits"];
+addProjectDirs=[CGV_DIR."/plugins", CGV_DIR."/libs", CGV_DIR."/test", INPUT_DIR."/../lib_point_cloud_kits"];
 addProjectDeps=["cgv_utils", "cgv_type", "cgv_data", "cgv_base", "cgv_math",
 				"cgv_media", "cgv_gui", "cgv_render", "cmi_io",
 				"cgv_viewer", "cg_fltk", "crg_grid", "cg_ext", "cgv_gl", 
