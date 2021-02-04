@@ -1,0 +1,20 @@
+@=
+projectType="application_plugin";
+projectName="visual_computing_libigl";
+//referenceDeps = 0;
+projectGUID="F63C9F80-1825-4FB3-B0BA-D1B03BEA5A90";
+
+addIncDirs=[INPUT_DIR, CGV_DIR."/libs", CGV_DIR."/test", INPUT_DIR."/../proj_point_cloud_vr"];
+addProjectDirs=[CGV_DIR."/plugins", CGV_DIR."/libs", CGV_DIR."/test", INPUT_DIR."/../proj_point_cloud_vr"];
+addProjectDeps=["cgv_utils", "cgv_type", "cgv_data", "cgv_base", "cgv_math",
+				"cgv_media", "cgv_gui", "cgv_render", "cmi_io",
+				"cgv_viewer", "cg_fltk", "crg_grid", "cg_ext", "cgv_gl", 
+				"crg_vr_view", 
+				"cg_vr", "vr_emulator","point_cloud_vr","openvr_driver"];
+//
+
+addCommandLineArguments=[
+	'config:"'.INPUT_DIR.'/config.def"',
+	after("type(shader_config):shader_path='".INPUT_DIR.";".CGV_DIR."/plugins/crg_vr_view;".CGV_DIR."/libs/cgv_gl/glsl'","cg_fltk")
+];
+addSharedDefines=["VR_TEST_EXPORTS"];
