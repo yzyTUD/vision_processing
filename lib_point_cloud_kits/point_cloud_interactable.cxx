@@ -60,7 +60,7 @@ bool point_cloud_interactable::open(const std::string& fn)
 	}
 	// manage vars after change of the point cloud 
 	on_point_cloud_change_callback(PCC_NEW_POINT_CLOUD);
-	update_file_name(fn);
+	//update_file_name(fn);
 	return true;
 }
 
@@ -173,18 +173,39 @@ void point_cloud_interactable::write_pc_to_file() {
 bool point_cloud_interactable::read_pc_campose(cgv::render::context& ctx, quat initialcamq) {
 	std::string f = cgv::gui::file_open_dialog("Open", "Point Cloud:*");
 	pc.read_campose(f);
-	//alig with cgv fram
-	align_leica_scans_with_cgv();
-	// prepare for rendering 
-	for (int i = 0; i < pc.num_of_shots; i++) {
-		vr_kit_image_renderer tmp_renderer;
-		std::string folder_name = cgv::utils::file::drop_extension(cgv::utils::file::get_file_name(f));
-		std::string panorama_fn = cgv::utils::file::get_path(f) + "/pano/apb_" + std::to_string(i + 1) + ".jpg";
-		std::cout << panorama_fn << std::endl; //pc.list_cam_rotation.at(i) //initialcamq * pc.list_cam_rotation.at(i)
-		tmp_renderer.bind_image_to_camera_position(ctx, panorama_fn, quat(), pc.list_cam_translation.at(i));
-		image_renderer_list.push_back(tmp_renderer);
+
+	if (render_camposes) {
+		//alig with cgv fram
+		align_leica_scans_with_cgv();
+		// prepare for rendering 
+		for (int i = 0; i < pc.num_of_shots; i++) {
+			vr_kit_image_renderer tmp_renderer;
+			std::string folder_name = cgv::utils::file::drop_extension(cgv::utils::file::get_file_name(f));
+			std::string panorama_fn = cgv::utils::file::get_path(f) + "/pano/apb_" + std::to_string(i + 1) + ".jpg";
+			std::cout << panorama_fn << std::endl; //pc.list_cam_rotation.at(i) //initialcamq * pc.list_cam_rotation.at(i)
+			tmp_renderer.bind_image_to_camera_position(ctx, panorama_fn, quat(), pc.list_cam_translation.at(i));
+			image_renderer_list.push_back(tmp_renderer);
+		}
 	}
+
 	return true;
+}
+
+bool point_cloud_interactable::check_valid_pc_and_campose()
+{
+	bool succ = pc.cam_posi.x() != -1000
+				&& pc.cam_posi.y() != -1000
+				&& pc.cam_posi.z() != -1000
+				&& pc.get_nr_points() == pc.num_of_points_in_campose
+				&& pc.has_cam_posi;
+	if (!succ) {
+		std::cout << "invalid! check following vars:" << std::endl;
+		std::cout << "pc.cam_posi: " << pc.cam_posi << std::endl;
+		std::cout << "pc.get_nr_points(): " << pc.get_nr_points() << std::endl;
+		std::cout << "pc.num_of_points_in_campose: " << pc.num_of_points_in_campose << std::endl;
+		std::cout << "pc.has_cam_posi: " << pc.has_cam_posi << std::endl;
+	}
+	return succ;
 }
 
 void point_cloud_interactable::apply_further_transformation(int which, quat q, vec3 t) {
@@ -197,14 +218,13 @@ void point_cloud_interactable::align_leica_scans_with_cgv() {
 	quat r_align = rx * rz;
 	for (auto& t : pc.list_cam_translation) {
 		r_align.rotate(t);
-		t = t + vec3(0, 0.6, 0);
 	}
 	for (auto& r : pc.list_cam_rotation) {
 		r = r_align * r;
 	}
 	pc.rotate(r_align);
 	// approximate 1m from ground 
-	pc.translate(vec3(0,1,0));
+	//pc.translate(vec3(0,1,0));
 }
 
 ///
@@ -944,6 +964,48 @@ void point_cloud_interactable::orient_normals_to_view_point_vr(vec3 cam_posi)
 	//}
 }
 
+void point_cloud_interactable::compute_feature_points()
+{
+	feature_points.clear();
+	ensure_tree_ds();
+	if (ng.empty())
+		build_neighbor_graph();
+	pc.create_features();
+	for (int i = 0; i < pc.get_nr_points(); i++) {
+		float d[3] = { 0,0,0 };
+		{
+			std::vector<Crd> weights;
+			std::vector<Pnt> points;
+			ne.compute_weights(i, weights, &points);
+			Nml new_nml;
+			cgv::math::estimate_normal_wls((unsigned)points.size(), points[0], &weights[0], new_nml, &d[0]);
+		}
+		Pnt eigen_val_vec = Pnt(d[0], d[1], d[2]);
+		pc.fea(i) = eigen_val_vec;
+		//std::cout << eigen_val_vec << std::endl;
+		if (d[0]>0.1 && d[1]>0.1 && d[2]>0.1)
+			feature_points.push_back(pc.pnt(i));
+	}
+	std::cout << "num of feature points computed: " << feature_points.size() << std::endl;
+
+	// put to boxes 
+	//vec3 box_ext = vec3(0.01);
+	//for (auto& p : feature_points) {
+	//	fea_box.push_back(box3(-box_ext,box_ext));
+	//	fea_box_color.push_back(rgb(0.6));
+	//	fea_box_trans.push_back(p);
+	//	fea_box_rot.push_back(quat());
+	//}
+
+	// normalize fea and map to color 
+	for (int i = 0; i < pc.get_nr_points(); i++) {
+		vec3 fea_vec = pc.fea(i);
+		fea_vec.normalize();
+		pc.clr(i) = Clr(float_to_color_component(fea_vec.x()), float_to_color_component(fea_vec.y()), float_to_color_component(fea_vec.z()));
+	}
+	on_point_cloud_change_callback(PCC_COLORS);
+}
+
 /// call this before using the view ptr for the first time
 bool point_cloud_interactable::ensure_view_pointer()
 {
@@ -966,7 +1028,7 @@ point_cloud_interactable::point_cloud_interactable() : ne(pc, ng)
 	do_append = false;
 	do_auto_view = true;
 
-	show_nmls = true;
+	show_nmls = false;
 	interact_point_step = 1;
 	show_point_count = 0;
 	show_point_start = 0;
@@ -1140,15 +1202,17 @@ void point_cloud_interactable::draw(cgv::render::context& ctx)
 		for (auto render_kit : image_renderer_list) {
 			render_kit.draw(ctx);
 		}
-		//std::vector<box3> boxlist;
-		//for (auto t : pc.list_cam_translation) {
-		//	boxlist.push_back(box3(t - vec3(0.1), t + vec3(0.1)));
-		//}
-		//auto& sr = ref_box_renderer(ctx);
-		////sr.set_render_style(pc.brs);
-		//sr.set_box_array(ctx, boxlist);
-		//sr.set_color_array(ctx, pc.list_clrs);
-		//sr.render(ctx, 0, boxlist.size());
+	}
+
+	// render feature points 
+	if (feature_points.size() > 0 && fea_box.size() > 0) {
+		cgv::render::box_renderer& renderer = cgv::render::ref_box_renderer(ctx);
+		renderer.set_render_style(fea_style);
+		renderer.set_box_array(ctx, fea_box);
+		renderer.set_color_array(ctx, fea_box_color);
+		renderer.set_translation_array(ctx, fea_box_trans);
+		renderer.set_rotation_array(ctx, fea_box_rot);
+		renderer.render(ctx, 0, fea_box.size());
 	}
 }
 

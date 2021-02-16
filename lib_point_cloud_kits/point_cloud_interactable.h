@@ -70,44 +70,7 @@ class CGV_API point_cloud_interactable :
 public:
 	/**@name file io */
 	//@{
-	///
-	int num_of_pcs = 0;
-	///
-	std::vector<int> frame_pointers;
-	///
-	std::vector<Pnt> frame_cam_posi;
-
-	/// used for ICP 
-	point_cloud pc_last;
-	///
-	point_cloud pc_to_be_append;
-	///
-	point_cloud tmppc;
-	///
-	bool is_highlighting = false;
-	///
-	cgv::pointcloud::ICP icp;
-	/// tmp source and target pcs 
-	point_cloud crs_srs_pc;
-	///
-	point_cloud crs_tgt_pc;
-	///
-	point_cloud pc_last_subsampled;
-	///
-	point_cloud pc_to_be_append_subsampled;
-	///
-	point_cloud_types::Mat rotation;
-	///
-	point_cloud_types::Dir translation;
-	///
-	cgv::pointcloud::ICP::Sampling_Type icp_filter_type = cgv::pointcloud::ICP::RANDOM_SAMPLING;
-	///
-	std::vector<std::queue<int>> region_id_and_seeds;
-	///
-	std::vector<vec3> region_id_and_nml;
-
-	std::vector<vr_kit_image_renderer> image_renderer_list;
-
+	//@name point cloud IO 
 	/// path of last opened or saved file
 	std::string data_path;
 	/// file name without path nor extension of current file
@@ -140,14 +103,21 @@ public:
 	bool read_pc_with_dialog_queue(bool append);
 
 	bool read_pc_subsampled_with_dialog();
+
 	/// read .campose file 
+	///
+	bool render_camposes = false;
+	///
 	bool read_pc_campose(cgv::render::context& ctx, quat initialcamq);
-
+	///
+	bool check_valid_pc_and_campose();
+	///
 	void apply_further_transformation(int which, quat q, vec3 t);
-
+	///
 	void align_leica_scans_with_cgv();
-
+	///
 	void write_pc_to_file();
+	///
 	
 	/*region growing related*/
 	///
@@ -178,7 +148,7 @@ public:
 	void collect_to_subsampled_pcs();
 	///
 	void fill_subsampled_pcs_with_cur_pc_as_a_test();
-	///
+	/// perform ICP algo. with given source and target clouds 
 	void register_with_subsampled_pcs(point_cloud& _pc);
 	///
 	void subsampling_target(Pnt& posi, float& radii, bool confirmed);
@@ -240,6 +210,7 @@ public:
 	/**@name normal computation and orientation*/
 	//@{
 	bool reorient_normals;
+	//
 	void compute_normals();
 	void recompute_normals();
 	void toggle_normal_orientations();
@@ -248,10 +219,43 @@ public:
 	void orient_normals_to_view_point_vr(vec3 cam_posi);
 	//@}
 
+	/**@name computing feature points */
+	std::vector<vec3> feature_points;
+	void compute_feature_points();
+	cgv::render::box_render_style fea_style;
+	std::vector<box3> fea_box;
+	std::vector<rgb> fea_box_color;
+	std::vector<vec3> fea_box_trans;
+	std::vector<quat> fea_box_rot;
+
+	// add here 
+
 	/// pointer to instance that defines the view
 	cgv::render::view* view_ptr;
 	/// call this before using the view ptr for the first time
 	bool ensure_view_pointer();
+
+	// IO related vars 
+	int num_of_pcs = 0;
+	std::vector<int> frame_pointers;
+	std::vector<Pnt> frame_cam_posi;
+
+	/// ICP related vars 
+	point_cloud pc_last;
+	point_cloud pc_to_be_append;
+	point_cloud tmppc;
+	bool is_highlighting = false;
+	cgv::pointcloud::ICP icp;
+	point_cloud crs_srs_pc; // tmp source and target pcs 
+	point_cloud crs_tgt_pc;
+	point_cloud pc_last_subsampled;
+	point_cloud pc_to_be_append_subsampled;
+	point_cloud_types::Mat rotation;
+	point_cloud_types::Dir translation;
+	cgv::pointcloud::ICP::Sampling_Type icp_filter_type = cgv::pointcloud::ICP::RANDOM_SAMPLING;
+	std::vector<std::queue<int>> region_id_and_seeds;
+	std::vector<vec3> region_id_and_nml;
+	std::vector<vr_kit_image_renderer> image_renderer_list;
 
 public:
 	/// construct viewer with default configuration

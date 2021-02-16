@@ -332,9 +332,12 @@ void point_cloud::clear_all() {
 
 void point_cloud::clear_campose() {
 	num_of_shots = 0;
+	num_of_points_in_campose = 0;
 	list_point_idx.clear();
 	list_cam_rotation.clear();
 	list_cam_translation.clear();
+	has_cam_posi = false;
+	cam_posi = cgv::math::fvec<float, 3>(-1000);
 }
 void point_cloud::clear()
 {
@@ -1320,9 +1323,86 @@ bool point_cloud::read_pts(const std::string& file_name)
 	return true;
 }
 
+/// read ascii file with lines of the form x y z I r g b intensity and color values, where intensity values are ignored
+/// from_IXD: positions colors normals sf 
+/// from_CC:  positions colors sf normals
+bool point_cloud::read_txt(const std::string& file_name)
+{
+	string content;
+	cgv::utils::stopwatch watch;
+	if (!cgv::utils::file::read(file_name, content, true))
+		return false;
+	std::cout << "read data from disk "; watch.add_time();
+	vector<line> lines;
+	split_to_lines(content, lines);
+	std::cout << "split data into " << lines.size() << " lines. ";	watch.add_time();
+
+	bool do_parse = false;
+	unsigned i;
+	for (i = 0; i < lines.size(); ++i) {
+		if (lines[i].empty())
+			continue;
+
+		if (false) {
+			Pnt p;
+			int c[3], I;
+			char tmp = lines[i].end[0];
+			content[lines[i].end - content.c_str()] = 0;
+			if (sscanf(lines[i].begin, "%f %f %f %d %d %d %d", &p[0], &p[1], &p[2], &I, c, c + 1, c + 2) == 7) {
+				P.push_back(p);
+				C.push_back(Clr(byte_to_color_component(c[0]), byte_to_color_component(c[1]), byte_to_color_component(c[2])));
+			}
+			content[lines[i].end - content.c_str()] = tmp;
+		}
+		else {
+			vector<token> numbers;
+			tokenizer(lines[i]).bite_all(numbers);
+			double values[10];
+			unsigned n = min(10, (int)numbers.size());
+			unsigned j;
+			for (j = 0; j < n; ++j) {
+				if (!is_double(numbers[j].begin, numbers[j].end, values[j]))
+					break;
+			}
+			if (j >= 3)
+				P.push_back(Pnt((Crd)values[0], (Crd)values[1], (Crd)values[2]));
+			if (j >= 6) {
+				C.push_back(Clr(
+					float_to_color_component(values[3]), 
+					float_to_color_component(values[4]), 
+					float_to_color_component(values[5])));
+				has_clrs = true;
+			}
+			if (from_CC) {
+				// values[6] is ignored 
+				if (j >= 10) {
+					N.push_back(Nml((Crd)values[7], (Crd)values[8], (Crd)values[9]));
+					has_nmls = true;
+				}
+			}
+			else{
+				if (j >= 9) {
+					N.push_back(Nml((Crd)values[6], (Crd)values[7], (Crd)values[8]));
+					has_nmls = true;
+				}
+			}
+
+		}
+		if ((P.size() % 100000) == 0)
+			cout << "read " << P.size() << " points" << endl;
+	}
+
+	std::cout << "points: " << std::endl;
+	std::cout << "has_clrs: " << has_clrs << std::endl;
+	std::cout << "has_nmls: " << has_nmls << std::endl;
+	std::cout << "has_clrs: " << has_clrs << std::endl;
+
+	watch.add_time();
+	return true;
+}
 
 /// read ascii file with lines of the form x y z I r g b intensity and color values, where intensity values are ignored
-bool point_cloud::read_txt(const std::string& file_name)
+bool point_cloud::read_txt_dev(const std::string& file_name)
 {
 	string content;
 	cgv::utils::stopwatch watch;
@@ -1560,7 +1640,6 @@ bool point_cloud::read_campose(const std::string& file_name) {
 	std::vector<token>& t = tokens;
 	cgv::math::fvec<double, 4> rot(0, 0, 0, 0);
 	cgv::math::fvec<double, 3> trans(0, 0, 0);
-	int num_of_points_total = 0;
 	for (int i = 0; i < lines.size(); ++i) {
 		if (lines[i].empty())
 			continue;
@@ -1581,7 +1660,7 @@ bool point_cloud::read_campose(const std::string& file_name) {
 					int n;
 					is_integer(t[1].begin, t[1].end, n);
 					list_point_idx.push_back(n);
-					num_of_points_total += n;
+					num_of_points_in_campose += n;
 					break;
 				}
 			case 'r':
@@ -1604,19 +1683,26 @@ bool point_cloud::read_campose(const std::string& file_name) {
 		tokens.clear();
 	}
 	
-	std::cout << "num_of_points_total = " << num_of_points_total << std::endl;
-	std::cout << "num_of_shots = " << this->num_of_shots << std::endl;
-	for (int i = 0; i < num_of_shots; i++) 
-		list_clrs.push_back(cgv::media::color<float, cgv::media::RGB>(0,1,0));
-	srs.radius = 0.1f;
+	std::cout << "num_of_points_total = " << num_of_points_in_campose << std::endl;
+	std::cout << "num_of_shots = " << num_of_shots << std::endl;
+	/// align to the frame of the first point? should we do this? 
 	//cgv::math::quaternion<float> inv_quat = list_cam_rotation.at(0).inverse();
-	// align to the frame of the first point 
 	//for (int i = 1; i < num_of_shots; i++) {
 	//	list_cam_rotation.at(i) = inv_quat * list_cam_rotation.at(i);
 	//	inv_quat.rotate(list_cam_translation.at(i));
 	//}
-	list_cam_rotation.at(0) = cgv::math::quaternion<float>(); // uv test 
-	render_cams = true;
+	//list_cam_rotation.at(0) = cgv::math::quaternion<float>(); // uv test 
+	// for normal computing 
+	if (list_cam_translation.size() > 0) {
+		has_cam_posi = true;
+		cam_posi = list_cam_translation.at(0);
+	}
+	// for rendering 
+	for (int i = 0; i < num_of_shots; i++) 
+		list_clrs.push_back(cgv::media::color<float, cgv::media::RGB>(0,1,0));
+	srs.radius = 0.1f;
+	render_cams = false;
+
 	return true;
 }
 

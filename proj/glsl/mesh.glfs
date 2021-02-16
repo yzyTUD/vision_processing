@@ -23,6 +23,8 @@ void update_normal(inout vec3 normal, in int side);
 void main()
 {
 	vec3 normal = normalize(normal_eye);
+	//if(true) // flat shading support 
+		//normal = normalize(cross(dFdx(position_eye), dFdy(position_eye)));
 	int side;
 	if (!keep_this_side(position_eye, normal, side))
 		discard;

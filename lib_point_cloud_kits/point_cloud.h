@@ -221,14 +221,8 @@ protected:
 	bool read_pts(const std::string& file_name);
 	///
 	bool read_txt(const std::string& file_name);
-	/// downsampling according to a rate from 0 to 1 
-	void downsampling(int scale);
 
-	void downsampling_expected_num_of_points(int num_of_points_wanted);
-	///
-	bool read_pts_subsampled(const std::string& file_name, float percentage);
-	///
-	bool read_campose(const std::string& file_name);
+	bool read_txt_dev(const std::string& file_name);
 	/// write ascii format, see read_ascii for format description
 	bool write_ascii(const std::string& file_name, bool write_nmls = true) const;
 	/// write binary format, see read_bin for format description
@@ -241,6 +235,16 @@ protected:
 	bool write_ptsn(const std::string& file_name) const;
 public:
 	///
+	bool from_CC = false;
+	/// downsampling according to a rate from 0 to 1 
+	void downsampling(int scale);
+
+	void downsampling_expected_num_of_points(int num_of_points_wanted);
+	///
+	bool read_pts_subsampled(const std::string& file_name, float percentage);
+	///
+	bool read_campose(const std::string& file_name);
+	///
 	bool has_cam_posi = false;
 	///
 	bool has_selection = false;
@@ -248,7 +252,8 @@ public:
 	cgv::math::fvec<float, 3> cam_posi;
 
 	/// read from .campose file, 10.01.2021
-	int num_of_shots;
+	int num_of_shots; 
+	int num_of_points_in_campose;
 	///
 	std::vector<int> list_point_idx;
 	///

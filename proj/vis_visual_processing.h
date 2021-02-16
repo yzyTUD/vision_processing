@@ -78,6 +78,9 @@ protected:
 	float label_size;
 	rgb label_color;
 
+	// for batch operations 
+	std::vector<std::string> f_names;
+
 private:
 	bool label_outofdate; // whether label texture is out of date
 
@@ -163,6 +166,7 @@ protected:
 	point_cloud_interactable* one_shot_360pc = new point_cloud_interactable();
 	point_cloud_interactable* stored_cloud = new point_cloud_interactable();
 	bool render_pc = false;
+	bool render_skybox = true;
 	bool force_correct_num_pcs = true;
 	bool direct_write = false;
 	bool render_img = false;
@@ -177,12 +181,15 @@ protected:
 
 	vr_kit_roller_coaster_1* roller_coaster_kit_1 = nullptr; 
 	vis_kit_meshes* mesh_kit = nullptr;
+	vis_kit_meshes* mesh_kit_2 = nullptr;
 	vr_kit_draw* draw_kit = nullptr; 
 	vr_kit_motioncap* motioncap_kit = nullptr; 
 	vr_kit_manipulation* manipulation_kit = nullptr;
 	vr_kit_imagebox* imagebox_kit = nullptr;
 	vis_kit_selection* selection_kit = nullptr;
 
+	std::vector<vec3> point_and_cam;
+	std::vector<rgb> point_and_cam_colors;
 
 public:
 
@@ -229,6 +236,47 @@ public:
 		data_ptr->pick_points.push_back(vec3(1));
 		data_ptr->pick_colors.push_back(rgb(1, 1, 0));
 		pick_point_index = 0;
+
+		point_and_cam.push_back(vec3(0, 0, 0));
+		point_and_cam.push_back(vec3(1));
+
+		point_and_cam.push_back(vec3(0, 0, 0));
+		point_and_cam.push_back(vec3(1));
+
+		point_and_cam.push_back(vec3(0, 0, 0));
+		point_and_cam.push_back(vec3(1));
+
+		point_and_cam.push_back(vec3(0, 0, 0));
+		point_and_cam.push_back(vec3(1));
+
+
+		point_and_cam_colors.push_back(rgb(0, 1, 0));
+		point_and_cam_colors.push_back(rgb(0, 1, 0));
+
+		point_and_cam_colors.push_back(rgb(1, 0, 0));
+		point_and_cam_colors.push_back(rgb(1, 0, 0));
+
+		point_and_cam_colors.push_back(rgb(1, 0, 1));
+		point_and_cam_colors.push_back(rgb(1, 0, 1));
+
+		point_and_cam_colors.push_back(rgb(1, 1, 0));
+		point_and_cam_colors.push_back(rgb(1, 1, 0));
+	}
+	/// selection tool, pick points from 0-6
+	bool on_pick_face(const cgv::gui::mouse_event& me)
+	{
+		if (!view_ptr)
+			return false;
+		if (!data_ptr)
+			return false;
+		if (pick_point_index == -1)
+			return false;
+		dvec3 pick_point;
+		double window_z;
+		if (!get_world_location(me.get_x(), me.get_y(), *view_ptr, pick_point, &window_z))
+			return false; //window_z > 0.999
+		mesh_kit->pick_face(pick_point);
+		return true;
 	}
 	/// selection tool, pick points from 0-6
 	bool on_pick(const cgv::gui::mouse_event& me)
@@ -241,9 +289,8 @@ public:
 			return false;
 		dvec3 pick_point;
 		double window_z;
-		if (!get_world_location(me.get_x(), me.get_y(), *view_ptr, pick_point, &window_z) ||
-			window_z > 0.999)
-			return false;
+		if (!get_world_location(me.get_x(), me.get_y(), *view_ptr, pick_point, &window_z))
+			return false; //window_z > 0.999
 		//pick_point_index indicates which to pick from 0-6 eg.
 		bool already_picked = false;
 		double pick_dist = 0;
@@ -264,6 +311,7 @@ public:
 			data_ptr->pick_points.push_back(pick_point);
 			data_ptr->pick_colors.push_back(rgb(0, 1, 0));*/
 			data_ptr->pick_points[pick_point_index] = pick_point;
+			point_and_cam.at(pick_point_index * 2 + 1) = pick_point;
 			//pick_point_index++;
 			return true;
 		}
@@ -344,6 +392,14 @@ public:
 	void print_cloud_info();
 	///
 	void auto_conduct_nml_estimation_leica();
+
+	void add_to_file_list();
+
+	void clean_file_list();
+
+	bool batch_compute_nmls_given_file_list();
+
+	bool batch_read_pc_queue_and_downsampling();
 
 	void clean_all_pcs();
 
@@ -427,6 +483,8 @@ public:
 		//initial_cam_alinmentq
 		mesh_kit->compute_coordinates_with_rot_correction(rotq, translation_vec);
 	}
+
+	void compute_feature_points() { point_cloud_kit->compute_feature_points(); post_redraw(); }
 };
 
 ///@}

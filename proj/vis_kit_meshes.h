@@ -70,6 +70,8 @@ public:
 	float rx = 0;
 	float ry = 0;
 	float rz = 0;
+	float sy = 0.5;
+	float oy = 0.0;
 	float h = 0;
 
 public:
@@ -263,7 +265,7 @@ public:
 		have_new_mesh = true;
 		show_face = true;
 		show_wireframe = true;
-		compute_coordinates();
+		//compute_coordinates();
 		post_redraw();
 	}
 	void apply_transform_for_test() {
@@ -281,34 +283,40 @@ public:
 	///
 	void randomize_coordinates() {
 		M.randomize_texcoordi();
-	}	///
+	}	
+	///
 	void compute_coordinates() {
-		M.compute_texcoordi(rx,ry,h,quat(),vec3(0));
+		M.compute_texcoordi(rx,ry,rz,vec3(0,sy,oy));
 		have_new_mesh = true;
 		post_redraw();
 	}
+	/// not used 
 	void compute_coordinates_with_rot_correction(quat alignq, vec3 alignt) {
-		M.compute_texcoordi(rx, ry, h, alignq, alignt);
+		/*M.compute_texcoordi(rx, ry, h, alignq, alignt);
 		have_new_mesh = true;
-		post_redraw();
+		post_redraw();*/
 	}
 	///
 	void generate_demo_surface() {
 		M.clear();
-		// vec3(1,1,0),vec3(1,-1,0),vec3(-1,1,0),vec3(-1,-1,-1)
 		std::vector<vec3> Pnts;
+		int vi = 0;
 		Pnts.push_back(vec3(1, 1, 0));
 		Pnts.push_back(vec3(1, -1, 0));
 		Pnts.push_back(vec3(-1, 1, 0));
-		Pnts.push_back(vec3(-1, -1, -1));
+		Pnts.push_back(vec3(-1, -1,0 ));
 
 		M.start_face();
-		for (auto p : Pnts) {
-			int vi = M.new_position(p);
-			M.new_corner(vi);
-		}
+		vi = M.new_position(Pnts[0]); M.new_corner(vi);
+		vi = M.new_position(Pnts[2]); M.new_corner(vi);
+		vi = M.new_position(Pnts[1]); M.new_corner(vi);
+		M.start_face();
+		vi = M.new_position(Pnts[1]); M.new_corner(vi);
+		vi = M.new_position(Pnts[2]); M.new_corner(vi);
+		vi = M.new_position(Pnts[3]); M.new_corner(vi);
 
 		M.compute_vertex_normals();
+		M.compute_face_normals();
 
 		have_new_mesh = true;		
 		post_redraw();
@@ -546,6 +554,11 @@ public:
 		have_new_smoothingMesh = true;
 		post_redraw();
 	}
+	void pick_face(vec3 p) {
+		M.pick_face(p);
+		have_new_mesh = true;
+		post_redraw();
+	}
 
 	///////////////////// HEMesh usage ////////////////
 	void test_ray_highlight_triangle() {
@@ -557,6 +570,11 @@ public:
 			std::vector<HE_Vertex*> vertices_of_face = he->GetVerticesForFace(face);
 			add_face_to_smoothingMesh(face);
 		}
+	}
+	void coordi_correction() {
+		M.coordi_correction_leica();
+		have_new_mesh = true;
+		post_redraw();
 	}
 	/// smoothing of the whole mesh
 	void apply_smoothing() {
@@ -773,8 +791,13 @@ public:
 			connect_copy(add_button("compute_coordinates")->click, rebind(this, &vis_kit_meshes::compute_coordinates));
 			add_member_control(this, "rx", rx, "value_slider", "min=-60;max=60;log=false;ticks=false;");
 			add_member_control(this, "ry", ry, "value_slider", "min=-60;max=60;log=false;ticks=false;");
-			add_member_control(this, "rz", h, "value_slider", "min=-60;max=60;log=false;ticks=false;");
+			add_member_control(this, "rz", rz, "value_slider", "min=-60;max=60;log=false;ticks=false;");
+			add_member_control(this, "sy", sy, "value_slider", "min=-1;max=1;log=false;ticks=false;");
+			add_member_control(this, "oy", oy, "value_slider", "min=-1;max=1;log=false;ticks=false;");
+			
 			connect_copy(add_button("apply_smoothing")->click, rebind(this, &vis_kit_meshes::apply_smoothing));
+			//
+			connect_copy(add_button("coordi_correction")->click, rebind(this, &vis_kit_meshes::coordi_correction));
 			connect_copy(add_button("test_ray_highlight_triangle")->click, rebind(this, &vis_kit_meshes::test_ray_highlight_triangle));
 		}
 		if (begin_tree_node("Meshing Rendering", cull_mode, true, "level=3")) {
