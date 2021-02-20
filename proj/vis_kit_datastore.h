@@ -99,6 +99,7 @@ public:
 		p3 = p3 + posi;
 		p4 = p4 + posi;
 
+		// default?
 		cgv::render::shader_program& prog = ctx.ref_surface_shader_program(true);
 		int pi = prog.get_position_index();
 		int ni = prog.get_normal_index();
@@ -259,9 +260,17 @@ public:
 	std::vector<vec3> righthand_posi_list;
 	std::vector<vec3> righthand_dir_list;
 
+	float paratone_1 = 0.2;
+	float paratone_2 = 0.2;
+	float paratone_3 = 30;
+	float paratone_4;
+	float paratone_5;
+	float paratone_6;
+	float paratone_7;
+
 
 	vis_kit_data_store_shared() {
-		initialize_trackable_list();
+		//initialize_trackable_list();
 		//supersampling_bbox = box3(vec3(-2,0,0),vec3(2,1,1));
 		mode = interaction_mode::SUPERSAMPLING_DRAW;
 	}

@@ -104,7 +104,7 @@ void point_cloud_interactable::supersampling_with_bbox(box3 range_as_box) {
 	// store original pc 
 	pc_to_be_append = oripc;
 	pc_to_be_append.subsampling_with_bbox(range_as_box);
-	pc.append(pc_to_be_append);
+	pc.append(pc_to_be_append); // should be pc.smart_append_skip_equal(pc_to_be_append);
 	std::cout << "points now:" << pc.get_nr_points() << std::endl;
 	on_point_cloud_change_callback(PCC_POINTS_RESIZE);
 	post_redraw();
@@ -125,7 +125,7 @@ void point_cloud_interactable::render_with_fullpc() {
 	// keep the changes in current pc!, preform a position matching for the points? 
 	point_cloud modipc;
 	//modipc = pc;
-	//oripc.smart_append(modipc); // smart_overwrite_append
+	//oripc.smart_append_overwrite_equal(modipc); // smart_overwrite_append
 	pc = oripc;
 	std::cout << "points now:" << pc.get_nr_points() << std::endl;
 	on_point_cloud_change_callback(PCC_NEW_POINT_CLOUD);

@@ -265,6 +265,7 @@ bool visual_processing::init(cgv::render::context& ctx)
 	if (manipulation_kit != nullptr)manipulation_kit->set_data_ptr(data_ptr);
 	if (imagebox_kit != nullptr) imagebox_kit->set_data_ptr(data_ptr);
 	if (selection_kit!=nullptr) selection_kit->set_data_ptr(data_ptr);
+	if (hmbgui_kit != nullptr) hmbgui_kit->set_data_ptr(data_ptr);
 
 	// set the context ptrs 
 	if (selection_kit != nullptr) selection_kit->set_context_str(get_context());
@@ -290,6 +291,7 @@ bool visual_processing::init(cgv::render::context& ctx)
 bool visual_processing::handle(cgv::gui::event& e)
 {
 	if (b_interactable != nullptr)b_interactable->handle(e);
+	if (hmbgui_kit != nullptr)hmbgui_kit->handle(e);
 	if (teleportation_kit != nullptr)teleportation_kit->handle(e);
 	if (draw_kit != nullptr)draw_kit->handle(e);
 	if (motioncap_kit != nullptr) motioncap_kit->handle(e);
@@ -363,6 +365,7 @@ void visual_processing::clear(cgv::render::context& ctx)
 void visual_processing::init_frame(cgv::render::context& ctx)
 {
 	b_interactable->init_frame(ctx);
+	hmbgui_kit->init_frame(ctx);
 	data_ptr->point_cloud_kit->init_frame(ctx);
 	one_shot_360pc->init_frame(ctx);
 	stored_cloud->init_frame(ctx);
@@ -374,6 +377,7 @@ void visual_processing::draw(cgv::render::context& ctx)
 	if(render_skybox)
 		if (skybox_kit) skybox_kit->draw(ctx);
 	if (b_interactable) b_interactable->draw(ctx);
+	if (hmbgui_kit) hmbgui_kit->draw(ctx);
 	if (render_pc) data_ptr->point_cloud_kit->draw(ctx);
 	if (roller_coaster_kit_1) roller_coaster_kit_1->draw(ctx);
 	if (draw_kit!=nullptr) draw_kit->render_trajectory(ctx);
@@ -630,6 +634,13 @@ void visual_processing::load_image_from_bin_files() {
 
 void visual_processing::create_gui() {
 	add_decorator("visual_processing_main", "heading", "level=2");
+	//paratone_1
+	add_member_control(this, "paratone_1", data_ptr->paratone_1, "value_slider", "min=-1;max=1;log=false;ticks=true;");
+	add_member_control(this, "paratone_2", data_ptr->paratone_2, "value_slider", "min=-1;max=1;log=false;ticks=true;");
+	add_member_control(this, "paratone_3", data_ptr->paratone_3, "value_slider", "min=-1;max=1;log=false;ticks=true;");
+	add_member_control(this, "paratone_4", data_ptr->paratone_4, "value_slider", "min=-1;max=1;log=false;ticks=true;");
+	add_member_control(this, "paratone_5", data_ptr->paratone_5, "value_slider", "min=-1;max=1;log=false;ticks=true;");
+
 	connect_copy(add_button("read_pc")->click, rebind(this, &visual_processing::read_pc));
 	add_member_control(this, "from_CC_txt", data_ptr->point_cloud_kit->pc.from_CC, "check");
 	connect_copy(add_control("render_pc", render_pc, "check")->value_change, rebind(static_cast<drawable*>(this), &visual_processing::post_redraw));

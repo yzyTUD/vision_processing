@@ -41,6 +41,7 @@
 #include "vr_kit_imagebox.h"
 #include <vr_kit_light.h>
 #include "vis_kit_selection.h"
+#include "vr_kit_hmbgui.h"
 
 class visual_processing :
 	public cgv::base::node,
@@ -178,6 +179,7 @@ protected:
 
 	// all necessary kits 
 	boxgui_interactable* b_interactable = new boxgui_interactable();
+	vr_kit_hmbgui* hmbgui_kit = new vr_kit_hmbgui();
 	vr_kit_light* light_kit = new vr_kit_light();
 	vr_kit_skybox* skybox_kit = new vr_kit_skybox();
 	vr_kit_teleportation* teleportation_kit = new vr_kit_teleportation();

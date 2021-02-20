@@ -193,9 +193,6 @@ public:
 	cgv::signal::signal<int> s;
 	/// initialize rotation angle
 	boxgui_interactable() {
-		// construct boxgui v3  
-		//construct_handheld_gui();
-
 		// enum system fonts can assign font vars locally 
 		cgv::media::font::enumerate_font_names(font_names);
 		label_face_type = cgv::media::font::FFA_BOLD;
@@ -662,7 +659,7 @@ public:
 		for (auto btn : boxguibtns) {
 			if (btn.group == which_boxgui_group_is_going_to_be_rendered)
 				if (btn.use_label) {
-					// points for a label, y-z plane
+					// points for a label, x-y plane
 					vec3 p1(0.5 * btn.ext.x(), 0.5 * btn.ext.y(), 0);
 					vec3 p2(-0.5 * btn.ext.x(), 0.5 * btn.ext.y(), 0);
 					vec3 p3(0.5 * btn.ext.x(), -0.5 * btn.ext.y(), 0);
