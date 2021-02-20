@@ -161,11 +161,9 @@ protected:
 	quat initial_cam_alinmentq = quat(vec3(0, 1, 0), -115 * M_PI / 180);
 	quat addi_alignq = quat();
 
-	boxgui_interactable* b_interactable = new boxgui_interactable();
-	point_cloud_interactable* point_cloud_kit = new point_cloud_interactable();
 	point_cloud_interactable* one_shot_360pc = new point_cloud_interactable();
 	point_cloud_interactable* stored_cloud = new point_cloud_interactable();
-	bool render_pc = false;
+	bool render_pc = true;
 	bool render_skybox = true;
 	bool force_correct_num_pcs = true;
 	bool direct_write = false;
@@ -174,11 +172,18 @@ protected:
 	int num_of_points_wanted = 1;
 	int strategy = 1;
 
+	// cam rendering 
+	std::vector<vec3> point_and_cam;
+	std::vector<rgb> point_and_cam_colors;
+
+	// all necessary kits 
+	boxgui_interactable* b_interactable = new boxgui_interactable();
 	vr_kit_light* light_kit = new vr_kit_light();
 	vr_kit_skybox* skybox_kit = new vr_kit_skybox();
 	vr_kit_teleportation* teleportation_kit = new vr_kit_teleportation();
 	vis_kit_data_store_shared* data_ptr = new vis_kit_data_store_shared();
 
+	// optional kits 
 	vr_kit_roller_coaster_1* roller_coaster_kit_1 = nullptr; 
 	vis_kit_meshes* mesh_kit = nullptr;
 	vis_kit_meshes* mesh_kit_2 = nullptr;
@@ -187,9 +192,6 @@ protected:
 	vr_kit_manipulation* manipulation_kit = nullptr;
 	vr_kit_imagebox* imagebox_kit = nullptr;
 	vis_kit_selection* selection_kit = nullptr;
-
-	std::vector<vec3> point_and_cam;
-	std::vector<rgb> point_and_cam_colors;
 
 public:
 
@@ -371,6 +373,8 @@ public:
 
 	void read_campose();
 
+	void show_camposes();
+
 	void apply_further_transformation();
 
 	void align_leica_scans_with_cgv();
@@ -484,7 +488,12 @@ public:
 		mesh_kit->compute_coordinates_with_rot_correction(rotq, translation_vec);
 	}
 
-	void compute_feature_points() { point_cloud_kit->compute_feature_points(); post_redraw(); }
+	void compute_feature_points() { data_ptr->point_cloud_kit->compute_feature_points(); post_redraw(); }
+
+	void render_with_fullpc() { data_ptr->point_cloud_kit->render_with_fullpc(); }
+	void auto_downsampling() { data_ptr->point_cloud_kit->auto_downsampling(); }
+	void supersampling_with_bbox() { data_ptr->point_cloud_kit->supersampling_with_bbox(data_ptr->supersampling_bbox); }
+	void restore_supersampling() { data_ptr->point_cloud_kit->restore_supersampling(); }
 };
 
 ///@}

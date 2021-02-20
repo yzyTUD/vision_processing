@@ -398,6 +398,52 @@ bool point_cloud::get_next_shot(const point_cloud& pc) {
 	return true;
 }
 
+bool point_cloud::compare_these_two_points_posi(int i, int j, const point_cloud& the_other_pc) {
+	float threshold = 1e-7;
+	bool equal_posi = ((P.at(i).x() - the_other_pc.pnt(j).x()) < threshold) &&
+			((P.at(i).y() - the_other_pc.pnt(j).y()) < threshold) &&
+			((P.at(i).z() - the_other_pc.pnt(j).z()) < threshold);
+	return equal_posi;
+}
+
+bool point_cloud::compare_these_two_points_nml(int i, int j, const point_cloud& the_other_pc) {
+	float threshold = 1e-7;
+	bool equal_normal = true;
+	if (has_nmls) {
+		equal_normal = ((N.at(i).x() - the_other_pc.nml(j).x()) < 1e-6) &&
+			((N.at(i).y() - the_other_pc.nml(j).y()) < 1e-6) &&
+			((N.at(i).z() - the_other_pc.nml(j).z()) < 1e-6);
+	}
+	return equal_normal;
+}
+
+void point_cloud::smart_append(const point_cloud& pc) {
+	if (pc.get_nr_points() == 0)
+		return;
+	has_selection = pc.has_selection;
+	has_nmls = pc.has_normals();
+	has_clrs = pc.has_colors();
+	has_texcrds = pc.has_texture_coordinates();
+
+	for (int i = 0; i < P.size(); i++) {
+		for (int j = 0; j < pc.get_nr_points(); j++) {
+			// normal changed, update nml 
+			if (compare_these_two_points_posi(i, j, pc) && !compare_these_two_points_nml(i, j, pc)) {
+				// must has nml. if (has_normals())
+				N.at(i) = pc.nml(j);
+			}
+			// if a new point added 
+			if (!compare_these_two_points_posi(i, j, pc)) {
+				P.push_back(pc.pnt(j));
+				if (has_nmls && pc.has_normals())
+					N.push_back(pc.nml(j));
+			}
+		}
+	}
+
+	box_out_of_date = true;
+}
+
 /// append another point cloud
 void point_cloud::append(const point_cloud& pc)
 {
@@ -468,6 +514,76 @@ void point_cloud::append(const point_cloud& pc)
 		}
 	}
 	std::copy(pc.P.begin(), pc.P.end(), P.begin() + old_n);
+	box_out_of_date = true;
+}
+
+void point_cloud::preserve_bounded_points_with_drawn_data(std::vector<Pnt> positions, std::vector<Dir> dirs) {
+	// req: clockwise, 4 points normally 
+	std::cout << "computing bounded points..." << std::endl;
+	std::cout << "points used: "<< positions.size() << std::endl;
+	for (int i = 1; i < positions.size(); i++) {
+		Dir pointdir = positions.at(i) - positions.at(i - 1);
+		Dir controllerdir = dirs.at(i - 1);
+		Dir nmldir = cross(controllerdir,pointdir);
+		// quick test 
+		preserve_with_clip_plane(nmldir,positions.at(i-1));
+		// spec. at the last one 
+		if (i == positions.size() - 1) {
+			pointdir = positions.at(0) - positions.at(i);
+			controllerdir = dirs.at(i);
+			nmldir = cross(controllerdir, pointdir);
+			preserve_with_clip_plane(nmldir, positions.at(i));
+		}
+	}
+}
+
+void point_cloud::preserve_with_clip_plane(Dir cur_plane_normal, Pnt a_point_on_the_plane) {
+	vector<Pnt> tmp_P;
+	vector<Clr> tmp_C;
+	vector<Nml> tmp_N;
+
+	for (int i = 0; i < P.size(); i++) {
+		if (dot((P.at(i) - a_point_on_the_plane), cur_plane_normal) > 0) {
+			// preserve if on the same side 
+			tmp_P.push_back(P.at(i));
+			if (has_colors())
+				tmp_C.push_back(C.at(i));
+			if (has_normals())
+				tmp_N.push_back(N.at(i));
+		}
+	}
+
+	P = tmp_P;
+	if (has_colors())
+		C = tmp_C;
+	if (has_normals())
+		N = tmp_N;
+
+	box_out_of_date = true;
+}
+
+void point_cloud::del_with_clip_plane(Dir cur_plane_normal, Pnt a_point_on_the_plane) {
+	vector<Pnt> tmp_P;
+	vector<Clr> tmp_C;
+	vector<Nml> tmp_N;
+
+	for (int i = 0; i < P.size(); i++) {
+		if (dot((P.at(i) - a_point_on_the_plane), cur_plane_normal) < 0) {
+			// preserve if not on the same side 
+			tmp_P.push_back(P.at(i));
+			if (has_colors())
+				tmp_C.push_back(C.at(i));
+			if (has_normals())
+				tmp_N.push_back(N.at(i));
+		}
+	}
+	
+	P = tmp_P;
+	if (has_colors())
+		C = tmp_C;
+	if (has_normals())
+		N = tmp_N;
+
 	box_out_of_date = true;
 }
 
@@ -1506,7 +1622,6 @@ void point_cloud::downsampling_expected_num_of_points(int num_of_points_wanted) 
 		tmp_N.resize(num_of_points_wanted);
 
 	for (int i = 0; i < num_of_points_wanted; i++) {
-		// just sample once, not three times 
 		int r_idx = d(g) * P.size();
 		tmp_P[i] = P.at(r_idx);
 		if (has_colors()) 
@@ -1561,6 +1676,36 @@ void point_cloud::downsampling(int step) {
 		C.resize(tmp_C.size());
 		C = tmp_C;
 	}
+
+	box_out_of_date = true;
+}
+
+void point_cloud::subsampling_with_bbox(box3 b)
+{
+	if (!b.is_valid()) {
+		std::cout << "bbox not valid!" << std::endl;
+		return;
+	}
+
+	vector<Pnt> tmp_P;
+	vector<Clr> tmp_C;
+	vector<Nml> tmp_N;
+
+	for (int i = 0; i < P.size(); i++) {
+		if (b.inside(P.at(i))) {
+			tmp_P.push_back(P.at(i));
+			if (has_colors())
+				tmp_C.push_back(C.at(i));
+			if (has_normals())
+				tmp_N.push_back(N.at(i));
+		}
+	}
+
+	P = tmp_P;
+	if (has_colors())
+		C = tmp_C;
+	if (has_normals())
+		N = tmp_N;
 
 	box_out_of_date = true;
 }
@@ -1763,6 +1908,7 @@ bool point_cloud::read_ply(const string& _file_name)
 		return false;
 	clear();
 	for (int elementType = 0; elementType < ply_in->num_elem_types; ++elementType) {
+
 		int nrVertices;
 		char* elem_name = setup_element_read_ply (ply_in, elementType, &nrVertices);
 		if (strcmp("vertex", elem_name) == 0) {
@@ -1817,6 +1963,8 @@ bool point_cloud::read_ply(const string& _file_name)
 						setup_property_ply(ply_in, &vert_props[6+p]);
 			}
 			for (int j = 0; j < nrVertices; j++) {
+				if (j % 1000 == 0)
+					printf("%d Percent done.\r", (int)(100.0 * j / nrVertices));
 				PlyVertex vertex;
 				get_element_ply(ply_in, (void *)&vertex);
 				P[j].set(vertex.x, vertex.y, vertex.z);

@@ -194,10 +194,15 @@ public:
 class vis_kit_data_store_shared :public cgv::render::render_types{
 public:
 	std::string data_dir = std::string(getenv("CGV_DATA"));
+	
+	/// point cloud storage
+	point_cloud_interactable* point_cloud_kit = new point_cloud_interactable();
 
 	/// main storage for motion data 
 	std::map<std::string, motion_storage_per_device> motion_storage;
 	std::map<std::string, motion_storage_per_device> motion_storage_read;
+	bool is_replay = false;
+	bool rec_pose = false;
 
 	/// can be seen as an abstract data wrapper 
 	std::vector<trackable_mesh> trackable_list;	
@@ -222,19 +227,55 @@ public:
 	std::vector<rgb>  icimg;
 	std::vector<int>  ibidximg;
 	std::vector<int>  icidximg;
-
 	imagebox_array* iba;
-
 	std::vector<vec3> pick_points;
 	std::vector<rgb> pick_colors;
 
-	bool is_replay = false;
-	bool rec_pose = false;
+	// hand tracking
+	int left_rgbd_controller_index = 0;
+	int right_rgbd_controller_index = 1;
+	vec3 cur_left_hand_posi;
+	vec3 cur_left_hand_dir;
+	mat3 cur_left_hand_rot;
+	quat cur_left_hand_rot_quat;
+	mat3 cur_left_hand_rot_mat;
+	vec3 cur_right_hand_posi;
+	quat cur_right_hand_rot_quat = quat();
+	mat3 cur_right_hand_rot_as_mat;
+
+	// for point selection
+	// superbox and interaction modes, righthand instead of boxgui for now 
+	// decrate case, a little complicated when update tracking origin at each pose event 
+	box3 supersampling_bbox;	
+	enum interaction_mode {
+		None = 0,
+		TELEPORT,
+		DIRECTIONAL,
+		CLIMB = 3, 
+		SUPERSAMPLING_BOX = 4,
+		SUPERSAMPLING_DRAW
+	}mode;
+	int max_idx_num = 5;
+	std::vector<vec3> righthand_posi_list;
+	std::vector<vec3> righthand_dir_list;
+
 
 	vis_kit_data_store_shared() {
-		initialize();
+		initialize_trackable_list();
+		//supersampling_bbox = box3(vec3(-2,0,0),vec3(2,1,1));
+		mode = interaction_mode::SUPERSAMPLING_DRAW;
 	}
-	void initialize() {
+
+	void supersampling_bounded_points_with_drawn_data() {
+		// at least 2 points 
+		if (righthand_posi_list.size() < 1)
+			return;
+		if (point_cloud_kit->pc.get_nr_points() == 0)
+			return;
+		point_cloud_kit->supersampling_within_clips(righthand_posi_list, righthand_dir_list);
+	}
+
+	void initialize_trackable_list() {
 		trackable_list.push_back(*(new trackable_mesh("hmd", data_dir + "/generic_hmd.obj")));
 		trackable_list.push_back(*(new trackable_mesh("left_hand" , data_dir + "/vr_controller_vive_1_5.obj")));
 		trackable_list.push_back(*(new trackable_mesh("right_hand", data_dir + "/vr_controller_vive_1_5.obj")));

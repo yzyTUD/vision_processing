@@ -109,6 +109,7 @@ public:
 	Normals and colors are optional and can be dynamically allocated and deallocated. */
 class CGV_API point_cloud : public point_cloud_types
 {
+	typedef cgv::media::axis_aligned_box<float, 3> box3;
 protected:
 	/// container for point positions
 	std::vector<Pnt> P;
@@ -239,6 +240,8 @@ public:
 	/// downsampling according to a rate from 0 to 1 
 	void downsampling(int scale);
 
+	void subsampling_with_bbox(box3 b);
+
 	void downsampling_expected_num_of_points(int num_of_points_wanted);
 	///
 	bool read_pts_subsampled(const std::string& file_name, float percentage);
@@ -294,10 +297,23 @@ public:
 	void append(const point_cloud& pc);
 	///
 	bool get_next_shot(const point_cloud& pc);
+
+	bool compare_these_two_points_posi(int i, int j, const point_cloud& the_other_pc);
+
+	bool compare_these_two_points_nml(int i, int j, const point_cloud& the_other_pc);
+	
+	void smart_append(const point_cloud& pc);
 	/// remove all points (including normals and colors) outside of the given box 
 	void clip(const Box clip_box);
 	///
+	void preserve_bounded_points_with_drawn_data(std::vector<Pnt> positions, std::vector<Dir> dirs);
+
+	void preserve_with_clip_plane(Dir cur_plane_normal, Pnt a_point_on_the_plane);
+
+	void del_with_clip_plane(Dir cur_plane_normal, Pnt a_point_on_the_plane);
+
 	void clip_plane(Dir plane_nml, Pnt a_point_on_plane);
+
 	/// permute points
 	void permute(std::vector<Idx>& perm, bool permute_component_indices);
 	/// translate by adding direction vector dir to point positions and update bounding box

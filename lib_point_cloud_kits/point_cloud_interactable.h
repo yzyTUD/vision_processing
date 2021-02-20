@@ -89,8 +89,20 @@ public:
 	bool save(const std::string& fn);
 	/// open a new point cloud
 	bool open(const std::string& fn);
+
+	void store_original_pc();
 	///
 	void downsampling(int step, int num_of_points_wanted, int which_strategy);
+
+	void auto_downsampling();
+
+	void supersampling_within_clips(std::vector<Pnt> positions, std::vector<Dir> dirs);
+
+	void supersampling_with_bbox(box3 range_as_box);
+
+	void restore_supersampling();
+	
+	void render_with_fullpc();
 	/// open a new point cloud by reading all point cloud files in given directory
 	bool open_directory(const std::string& dn);
 	/// open and append a new point cloud by reading file with name fn
@@ -256,6 +268,9 @@ public:
 	std::vector<std::queue<int>> region_id_and_seeds;
 	std::vector<vec3> region_id_and_nml;
 	std::vector<vr_kit_image_renderer> image_renderer_list;
+
+	//
+	point_cloud oripc;
 
 public:
 	/// construct viewer with default configuration

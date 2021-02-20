@@ -137,10 +137,12 @@ public:
 			}
 		}
 	}
+	
 	void init_trackable_data_store() {
 		// saparated impl.
 	}
 	/// overload to handle events, return true if event was processed
+	// call me 
 	bool handle(event& e)
 	{
 		if (e.get_kind() == cgv::gui::EID_STICK) {
@@ -298,6 +300,7 @@ public:
 		render_random_boxes(ctx);
 
 	}
+	
 	void gen_random_movable_boxes() {
 		if (data_ptr==nullptr)
 			return;
@@ -346,6 +349,7 @@ public:
 			}
 		}
 	}
+	
 	void render_lines_for_controllers(cgv::render::context& ctx) {
 		if (vr_view_ptr) {
 			std::vector<vec3> P;

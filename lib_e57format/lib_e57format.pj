@@ -1,0 +1,6 @@
+@=
+projectName="lib_e57format";
+projectType="application";
+projectGUID="6CFE87D0-96B6-4FAD-BD8D-F0A1FB0E0860";
+addProjectDirs=[CGV_DIR."/plugins", CGV_DIR."/libs", CGV_DIR."/3rd"];
+addProjectDeps=[];

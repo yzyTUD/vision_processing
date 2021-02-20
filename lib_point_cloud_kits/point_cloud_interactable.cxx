@@ -61,6 +61,8 @@ bool point_cloud_interactable::open(const std::string& fn)
 	// manage vars after change of the point cloud 
 	on_point_cloud_change_callback(PCC_NEW_POINT_CLOUD);
 	//update_file_name(fn);
+	store_original_pc();
+	auto_downsampling();
 	return true;
 }
 
@@ -71,6 +73,62 @@ void point_cloud_interactable::downsampling(int step, int num_of_points_wanted, 
 		pc.downsampling_expected_num_of_points(num_of_points_wanted);
 	std::cout << "points remind:" << pc.get_nr_points() << std::endl;
 	on_point_cloud_change_callback(PCC_POINTS_RESIZE);
+	post_redraw();
+}
+
+// inner. this should be called after read a pc 
+void point_cloud_interactable::store_original_pc() {
+	oripc = pc;
+}
+
+// inner 
+void point_cloud_interactable::auto_downsampling() {
+	int best_point_num = 1000 * 1000;
+	if(pc.get_nr_points()> best_point_num)
+		downsampling(-1, best_point_num, 1);
+}
+
+// call me: called in data_store header, from vr_kit_selection 
+void point_cloud_interactable::supersampling_within_clips(std::vector<Pnt> positions, std::vector<Dir> dirs) {
+	pc_to_be_append = oripc;
+	pc_to_be_append.preserve_bounded_points_with_drawn_data(positions, dirs);
+	// should be smart_not_overwrite_append 
+	pc.append(pc_to_be_append);
+	std::cout << "points now:" << pc.get_nr_points() << std::endl;
+	on_point_cloud_change_callback(PCC_POINTS_RESIZE);
+	post_redraw();
+}
+
+// call me: not called, designed in data_storage, modify bbox in vr_kit_selection
+void point_cloud_interactable::supersampling_with_bbox(box3 range_as_box) {
+	// store original pc 
+	pc_to_be_append = oripc;
+	pc_to_be_append.subsampling_with_bbox(range_as_box);
+	pc.append(pc_to_be_append);
+	std::cout << "points now:" << pc.get_nr_points() << std::endl;
+	on_point_cloud_change_callback(PCC_POINTS_RESIZE);
+	post_redraw();
+}
+
+// call me: called in main class, gui 
+void point_cloud_interactable::restore_supersampling() {
+	pc = oripc;
+	auto_downsampling();
+	std::cout << "points now:" << pc.get_nr_points() << std::endl;
+	on_point_cloud_change_callback(PCC_NEW_POINT_CLOUD);
+	post_redraw();
+}
+
+// call me 
+void point_cloud_interactable::render_with_fullpc() {
+	// store original pc
+	// keep the changes in current pc!, preform a position matching for the points? 
+	point_cloud modipc;
+	//modipc = pc;
+	//oripc.smart_append(modipc); // smart_overwrite_append
+	pc = oripc;
+	std::cout << "points now:" << pc.get_nr_points() << std::endl;
+	on_point_cloud_change_callback(PCC_NEW_POINT_CLOUD);
 	post_redraw();
 }
 

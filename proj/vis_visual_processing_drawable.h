@@ -148,16 +148,16 @@ void visual_processing::on_device_change(void* kit_handle, bool attach)
 }
 visual_processing::visual_processing() 
 {
-	//roller_coaster_kit_1 = new vr_kit_roller_coaster_1();
 	//draw_kit = new vr_kit_draw();
 	mesh_kit = new vis_kit_meshes();
 	register_object(base_ptr(mesh_kit), "");
 	mesh_kit_2 = new vis_kit_meshes();
 	register_object(base_ptr(mesh_kit_2), "");
-	//selection_kit = new vis_kit_selection();
-	/*imagebox_kit = new vr_kit_imagebox();
-	motioncap_kit = new vr_kit_motioncap();
-	manipulation_kit = new vr_kit_manipulation();*/
+	selection_kit = new vis_kit_selection(); // for 2d->3d selection, and 3d selection 
+	//imagebox_kit = new vr_kit_imagebox();
+	//motioncap_kit = new vr_kit_motioncap();
+	//manipulation_kit = new vr_kit_manipulation();
+	//roller_coaster_kit_1 = new vr_kit_roller_coaster_1();
 
 	set_name("visual_processing");
 	vr_view_ptr = 0;
@@ -222,16 +222,16 @@ bool visual_processing::init(cgv::render::context& ctx)
 	cgv::render::ref_sphere_renderer(ctx, 1);
 	cgv::render::ref_rounded_cone_renderer(ctx, 1);
 
-	// config point_cloud_kit
-	point_cloud_kit->surfel_style.point_size = 0.2f;
-	point_cloud_kit->surfel_style.halo_color_strength = 0.0f;
-	point_cloud_kit->surfel_style.percentual_halo_width = 25.0f;
-	point_cloud_kit->surfel_style.blend_points = true;
-	point_cloud_kit->surfel_style.blend_width_in_pixel = 1.0f;
-	point_cloud_kit->show_neighbor_graph = false;
-	point_cloud_kit->show_box = false;
-	point_cloud_kit->do_auto_view = false;
-	point_cloud_kit->pc.create_colors();
+	// config data_ptr->point_cloud_kit
+	data_ptr->point_cloud_kit->surfel_style.point_size = 0.2f;
+	data_ptr->point_cloud_kit->surfel_style.halo_color_strength = 0.0f;
+	data_ptr->point_cloud_kit->surfel_style.percentual_halo_width = 25.0f;
+	data_ptr->point_cloud_kit->surfel_style.blend_points = true;
+	data_ptr->point_cloud_kit->surfel_style.blend_width_in_pixel = 1.0f;
+	data_ptr->point_cloud_kit->show_neighbor_graph = false;
+	data_ptr->point_cloud_kit->show_box = false;
+	data_ptr->point_cloud_kit->do_auto_view = false;
+	data_ptr->point_cloud_kit->pc.create_colors();
 
 	one_shot_360pc->surfel_style.point_size = 0.2f;
 	one_shot_360pc->surfel_style.halo_color_strength = 0.0f;
@@ -260,14 +260,16 @@ bool visual_processing::init(cgv::render::context& ctx)
 	if (motioncap_kit != nullptr) motioncap_kit->set_vr_view_ptr(vr_view_ptr);
 
 	// set the data ptrs 
+	if (teleportation_kit != nullptr) teleportation_kit->set_data_ptr(data_ptr);
 	if (motioncap_kit != nullptr) motioncap_kit->set_data_ptr(data_ptr);
 	if (manipulation_kit != nullptr)manipulation_kit->set_data_ptr(data_ptr);
 	if (imagebox_kit != nullptr) imagebox_kit->set_data_ptr(data_ptr);
+	if (selection_kit!=nullptr) selection_kit->set_data_ptr(data_ptr);
 
 	// set the context ptrs 
 	if (selection_kit != nullptr) selection_kit->set_context_str(get_context());
 
-	point_cloud_kit->init(ctx);
+	data_ptr->point_cloud_kit->init(ctx);
 	one_shot_360pc->init(ctx);
 	stored_cloud->init(ctx);
 	if (draw_kit != nullptr) draw_kit->init(ctx);
@@ -280,7 +282,7 @@ bool visual_processing::init(cgv::render::context& ctx)
 	//cgv::media::illum::light_source ls = ctx.get_light_source(ctx.get_enabled_light_source_handle(0));
 	//ctx.disable_light_source(ctx.get_enabled_light_source_handle(0));
 
-	init_6_points_picking();
+	//init_6_points_picking();
 
 	return true;
 }
@@ -292,7 +294,8 @@ bool visual_processing::handle(cgv::gui::event& e)
 	if (draw_kit != nullptr)draw_kit->handle(e);
 	if (motioncap_kit != nullptr) motioncap_kit->handle(e);
 	if (manipulation_kit != nullptr) manipulation_kit->handle(e); 
-	// selection tool 
+	if (selection_kit != nullptr)selection_kit->handle(e);
+
 	if (!data_ptr)
 		return false;
 	if (e.get_kind() == EID_MOUSE) {
@@ -352,7 +355,7 @@ void visual_processing::clear(cgv::render::context& ctx)
 	cgv::render::ref_box_renderer(ctx, -1);
 	cgv::render::ref_sphere_renderer(ctx, -1);
 	cgv::render::ref_rounded_cone_renderer(ctx, -1);
-	point_cloud_kit->clear(ctx);
+	data_ptr->point_cloud_kit->clear(ctx);
 	one_shot_360pc->clear(ctx);
 	stored_cloud->clear(ctx);
 }
@@ -360,7 +363,7 @@ void visual_processing::clear(cgv::render::context& ctx)
 void visual_processing::init_frame(cgv::render::context& ctx)
 {
 	b_interactable->init_frame(ctx);
-	point_cloud_kit->init_frame(ctx);
+	data_ptr->point_cloud_kit->init_frame(ctx);
 	one_shot_360pc->init_frame(ctx);
 	stored_cloud->init_frame(ctx);
 	if(imagebox_kit!=nullptr)imagebox_kit->init_frame(ctx);
@@ -371,23 +374,27 @@ void visual_processing::draw(cgv::render::context& ctx)
 	if(render_skybox)
 		if (skybox_kit) skybox_kit->draw(ctx);
 	if (b_interactable) b_interactable->draw(ctx);
-	if (render_pc) point_cloud_kit->draw(ctx);
+	if (render_pc) data_ptr->point_cloud_kit->draw(ctx);
 	if (roller_coaster_kit_1) roller_coaster_kit_1->draw(ctx);
 	if (draw_kit!=nullptr) draw_kit->render_trajectory(ctx);
 	if (motioncap_kit!=nullptr) motioncap_kit->draw(ctx);
 	if (manipulation_kit!=nullptr) manipulation_kit->draw(ctx);
 	if (imagebox_kit != nullptr)imagebox_kit->draw(ctx);
+	if (selection_kit != nullptr)selection_kit->draw(ctx);
 
 	if (motioncap_kit != nullptr)
 		if (motioncap_kit->instanced_redraw)
 			post_redraw();
 
 	// point and camera visualization 
-	cgv::render::rounded_cone_renderer& sr = cgv::render::ref_rounded_cone_renderer(ctx);
-	sr.set_render_style(cone_style);
-	sr.set_position_array(ctx, point_and_cam);
-	sr.set_color_array(ctx, point_and_cam_colors);
-	sr.render(ctx, 0, point_and_cam.size());
+	if (point_and_cam.size() > 0) {
+		cgv::render::rounded_cone_renderer& sr = cgv::render::ref_rounded_cone_renderer(ctx);
+		sr.set_render_style(cone_style);
+		sr.set_position_array(ctx, point_and_cam);
+		sr.set_color_array(ctx, point_and_cam_colors);
+		sr.render(ctx, 0, point_and_cam.size());
+	}
+
 }
 
 void visual_processing::finish_draw(cgv::render::context& ctx)
@@ -443,33 +450,46 @@ void visual_processing::finish_draw(cgv::render::context& ctx)
 }
 
 void visual_processing::read_campose() {
-	point_cloud_kit->read_pc_campose(*get_context(), quat());
+	data_ptr->point_cloud_kit->read_pc_campose(*get_context(), quat());
 	//render_pc = true;
+}
+
+void visual_processing::show_camposes() {
+	for (int i = 0; i < data_ptr->point_cloud_kit->pc.list_cam_translation.size(); i++) {
+		std::cout << "---w x y z: \nrot: " << 
+			data_ptr->point_cloud_kit->pc.list_cam_rotation.at(i).w() << " " <<
+			data_ptr->point_cloud_kit->pc.list_cam_rotation.at(i).x() << " " <<
+			data_ptr->point_cloud_kit->pc.list_cam_rotation.at(i).y() << " " <<
+			data_ptr->point_cloud_kit->pc.list_cam_rotation.at(i).z() << " " <<
+			std::endl;
+		std::cout << "trans: " << data_ptr->point_cloud_kit->pc.list_cam_translation.at(i) << std::endl;
+	}
 }
 
 // for a visual feedback 
 void visual_processing::apply_further_transformation() {
-	point_cloud_kit->apply_further_transformation(0, quat(), vec3(1));
+	data_ptr->point_cloud_kit->apply_further_transformation(0, quat(), vec3(1));
 }
 
-/* start pc reading and point_cloud_kit processing tool */
-///  read the whole pc to point_cloud_kit
+/* start pc reading and data_ptr->point_cloud_kit processing tool */
+///  read the whole pc to data_ptr->point_cloud_kit
 void visual_processing::read_pc() {
-	point_cloud_kit->read_pc_with_dialog(false);
+	data_ptr->point_cloud_kit->read_pc_with_dialog(false);
+	// the original pc will be automatically stored 
 }
 
 void visual_processing::read_pc_queue() {
-	point_cloud_kit->read_pc_with_dialog_queue(false);
+	data_ptr->point_cloud_kit->read_pc_with_dialog_queue(false);
 }
 
 void visual_processing::read_pc_append() {
-	point_cloud_kit->read_pc_with_dialog(true);
+	data_ptr->point_cloud_kit->read_pc_with_dialog(true);
 }
-// perform actions to point_cloud_kit
+// perform actions to data_ptr->point_cloud_kit
 
 /// 
 void visual_processing::downsampling() {
-	point_cloud_kit->downsampling(step, num_of_points_wanted, strategy);
+	data_ptr->point_cloud_kit->downsampling(step, num_of_points_wanted, strategy);
 }
 
 void visual_processing::add_reflectance() {
@@ -479,29 +499,29 @@ void visual_processing::add_reflectance() {
 //
 ///
 void visual_processing::write_read_pc_to_file() {
-	point_cloud_kit->write_pc_to_file();
+	data_ptr->point_cloud_kit->write_pc_to_file();
 }
 
 void  visual_processing::align_leica_scans_with_cgv() {
-	point_cloud_kit->align_leica_scans_with_cgv();
+	data_ptr->point_cloud_kit->align_leica_scans_with_cgv();
 	stored_cloud->align_leica_scans_with_cgv();
 }
 
 void  visual_processing::rotate_x() {
-	point_cloud_kit->pc.rotate(quat(vec3(1, 0, 0), 5 * M_PI / 180));
+	data_ptr->point_cloud_kit->pc.rotate(quat(vec3(1, 0, 0), 5 * M_PI / 180));
 	std::cout << "rotate 5 degree around x!" << std::endl;
 }
 
 void  visual_processing::rotate_z() {
-	point_cloud_kit->pc.rotate(quat(vec3(0, 0, 1), 5 * M_PI / 180));
+	data_ptr->point_cloud_kit->pc.rotate(quat(vec3(0, 0, 1), 5 * M_PI / 180));
 	std::cout << "rotate 5 degree around z!" << std::endl;
 }
 
-/* end point_cloud_kit processing tool*/
-/// load one shot from point_cloud_kit according to .campose file  
+/* end data_ptr->point_cloud_kit processing tool*/
+/// load one shot from data_ptr->point_cloud_kit according to .campose file  
 bool visual_processing::load_next_shot() {
 	one_shot_360pc->pc.clear_all_for_get_next_shot();
-	return one_shot_360pc->pc.get_next_shot(point_cloud_kit->pc);
+	return one_shot_360pc->pc.get_next_shot(data_ptr->point_cloud_kit->pc);
 }
 
 void visual_processing::compute_nmls_if_is_required() {
@@ -524,7 +544,7 @@ void visual_processing::write_stored_pc_to_file_direct() {
 }
 
 void visual_processing::print_cloud_info() {
-	std::cout << "point_cloud_kit: " << point_cloud_kit->pc.get_nr_points() << std::endl;
+	std::cout << "data_ptr->point_cloud_kit: " << data_ptr->point_cloud_kit->pc.get_nr_points() << std::endl;
 	std::cout << "one_shot_360pc: " << one_shot_360pc->pc.get_nr_points() << std::endl;
 	std::cout << "stored_cloud: " << stored_cloud->pc.get_nr_points() << std::endl;
 }
@@ -532,7 +552,7 @@ void visual_processing::print_cloud_info() {
 // you should have points and camposes loaded first! 
 // sample save directly, subsample when required is simple 
 void visual_processing::auto_conduct_nml_estimation_leica() {
-	int loop_num = point_cloud_kit->pc.num_of_shots;
+	int loop_num = data_ptr->point_cloud_kit->pc.num_of_shots;
 	int i = 0;
 	while (i < loop_num) {
 		bool succ = load_next_shot();
@@ -595,7 +615,7 @@ bool visual_processing::batch_read_pc_queue_and_downsampling() {
 }
 
 void visual_processing::clean_all_pcs() {
-	point_cloud_kit->clear_all();
+	data_ptr->point_cloud_kit->clear_all();
 	one_shot_360pc->clear_all();
 	stored_cloud->clear_all();
 	std::cout << "all pcs cleared" << std::endl;
@@ -610,14 +630,26 @@ void visual_processing::load_image_from_bin_files() {
 
 void visual_processing::create_gui() {
 	add_decorator("visual_processing_main", "heading", "level=2");
+	connect_copy(add_button("read_pc")->click, rebind(this, &visual_processing::read_pc));
+	add_member_control(this, "from_CC_txt", data_ptr->point_cloud_kit->pc.from_CC, "check");
+	connect_copy(add_control("render_pc", render_pc, "check")->value_change, rebind(static_cast<drawable*>(this), &visual_processing::post_redraw));
+	add_member_control(this, "point size", data_ptr->point_cloud_kit->surfel_style.point_size, "value_slider", "min=0.2;max=10;log=false;ticks=false;");
+	add_member_control(this, "render skybox", render_skybox, "check");
+	add_member_control(this, "render_nmls", data_ptr->point_cloud_kit->show_nmls, "check");
+	if (begin_tree_node("Point Cloud ControlLOD", step, true, "level=3")) {
+		connect_copy(add_button("render_with_fullpc")->click, rebind(this, &visual_processing::render_with_fullpc));
+		connect_copy(add_button("auto_downsampling")->click, rebind(this, &visual_processing::auto_downsampling));
+		connect_copy(add_button("supersampling_with_bbox")->click, rebind(this, &visual_processing::supersampling_with_bbox));
+		connect_copy(add_button("restore_supersampling")->click, rebind(this, &visual_processing::restore_supersampling));
+	}
+
 	if (begin_tree_node("Point Cloud Merging Tool", strategy, true, "level=3")) {
 		connect_copy(add_button("read_pc_append")->click, rebind(this, &visual_processing::read_pc_append));
 		add_member_control(this, "[0]step", step, "value_slider","min=1;max=1000;log=false;ticks=true;");
 		add_member_control(this, "[1]num_of_points_wanted", num_of_points_wanted, "value_slider", "min=1;max=100000000;log=false;ticks=true;");
 		add_member_control(this, "which_strategy", strategy, "value_slider", "min=0;max=1;log=false;ticks=true;");
 		connect_copy(add_button("downsampling")->click, rebind(this, &visual_processing::downsampling));
-		/// only for point_cloud_kit
-		add_member_control(this, "write_reflectance", point_cloud_kit->pc.write_reflectance, "check");
+		add_member_control(this, "write_reflectance", data_ptr->point_cloud_kit->pc.write_reflectance, "check");
 		connect_copy(add_button("write_read_pc_to_file")->click, rebind(this, &visual_processing::write_read_pc_to_file));
 	}
 	
@@ -625,10 +657,9 @@ void visual_processing::create_gui() {
 		//connect_copy(add_button("add_to_file_list")->click, rebind(this, &visual_processing::add_to_file_list));
 		//connect_copy(add_button("clean_file_list")->click, rebind(this, &visual_processing::clean_file_list));
 		connect_copy(add_button("batch_compute_nmls_given_file_list")->click, rebind(this, &visual_processing::batch_compute_nmls_given_file_list));
-		connect_copy(add_button("read_pc")->click, rebind(this, &visual_processing::read_pc));
-		add_member_control(this, "from_CC", point_cloud_kit->pc.from_CC, "check");
 		connect_copy(add_button("read_pc_queue")->click, rebind(this, &visual_processing::read_pc_queue));
 		connect_copy(add_button("read_campose")->click, rebind(this, &visual_processing::read_campose));
+		connect_copy(add_button("show_camposes")->click, rebind(this, &visual_processing::show_camposes));
 		connect_copy(add_button("auto_conduct_nml_estimation_leica")->click, rebind(this, &visual_processing::auto_conduct_nml_estimation_leica));
 		connect_copy(add_button("clean_all_pcs")->click, rebind(this, &visual_processing::clean_all_pcs));
 		connect_copy(add_button("rotate_x")->click, rebind(this, &visual_processing::rotate_x));
@@ -653,10 +684,6 @@ void visual_processing::create_gui() {
 		//compute_coordinates_with_rot_correction
 		connect_copy(add_button("compute_coordinates_with_rot_correction")->click, rebind(this, &visual_processing::compute_coordinates_with_rot_correction));
 	}
-	connect_copy(add_control("render_pc", render_pc, "check")->value_change, rebind(static_cast<drawable*>(this), &visual_processing::post_redraw));
-	add_member_control(this, "point size", point_cloud_kit->surfel_style.point_size, "value_slider", "min=0.2;max=10;log=false;ticks=false;");
-	add_member_control(this, "render skybox", render_skybox, "check");
-	add_member_control(this, "render_nmls", point_cloud_kit->show_nmls, "check");
 	if(teleportation_kit!=nullptr)
 	if (begin_tree_node("Teleportation tool", teleportation_kit->is_lifting, true, "level=3")) {
 		add_member_control(this, "is_lifting", teleportation_kit->is_lifting, "check");

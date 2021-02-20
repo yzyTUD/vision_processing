@@ -23,6 +23,8 @@ using namespace cgv::render;
 #include <cg_vr/vr_events.h>
 #include <vr_kit_intersection.h>
 
+#include "vis_kit_datastore.h"
+
 class vr_kit_teleportation :
 	public base,    // base class of all to be registered classes
 	public event_handler, // necessary to receive events
@@ -30,19 +32,9 @@ class vr_kit_teleportation :
 	public cgv::signal::tacker
 {
 private:
+	vis_kit_data_store_shared* data_ptr = nullptr;
 	vr_view_interactor* vr_view_ptr;
 
-	// hand tracking
-	int left_rgbd_controller_index = 0;
-	int right_rgbd_controller_index = 1;
-	vec3 cur_left_hand_posi;
-	vec3 cur_left_hand_dir;
-	mat3 cur_left_hand_rot;
-	quat cur_left_hand_rot_quat;
-	mat3 cur_left_hand_rot_mat;
-	vec3 cur_right_hand_posi;
-	quat cur_right_hand_rot_quat;
-	mat3 cur_right_hand_rot_as_mat;
 	vec3 global_offset;
 	bool has_ctrl_posi = false;
 	bool hand_touching = false;
@@ -72,14 +64,7 @@ private:
 	bool the_first_enter = true;
 
 public:
-	// interaction modes, x5 impl.
-	enum interaction_mode {
-		None = 0,
-		TELEPORT,
-		DIRECTIONAL,
-		CLIMB = 3 // decrate case, a little complicated when update tracking origin at each pose event 
-	}mode;
-	int max_idx_num = 3;
+
 	bool is_lifting = false;
 	bool enable_gravity = false;
 
@@ -92,9 +77,12 @@ public:
 		srs.radius = sphere_scale.x();
 		srs.map_color_to_material = cgv::render::CM_COLOR_AND_OPACITY;
 		srs.material.set_brdf_type(cgv::media::illum::BT_PHONG);
-		mode = interaction_mode::None;
 		connect(get_animation_trigger().shoot, this, &vr_kit_teleportation::timer_event);
 		configure_the_handhold_sphere(vec3(0,0,-0.2),0.03);
+	}
+	// call me 
+	void set_data_ptr(vis_kit_data_store_shared* d_ptr) {
+		data_ptr = d_ptr;
 	}
 	void timer_event(double t, double dt) {
 		if (vr_view_ptr && is_lifting) {
@@ -135,9 +123,9 @@ public:
 	{
 		return true;
 	}
-	void set_left_hand_index(int left_idx) {
-		left_rgbd_controller_index = left_idx;
-	}
+	//void set_left_hand_index(int left_idx) {
+	//	left_rgbd_controller_index = left_idx;
+	//}
 	vec3 compute_ray_plane_intersection_point(const vec3& origin, const vec3& direction)
 	{
 		float t_result;
@@ -154,9 +142,9 @@ public:
 		return p_result;
 	}
 	/// overload to handle events, return true if event was processed
-	void set_mode(interaction_mode m){
-		mode = m;
-	}
+	//void set_mode(data_ptr::interaction_mode m){
+	//	data_ptr->mode = m;
+	//}
 	void set_vr_view_ptr(vr_view_interactor* p) {
 		vr_view_ptr = p;
 	}
@@ -169,55 +157,65 @@ public:
 		// ensure the view ptr for teleportation 
 		if (!vr_view_ptr)
 			return false;
+		if (data_ptr == nullptr)
+			return false;
 		switch (e.get_kind()) {
 		case cgv::gui::EID_KEY:
 		{
 			cgv::gui::vr_key_event& vrke = static_cast<cgv::gui::vr_key_event&>(e);
 			int ci = vrke.get_controller_index();
 
+			// only allowed for telepotation related operations 
+			// for rotation 
 			// right hand 
-			if (ci == right_rgbd_controller_index && vrke.get_key() == vr::VR_DPAD_LEFT)
-			{
-				if (vrke.get_action() == cgv::gui::KA_PRESS)
-					vr_view_ptr->set_tracking_rotation(vr_view_ptr->get_tracking_rotation() + 10);
-			}
-			if (ci == right_rgbd_controller_index && vrke.get_key() == vr::VR_DPAD_RIGHT)
-			{
-				if (vrke.get_action() == cgv::gui::KA_PRESS)
-					vr_view_ptr->set_tracking_rotation(vr_view_ptr->get_tracking_rotation() - 10);
+			// make sure right hand is applicaiton-specified, you can use right hand in apps freely
+			int cur_mode = static_cast<int>(data_ptr->mode);
+			if (cur_mode <= 3) {
+				if (ci == data_ptr->right_rgbd_controller_index && vrke.get_key() == vr::VR_DPAD_LEFT)
+				{
+					if (vrke.get_action() == cgv::gui::KA_PRESS)
+						vr_view_ptr->set_tracking_rotation(vr_view_ptr->get_tracking_rotation() + 10);
+				}
+				if (ci == data_ptr->right_rgbd_controller_index && vrke.get_key() == vr::VR_DPAD_RIGHT)
+				{
+					if (vrke.get_action() == cgv::gui::KA_PRESS)
+						vr_view_ptr->set_tracking_rotation(vr_view_ptr->get_tracking_rotation() - 10);
+				}
 			}
 
 			// spatial interactive 
-			// left hand key event for mode switching and lifting/gravity  
-			if (ci == left_rgbd_controller_index && vrke.get_key() == vr::VR_DPAD_LEFT)
+			// left hand key event for mode switching and lifting/gravity 
+			// this piece can be managed to any handler 
+			// defines left hand behavier 
+			if (ci == data_ptr->left_rgbd_controller_index && vrke.get_key() == vr::VR_DPAD_LEFT)
 			{
 				if (vrke.get_action() == cgv::gui::KA_PRESS) {
-					int cur_mode = static_cast<int>(mode);
+					int cur_mode = static_cast<int>(data_ptr->mode);
 					cur_mode--;
 					if (cur_mode < 0)
-						mode = static_cast<interaction_mode>(0);
+						data_ptr->mode = static_cast<vis_kit_data_store_shared::interaction_mode>(0);
 					else
-						mode = static_cast<interaction_mode>(cur_mode);
+						data_ptr->mode = static_cast<vis_kit_data_store_shared::interaction_mode>(cur_mode);
 				}
 
 			}
-			if (ci == left_rgbd_controller_index && vrke.get_key() == vr::VR_DPAD_RIGHT)
+			if (ci == data_ptr->left_rgbd_controller_index && vrke.get_key() == vr::VR_DPAD_RIGHT)
 			{
 				if (vrke.get_action() == cgv::gui::KA_PRESS) {
-					int cur_mode = static_cast<int>(mode);
+					int cur_mode = static_cast<int>(data_ptr->mode);
 					cur_mode++;
-					if (cur_mode > max_idx_num)
-						mode = static_cast<interaction_mode>(max_idx_num);
+					if (cur_mode > data_ptr->max_idx_num)
+						data_ptr->mode = static_cast<vis_kit_data_store_shared::interaction_mode>(data_ptr->max_idx_num);
 					else
-						mode = static_cast<interaction_mode>(cur_mode);
+						data_ptr->mode = static_cast<vis_kit_data_store_shared::interaction_mode>(cur_mode);
 				}
 			}
-			if (ci == left_rgbd_controller_index && vrke.get_key() == vr::VR_DPAD_UP)
+			if (ci == data_ptr->left_rgbd_controller_index && vrke.get_key() == vr::VR_DPAD_UP)
 			{
 				//if (vrke.get_action() == cgv::gui::KA_PRESS) 
 					is_lifting = !is_lifting;
 			}
-			if (ci == left_rgbd_controller_index && vrke.get_key() == vr::VR_DPAD_DOWN)
+			if (ci == data_ptr->left_rgbd_controller_index && vrke.get_key() == vr::VR_DPAD_DOWN)
 			{
 				//if (vrke.get_action() == cgv::gui::KA_PRESS)
 					enable_gravity = !enable_gravity;
@@ -236,17 +234,19 @@ public:
 			if(ci != -1)
 			switch (vrse.get_action()) {
 				case cgv::gui::SA_TOUCH:
-					if (mode == interaction_mode::TELEPORT && ci == right_rgbd_controller_index) {
+					if (data_ptr->mode == vis_kit_data_store_shared::interaction_mode::TELEPORT 
+							&& ci == data_ptr->right_rgbd_controller_index) {
 						vrse.get_state().controller[ci].put_ray(&origin(0), &direction(0));
 						vec3 posi = compute_ray_plane_intersection_point(origin, direction);
 						vr_view_ptr->set_tracking_origin(vec3(posi.x(), vr_view_ptr->get_tracking_origin().y(), posi.z()));
 					}
-					if (mode == interaction_mode::DIRECTIONAL && ci == right_rgbd_controller_index) {
+					if (data_ptr->mode == vis_kit_data_store_shared::interaction_mode::DIRECTIONAL 
+							&& ci == data_ptr->right_rgbd_controller_index) {
 						vrse.get_state().controller[ci].put_ray(&origin(0), &direction(0));
 						direction.normalize();
 						vr_view_ptr->set_tracking_origin(vr_view_ptr->get_tracking_origin() + direction);
 					}
-					if (mode == interaction_mode::CLIMB) {
+					if (data_ptr->mode == vis_kit_data_store_shared::interaction_mode::CLIMB) {
 						if (hand_touching) {
 							vrse.get_state().controller[ci].put_ray(&origin(0), &direction(0));
 							touching_origin = origin;
@@ -276,16 +276,16 @@ public:
 			int ci = vrpe.get_trackable_index();
 			vec3 origin, direction;
 			// left hand event 
-			if (ci == left_rgbd_controller_index) {
+			if (ci == data_ptr->left_rgbd_controller_index) {
 				// update positions 
-				cur_left_hand_posi = vrpe.get_position();
-				cur_left_hand_rot = vrpe.get_orientation();
-				cur_left_hand_rot_quat = vrpe.get_quaternion();
+				data_ptr->cur_left_hand_posi = vrpe.get_position();
+				data_ptr->cur_left_hand_rot = vrpe.get_orientation();
+				data_ptr->cur_left_hand_rot_quat = vrpe.get_quaternion();
 			}
-			if (ci == right_rgbd_controller_index) {
-				cur_right_hand_posi = vrpe.get_position();
-				cur_right_hand_rot_quat = vrpe.get_quaternion();
-				vrpe.get_quaternion().put_matrix(cur_right_hand_rot_as_mat);
+			if (ci == data_ptr->right_rgbd_controller_index) {
+				data_ptr->cur_right_hand_posi = vrpe.get_position();
+				data_ptr->cur_right_hand_rot_quat = vrpe.get_quaternion();
+				vrpe.get_quaternion().put_matrix(data_ptr->cur_right_hand_rot_as_mat);
 				has_ctrl_posi = true;
 				//if (mode == interaction_mode::CLIMB && hand_touching) {
 				//	if (accept_event) {
@@ -300,8 +300,8 @@ public:
 			if (ci != -1) {
 				// update globle offset 
 				global_offset = offset_in_ori_pose;
-				cur_right_hand_rot_quat.rotate(global_offset);
-				global_offset += cur_right_hand_posi;
+				data_ptr->cur_right_hand_rot_quat.rotate(global_offset);
+				global_offset += data_ptr->cur_right_hand_posi;
 				if (points.size())
 					points.at(0) = global_offset;
 				// update globle offset 
@@ -321,22 +321,29 @@ public:
 	}
 
 	void finish_draw(context& ctx) {
-		if (mode == interaction_mode::None)
+		if (data_ptr == nullptr)
+			return;
+		if (data_ptr->mode == vis_kit_data_store_shared::interaction_mode::None)
 		{
 
 		}
-		if (mode == interaction_mode::TELEPORT) //do nothing for now
+		if (data_ptr->mode == vis_kit_data_store_shared::interaction_mode::TELEPORT) //do nothing for now
 		{
 			render_lines_for_controllers(ctx);
 		}
-		if (mode == interaction_mode::DIRECTIONAL)
+		if (data_ptr->mode == vis_kit_data_store_shared::interaction_mode::DIRECTIONAL)
 		{
-			render_a_handhold_arrow(ctx);
+			render_a_handhold_arrow(ctx, rgb(0.4), 0.1f);
 		}
-		if (mode == interaction_mode::CLIMB)
+		if (data_ptr->mode == vis_kit_data_store_shared::interaction_mode::CLIMB)
 		{
 			render_a_handhold_sphere_if_configured(ctx);
 		}
+		//if (data_ptr->mode == vis_kit_data_store_shared::interaction_mode::SUPERSAMPLING_DRAW)
+		//{
+		//	render_a_handhold_arrow(ctx, rgb(0,0.4,0), 0.05f);
+		//	//render_a_handhold_box(ctx);
+		//}
 	}
 
 	void configure_the_handhold_sphere(vec3 _offset_in_ori_pose, float radii) {
@@ -365,13 +372,15 @@ public:
 		}
 	}
 
-	void render_a_handhold_arrow(cgv::render::context& ctx) {
+	void render_a_handhold_arrow(cgv::render::context& ctx, rgb c, float r) {
+		if (data_ptr == nullptr)
+			return;
 		if (points.size()) {
 			auto& prog = ctx.ref_surface_shader_program();
 			prog.set_uniform(ctx, "map_color_to_material", 3);
 			prog.enable(ctx);
-			ctx.set_color(rgb(0.4));
-			ctx.tesselate_arrow(cur_right_hand_posi, points.at(0),0.1f, 2.0f, 0.5f);
+			ctx.set_color(c);
+			ctx.tesselate_arrow(data_ptr->cur_right_hand_posi, points.at(0), r , 2.0, 0.5f);
 			prog.disable(ctx);
 		}
 	}
