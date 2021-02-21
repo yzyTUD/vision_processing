@@ -200,7 +200,8 @@ public:
 					//	data_ptr->mode = static_cast<vis_kit_data_store_shared::interaction_mode>(cur_mode);
 					
 					//if(data_ptr->active_group == 0)
-						data_ptr->active_off_rotation -= 30;
+						//data_ptr->active_off_rotation += 30;
+					// not used! 
 				}
 
 			}
@@ -216,20 +217,42 @@ public:
 					
 					// we can judge or not, let it act as global 
 					//if (data_ptr->active_group == 0)
-						data_ptr->active_off_rotation += 30;
+						//data_ptr->active_off_rotation -= 30;
 				}
 			}
-			// todo: modi. to switch group 
+			
+			// ok-todo: modi. to switch group 
+			// global operations 
 			if (ci == data_ptr->left_rgbd_controller_index && vrke.get_key() == vr::VR_DPAD_UP)
 			{
-				//if (vrke.get_action() == cgv::gui::KA_PRESS) 
-					is_lifting = !is_lifting;
+				if (vrke.get_action() == cgv::gui::KA_PRESS)
+					if (data_ptr->active_group < data_ptr->max_group_num) {
+						data_ptr->active_group++;
+						data_ptr->active_off_rotation = 0;
+					}
 			}
 			if (ci == data_ptr->left_rgbd_controller_index && vrke.get_key() == vr::VR_DPAD_DOWN)
 			{
-				//if (vrke.get_action() == cgv::gui::KA_PRESS)
+				if (vrke.get_action() == cgv::gui::KA_PRESS)
+					if (data_ptr->active_group > 0) {
+						data_ptr->active_group--; 
+						data_ptr->active_off_rotation = 0;
+					}
+						
+			}
+
+			// [Functional]
+			if (ci == data_ptr->right_rgbd_controller_index && vrke.get_key() == vr::VR_DPAD_UP)
+			{
+				if (data_ptr->check_roulette_selection(data_ptr->get_id_with_name("Teleport\nLifting")))
+					is_lifting = !is_lifting;
+			}
+			if (ci == data_ptr->right_rgbd_controller_index && vrke.get_key() == vr::VR_DPAD_DOWN)
+			{
+				if (data_ptr->check_roulette_selection(data_ptr->get_id_with_name("Teleport\nLifting")))
 					enable_gravity = !enable_gravity;
 			}
+
 			return true;
 		}
 		case cgv::gui::EID_THROTTLE:
@@ -243,41 +266,43 @@ public:
 			vec3 origin, direction;
 			if(ci != -1)
 			switch (vrse.get_action()) {
-				case cgv::gui::SA_TOUCH:
+				// [Functional]
+				case cgv::gui::SA_TOUCH: 
 					// ok-todo: reformulate with new gui: 
 					if (data_ptr->active_group == 0) {
-						//Teleport\nTeleport, data_ptr->mode == vis_kit_data_store_shared::interaction_mode::TELEPORT 
-						if (data_ptr->check_roulette_selection(0, 3)
-								&& ci == data_ptr->right_rgbd_controller_index) {
-							vrse.get_state().controller[ci].put_ray(&origin(0), &direction(0));
-							vec3 posi = compute_ray_plane_intersection_point(origin, direction);
-							vr_view_ptr->set_tracking_origin(vec3(posi.x(), vr_view_ptr->get_tracking_origin().y(), posi.z()));
-						}
-						// Teleport\nDirectional
-						if (data_ptr->check_roulette_selection(0, 0)
-								&& ci == data_ptr->right_rgbd_controller_index) {
-							vrse.get_state().controller[ci].put_ray(&origin(0), &direction(0));
-							direction.normalize();
-							vr_view_ptr->set_tracking_origin(vr_view_ptr->get_tracking_origin() + direction);
-						}
-						// fine grain 
-						if (data_ptr->check_roulette_selection(0, 2)) {
-							if (hand_touching) {
+						if (ci == data_ptr->right_rgbd_controller_index) {
+							//Teleport\nTeleport, data_ptr->mode == vis_kit_data_store_shared::interaction_mode::TELEPORT 
+							if (data_ptr->check_roulette_selection(data_ptr->get_id_with_name("Teleport\Teleport"))
+									&& ci == data_ptr->right_rgbd_controller_index) {
 								vrse.get_state().controller[ci].put_ray(&origin(0), &direction(0));
-								touching_origin = origin;
-								tracking_origin_when_touching = vr_view_ptr->get_tracking_origin();
-								hand_touching = !hand_touching;
+								vec3 posi = compute_ray_plane_intersection_point(origin, direction);
+								vr_view_ptr->set_tracking_origin(vec3(posi.x(), vr_view_ptr->get_tracking_origin().y(), posi.z()));
 							}
-							else {
+							// Teleport\nDirectional
+							if (data_ptr->check_roulette_selection(data_ptr->get_id_with_name("Teleport\nDirectional"))
+									&& ci == data_ptr->right_rgbd_controller_index) {
 								vrse.get_state().controller[ci].put_ray(&origin(0), &direction(0));
-								touching_stopped = origin;
-								vec3 from_origin_to_current = touching_stopped - touching_origin;
-								vr_view_ptr->set_tracking_origin(tracking_origin_when_touching - from_origin_to_current);
-								hand_touching = !hand_touching;
+								direction.normalize();
+								vr_view_ptr->set_tracking_origin(vr_view_ptr->get_tracking_origin() + direction);
+							}
+							// fine grain 
+							if (data_ptr->check_roulette_selection(data_ptr->get_id_with_name("Teleport\nFineGrain"))) {
+								if (hand_touching) {
+									vrse.get_state().controller[ci].put_ray(&origin(0), &direction(0));
+									touching_origin = origin;
+									tracking_origin_when_touching = vr_view_ptr->get_tracking_origin();
+									hand_touching = !hand_touching;
+								}
+								else {
+									vrse.get_state().controller[ci].put_ray(&origin(0), &direction(0));
+									touching_stopped = origin;
+									vec3 from_origin_to_current = touching_stopped - touching_origin;
+									vr_view_ptr->set_tracking_origin(tracking_origin_when_touching - from_origin_to_current);
+									hand_touching = !hand_touching;
+								}
 							}
 						}
 					}
-					
 					break;
 				case cgv::gui::SA_RELEASE:
 					break;
@@ -364,13 +389,16 @@ public:
 		//	//render_a_handhold_box(ctx);
 		//}
 
-		if (data_ptr->check_roulette_selection(0, 0)) {
+		if (data_ptr->check_roulette_selection(data_ptr->get_id_with_name("Teleport\nDirectional"))) {
 			render_a_handhold_arrow(ctx, rgb(0.4), 0.1f);
 		}
-		if (data_ptr->check_roulette_selection(0, 2)) {
+		if (data_ptr->check_roulette_selection(data_ptr->get_id_with_name("Teleport\nLifting"))) {
+			render_arrow_on_righthand_lifting(ctx, rgb(0.4), 0.1f);
+		}
+		if (data_ptr->check_roulette_selection(data_ptr->get_id_with_name("Teleport\nFineGrain"))) {
 			render_a_handhold_sphere_if_configured(ctx);
 		}
-		if (data_ptr->check_roulette_selection(0, 3)) {
+		if (data_ptr->check_roulette_selection(data_ptr->get_id_with_name("Teleport\nTeleport"))) {
 			render_lines_for_controllers(ctx);
 		}
 	}
@@ -404,14 +432,41 @@ public:
 	void render_a_handhold_arrow(cgv::render::context& ctx, rgb c, float r) {
 		if (data_ptr == nullptr)
 			return;
-		if (points.size()) {
-			auto& prog = ctx.ref_surface_shader_program();
-			prog.set_uniform(ctx, "map_color_to_material", 3);
-			prog.enable(ctx);
-			ctx.set_color(c);
-			ctx.tesselate_arrow(data_ptr->cur_right_hand_posi, points.at(0), r , 2.0, 0.5f);
-			prog.disable(ctx);
-		}
+		vec3 startingdir = vec3(0, 0, -0.2);
+		data_ptr->cur_right_hand_rot_quat.rotate(startingdir);
+		vec3 endposi = data_ptr->cur_right_hand_posi + startingdir;
+
+		auto& prog = ctx.ref_surface_shader_program();
+		prog.set_uniform(ctx, "map_color_to_material", 3);
+		prog.enable(ctx);
+		ctx.set_color(c);
+		ctx.tesselate_arrow(data_ptr->cur_right_hand_posi, endposi, r, 2.0, 0.5f);
+		prog.disable(ctx);
+	}
+
+	void render_arrow_on_righthand_lifting(cgv::render::context& ctx, rgb c, float r) {
+		if (data_ptr == nullptr)
+			return;
+
+		// local
+		vec3 off_dir_start = vec3(0, 0, -0.1);
+		vec3 off_dir_end = vec3(0, 0.2, -0.1);
+
+		// to global 
+		data_ptr->cur_right_hand_rot_quat.rotate(off_dir_start);
+		data_ptr->cur_right_hand_rot_quat.rotate(off_dir_end);
+
+		// 
+		vec3 startposi = data_ptr->cur_right_hand_posi + off_dir_start;
+		vec3 endposi = data_ptr->cur_right_hand_posi + off_dir_end;
+
+		//
+		auto& prog = ctx.ref_surface_shader_program();
+		prog.set_uniform(ctx, "map_color_to_material", 3);
+		prog.enable(ctx);
+		ctx.set_color(c);
+		ctx.tesselate_arrow(startposi, endposi, r, 2.0, 0.5f);
+		prog.disable(ctx);
 	}
 
 	void render_a_handhold_box(cgv::render::context& ctx) {

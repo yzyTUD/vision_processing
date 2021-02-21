@@ -188,7 +188,7 @@ public:
 			int ci = vrke.get_controller_index();
 			if (ci == data_ptr->right_rgbd_controller_index
 				&& vrke.get_key() == vr::VR_DPAD_DOWN
-				&& data_ptr->check_roulette_selection(1,1))
+				&& data_ptr->check_roulette_selection(data_ptr->get_id_with_name("PointCloud\nSuperSampling")))
 			{
 				if (vrke.get_action() == cgv::gui::KA_PRESS)
 				{
@@ -208,14 +208,17 @@ public:
 			return true;
 		}
 
-		// THROTTLE to start an event 
+		// THROTTLE to start the selection 
 		case cgv::gui::EID_THROTTLE:
 		{
 			auto& te = static_cast<cgv::gui::vr_throttle_event&>(e);
 			int ci = te.get_controller_index();
-			float v = te.get_value();
-			bool d = (v == 1);
-			if (ci == data_ptr->right_rgbd_controller_index && d) {
+			float v = te.get_value(); 
+			// e-c-s checking order 
+			bool d = (v == 1); // event 
+			if (ci == data_ptr->right_rgbd_controller_index  // controller 
+				&& data_ptr->check_roulette_selection(data_ptr->get_id_with_name("PointCloud\nSuperSampling")) // selection
+					&& d) { // spec.
 				record_controller_behavier_draw_circle = !record_controller_behavier_draw_circle;
 				// if is going to end 
 				if (record_controller_behavier_draw_circle == false) {
@@ -240,8 +243,8 @@ public:
 				case cgv::gui::SA_TOUCH:
 					//std::cout << "righthand touch!" << std::endl;
 					if (ci == data_ptr->right_rgbd_controller_index 
-						&& data_ptr->check_roulette_selection(1, 1)
-						&& record_controller_behavier_draw_circle) {
+						&& data_ptr->check_roulette_selection(data_ptr->get_id_with_name("PointCloud\nSuperSampling"))
+							&& record_controller_behavier_draw_circle) {
 						vrse.get_state().controller[ci].put_ray(&origin(0), &direction(0));
 						data_ptr->righthand_posi_list.push_back(origin);
 						data_ptr->righthand_dir_list.push_back(direction); 
@@ -302,7 +305,7 @@ public:
 		//	render_a_bbox(ctx, data_ptr->supersampling_bbox);
 		//}
 		// supersampling mode 
-		if (data_ptr->check_roulette_selection(1, 1))
+		if (data_ptr->check_roulette_selection(data_ptr->get_id_with_name("PointCloud\nSuperSampling")))
 		{
 			if (record_controller_behavier_draw_circle) {
 				vec3 startingdir = vec3(0, 0, -2);
@@ -409,7 +412,6 @@ public:
 		ctx.set_color(c);
 		ctx.tesselate_arrow(data_ptr->cur_right_hand_posi, endposi, r, l, 0.5f);
 		prog.disable(ctx);
-		
 	}
 
 	// will be moved to render_kit header -> this header will be used for many kits 

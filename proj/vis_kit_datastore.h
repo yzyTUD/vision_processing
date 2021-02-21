@@ -260,10 +260,10 @@ public:
 	std::vector<vec3> righthand_posi_list;
 	std::vector<vec3> righthand_dir_list;
 
-	float paratone_1 = 0.2;
+	float paratone_1 = 0.1;
 	float paratone_2 = 0.2;
-	float paratone_3 = 30;
-	float paratone_4;
+	float paratone_3 = 2;
+	float paratone_4 = 1;
 	float paratone_5;
 	float paratone_6;
 	float paratone_7;
@@ -273,6 +273,7 @@ public:
 	int active_group = 0; // unlimited  
 	int active_btnidx = 0; // from 0-12 
 	float active_off_rotation = 0; // roulette
+	int max_group_num = 10;
 
 	// menu table: unified management: hard to iterate 
 	//std::map<std::string, ivec2> menu_table;
@@ -288,27 +289,48 @@ public:
 		//supersampling_bbox = box3(vec3(-2,0,0),vec3(2,1,1));
 		//mode = interaction_mode::SUPERSAMPLING_DRAW;
 
-		gp0_btns.push_back("Teleport\nDirectional");
-		gp0_btns.push_back("Teleport\nLifting");
-		gp0_btns.push_back("Teleport\nFineGrain");
+		gp0_btns.push_back("Teleport\nDirectional"); //0
+		gp0_btns.push_back("Teleport\nLifting"); //1
+		gp0_btns.push_back("Teleport\nFineGrain"); //2
 		gp0_btns.push_back("Teleport\nTeleport"); //3
 		gps.push_back(gp0_btns);
 
-		gp1_btns.push_back("PointCloud\nLoadMMOffice");
-		gp1_btns.push_back("PointCloud\nSuperSampling");
-		gp1_btns.push_back("PointCloud\nPickPoints");
+		gp1_btns.push_back("PointCloud\nLoadMMOffice");//0
+		gp1_btns.push_back("PointCloud\nSuperSampling");//1
+		gp1_btns.push_back("PointCloud\nPickPoints");//2
 		gp1_btns.push_back("PointCloud\nLabelPoints");//3
 		gps.push_back(gp1_btns);
 	}
 
-	bool check_roulette_selection(int gpidx,int btnidx) {
-		if (!((btnidx > 0) && (btnidx < 12)))
+	vec2 get_id_with_name(string btn_name) {
+		for (int i = 0; i < gps.size();i++) 
+			for (int j = 0; j < gps.at(i).size(); j++) 
+				if (gps.at(i).at(j)._Equal(btn_name)) 
+					return vec2(i,j);
+		return vec2(-1,-1);
+	}
+
+	bool check_roulette_selection(vec2 idxs) {
+		int gpidx = idxs.x();
+		int btnidx = idxs.y();
+		if (!((btnidx >= 0) && (btnidx < 12)))
 			return false;
 		bool check_group = (gpidx == active_group);
-		int projected_angle = ((int)active_off_rotation) % 360;
+		// judge with inversed && render with inversed 
+		float inv_active_off_rotation = -active_off_rotation; 
+		int projected_angle = ((int)inv_active_off_rotation) % 360;
 		bool check_btn = (projected_angle > -menu_theta / 2.0f + 30 * btnidx)
 			&& (projected_angle < menu_theta / 2.0f + 30 * btnidx);
 		return check_group && check_btn;
+	}
+
+	bool check_btn_active_givenrot(float btn_off_angle) {
+		float inv_active_off_rotation = -active_off_rotation;
+		if (inv_active_off_rotation < 0)
+			inv_active_off_rotation = 360 - ((int)-inv_active_off_rotation%360);
+		int projected_angle = ((int)inv_active_off_rotation) % 360;
+		bool check = (projected_angle > btn_off_angle - 14) && (projected_angle < btn_off_angle + 14);
+		return check;
 	}
 
 	void supersampling_bounded_points_with_drawn_data() {

@@ -64,6 +64,9 @@ private:
 	// current font face used
 	cgv::media::font::font_face_ptr label_font_face;
 	cgv::media::font::FontFaceAttributes label_face_type;
+
+	vec2 start_touching_point = vec2(0);
+	vec2 end_touching_point = vec2(0);
 public:
 	/// initialize rotation angle
 	vr_kit_tmpfixed_gui()
@@ -144,16 +147,59 @@ public:
 		case cgv::gui::EID_STICK:
 		{
 			cgv::gui::vr_stick_event& vrse = static_cast<cgv::gui::vr_stick_event&>(e);
+			int ci = vrse.get_controller_index();
 			switch (vrse.get_action()) {
-				case cgv::gui::SA_DRAG:
-					std::cout << "stick " << vrse.get_stick_index()
-						<< " of controller " << vrse.get_controller_index()
-						<< " " << cgv::gui::get_stick_action_string(vrse.get_action())
-						<< " from " << vrse.get_last_x() << ", " << vrse.get_last_y()
-						<< " to " << vrse.get_x() << ", " << vrse.get_y() << std::endl;
-					return true;
-				
-			}
+				//case cgv::gui::SA_TOUCH:
+				//	if (ci == data_ptr->left_rgbd_controller_index) {
+				//		float y_range = 1; float x_range = 1;
+				//		if (vrse.get_y() > -y_range && vrse.get_y() < y_range && vrse.get_x() > 0)
+				//			data_ptr->active_off_rotation -= 30; // switch to the right btn 
+				//		else if(vrse.get_y() > -y_range && vrse.get_y() < y_range && vrse.get_x() < 0)
+				//			data_ptr->active_off_rotation += 30; // move to the left btn
+				//		return true;
+				//	}
+
+				//case cgv::gui::SA_TOUCH:
+				//	if (ci == data_ptr->left_rgbd_controller_index) {
+				//		start_touching_point = vec2(vrse.get_x(), vrse.get_y());
+				//		return true;
+				//	}
+				////case cgv::gui::SA_RELEASE:
+				////	if (ci == data_ptr->left_rgbd_controller_index) {
+				////		end_touching_point = vec2(vrse.get_x(), vrse.get_y());
+				////		std::cout << "ci = " << ci << " from: " << start_touching_point<<
+				////			" to: " << end_touching_point << std::endl;
+				////		vec2 diff = end_touching_point - start_touching_point;
+				////		if (diff.x() < data_ptr->paratone_1)
+				////			data_ptr->active_off_rotation -= 30; // switch to the right btn 
+				////		else if (diff.x() > -data_ptr->paratone_1)
+				////			data_ptr->active_off_rotation += 30; // move to the left btn
+				////		return true;
+				////	}
+
+				//case cgv::gui::SA_MOVE:
+				//	if (ci == data_ptr->left_rgbd_controller_index) {
+				//		end_touching_point = vec2(vrse.get_x(), vrse.get_y());
+				//		std::cout << "ci = " << ci << " from: " << start_touching_point<<
+				//			" to: " << end_touching_point << std::endl;
+				//		vec2 diff = end_touching_point - start_touching_point;
+				//		if (diff.x() > 0.3) // todo: move with adjestable para. 
+				//			data_ptr->active_off_rotation += data_ptr->paratone_4 * abs(diff.x()); // switch to the left btn 
+				//		else if (diff.x() < -0.3) 
+				//			data_ptr->active_off_rotation -= data_ptr->paratone_4 * abs(diff.x()); // move to the right btn
+
+				//		return true;
+				//	}
+
+				case cgv::gui::SA_TOUCH:
+					if (ci == data_ptr->left_rgbd_controller_index) {
+						if(vrse.get_x()>0.3)
+							data_ptr->active_off_rotation -= 30;
+						else if(vrse.get_x() < -0.3)
+							data_ptr->active_off_rotation += 30;
+						return true;
+					}
+				}
 		}
 
 		}
@@ -222,6 +268,7 @@ public:
 		//}
 
 		render_menu_bar_quads(ctx, 0.1, 0.06, 28);
+		render_an_arrow_on_left_hand(ctx, rgb(0,0.4,0),0.1);
 	}
 	/// overload the create gui method
 	void create_gui()
@@ -317,11 +364,13 @@ public:
 				rot = quat(vec3(0, 1, 0), 2 * M_PI * (btn.off_angle / 360.0f));
 				quat off_rot = quat(vec3(0, 1, 0), M_PI);
 				quat global_rot = quat(vec3(0, 1, 0), 2 * M_PI * (data_ptr->active_off_rotation / 360.0f));
-				tesselete_PNT_fan(btn.level, r, s, theta_as_angle, rot * off_rot, &P, &N, &T);
+				tesselete_PNT_fan(btn.level, r, s, theta_as_angle, rot * off_rot * global_rot, &P, &N, &T);
 
 				// fixed part 
 				// handhold transformation
 				vec3 offset = vec3(0,0.008,-0.2);
+				if (data_ptr->check_btn_active_givenrot(btn.off_angle))
+					offset.y() = 0;
 				data_ptr->cur_left_hand_rot_quat.rotate(offset);
 				for (auto& p : P) {
 					data_ptr->cur_left_hand_rot_quat.rotate(p);
@@ -343,6 +392,7 @@ public:
 				glDisable(GL_CULL_FACE);
 				prog.enable(ctx);
 				btn.labeltex->label_tex.enable(ctx);
+				ctx.set_color(rgb(1, 1, 1));
 				glDrawArrays(GL_TRIANGLES, 0, (GLsizei)P.size());
 				btn.labeltex->label_tex.disable(ctx);
 				prog.disable(ctx);
@@ -352,5 +402,21 @@ public:
 				cgv::render::attribute_array_binding::disable_global_array(ctx, ti);*/
 			}
 		}
+	}
+
+
+	void render_an_arrow_on_left_hand(cgv::render::context& ctx, rgb c, float r, float l = 2.0) {
+		if (data_ptr == nullptr)
+			return;
+		vec3 startingdir = vec3(0, 0, -0.06);
+		data_ptr->cur_left_hand_rot_quat.rotate(startingdir);
+		vec3 endposi = data_ptr->cur_left_hand_posi + startingdir;
+
+		auto& prog = ctx.ref_surface_shader_program();
+		prog.set_uniform(ctx, "map_color_to_material", 3);
+		prog.enable(ctx);
+		ctx.set_color(c);
+		ctx.tesselate_arrow(data_ptr->cur_left_hand_posi, endposi, r, l, 0.5f);
+		prog.disable(ctx);
 	}
 };
