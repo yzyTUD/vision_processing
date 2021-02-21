@@ -248,14 +248,14 @@ public:
 	// superbox and interaction modes, righthand instead of boxgui for now 
 	// decrate case, a little complicated when update tracking origin at each pose event 
 	box3 supersampling_bbox;	
-	enum interaction_mode {
-		None = 0,
-		TELEPORT,
-		DIRECTIONAL,
-		CLIMB = 3, 
-		SUPERSAMPLING_BOX = 4,
-		SUPERSAMPLING_DRAW
-	}mode;
+	//enum interaction_mode {
+	//	None = 0,
+	//	TELEPORT,
+	//	DIRECTIONAL,
+	//	CLIMB = 3, 
+	//	SUPERSAMPLING_BOX = 4,
+	//	SUPERSAMPLING_DRAW
+	//}mode;
 	int max_idx_num = 5;
 	std::vector<vec3> righthand_posi_list;
 	std::vector<vec3> righthand_dir_list;
@@ -286,7 +286,7 @@ public:
 	vis_kit_data_store_shared() {
 		//initialize_trackable_list();
 		//supersampling_bbox = box3(vec3(-2,0,0),vec3(2,1,1));
-		mode = interaction_mode::SUPERSAMPLING_DRAW;
+		//mode = interaction_mode::SUPERSAMPLING_DRAW;
 
 		gp0_btns.push_back("Teleport\nDirectional");
 		gp0_btns.push_back("Teleport\nLifting");

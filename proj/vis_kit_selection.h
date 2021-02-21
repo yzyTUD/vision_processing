@@ -188,7 +188,7 @@ public:
 			int ci = vrke.get_controller_index();
 			if (ci == data_ptr->right_rgbd_controller_index
 				&& vrke.get_key() == vr::VR_DPAD_DOWN
-				&& data_ptr->mode == vis_kit_data_store_shared::interaction_mode::SUPERSAMPLING_DRAW)
+				&& data_ptr->check_roulette_selection(1,1))
 			{
 				if (vrke.get_action() == cgv::gui::KA_PRESS)
 				{
@@ -240,7 +240,7 @@ public:
 				case cgv::gui::SA_TOUCH:
 					//std::cout << "righthand touch!" << std::endl;
 					if (ci == data_ptr->right_rgbd_controller_index 
-						&& data_ptr->mode == vis_kit_data_store_shared::interaction_mode::SUPERSAMPLING_DRAW
+						&& data_ptr->check_roulette_selection(1, 1)
 						&& record_controller_behavier_draw_circle) {
 						vrse.get_state().controller[ci].put_ray(&origin(0), &direction(0));
 						data_ptr->righthand_posi_list.push_back(origin);
@@ -301,7 +301,8 @@ public:
 		//if (data_ptr != nullptr) {
 		//	render_a_bbox(ctx, data_ptr->supersampling_bbox);
 		//}
-		if (data_ptr->mode == vis_kit_data_store_shared::interaction_mode::SUPERSAMPLING_DRAW)
+		// supersampling mode 
+		if (data_ptr->check_roulette_selection(1, 1))
 		{
 			if (record_controller_behavier_draw_circle) {
 				vec3 startingdir = vec3(0, 0, -2);

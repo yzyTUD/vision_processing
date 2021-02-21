@@ -169,19 +169,21 @@ public:
 			// for rotation 
 			// right hand 
 			// make sure right hand is applicaiton-specified, you can use right hand in apps freely
-			int cur_mode = static_cast<int>(data_ptr->mode);
-			if (cur_mode <= 3) {
-				if (ci == data_ptr->right_rgbd_controller_index && vrke.get_key() == vr::VR_DPAD_LEFT)
-				{
-					if (vrke.get_action() == cgv::gui::KA_PRESS)
-						vr_view_ptr->set_tracking_rotation(vr_view_ptr->get_tracking_rotation() + 10);
-				}
-				if (ci == data_ptr->right_rgbd_controller_index && vrke.get_key() == vr::VR_DPAD_RIGHT)
-				{
-					if (vrke.get_action() == cgv::gui::KA_PRESS)
-						vr_view_ptr->set_tracking_rotation(vr_view_ptr->get_tracking_rotation() - 10);
-				}
-			}
+			// mode selection has been re-impl with a novel gui 
+			
+			//int cur_mode = static_cast<int>(data_ptr->mode);
+			//if (cur_mode <= 3) {
+			//	if (ci == data_ptr->right_rgbd_controller_index && vrke.get_key() == vr::VR_DPAD_LEFT)
+			//	{
+			//		if (vrke.get_action() == cgv::gui::KA_PRESS)
+			//			vr_view_ptr->set_tracking_rotation(vr_view_ptr->get_tracking_rotation() + 10);
+			//	}
+			//	if (ci == data_ptr->right_rgbd_controller_index && vrke.get_key() == vr::VR_DPAD_RIGHT)
+			//	{
+			//		if (vrke.get_action() == cgv::gui::KA_PRESS)
+			//			vr_view_ptr->set_tracking_rotation(vr_view_ptr->get_tracking_rotation() - 10);
+			//	}
+			//}
 
 			// spatial interactive 
 			// left hand key event for mode switching and lifting/gravity 
@@ -339,27 +341,37 @@ public:
 	void finish_draw(context& ctx) {
 		if (data_ptr == nullptr)
 			return;
-		if (data_ptr->mode == vis_kit_data_store_shared::interaction_mode::None)
-		{
+		//if (data_ptr->mode == vis_kit_data_store_shared::interaction_mode::None)
+		//{
 
-		}
-		if (data_ptr->mode == vis_kit_data_store_shared::interaction_mode::TELEPORT) //do nothing for now
-		{
-			render_lines_for_controllers(ctx);
-		}
-		if (data_ptr->mode == vis_kit_data_store_shared::interaction_mode::DIRECTIONAL)
-		{
-			render_a_handhold_arrow(ctx, rgb(0.4), 0.1f);
-		}
-		if (data_ptr->mode == vis_kit_data_store_shared::interaction_mode::CLIMB)
-		{
-			render_a_handhold_sphere_if_configured(ctx);
-		}
+		//}
+		//if (data_ptr->mode == vis_kit_data_store_shared::interaction_mode::TELEPORT) //do nothing for now
+		//{
+		//	render_lines_for_controllers(ctx);
+		//}
+		//if (data_ptr->mode == vis_kit_data_store_shared::interaction_mode::DIRECTIONAL)
+		//{
+		//	render_a_handhold_arrow(ctx, rgb(0.4), 0.1f);
+		//}
+		//if (data_ptr->mode == vis_kit_data_store_shared::interaction_mode::CLIMB)
+		//{
+		//	render_a_handhold_sphere_if_configured(ctx);
+		//}
 		//if (data_ptr->mode == vis_kit_data_store_shared::interaction_mode::SUPERSAMPLING_DRAW)
 		//{
 		//	render_a_handhold_arrow(ctx, rgb(0,0.4,0), 0.05f);
 		//	//render_a_handhold_box(ctx);
 		//}
+
+		if (data_ptr->check_roulette_selection(0, 0)) {
+			render_a_handhold_arrow(ctx, rgb(0.4), 0.1f);
+		}
+		if (data_ptr->check_roulette_selection(0, 2)) {
+			render_a_handhold_sphere_if_configured(ctx);
+		}
+		if (data_ptr->check_roulette_selection(0, 3)) {
+			render_lines_for_controllers(ctx);
+		}
 	}
 
 	void configure_the_handhold_sphere(vec3 _offset_in_ori_pose, float radii) {
