@@ -219,6 +219,7 @@ public:
 						data_ptr->active_off_rotation += 30;
 				}
 			}
+			// todo: modi. to switch group 
 			if (ci == data_ptr->left_rgbd_controller_index && vrke.get_key() == vr::VR_DPAD_UP)
 			{
 				//if (vrke.get_action() == cgv::gui::KA_PRESS) 
