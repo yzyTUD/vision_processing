@@ -268,11 +268,47 @@ public:
 	float paratone_6;
 	float paratone_7;
 
+	int menu_theta = 28;
+
+	int active_group = 0; // unlimited  
+	int active_btnidx = 0; // from 0-12 
+	float active_off_rotation = 0; // roulette
+
+	// menu table: unified management: hard to iterate 
+	//std::map<std::string, ivec2> menu_table;
+	// control the orders easily! 
+	std::vector<std::vector<std::string>> gps;
+	std::vector<std::string> gp0_btns;
+	std::vector<std::string> gp1_btns;
+	std::vector<std::string> gp2_btns;
+	std::vector<std::string> gp3_btns;
 
 	vis_kit_data_store_shared() {
 		//initialize_trackable_list();
 		//supersampling_bbox = box3(vec3(-2,0,0),vec3(2,1,1));
 		mode = interaction_mode::SUPERSAMPLING_DRAW;
+
+		gp0_btns.push_back("Teleport\nDirectional");
+		gp0_btns.push_back("Teleport\nLifting");
+		gp0_btns.push_back("Teleport\nFineGrain");
+		gp0_btns.push_back("Teleport\nTeleport"); //3
+		gps.push_back(gp0_btns);
+
+		gp1_btns.push_back("PointCloud\nLoadMMOffice");
+		gp1_btns.push_back("PointCloud\nSuperSampling");
+		gp1_btns.push_back("PointCloud\nPickPoints");
+		gp1_btns.push_back("PointCloud\nLabelPoints");//3
+		gps.push_back(gp1_btns);
+	}
+
+	bool check_roulette_selection(int gpidx,int btnidx) {
+		if (!((btnidx > 0) && (btnidx < 12)))
+			return false;
+		bool check_group = (gpidx == active_group);
+		int projected_angle = ((int)active_off_rotation) % 360;
+		bool check_btn = (projected_angle > -menu_theta / 2.0f + 30 * btnidx)
+			&& (projected_angle < menu_theta / 2.0f + 30 * btnidx);
+		return check_group && check_btn;
 	}
 
 	void supersampling_bounded_points_with_drawn_data() {

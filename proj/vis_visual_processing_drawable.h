@@ -265,7 +265,8 @@ bool visual_processing::init(cgv::render::context& ctx)
 	if (manipulation_kit != nullptr)manipulation_kit->set_data_ptr(data_ptr);
 	if (imagebox_kit != nullptr) imagebox_kit->set_data_ptr(data_ptr);
 	if (selection_kit!=nullptr) selection_kit->set_data_ptr(data_ptr);
-	if (hmbgui_kit != nullptr) hmbgui_kit->set_data_ptr(data_ptr);
+	if (handhold_near_kit != nullptr) handhold_near_kit->set_data_ptr(data_ptr);
+	if (tmpfixed_gui_kit != nullptr) tmpfixed_gui_kit->set_data_ptr(data_ptr);
 
 	// set the context ptrs 
 	if (selection_kit != nullptr) selection_kit->set_context_str(get_context());
@@ -291,7 +292,8 @@ bool visual_processing::init(cgv::render::context& ctx)
 bool visual_processing::handle(cgv::gui::event& e)
 {
 	if (b_interactable != nullptr)b_interactable->handle(e);
-	if (hmbgui_kit != nullptr)hmbgui_kit->handle(e);
+	if (handhold_near_kit != nullptr)handhold_near_kit->handle(e);
+	if (tmpfixed_gui_kit)tmpfixed_gui_kit->handle(e);
 	if (teleportation_kit != nullptr)teleportation_kit->handle(e);
 	if (draw_kit != nullptr)draw_kit->handle(e);
 	if (motioncap_kit != nullptr) motioncap_kit->handle(e);
@@ -365,7 +367,8 @@ void visual_processing::clear(cgv::render::context& ctx)
 void visual_processing::init_frame(cgv::render::context& ctx)
 {
 	b_interactable->init_frame(ctx);
-	hmbgui_kit->init_frame(ctx);
+	if (handhold_near_kit != nullptr) handhold_near_kit->init_frame(ctx);
+	if (tmpfixed_gui_kit)tmpfixed_gui_kit->init_frame(ctx);
 	data_ptr->point_cloud_kit->init_frame(ctx);
 	one_shot_360pc->init_frame(ctx);
 	stored_cloud->init_frame(ctx);
@@ -377,7 +380,8 @@ void visual_processing::draw(cgv::render::context& ctx)
 	if(render_skybox)
 		if (skybox_kit) skybox_kit->draw(ctx);
 	if (b_interactable) b_interactable->draw(ctx);
-	if (hmbgui_kit) hmbgui_kit->draw(ctx);
+	if (handhold_near_kit!=nullptr) handhold_near_kit->draw(ctx);
+	if (tmpfixed_gui_kit != nullptr) tmpfixed_gui_kit->draw(ctx);
 	if (render_pc) data_ptr->point_cloud_kit->draw(ctx);
 	if (roller_coaster_kit_1) roller_coaster_kit_1->draw(ctx);
 	if (draw_kit!=nullptr) draw_kit->render_trajectory(ctx);

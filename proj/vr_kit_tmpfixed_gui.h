@@ -25,32 +25,7 @@ using namespace cgv::render;
 #include <cg_vr/vr_events.h>
 #include "vr_kit_intersection.h"
 
-class label_texture : public cgv::render::render_types {
-public:
-	std::string label_text;
-	int label_font_idx;
-	bool label_upright;
-	float label_size;
-	rgb label_color;
-	bool label_outofdate; // whether label texture is out of date
-	unsigned label_resolution; // resolution of label texture
-	cgv::render::texture label_tex; // texture used for offline rendering of label
-	cgv::render::frame_buffer label_fbo; // fbo used for offline rendering of label
-
-	label_texture(std::string label, float font_size) {
-		label_text = label;
-		label_font_idx = 0;
-		label_upright = false;
-		label_size = font_size; // 150
-		label_color = rgb(1, 1, 1);
-		label_outofdate = true; // whether label texture is out of date
-		label_resolution = 256; // resolution of label texture
-		// this two will be initialized during init_frame() func.: 
-		// label_tex; label_fbo;
-	}
-};
-
-class hmb_menubtn {
+class quadbtn {
 public:
 	label_texture* labeltex;
 	bool use_label;
@@ -58,7 +33,7 @@ public:
 	int group;
 	float off_angle;
 	int level;
-	hmb_menubtn(int which_group) {
+	quadbtn(int which_group) {
 		group = which_group;
 		off_angle = 0;
 		level = 0;
@@ -74,7 +49,7 @@ public:
 	}
 };
 
-class vr_kit_hmbgui :
+class vr_kit_tmpfixed_gui :
 	public base,    // base class of all to be registered classes
 	public provider, // is derived from tacker, which is not necessary as base anymore
 	public event_handler, // necessary to receive events
@@ -82,7 +57,7 @@ class vr_kit_hmbgui :
 {
 private:
 	vis_kit_data_store_shared* data_ptr = nullptr;
-	std::vector<hmb_menubtn> hmbmenubtns;
+	std::vector<quadbtn> hmbmenubtns;
 	// general font information
 	std::vector<const char*> font_names;
 	std::string font_enum_decl;
@@ -91,9 +66,9 @@ private:
 	cgv::media::font::FontFaceAttributes label_face_type;
 public:
 	/// initialize rotation angle
-	vr_kit_hmbgui()
+	vr_kit_tmpfixed_gui()
 	{
-		//connect(get_animation_trigger().shoot, this, &vr_kit_hmbgui::timer_event);		
+		//connect(get_animation_trigger().shoot, this, &vr_kit_tmpfixed_gui::timer_event);		
 		// enum system fonts can assign font vars locally 
 		cgv::media::font::enumerate_font_names(font_names);
 		label_face_type = cgv::media::font::FFA_BOLD;
@@ -108,68 +83,28 @@ public:
 				}
 			}
 		}
-
-		hmb_menubtn* mbtn;
-		mbtn = new hmb_menubtn(0);
-		mbtn->set_label("PointCloud Tools", 50);
-		mbtn->set_angle_level(0, 0);
-		hmbmenubtns.push_back(*mbtn);
-
-		mbtn = new hmb_menubtn(0);
-		mbtn->set_label("PointCloud Tools",50);
-		mbtn->set_angle_level(0,1);
-		hmbmenubtns.push_back(*mbtn);
-
-		mbtn = new hmb_menubtn(0);
-		mbtn->set_label("PointCloud Tools", 50);
-		mbtn->set_angle_level(30, 0);
-		hmbmenubtns.push_back(*mbtn);
-
-		mbtn = new hmb_menubtn(0);
-		mbtn->set_label("PointCloud Tools", 50);
-		mbtn->set_angle_level(30, 1);
-		hmbmenubtns.push_back(*mbtn);
-
-		mbtn = new hmb_menubtn(0);
-		mbtn->set_label("PointCloud Tools", 50);
-		mbtn->set_angle_level(30, 2);
-		hmbmenubtns.push_back(*mbtn);
-
-		mbtn = new hmb_menubtn(0);
-		mbtn->set_label("PointCloud Tools", 50);
-		mbtn->set_angle_level(-30, 0);
-		hmbmenubtns.push_back(*mbtn);
-
-		mbtn = new hmb_menubtn(0);
-		mbtn->set_label("PointCloud Tools", 50);
-		mbtn->set_angle_level(-30, 1);
-		hmbmenubtns.push_back(*mbtn);
-
-		mbtn = new hmb_menubtn(0);
-		mbtn->set_label("PointCloud Tools", 50);
-		mbtn->set_angle_level(-30, 2);
-		hmbmenubtns.push_back(*mbtn);
-
-		mbtn = new hmb_menubtn(0);
-		mbtn->set_label("PointCloud Tools", 50);
-		mbtn->set_angle_level(60, 2);
-		hmbmenubtns.push_back(*mbtn);
-		mbtn = new hmb_menubtn(0);
-		mbtn->set_label("PointCloud Tools", 50);
-		mbtn->set_angle_level(60, 1);
-		hmbmenubtns.push_back(*mbtn);
-		mbtn = new hmb_menubtn(0);
-		mbtn->set_label("PointCloud Tools", 50);
-		mbtn->set_angle_level(60, 0);
-		hmbmenubtns.push_back(*mbtn);
-		mbtn = new hmb_menubtn(0);
-		mbtn->set_label("PointCloud Tools", 50);
-		mbtn->set_angle_level(-60, 0);
-		hmbmenubtns.push_back(*mbtn);
 	}
 	// call me 
 	void set_data_ptr(vis_kit_data_store_shared* d_ptr) {
 		data_ptr = d_ptr;
+		for (int i = 0; i < data_ptr->gps.size(); i++) {
+			int cur_group = i;
+			int cur_angle = 0;
+			int btnidx = 0;
+			for (btnidx = 0; btnidx < data_ptr->gps.at(i).size() && btnidx < 12; btnidx++) {
+				hmbmenubtns.push_back(*(new quadbtn(cur_group)));
+				hmbmenubtns.back().set_label(data_ptr->gps.at(i).at(btnidx), 50);
+				hmbmenubtns.back().set_angle_level(cur_angle, 0);
+				cur_angle += 30;
+			}
+			while(btnidx<12){
+				hmbmenubtns.push_back(*(new quadbtn(cur_group)));
+				hmbmenubtns.back().set_label("#gp "+std::to_string(i), 50);
+				hmbmenubtns.back().set_angle_level(cur_angle, 0);
+				cur_angle += 30;
+				btnidx++;
+			}
+		}
 	}
 	/// 
 	void on_set(void* member_ptr)
@@ -185,7 +120,7 @@ public:
 	/// return the type name of the class derived from base
 	std::string get_type_name() const
 	{
-		return "vr_kit_hmbgui";
+		return "vr_kit_tmpfixed_gui";
 	}
 	/// show statistic information
 	void stream_stats(std::ostream& os)
@@ -199,6 +134,29 @@ public:
 	// call me 
 	bool handle(event& e)
 	{
+		switch (e.get_kind()) {
+		case cgv::gui::EID_KEY:
+		{
+			cgv::gui::vr_key_event& vrke = static_cast<cgv::gui::vr_key_event&>(e);
+			int ci = vrke.get_controller_index();
+
+		}
+		case cgv::gui::EID_STICK:
+		{
+			cgv::gui::vr_stick_event& vrse = static_cast<cgv::gui::vr_stick_event&>(e);
+			switch (vrse.get_action()) {
+				case cgv::gui::SA_DRAG:
+					std::cout << "stick " << vrse.get_stick_index()
+						<< " of controller " << vrse.get_controller_index()
+						<< " " << cgv::gui::get_stick_action_string(vrse.get_action())
+						<< " from " << vrse.get_last_x() << ", " << vrse.get_last_y()
+						<< " to " << vrse.get_x() << ", " << vrse.get_y() << std::endl;
+					return true;
+				
+			}
+		}
+
+		}
 		return false;
 	}
 	/// declare timer_event method to connect the shoot signal of the trigger
@@ -262,15 +220,15 @@ public:
 		//		prog.disable(ctx);
 		//	}
 		//}
-		
-		render_menu_bar_quads(ctx,0.1,0.06,28);
+
+		render_menu_bar_quads(ctx, 0.1, 0.06, 28);
 	}
 	/// overload the create gui method
 	void create_gui()
 	{
 	}
 
-	void tesselete_PNT_fan(int lev, float r, float s, float theta_as_angle, quat rot,std::vector<vec3>* P, std::vector<vec3>* N, std::vector<vec2>* T) {
+	void tesselete_PNT_fan(int lev, float r, float s, float theta_as_angle, quat rot, std::vector<vec3>* P, std::vector<vec3>* N, std::vector<vec2>* T) {
 
 		float theta = 2 * M_PI * (theta_as_angle / 360.0f);
 		// 2d shape flexible 
@@ -281,7 +239,7 @@ public:
 
 		float sums = 0;
 		for (int i = 0; i < lev; i++) {
-			sums += pow(1.2,i) * s;
+			sums += pow(1.2, i) * s;
 		}
 		r = 0.1 + lev * 0.01 + sums;
 		if (lev > 0)
@@ -303,12 +261,21 @@ public:
 		P->push_back(vec3(-r * sin(theta / 2.0), 0, -(r + s) * cos(theta / 2.0)));
 		P->push_back(vec3(-(s + r) * sin(theta / 2.0), 0, -(r + s) * cos(theta / 2.0)));
 
-		T->push_back(vec2(1.0f, 1.0f));
-		T->push_back(vec2(0.0f, 1.0f));
-		T->push_back(vec2(1.0f, 0.0f));
-		T->push_back(vec2(0.0f, 1.0f));
-		T->push_back(vec2(1.0f, 0.0f));
+		//T->push_back(vec2(1.0f, 1.0f));
+		//T->push_back(vec2(0.0f, 1.0f));
+		//T->push_back(vec2(1.0f, 0.0f));
+		////
+		//T->push_back(vec2(0.0f, 1.0f));
+		//T->push_back(vec2(1.0f, 0.0f));
+		//T->push_back(vec2(0.0f, 0.0f));
+
 		T->push_back(vec2(0.0f, 0.0f));
+		T->push_back(vec2(1.0f, 0.0f));
+		T->push_back(vec2(0.0f, 1.0f));
+		T->push_back(vec2(1.0f, 0.0f));
+		T->push_back(vec2(0.0f, 1.0f));
+		T->push_back(vec2(1.0f, 1.0f));
+
 		// random? 
 		T->push_back(vec2(-1, -1));
 		T->push_back(vec2(-1, -1));
@@ -332,7 +299,7 @@ public:
 		N->push_back(normal);
 		N->push_back(normal);
 
-		for (int i = 0; i < P->size();i++) {
+		for (int i = 0; i < P->size(); i++) {
 			rot.rotate(P->at(i));
 		}
 	}
@@ -340,21 +307,25 @@ public:
 	// default val: /*float r = 0.2; float s = 0.2;*/
 	void render_menu_bar_quads(context& ctx, float r, float s, float theta_as_angle) {
 		for (auto btn : hmbmenubtns) {
-			if (btn.use_label) {
+			if (btn.use_label && btn.group == data_ptr->active_group) {
 
 				std::vector<vec3> P;
 				std::vector<vec3> N;
 				std::vector<vec2> T;
 
 				quat rot;
-				rot = quat(vec3(0,1,0), 2 * M_PI * (btn.off_angle / 360.0f));
-				tesselete_PNT_fan(btn.level, r, s, theta_as_angle, rot, &P, &N, &T);
+				rot = quat(vec3(0, 1, 0), 2 * M_PI * (btn.off_angle / 360.0f));
+				quat off_rot = quat(vec3(0, 1, 0), M_PI);
+				quat global_rot = quat(vec3(0, 1, 0), 2 * M_PI * (data_ptr->active_off_rotation / 360.0f));
+				tesselete_PNT_fan(btn.level, r, s, theta_as_angle, rot * off_rot, &P, &N, &T);
 
 				// fixed part 
-				// handhold transformation 
+				// handhold transformation
+				vec3 offset = vec3(0,0.008,-0.2);
+				data_ptr->cur_left_hand_rot_quat.rotate(offset);
 				for (auto& p : P) {
 					data_ptr->cur_left_hand_rot_quat.rotate(p);
-					p += data_ptr->cur_left_hand_posi;
+					p += data_ptr->cur_left_hand_posi + offset;
 				}
 
 				// enable texture 

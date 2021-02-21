@@ -190,24 +190,31 @@ public:
 			if (ci == data_ptr->left_rgbd_controller_index && vrke.get_key() == vr::VR_DPAD_LEFT)
 			{
 				if (vrke.get_action() == cgv::gui::KA_PRESS) {
-					int cur_mode = static_cast<int>(data_ptr->mode);
-					cur_mode--;
-					if (cur_mode < 0)
-						data_ptr->mode = static_cast<vis_kit_data_store_shared::interaction_mode>(0);
-					else
-						data_ptr->mode = static_cast<vis_kit_data_store_shared::interaction_mode>(cur_mode);
+					//int cur_mode = static_cast<int>(data_ptr->mode);
+					//cur_mode--;
+					//if (cur_mode < 0)
+					//	data_ptr->mode = static_cast<vis_kit_data_store_shared::interaction_mode>(0);
+					//else
+					//	data_ptr->mode = static_cast<vis_kit_data_store_shared::interaction_mode>(cur_mode);
+					
+					//if(data_ptr->active_group == 0)
+						data_ptr->active_off_rotation -= 30;
 				}
 
 			}
 			if (ci == data_ptr->left_rgbd_controller_index && vrke.get_key() == vr::VR_DPAD_RIGHT)
 			{
 				if (vrke.get_action() == cgv::gui::KA_PRESS) {
-					int cur_mode = static_cast<int>(data_ptr->mode);
-					cur_mode++;
-					if (cur_mode > data_ptr->max_idx_num)
-						data_ptr->mode = static_cast<vis_kit_data_store_shared::interaction_mode>(data_ptr->max_idx_num);
-					else
-						data_ptr->mode = static_cast<vis_kit_data_store_shared::interaction_mode>(cur_mode);
+					//int cur_mode = static_cast<int>(data_ptr->mode);
+					//cur_mode++;
+					//if (cur_mode > data_ptr->max_idx_num)
+					//	data_ptr->mode = static_cast<vis_kit_data_store_shared::interaction_mode>(data_ptr->max_idx_num);
+					//else
+					//	data_ptr->mode = static_cast<vis_kit_data_store_shared::interaction_mode>(cur_mode);
+					
+					// we can judge or not, let it act as global 
+					//if (data_ptr->active_group == 0)
+						data_ptr->active_off_rotation += 30;
 				}
 			}
 			if (ci == data_ptr->left_rgbd_controller_index && vrke.get_key() == vr::VR_DPAD_UP)
@@ -234,33 +241,40 @@ public:
 			if(ci != -1)
 			switch (vrse.get_action()) {
 				case cgv::gui::SA_TOUCH:
-					if (data_ptr->mode == vis_kit_data_store_shared::interaction_mode::TELEPORT 
-							&& ci == data_ptr->right_rgbd_controller_index) {
-						vrse.get_state().controller[ci].put_ray(&origin(0), &direction(0));
-						vec3 posi = compute_ray_plane_intersection_point(origin, direction);
-						vr_view_ptr->set_tracking_origin(vec3(posi.x(), vr_view_ptr->get_tracking_origin().y(), posi.z()));
-					}
-					if (data_ptr->mode == vis_kit_data_store_shared::interaction_mode::DIRECTIONAL 
-							&& ci == data_ptr->right_rgbd_controller_index) {
-						vrse.get_state().controller[ci].put_ray(&origin(0), &direction(0));
-						direction.normalize();
-						vr_view_ptr->set_tracking_origin(vr_view_ptr->get_tracking_origin() + direction);
-					}
-					if (data_ptr->mode == vis_kit_data_store_shared::interaction_mode::CLIMB) {
-						if (hand_touching) {
+					// ok-todo: reformulate with new gui: 
+					if (data_ptr->active_group == 0) {
+						//Teleport\nTeleport, data_ptr->mode == vis_kit_data_store_shared::interaction_mode::TELEPORT 
+						if (data_ptr->check_roulette_selection(0, 3)
+								&& ci == data_ptr->right_rgbd_controller_index) {
 							vrse.get_state().controller[ci].put_ray(&origin(0), &direction(0));
-							touching_origin = origin;
-							tracking_origin_when_touching = vr_view_ptr->get_tracking_origin();
-							hand_touching = !hand_touching;
+							vec3 posi = compute_ray_plane_intersection_point(origin, direction);
+							vr_view_ptr->set_tracking_origin(vec3(posi.x(), vr_view_ptr->get_tracking_origin().y(), posi.z()));
 						}
-						else {
+						// Teleport\nDirectional
+						if (data_ptr->check_roulette_selection(0, 0)
+								&& ci == data_ptr->right_rgbd_controller_index) {
 							vrse.get_state().controller[ci].put_ray(&origin(0), &direction(0));
-							touching_stopped = origin;
-							vec3 from_origin_to_current = touching_stopped - touching_origin;
-							vr_view_ptr->set_tracking_origin(tracking_origin_when_touching - from_origin_to_current);
-							hand_touching = !hand_touching;
+							direction.normalize();
+							vr_view_ptr->set_tracking_origin(vr_view_ptr->get_tracking_origin() + direction);
+						}
+						// fine grain 
+						if (data_ptr->check_roulette_selection(0, 2)) {
+							if (hand_touching) {
+								vrse.get_state().controller[ci].put_ray(&origin(0), &direction(0));
+								touching_origin = origin;
+								tracking_origin_when_touching = vr_view_ptr->get_tracking_origin();
+								hand_touching = !hand_touching;
+							}
+							else {
+								vrse.get_state().controller[ci].put_ray(&origin(0), &direction(0));
+								touching_stopped = origin;
+								vec3 from_origin_to_current = touching_stopped - touching_origin;
+								vr_view_ptr->set_tracking_origin(tracking_origin_when_touching - from_origin_to_current);
+								hand_touching = !hand_touching;
+							}
 						}
 					}
+					
 					break;
 				case cgv::gui::SA_RELEASE:
 					break;
@@ -281,6 +295,8 @@ public:
 				data_ptr->cur_left_hand_posi = vrpe.get_position();
 				data_ptr->cur_left_hand_rot = vrpe.get_orientation();
 				data_ptr->cur_left_hand_rot_quat = vrpe.get_quaternion();
+				vrpe.get_state().controller[ci].put_ray(&origin(0), &direction(0));
+				data_ptr->cur_left_hand_dir = direction;
 			}
 			if (ci == data_ptr->right_rgbd_controller_index) {
 				data_ptr->cur_right_hand_posi = vrpe.get_position();

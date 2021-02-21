@@ -41,7 +41,8 @@
 #include "vr_kit_imagebox.h"
 #include <vr_kit_light.h>
 #include "vis_kit_selection.h"
-#include "vr_kit_hmbgui.h"
+#include "vr_kit_handhold_near_gui.h"
+#include <vr_kit_tmpfixed_gui.h>
 
 class visual_processing :
 	public cgv::base::node,
@@ -179,13 +180,15 @@ protected:
 
 	// all necessary kits 
 	boxgui_interactable* b_interactable = new boxgui_interactable();
-	vr_kit_hmbgui* hmbgui_kit = new vr_kit_hmbgui();
+	vr_kit_tmpfixed_gui* tmpfixed_gui_kit = new vr_kit_tmpfixed_gui();
 	vr_kit_light* light_kit = new vr_kit_light();
 	vr_kit_skybox* skybox_kit = new vr_kit_skybox();
 	vr_kit_teleportation* teleportation_kit = new vr_kit_teleportation();
 	vis_kit_data_store_shared* data_ptr = new vis_kit_data_store_shared();
 
 	// optional kits 
+	vr_kit_handhold_near_gui* handhold_near_kit = nullptr;
+		//= new vr_kit_handhold_near_gui();
 	vr_kit_roller_coaster_1* roller_coaster_kit_1 = nullptr; 
 	vis_kit_meshes* mesh_kit = nullptr;
 	vis_kit_meshes* mesh_kit_2 = nullptr;
