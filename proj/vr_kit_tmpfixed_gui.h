@@ -382,13 +382,13 @@ public:
 				// enable texture 
 				cgv::render::shader_program& prog = ctx.ref_default_shader_program(true);
 				int pi = prog.get_position_index();
-				int ni = prog.get_normal_index();
+				//int ni = prog.get_normal_index();
 				int ti = prog.get_texcoord_index();
 
 				cgv::render::attribute_array_binding::set_global_attribute_array(ctx, pi, P);
 				cgv::render::attribute_array_binding::enable_global_array(ctx, pi);
-				cgv::render::attribute_array_binding::set_global_attribute_array(ctx, ni, N);
-				cgv::render::attribute_array_binding::enable_global_array(ctx, ni);
+				/*cgv::render::attribute_array_binding::set_global_attribute_array(ctx, ni, N);
+				cgv::render::attribute_array_binding::enable_global_array(ctx, ni);*/
 				cgv::render::attribute_array_binding::set_global_attribute_array(ctx, ti, T);
 				cgv::render::attribute_array_binding::enable_global_array(ctx, ti);
 				glDisable(GL_CULL_FACE);
@@ -399,9 +399,9 @@ public:
 				btn.labeltex->label_tex.disable(ctx);
 				prog.disable(ctx);
 				glEnable(GL_CULL_FACE);
-				/*cgv::render::attribute_array_binding::disable_global_array(ctx, pi);
-				cgv::render::attribute_array_binding::disable_global_array(ctx, ni);
-				cgv::render::attribute_array_binding::disable_global_array(ctx, ti);*/
+				cgv::render::attribute_array_binding::disable_global_array(ctx, pi);
+				//cgv::render::attribute_array_binding::disable_global_array(ctx, ni);
+				cgv::render::attribute_array_binding::disable_global_array(ctx, ti);
 			}
 		}
 	}

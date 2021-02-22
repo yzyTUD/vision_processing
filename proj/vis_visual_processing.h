@@ -163,7 +163,6 @@ protected:
 	quat initial_cam_alinmentq = quat(vec3(0, 1, 0), -115 * M_PI / 180);
 	quat addi_alignq = quat();
 
-	point_cloud_interactable* point_cloud_kit = new point_cloud_interactable();
 	point_cloud_interactable* one_shot_360pc = new point_cloud_interactable();
 	point_cloud_interactable* stored_cloud = new point_cloud_interactable();
 	bool render_pc = true;
@@ -494,14 +493,14 @@ public:
 		mesh_kit->compute_coordinates_with_rot_correction(rotq, translation_vec);
 	}
 
-	//void compute_feature_points() { data_ptr->point_cloud_kit->compute_feature_points(); post_redraw(); }
+	void compute_feature_points() { data_ptr->point_cloud_kit->compute_feature_points(); post_redraw(); }
 
-	//void render_with_fullpc() { data_ptr->point_cloud_kit->render_with_fullpc(); }
-	//void auto_downsampling() { data_ptr->point_cloud_kit->auto_downsampling(); }
-	//void supersampling_with_bbox() { data_ptr->point_cloud_kit->supersampling_with_bbox(data_ptr->supersampling_bbox); }
-	//void restore_supersampling() { data_ptr->point_cloud_kit->restore_supersampling(); }
+	void render_with_fullpc() { data_ptr->point_cloud_kit->render_with_fullpc(); }
+	void auto_downsampling() { data_ptr->point_cloud_kit->auto_downsampling(); }
+	void supersampling_with_bbox() { data_ptr->point_cloud_kit->supersampling_with_bbox(data_ptr->supersampling_bbox); }
+	void restore_supersampling() { data_ptr->point_cloud_kit->restore_supersampling(); }
 
-	//void prepare_marking() { data_ptr->point_cloud_kit->prepare_marking(&data_ptr->point_selection_colors); }
+	void prepare_marking() { data_ptr->point_cloud_kit->prepare_marking(&data_ptr->point_selection_colors); }
 };
 
 ///@}

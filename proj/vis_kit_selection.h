@@ -207,7 +207,7 @@ public:
 				if (vrke.get_action() == cgv::gui::KA_PRESS) { //
 					if (vrke.get_controller_index() == data_ptr->right_rgbd_controller_index) { //
 						if (data_ptr->check_roulette_selection(data_ptr->get_id_with_name("PointCloud\nMarking"))) { //
-							//data_ptr->point_cloud_kit->prepare_grow(false,&data_ptr->point_selection_colors,data_ptr->max_num_of_regions);
+							data_ptr->point_cloud_kit->prepare_grow(false,&data_ptr->point_selection_colors,data_ptr->max_num_of_regions);
 						}
 					}
 				}
@@ -256,8 +256,8 @@ public:
 				}
 				if (data_ptr->check_roulette_selection(data_ptr->get_id_with_name("PointCloud\nMarking"))) { // hold throttle to mark
 					if (v > 0) {
-						/*data_ptr->point_cloud_kit->mark_points_with_conroller(data_ptr->cur_right_hand_posi + data_ptr->cur_off_right,
-							marking_style.radius, true, 1);*/
+						data_ptr->point_cloud_kit->mark_points_with_conroller(data_ptr->cur_right_hand_posi + data_ptr->cur_off_right,
+							marking_style.radius, true, 1);
 					}
 				}
 			}

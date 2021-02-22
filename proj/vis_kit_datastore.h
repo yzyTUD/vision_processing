@@ -201,6 +201,8 @@ public:
 		return std::to_string(microsecondsUTC);
 	}
 	
+	point_cloud_interactable* point_cloud_kit = new point_cloud_interactable();
+
 	/// main storage for motion data 
 	std::map<std::string, motion_storage_per_device> motion_storage;
 	std::map<std::string, motion_storage_per_device> motion_storage_read;
