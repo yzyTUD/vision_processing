@@ -439,7 +439,6 @@ public:
 					render_line_on_righthand(ctx);
 			}
 		}
-
 	}
 
 	void render_picking_points(cgv::render::context& ctx) {

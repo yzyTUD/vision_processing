@@ -30,7 +30,6 @@
 #include "point_cloud_interactable.h"
 #include "vr_kit_boxgui.h"
 #include "vr_kit_skybox.h"
-#include "vis_kit_meshes.h"
 //#include "vr_kit_image_renderer.h"
 #include "vr_kit_teleportation.h"
 #include "vr_kit_roller_coaster.h"
@@ -43,6 +42,7 @@
 #include "vis_kit_selection.h"
 #include "vr_kit_handhold_near_gui.h"
 #include <vr_kit_tmpfixed_gui.h>
+#include <vis_kit_meshes.h>
 
 class visual_processing :
 	public cgv::base::node,
@@ -187,11 +187,11 @@ protected:
 	vis_kit_data_store_shared* data_ptr = new vis_kit_data_store_shared();
 
 	// optional kits 
+	vis_kit_meshes* mesh_kit = nullptr;
+	vis_kit_meshes* mesh_kit_2 = nullptr;
 	vr_kit_handhold_near_gui* handhold_near_kit = nullptr;
 		//= new vr_kit_handhold_near_gui();
 	vr_kit_roller_coaster_1* roller_coaster_kit_1 = nullptr; 
-	vis_kit_meshes* mesh_kit = nullptr;
-	vis_kit_meshes* mesh_kit_2 = nullptr;
 	vr_kit_draw* draw_kit = nullptr; 
 	vr_kit_motioncap* motioncap_kit = nullptr; 
 	vr_kit_manipulation* manipulation_kit = nullptr;
@@ -499,6 +499,8 @@ public:
 	void auto_downsampling() { data_ptr->point_cloud_kit->auto_downsampling(); }
 	void supersampling_with_bbox() { data_ptr->point_cloud_kit->supersampling_with_bbox(data_ptr->supersampling_bbox); }
 	void restore_supersampling() { data_ptr->point_cloud_kit->restore_supersampling(); }
+
+	void prepare_marking() { data_ptr->point_cloud_kit->prepare_marking(&data_ptr->point_selection_colors); }
 };
 
 ///@}

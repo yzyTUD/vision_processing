@@ -286,6 +286,80 @@ void point_cloud_interactable::align_leica_scans_with_cgv() {
 }
 
 ///
+void point_cloud_interactable::prepare_marking(std::vector<rgba>* psc) {
+	pc.point_selection.resize(pc.get_nr_points());
+	for (auto& v : pc.point_selection) v = 0;
+
+	use_these_point_palette = psc;
+	use_these_point_color_indices = &pc.point_selection;
+
+	pc.point_selection_visited.resize(pc.get_nr_points());
+	for (auto& v : pc.point_selection_visited) v = false;
+}
+
+///
+void point_cloud_interactable::mark_points_with_conroller(Pnt p, float r, bool confirmed, int objctive) {
+	if (pc.get_nr_points()) {
+		ensure_tree_ds();
+		float closest_dist = tree_ds->find_closest_and_its_dist(p);
+		//std::cout << "closest_dist = "<< closest_dist << std::endl;
+		if (closest_dist > r) {
+			if (marked == true) {
+				for (Idx i = 0; i < (Idx)pc.get_nr_points(); ++i) {
+					if (pc.point_selection.at(i) == point_cloud::P_C::VISUAL_MARK)
+						pc.point_selection.at(i) = point_cloud::P_C::ORI;
+				}
+				marked = false;
+			}
+		}
+		else {
+			//std::cout << "some points inside the sphere!" << std::endl;
+			Box pc_bbox = pc.box();
+			float vol_pc = pc_bbox.get_extent().x() * pc_bbox.get_extent().y() * pc_bbox.get_extent().z();
+			int max_points_estimated = pc.get_nr_points() * pow((2 * r), 3) / vol_pc;
+			std::vector<int> knn;
+			std::vector<float> dist_list;
+			tree_ds->find_closest_points(p, max_points_estimated, knn, dist_list);
+			// if the last point is in outside of the ball on hand, 
+			// all wanted points are included
+			if (dist_list.at(dist_list.size() - 1) > r) {
+				// start at minimal dist 
+				for (int i = 0; i < knn.size(); i++) {
+					// check if is smaller than r 
+					if (dist_list.at(i) < r) {
+						if (confirmed)
+							pc.point_selection.at(knn.at(i)) = objctive;
+						else {
+							pc.point_selection.at(knn.at(i)) = point_cloud::P_C::VISUAL_MARK;
+							marked = true;
+						}
+						pc.has_selection = true;
+					}
+				}
+			}
+			else {
+				// too few points are estimated, iter the entire cloud 
+				for (Idx i = 0; i < (Idx)pc.get_nr_points(); ++i) {
+					if ((pc.pnt(i) - p).length() < r) {
+						if (confirmed)
+							pc.point_selection.at(i) = objctive;
+						else {
+							pc.point_selection.at(i) = point_cloud::P_C::VISUAL_MARK;
+							marked = true;
+						}
+						pc.has_selection = true;
+					}
+				}
+			}
+
+		}
+
+		on_point_cloud_change_callback(PCC_COLORS);
+		//post_redraw();
+	}
+}
+
+///
 void point_cloud_interactable::prepare_grow(bool read_from_file, std::vector<rgba>* psc, int max_num_regions) {
 	// if no selection present, clear point_selection
 	if (!read_from_file || !pc.has_selection) { 
@@ -468,7 +542,7 @@ void point_cloud_interactable::mark_points_inside_selection_tool(Pnt p, float r,
 							pc.point_selection.at(knn.at(i)) = objctive;
 						else {
 							pc.point_selection.at(knn.at(i)) = point_cloud::P_C::VISUAL_MARK;
-								marked = true;
+							marked = true;
 						}
 						pc.has_selection = true;
 					}
@@ -1298,6 +1372,8 @@ void point_cloud_interactable::handle_args(std::vector<std::string>& args)
 		}
 	}
 }
+
+///
 bool point_cloud_interactable::handle(cgv::gui::event& e)
 {
 	if (e.get_kind() == cgv::gui::EID_KEY) {
@@ -1438,7 +1514,6 @@ bool point_cloud_interactable::handle(cgv::gui::event& e)
 			}
 		}
 	}
-
 
 	if (e.get_kind() == cgv::gui::EID_MOUSE) {
 		//cgv::gui::mouse_event& me = (cgv::gui::mouse_event&) e;

@@ -130,6 +130,12 @@ public:
 	///
 	void write_pc_to_file();
 	///
+
+	/*direct marking on pc */
+	void prepare_marking(std::vector<rgba>* psc);
+
+	void mark_points_with_conroller(Pnt p, float r, bool confirmed, int objctive);
+
 	
 	/*region growing related*/
 	///

@@ -150,10 +150,8 @@ visual_processing::visual_processing()
 {
 	//draw_kit = new vr_kit_draw();
 	mesh_kit = new vis_kit_meshes();
-	register_object(base_ptr(mesh_kit), "");
 	mesh_kit_2 = new vis_kit_meshes();
-	register_object(base_ptr(mesh_kit_2), "");
-	selection_kit = new vis_kit_selection(); // for 2d->3d selection, and 3d selection 
+	selection_kit = new vis_kit_selection(); // for 2d->3d selection, and 3d selection, point cloud selection included 
 	//imagebox_kit = new vr_kit_imagebox();
 	//motioncap_kit = new vr_kit_motioncap();
 	//manipulation_kit = new vr_kit_manipulation();
@@ -172,6 +170,10 @@ visual_processing::visual_processing()
 	register_object(base_ptr(light_kit), "");
 
 	cone_style.radius = 0.01f;
+	
+	// register 
+	register_object(base_ptr(mesh_kit), "");
+	register_object(base_ptr(mesh_kit_2), "");
 }
 	
 void visual_processing::stream_help(std::ostream& os) {
@@ -223,7 +225,7 @@ bool visual_processing::init(cgv::render::context& ctx)
 	cgv::render::ref_rounded_cone_renderer(ctx, 1);
 
 	// config data_ptr->point_cloud_kit
-	data_ptr->point_cloud_kit->surfel_style.point_size = 0.2f;
+	data_ptr->point_cloud_kit->surfel_style.point_size = 1.5f;
 	data_ptr->point_cloud_kit->surfel_style.halo_color_strength = 0.0f;
 	data_ptr->point_cloud_kit->surfel_style.percentual_halo_width = 25.0f;
 	data_ptr->point_cloud_kit->surfel_style.blend_points = true;
@@ -409,6 +411,7 @@ void visual_processing::draw(cgv::render::context& ctx)
 void visual_processing::finish_draw(cgv::render::context& ctx)
 {
 	if (teleportation_kit) teleportation_kit->finish_draw(ctx); 
+	if (selection_kit) selection_kit->finish_draw(ctx);
 	
 	// selection tool
 	if (!view_ptr)
@@ -652,11 +655,14 @@ void visual_processing::create_gui() {
 	add_member_control(this, "point size", data_ptr->point_cloud_kit->surfel_style.point_size, "value_slider", "min=0.2;max=10;log=false;ticks=false;");
 	add_member_control(this, "render skybox", render_skybox, "check");
 	add_member_control(this, "render_nmls", data_ptr->point_cloud_kit->show_nmls, "check");
+
 	if (begin_tree_node("Point Cloud ControlLOD", step, true, "level=3")) {
 		connect_copy(add_button("render_with_fullpc")->click, rebind(this, &visual_processing::render_with_fullpc));
 		connect_copy(add_button("auto_downsampling")->click, rebind(this, &visual_processing::auto_downsampling));
 		connect_copy(add_button("supersampling_with_bbox")->click, rebind(this, &visual_processing::supersampling_with_bbox));
 		connect_copy(add_button("restore_supersampling")->click, rebind(this, &visual_processing::restore_supersampling));
+		connect_copy(add_button("prepare_marking")->click, rebind(this, &visual_processing::prepare_marking));
+
 	}
 
 	if (begin_tree_node("Point Cloud Merging Tool", strategy, true, "level=3")) {

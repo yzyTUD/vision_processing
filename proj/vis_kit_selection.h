@@ -47,6 +47,8 @@ private:
 	bool picking = true;
 	bool record_controller_behavier_draw_circle = false;
 
+	// point marking 
+	sphere_render_style marking_style;
 
 public:
 	/// initialize rotation angle
@@ -57,6 +59,9 @@ public:
 		sphere_style.surface_color = rgb(0.8f, 0.4f, 0.4f);
 		sphere_style.radius = 0.1;*/
 		//sphere_style.radius = float(0.05*sqrt(B.get_extent().sqr_length() / vertex_count));
+
+		marking_style.radius = 0.02;
+		marking_style.material.set_transparency(0.4);
 		
 	}
 	// call me 
@@ -180,6 +185,85 @@ public:
 		}*/
 		if (data_ptr == nullptr)
 			return false;
+		if (e.get_kind() == cgv::gui::EID_STICK) {
+			cgv::gui::vr_stick_event& vrse = static_cast<cgv::gui::vr_stick_event&>(e);
+			if (vrse.get_action() == cgv::gui::SA_MOVE) { // event 
+				if (vrse.get_controller_index() == data_ptr->right_rgbd_controller_index) { // controller 
+					if (data_ptr->check_roulette_selection(data_ptr->get_id_with_name("PointCloud\nMarking"))) { // selection 
+						if (vrse.get_y() > 0) {
+							marking_style.radius += 0.001f;
+						}
+						else {
+							marking_style.radius -= 0.001f;
+						}
+					}
+				}
+			}
+		}
+
+		if (e.get_kind() == cgv::gui::EID_KEY) {
+			cgv::gui::vr_key_event& vrke = static_cast<cgv::gui::vr_key_event&>(e);
+			if (vrke.get_key() == vr::VR_MENU) { //
+				if (vrke.get_action() == cgv::gui::KA_PRESS) { //
+					if (vrke.get_controller_index() == data_ptr->right_rgbd_controller_index) { //
+						if (data_ptr->check_roulette_selection(data_ptr->get_id_with_name("PointCloud\nMarking"))) { //
+							data_ptr->point_cloud_kit->prepare_marking(&data_ptr->point_selection_colors);
+						}
+					}
+				}
+				return true;
+			}
+			//if (vrke.get_key() == vr::VR_DPAD_DOWN) { //
+			//	if (vrke.get_action() == cgv::gui::KA_PRESS) { //
+			//		if (vrke.get_controller_index() == data_ptr->right_rgbd_controller_index) { //
+			//			if (data_ptr->check_roulette_selection(data_ptr->get_id_with_name("PointCloud\nMarking"))) { //
+			//				marking_style.radius -= 0.001;
+			//			}
+			//		}
+			//	}
+			//	return true;
+			//}
+			//if (vrke.get_key() == vr::VR_DPAD_UP) { //
+			//	if (vrke.get_action() == cgv::gui::KA_PRESS) { //
+			//		if (vrke.get_controller_index() == data_ptr->right_rgbd_controller_index) { //
+			//			if (data_ptr->check_roulette_selection(data_ptr->get_id_with_name("PointCloud\nMarking"))) { //
+			//				marking_style.radius += 0.001;
+			//			}
+			//		}
+			//	}
+			//	return true;
+			//}
+		}
+
+		if (e.get_kind() == cgv::gui::EID_THROTTLE) {
+			auto& te = static_cast<cgv::gui::vr_throttle_event&>(e);
+			float v = te.get_value();
+			bool d = (v == 1); // event 
+			if (te.get_controller_index() == data_ptr->right_rgbd_controller_index) {
+				if(data_ptr->check_roulette_selection(data_ptr->get_id_with_name("PointCloud\nSuperSampling"))){ // trigger to compute/start 
+					if (d) {
+						record_controller_behavier_draw_circle = !record_controller_behavier_draw_circle;
+						// if is going to end 
+						if (record_controller_behavier_draw_circle == false) {
+							data_ptr->supersampling_bounded_points_with_drawn_data();
+							data_ptr->righthand_posi_list.clear();
+							data_ptr->righthand_dir_list.clear();
+						}
+						else {
+							std::cout << "recording enabled!" << std::endl;
+						}
+					}
+				}
+				if (data_ptr->check_roulette_selection(data_ptr->get_id_with_name("PointCloud\nMarking"))) { // hold throttle to mark
+					if (v > 0) {
+						data_ptr->point_cloud_kit->mark_points_with_conroller(data_ptr->cur_right_hand_posi + data_ptr->cur_off_right,
+							marking_style.radius, true, 1);
+					}
+				}
+			}
+		}
+
+		// old version, old events 
 		switch (e.get_kind()) {
 
 		case cgv::gui::EID_KEY:
@@ -207,32 +291,20 @@ public:
 			}
 			return true;
 		}
-
 		// THROTTLE to start the selection 
-		case cgv::gui::EID_THROTTLE:
-		{
-			auto& te = static_cast<cgv::gui::vr_throttle_event&>(e);
-			int ci = te.get_controller_index();
-			float v = te.get_value(); 
-			// e-c-s checking order 
-			bool d = (v == 1); // event 
-			if (ci == data_ptr->right_rgbd_controller_index  // controller 
-				&& data_ptr->check_roulette_selection(data_ptr->get_id_with_name("PointCloud\nSuperSampling")) // selection
-					&& d) { // spec.
-				record_controller_behavier_draw_circle = !record_controller_behavier_draw_circle;
-				// if is going to end 
-				if (record_controller_behavier_draw_circle == false) {
-					data_ptr->supersampling_bounded_points_with_drawn_data();
-					data_ptr->righthand_posi_list.clear();
-					data_ptr->righthand_dir_list.clear();
-				}
-				else {
-					std::cout << "recording enabled!" << std::endl;
-				}
-			}
-			return true;
+		//case cgv::gui::EID_THROTTLE:
+		//{
+		//	auto& te = static_cast<cgv::gui::vr_throttle_event&>(e);
+		//	int ci = te.get_controller_index();
+		//	float v = te.get_value(); 
+		//	// e-c-s checking order 
+		//	bool d = (v == 1); // event 
+		//	if (ci == data_ptr->right_rgbd_controller_index)  // controller 
+		//		
+		//	}
+		//	return true;
 
-		}
+		//}
 		case cgv::gui::EID_STICK:
 		{
 			cgv::gui::vr_stick_event& vrse = static_cast<cgv::gui::vr_stick_event&>(e);
@@ -304,6 +376,12 @@ public:
 		//if (data_ptr != nullptr) {
 		//	render_a_bbox(ctx, data_ptr->supersampling_bbox);
 		//}
+		for (int i = 0; i < data_ptr->righthand_posi_list.size(); i++) {
+			//render_a_box_given_posi_and_size(ctx, data_ptr->righthand_posi_list.at(i),0.02);
+			render_an_arrow_with_starting_point_and_ending(ctx, data_ptr->righthand_posi_list.at(i)
+				, data_ptr->righthand_posi_list.at(i) + data_ptr->righthand_dir_list.at(i) * 0.2, rgb(0, 0.4, 0), 0.05);
+		}
+
 		// supersampling mode 
 		if (data_ptr->check_roulette_selection(data_ptr->get_id_with_name("PointCloud\nSuperSampling")))
 		{
@@ -317,12 +395,34 @@ public:
 			}
 			else
 				render_a_handhold_box(ctx);
+		}		
+		if (data_ptr->check_roulette_selection(data_ptr->get_id_with_name("PointCloud\nMarking"))) {
+			render_a_sphere_on_righthand(ctx);
 		}
+	}
 
-		for (int i = 0; i < data_ptr->righthand_posi_list.size(); i++) {
-			//render_a_box_given_posi_and_size(ctx, data_ptr->righthand_posi_list.at(i),0.02);
-			render_an_arrow_with_starting_point_and_ending(ctx, data_ptr->righthand_posi_list.at(i)
-				, data_ptr->righthand_posi_list.at(i) + data_ptr->righthand_dir_list.at(i) * 0.2, rgb(0, 0.4, 0), 0.05);
+	// call me 
+	void finish_draw(context& ctx) {
+
+	}
+
+	// toimprove: effec.
+	void render_a_sphere_on_righthand(cgv::render::context& ctx) {
+		std::vector<vec3> points;
+		std::vector<rgb> point_colors;
+		points.push_back(data_ptr->cur_right_hand_posi + data_ptr->cur_off_right);
+		point_colors.push_back(rgb(0, 1, 0));
+		if (points.size()) {
+			glDepthMask(GL_FALSE);
+			glEnable(GL_BLEND);
+			glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
+			glDisable(GL_CULL_FACE);
+			auto& sr = cgv::render::ref_sphere_renderer(ctx);
+			sr.set_render_style(marking_style);
+			sr.set_position_array(ctx, points);
+			sr.set_color_array(ctx, point_colors);
+			sr.render(ctx, 0, points.size());
+			glDepthMask(GL_TRUE);
 		}
 	}
 
@@ -426,6 +526,7 @@ public:
 			prog.disable(ctx);
 		}
 	}
+	
 	void finish_frame(context& ctx) {
 		/*if (!view_ptr)
 			return;

@@ -291,6 +291,10 @@ public:
 	std::vector<std::string> gp2_btns;
 	std::vector<std::string> gp3_btns;
 
+	// point cloud marking colors 
+	std::vector<rgba> point_selection_colors; 
+	int max_num_of_regions = 7 + 16;
+
 	vis_kit_data_store_shared() {
 		//initialize_trackable_list();
 		//supersampling_bbox = box3(vec3(-2,0,0),vec3(2,1,1));
@@ -304,7 +308,7 @@ public:
 
 		gp1_btns.push_back("PointCloud\nLoadMMOffice");
 		gp1_btns.push_back("PointCloud\nSuperSampling");
-		gp1_btns.push_back("PointCloud\nPickPoints");
+		gp1_btns.push_back("PointCloud\nMarking");
 		gp1_btns.push_back("PointCloud\nLabelPoints");
 		gps.push_back(gp1_btns);
 
@@ -313,6 +317,31 @@ public:
 		gp2_btns.push_back("Meshing\nFaceCreation");
 		gp2_btns.push_back("Meshing\nSaveMesh");
 		gps.push_back(gp2_btns);
+
+
+		std::default_random_engine generator;
+		std::uniform_real_distribution<float> distribution(0, 1);
+
+		// first 6 colors are fixed while the others are random generated 
+		float some_float = distribution(generator);
+		some_float = distribution(generator);
+		some_float = distribution(generator);
+		point_selection_colors.push_back(rgba(0.5f, 0.5f, 0.5f, 1.0f));
+		point_selection_colors.push_back(rgba(1.0f, 1.0f, 0.5f, 1.0f));
+		point_selection_colors.push_back(rgba(0.0f, 0.0f, 1.0f, 1.0f));
+		point_selection_colors.push_back(rgba(1.0f, 0.0f, 0.0f, 1.0f));
+		point_selection_colors.push_back(rgba(175.0f / 255, 109.0f / 255, 47.0f / 255, 1.0f));
+		point_selection_colors.push_back(rgba(148.0f / 255, 10.0f / 255, 161.0f / 255, 1.0f));
+		point_selection_colors.push_back(rgba(14.0f / 255, 100.0f / 255, 16.0f / 255, 1.0f));
+		//for (int i = 0; i < max_num_of_regions - 7; i++) {
+		//	rgba tmpcol = rgba(
+		//		0.6f * distribution(generator) + 0.1f,
+		//		1.0f - 0.6f * distribution(generator),
+		//		0.9f * distribution(generator) + 0.1f,
+		//		1.0f
+		//	);
+		//	point_selection_colors.push_back(tmpcol);
+		//}
 	}
 
 	vec2 get_id_with_name(string btn_name) {
