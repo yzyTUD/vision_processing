@@ -40,8 +40,8 @@ public:
 	rgba box_color;
 	
 	std::vector<Clr>* use_these_point_colors;
-	std::vector<cgv::type::uint8_type>* use_these_point_color_indices;
 	std::vector<RGBA>* use_these_point_palette;
+	std::vector<cgv::type::uint8_type>* use_these_point_color_indices;
 	std::vector<RGBA>* use_these_component_colors;
 
 	// reduction to subset 

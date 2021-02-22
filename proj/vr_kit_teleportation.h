@@ -301,6 +301,15 @@ public:
 									hand_touching = !hand_touching;
 								}
 							}
+							//
+							if (data_ptr->check_roulette_selection(data_ptr->get_id_with_name("Teleport\nRotate"))) {
+								if (vrse.get_x() > 0) {
+									vr_view_ptr->set_tracking_rotation(vr_view_ptr->get_tracking_rotation() + 10);
+								}
+								else {
+									vr_view_ptr->set_tracking_rotation(vr_view_ptr->get_tracking_rotation() - 10);
+								}
+							}
 						}
 					}
 					break;

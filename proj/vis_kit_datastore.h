@@ -201,9 +201,6 @@ public:
 		return std::to_string(microsecondsUTC);
 	}
 	
-	/// point cloud storage
-	point_cloud_interactable* point_cloud_kit = new point_cloud_interactable();
-
 	/// main storage for motion data 
 	std::map<std::string, motion_storage_per_device> motion_storage;
 	std::map<std::string, motion_storage_per_device> motion_storage_read;
@@ -300,16 +297,19 @@ public:
 		//supersampling_bbox = box3(vec3(-2,0,0),vec3(2,1,1));
 		//mode = interaction_mode::SUPERSAMPLING_DRAW;
 
+		gp0_btns.push_back("Teleport\nRotate");
 		gp0_btns.push_back("Teleport\nDirectional"); 
 		gp0_btns.push_back("Teleport\nLifting"); 
 		gp0_btns.push_back("Teleport\nFineGrain"); 
-		gp0_btns.push_back("Teleport\nTeleport"); 
+		gp0_btns.push_back("Teleport\nTeleport");
 		gps.push_back(gp0_btns);
 
 		gp1_btns.push_back("PointCloud\nLoadMMOffice");
+		gp1_btns.push_back("PointCloud\nFoldingPoints");
 		gp1_btns.push_back("PointCloud\nSuperSampling");
 		gp1_btns.push_back("PointCloud\nMarking");
-		gp1_btns.push_back("PointCloud\nLabelPoints");
+		gp1_btns.push_back("PointCloud\nPointSize");
+		gp1_btns.push_back("PointCloud\nShowNml");
 		gps.push_back(gp1_btns);
 
 		gp2_btns.push_back("Meshing\nPickingPoints");
@@ -333,15 +333,15 @@ public:
 		point_selection_colors.push_back(rgba(175.0f / 255, 109.0f / 255, 47.0f / 255, 1.0f));
 		point_selection_colors.push_back(rgba(148.0f / 255, 10.0f / 255, 161.0f / 255, 1.0f));
 		point_selection_colors.push_back(rgba(14.0f / 255, 100.0f / 255, 16.0f / 255, 1.0f));
-		//for (int i = 0; i < max_num_of_regions - 7; i++) {
-		//	rgba tmpcol = rgba(
-		//		0.6f * distribution(generator) + 0.1f,
-		//		1.0f - 0.6f * distribution(generator),
-		//		0.9f * distribution(generator) + 0.1f,
-		//		1.0f
-		//	);
-		//	point_selection_colors.push_back(tmpcol);
-		//}
+		for (int i = 0; i < max_num_of_regions - 7; i++) {
+			rgba tmpcol = rgba(
+				0.6f * distribution(generator) + 0.1f,
+				1.0f - 0.6f * distribution(generator),
+				0.9f * distribution(generator) + 0.1f,
+				1.0f
+			);
+			point_selection_colors.push_back(tmpcol);
+		}
 	}
 
 	vec2 get_id_with_name(string btn_name) {
@@ -376,12 +376,12 @@ public:
 	}
 
 	void supersampling_bounded_points_with_drawn_data() {
-		// at least 2 points 
-		if (righthand_posi_list.size() < 1)
-			return;
-		if (point_cloud_kit->pc.get_nr_points() == 0)
-			return;
-		point_cloud_kit->supersampling_within_clips(righthand_posi_list, righthand_dir_list);
+		//// at least 2 points 
+		//if (righthand_posi_list.size() < 1)
+		//	return;
+		//if (point_cloud_kit->pc.get_nr_points() == 0)
+		//	return;
+		//point_cloud_kit->supersampling_within_clips(righthand_posi_list, righthand_dir_list);
 	}
 
 	void initialize_trackable_list() {

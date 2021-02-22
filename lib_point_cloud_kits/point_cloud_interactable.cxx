@@ -194,15 +194,15 @@ bool point_cloud_interactable::open_or_append(cgv::gui::event& e, const std::str
 /// 
 bool point_cloud_interactable::read_pc_with_dialog(bool append) {
 	std::string f = cgv::gui::file_open_dialog("Open", "Point Cloud:*");
-	if(!append)
-		pc.clear_all();
+	if (!append) 
+		clear_all();
 	open(f);
 	return true;
 }
 
 bool point_cloud_interactable::read_pc_with_dialog_queue(bool append) {
 	if (!append)
-		pc.clear_all();
+		clear_all();
 	std::vector<std::string> f_names;
 	cgv::gui::files_open_dialog(f_names, "Open", "Point Cloud:*");
 	for(auto& f:f_names)
@@ -212,7 +212,7 @@ bool point_cloud_interactable::read_pc_with_dialog_queue(bool append) {
 
 bool point_cloud_interactable::read_pc_subsampled_with_dialog() {
 	std::string f = cgv::gui::file_open_dialog("Open", "Point Cloud:*");
-	pc.clear_all();
+	clear_all();
 	pc.read_pts_subsampled(f,0.05);
 	show_point_begin = 0;
 	show_point_end = pc.get_nr_points();
@@ -289,12 +289,12 @@ void point_cloud_interactable::align_leica_scans_with_cgv() {
 void point_cloud_interactable::prepare_marking(std::vector<rgba>* psc) {
 	pc.point_selection.resize(pc.get_nr_points());
 	for (auto& v : pc.point_selection) v = 0;
+	pc.point_selection_visited.resize(pc.get_nr_points());
+	for (auto& w : pc.point_selection_visited) w = false;
 
 	use_these_point_palette = psc;
 	use_these_point_color_indices = &pc.point_selection;
 
-	pc.point_selection_visited.resize(pc.get_nr_points());
-	for (auto& v : pc.point_selection_visited) v = false;
 }
 
 ///
@@ -385,7 +385,7 @@ void point_cloud_interactable::prepare_grow(bool read_from_file, std::vector<rgb
 	region_id_and_nml.resize(max_num_regions, vec3(0));
 
 	ensure_tree_ds();
-	post_redraw();
+	//post_redraw();
 }
 ///
 void point_cloud_interactable::reset_all_grows() {
@@ -868,18 +868,22 @@ void point_cloud_interactable::append_frame(point_cloud& _pc, bool registered) {
 ///
 void point_cloud_interactable::clear_all() {
 	pc.clear_all();
-	frame_pointers.clear();
-	frame_cam_posi.clear();
+	tmppc.clear_all();
 	pc_last.clear_all();
 	pc_to_be_append.clear_all();
-	num_of_pcs = 0;
+	oripc.clear_all();
 
-	tmppc.clear_all();
+	render_camposes = false;
+	num_of_pcs = 0;
+	marked = false;
+	tree_ds_out_of_date = true;
 	is_highlighting = false;
 	crs_srs_pc.clear_all();
 	crs_tgt_pc.clear_all();
 	pc_last_subsampled.clear_all();
 	pc_to_be_append_subsampled.clear_all();
+	frame_pointers.clear();
+	frame_cam_posi.clear();
 	rotation.identity();
 	translation.zeros();
 	icp_filter_type = cgv::pointcloud::ICP::RANDOM_SAMPLING;
@@ -887,6 +891,10 @@ void point_cloud_interactable::clear_all() {
 	region_id_and_nml.clear();
 
 	// todo: reset vars here ...
+	//use_these_point_colors = 0;
+	use_these_point_palette = 0;
+	use_these_point_color_indices = 0; 
+	use_these_component_colors = 0;
 }
 ///
 void point_cloud_interactable::interact_callback(double t, double dt)
