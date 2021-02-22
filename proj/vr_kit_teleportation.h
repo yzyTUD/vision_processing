@@ -354,6 +354,14 @@ public:
 				global_offset += cur_left_hand_posi;
 				if (points.size()>1)
 					points.at(1) = global_offset;*/
+				vec3 off;
+				off = vec3(0, 0, -0.2);
+				data_ptr->cur_right_hand_rot_quat.rotate(off);
+				data_ptr->cur_off_right = off;
+
+				off = vec3(0, 0, -0.2);
+				data_ptr->cur_left_hand_rot_quat.rotate(off);
+				data_ptr->cur_off_left = off;
 			}
 			return true;
 		}

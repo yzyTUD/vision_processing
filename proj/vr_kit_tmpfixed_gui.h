@@ -209,7 +209,7 @@ public:
 	void timer_event(double, double dt)
 	{
 	}
-
+	///
 	void init_frame(cgv::render::context& ctx) {
 		for (auto& btn : hmbmenubtns) {
 			if (btn.use_label) {
@@ -269,12 +269,15 @@ public:
 
 		render_menu_bar_quads(ctx, 0.1, 0.06, 28);
 		render_an_arrow_on_left_hand(ctx, rgb(0,0.4,0),0.1);
+		
+		// TEST
+		//data_ptr->active_off_rotation = data_ptr->paratone_1;
 	}
 	/// overload the create gui method
 	void create_gui()
 	{
 	}
-
+	///
 	void tesselete_PNT_fan(int lev, float r, float s, float theta_as_angle, quat rot, std::vector<vec3>* P, std::vector<vec3>* N, std::vector<vec2>* T) {
 
 		float theta = 2 * M_PI * (theta_as_angle / 360.0f);
@@ -350,8 +353,7 @@ public:
 			rot.rotate(P->at(i));
 		}
 	}
-
-	// default val: /*float r = 0.2; float s = 0.2;*/
+	/// default val: /*float r = 0.2; float s = 0.2;*/
 	void render_menu_bar_quads(context& ctx, float r, float s, float theta_as_angle) {
 		for (auto btn : hmbmenubtns) {
 			if (btn.use_label && btn.group == data_ptr->active_group) {
@@ -403,8 +405,7 @@ public:
 			}
 		}
 	}
-
-
+	///
 	void render_an_arrow_on_left_hand(cgv::render::context& ctx, rgb c, float r, float l = 2.0) {
 		if (data_ptr == nullptr)
 			return;

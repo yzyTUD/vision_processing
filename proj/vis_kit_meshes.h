@@ -16,6 +16,7 @@
 #include "mesh_utils.h"
 #include "triangle.h"
 #include <ray_intersection.h>
+#include "vis_kit_datastore.h"
 
 using namespace cgv::base;
 using namespace cgv::reflect;
@@ -30,6 +31,9 @@ class vis_kit_meshes :
 	public drawable // registers for drawing with opengl
 {
 public:
+	vis_kit_data_store_shared* data_ptr = nullptr;
+
+	//
 	typedef cgv::media::mesh::simple_mesh<float> mesh_type;
 	cgv::render::rounded_cone_render_style cone_style;
 	sphere_render_style sphere_style, sphere_hidden_style;
@@ -74,11 +78,25 @@ public:
 	float oy = 0.0;
 	float h = 0;
 
+	// picking support 
+	std::vector<vec3> picking_points; 
+	std::vector<rgb> picking_points_color; 
+	sphere_render_style sphere_style_picking;
+	float picking_points_radius = 0.05;
+
+	// face creation 
+	bool is_creating_new_face = false;
+
 public:
 	/// initialize rotation angle
 	vis_kit_meshes()
 	{
 		//connect(get_animation_trigger().shoot, this, &vis_kit_meshes::timer_event);
+		sphere_style_picking.radius = picking_points_radius;
+	}
+	/// call me 
+	void set_data_ptr(vis_kit_data_store_shared* d_ptr) {
+		data_ptr = d_ptr;
 	}
 	/// 
 	void on_set(void* member_ptr) { update_member(member_ptr); post_redraw(); }
@@ -91,9 +109,168 @@ public:
 	/// show help information
 	void stream_help(std::ostream& os) {}
 	/// overload to handle events, return true if event was processed
+		// demostration: M.compute_ray_mesh_intersections(vec3(0,1,0));
+		// scs: 
+	// return true for accept 
+	bool check_picking_point_exists(vec3 new_p) {
+		for (auto p : picking_points) {
+			float dist = (new_p - p).length();
+			if (dist < picking_points_radius)
+				return false;
+		}
+		return true;
+	}
+
+	int check_any_sphere_intersection_current_righthand() {
+		vec3 ori = data_ptr->cur_right_hand_posi;
+		vec3 dir = normalize(data_ptr->cur_off_right);
+
+		for (int i = 0; i < picking_points.size(); i++) {
+			vec3 L = picking_points.at(i) - ori;
+			float tc = dot(L, dir);
+			vec3 tc_vec = dir * tc;
+			if (tc >= 0.0) {
+				float d = (tc_vec - L).length();
+				if (d <= picking_points_radius)
+					return i;
+			}
+		}
+		return -1;
+	}
+
 	bool handle(event& e)
 	{
-		//M.compute_ray_mesh_intersections(vec3(0,1,0));
+		if (data_ptr == nullptr)
+			return false;
+		if (e.get_kind() == cgv::gui::EID_KEY) {
+			cgv::gui::vr_key_event& vrke = static_cast<cgv::gui::vr_key_event&>(e);
+			//if (vrke.get_key() == vr::VR_DPAD_UP) // 
+			//{
+			//	if (vrke.get_action() == cgv::gui::KA_PRESS) {
+			//		if (vrke.get_controller_index() == data_ptr->right_rgbd_controller_index) { // 
+			//			if (data_ptr->check_roulette_selection(data_ptr->get_id_with_name("Meshing\nAdjestPointSize"))) { // 
+			//				picking_points_radius += 0.001f;
+			//				sphere_style_picking.radius = picking_points_radius;
+			//			}
+			//		}
+			//	}
+			//}
+			//if (vrke.get_key() == vr::VR_DPAD_DOWN) // 
+			//{
+			//	if (vrke.get_action() == cgv::gui::KA_PRESS) {
+			//		if (vrke.get_controller_index() == data_ptr->right_rgbd_controller_index) { // 
+			//			if (data_ptr->check_roulette_selection(data_ptr->get_id_with_name("Meshing\nAdjestPointSize"))) { // 
+			//				picking_points_radius -= 0.001f;
+			//				sphere_style_picking.radius = picking_points_radius;
+			//			}
+			//		}
+			//	}
+			//}
+			if (vrke.get_key() == vr::VR_MENU) {
+				if (vrke.get_action() == cgv::gui::KA_PRESS) { // 
+					if (vrke.get_controller_index() == data_ptr->right_rgbd_controller_index) { // 
+						if (data_ptr->check_roulette_selection(data_ptr->get_id_with_name("Meshing\nFaceCreation"))) //
+						{
+							if (!is_creating_new_face) {
+								M.start_face();
+								is_creating_new_face = true;
+							}
+							else { // stop creating new faces, prepare for rendering 
+								is_creating_new_face = false;
+
+								//// add picking points to simple mesh: too much conputation here 
+								//for (auto p:picking_points) {
+								//	M.new_position(p);
+								//}
+
+								// clear picking point color for visual feedback 
+								for (auto& pc : picking_points_color)
+									pc = rgb(0, 0, 1);
+
+								// render the mesh 
+								if (M.get_nr_positions() > 0) {
+									M.compute_vertex_normals();
+									M.compute_face_normals();
+
+									have_new_mesh = true;
+
+									// rendering 
+									show_vertices = false; // we have points already 
+									show_face = true;
+									show_wireframe = true;
+									cull_mode = CullingMode::CM_OFF;
+
+									post_redraw();
+								}
+							}
+						}
+					
+						if (data_ptr->check_roulette_selection(data_ptr->get_id_with_name("Meshing\nSaveMesh"))) {
+							// todo: add timestemp as file name 
+							M.write(data_ptr->data_dir + "/generated_mesh_vr_meshing_tool_"+ data_ptr->get_timestemp_for_filenames() +".obj");
+						}
+					}
+				}
+			}
+
+			return true;
+		}
+		if (e.get_kind() == cgv::gui::EID_STICK) {
+			cgv::gui::vr_stick_event& vrse = static_cast<cgv::gui::vr_stick_event&>(e);
+			if (vrse.get_action() == cgv::gui::SA_TOUCH) { // event 
+				if (vrse.get_controller_index() == data_ptr->right_rgbd_controller_index) { // controller 
+					if (data_ptr->check_roulette_selection(data_ptr->get_id_with_name("Meshing\nPickingPoints"))) { // selection
+						// check exists 
+						vec3 cur_picking_point = data_ptr->cur_right_hand_posi + data_ptr->cur_off_right;
+						if (check_picking_point_exists(cur_picking_point)) {
+							picking_points.push_back(cur_picking_point);
+							M.new_position(cur_picking_point);
+							picking_points_color.push_back(rgb(0, 0, 1));
+						}
+					}
+					if (data_ptr->check_roulette_selection(data_ptr->get_id_with_name("Meshing\nFaceCreation"))) { // selection
+						int intersec_sphere_idx = check_any_sphere_intersection_current_righthand();
+						std::cout << "intersect idx: " << intersec_sphere_idx << std::endl;
+						if (intersec_sphere_idx != -1) {
+							M.new_corner(intersec_sphere_idx);
+							// visual feedback 
+							picking_points_color.at(intersec_sphere_idx) = rgb(1, 0, 0);
+						}
+					}
+				}
+				return true;
+			}
+
+			if (vrse.get_action() == cgv::gui::SA_MOVE) { // event 
+				if (vrse.get_controller_index() == data_ptr->right_rgbd_controller_index) { // controller 
+					if (data_ptr->check_roulette_selection(data_ptr->get_id_with_name("Meshing\nAdjestPointSize"))) { // selection
+						if (vrse.get_y() > 0) {
+							picking_points_radius += 0.001f;
+							sphere_style_picking.radius = picking_points_radius;
+						}
+						else {
+							picking_points_radius -= 0.001f;
+							sphere_style_picking.radius = picking_points_radius;
+						}
+					}
+				}
+			}
+
+			if (vrse.get_action() == cgv::gui::SA_RELEASE) {
+				if (vrse.get_controller_index() == data_ptr->right_rgbd_controller_index) { // controller -> selection 
+
+				}
+				return true;
+			}
+		}
+
+		//if (e.get_kind() == cgv::gui::EID_THROTTLE) {
+		//	auto& te = static_cast<cgv::gui::vr_throttle_event&>(e);
+		//	bool d = (te.get_value() == 1); 
+		//	
+		//	return true;
+		//}
+
 		return false;
 	}
 	/// declare timer_event method to connect the shoot signal of the trigger
@@ -246,6 +423,93 @@ public:
 				prog_sm.set_attribute(ctx, prog_sm.get_color_index(), rgb(0.0f, 0.0f, 0.0f));
 			MI_smoothing.draw_all(ctx, false, true);
 		}
+
+		// interactive meshing: picking points 
+		render_picking_points(ctx);
+
+		if (data_ptr != nullptr) {
+			if (data_ptr->check_roulette_selection(data_ptr->get_id_with_name("Meshing\nAdjestPointSize"))) { // selection 
+				render_a_sphere_on_righthand(ctx);
+			}
+			if (data_ptr->check_roulette_selection(data_ptr->get_id_with_name("Meshing\nPickingPoints"))) { // selection 
+				render_a_sphere_on_righthand(ctx);
+			}
+			if (data_ptr->check_roulette_selection(data_ptr->get_id_with_name("Meshing\nFaceCreation"))) { // selection 
+				if(is_creating_new_face) // as visual feedback 
+					render_line_on_righthand(ctx);
+			}
+		}
+
+	}
+
+	void render_picking_points(cgv::render::context& ctx) {
+		if (picking_points.size() > 0) {
+			auto& sr = cgv::render::ref_sphere_renderer(ctx);
+			sr.set_render_style(sphere_style_picking);
+			sr.set_position_array(ctx, picking_points);
+			sr.set_color_array(ctx, picking_points_color);
+			sr.render(ctx, 0, picking_points.size());
+		}
+	}
+
+	void render_line_on_righthand(cgv::render::context& ctx) {
+		cgv::render::rounded_cone_render_style rounded_cone_style;
+
+		std::vector<vec3> P;
+		std::vector<float> R;
+		std::vector<rgb> C;
+
+		vec3 s = data_ptr->cur_right_hand_posi;
+		vec3 e = data_ptr->cur_right_hand_posi + data_ptr->cur_off_right * 10;
+		float r = 0.002f;
+		rgb c = rgb(1, 0, 0);
+
+		P.push_back(s);
+		R.push_back(r);
+		P.push_back(e);
+		R.push_back(r + 0.001f);
+		C.push_back(c);
+		C.push_back(c);
+
+		if (P.size() > 0) {
+			auto& cr = cgv::render::ref_rounded_cone_renderer(ctx);
+			cr.set_render_style(rounded_cone_style);
+			//cr.set_eye_position(vr_view_ptr->get_eye_of_kit());
+			cr.set_position_array(ctx, P);
+			cr.set_color_array(ctx, C);
+			cr.set_radius_array(ctx, R);
+			if (!cr.render(ctx, 0, P.size())) {
+				cgv::render::shader_program& prog = ctx.ref_default_shader_program();
+				int pi = prog.get_position_index();
+				int ci = prog.get_color_index();
+				cgv::render::attribute_array_binding::set_global_attribute_array(ctx, pi, P);
+				cgv::render::attribute_array_binding::enable_global_array(ctx, pi);
+				cgv::render::attribute_array_binding::set_global_attribute_array(ctx, ci, C);
+				cgv::render::attribute_array_binding::enable_global_array(ctx, ci);
+				glLineWidth(3);
+				prog.enable(ctx);
+				glDrawArrays(GL_LINES, 0, (GLsizei)P.size());
+				prog.disable(ctx);
+				cgv::render::attribute_array_binding::disable_global_array(ctx, pi);
+				cgv::render::attribute_array_binding::disable_global_array(ctx, ci);
+				glLineWidth(1);
+			}
+		}
+	}
+	
+	// toimprove: effec.
+	void render_a_sphere_on_righthand(cgv::render::context& ctx) {
+		std::vector<vec3> points;
+		std::vector<rgb> point_colors;
+		points.push_back(data_ptr->cur_right_hand_posi + data_ptr->cur_off_right);
+		point_colors.push_back(rgb(0, 0, 1));
+		if (points.size()) {
+			auto& sr = cgv::render::ref_sphere_renderer(ctx);
+			sr.set_render_style(sphere_style_picking);
+			sr.set_position_array(ctx, points);
+			sr.set_color_array(ctx, point_colors);
+			sr.render(ctx, 0, points.size());
+		}
 	}
 	///
 	void finish_draw(context& ctx) {
@@ -268,6 +532,7 @@ public:
 		//compute_coordinates();
 		post_redraw();
 	}
+
 	void apply_transform_for_test() {
 		/*quat rz = quat(vec3(0, 0, 1), 25 * M_PI / 180);
 		quat rx = quat(vec3(1, 0, 0), -90 * M_PI / 180);
@@ -298,22 +563,24 @@ public:
 	}
 	///
 	void generate_demo_surface() {
-		M.clear();
+		M.clear();                    
 		std::vector<vec3> Pnts;
 		int vi = 0;
 		Pnts.push_back(vec3(1, 1, 0));
 		Pnts.push_back(vec3(1, -1, 0));
-		Pnts.push_back(vec3(-1, 1, 0));
 		Pnts.push_back(vec3(-1, -1,0 ));
+		Pnts.push_back(vec3(-1, 1, 0));
+		
+		M.new_position(Pnts[0]);
+		M.new_position(Pnts[1]);
+		M.new_position(Pnts[2]);
+		M.new_position(Pnts[3]);
 
 		M.start_face();
-		vi = M.new_position(Pnts[0]); M.new_corner(vi);
-		vi = M.new_position(Pnts[2]); M.new_corner(vi);
-		vi = M.new_position(Pnts[1]); M.new_corner(vi);
-		M.start_face();
-		vi = M.new_position(Pnts[1]); M.new_corner(vi);
-		vi = M.new_position(Pnts[2]); M.new_corner(vi);
-		vi = M.new_position(Pnts[3]); M.new_corner(vi);
+		M.new_corner(0);
+		M.new_corner(1);
+		M.new_corner(2);
+		M.new_corner(3);
 
 		M.compute_vertex_normals();
 		M.compute_face_normals();
@@ -554,6 +821,7 @@ public:
 		have_new_smoothingMesh = true;
 		post_redraw();
 	}
+	
 	void pick_face(vec3 p) {
 		M.pick_face(p);
 		have_new_mesh = true;
@@ -571,6 +839,7 @@ public:
 			add_face_to_smoothingMesh(face);
 		}
 	}
+	
 	void coordi_correction() {
 		M.coordi_correction_leica();
 		have_new_mesh = true;

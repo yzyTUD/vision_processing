@@ -195,6 +195,11 @@ public:
 class vis_kit_data_store_shared :public cgv::render::render_types{
 public:
 	std::string data_dir = std::string(getenv("CGV_DATA"));
+	std::string get_timestemp_for_filenames() {
+		auto microsecondsUTC = std::chrono::duration_cast<std::chrono::microseconds>(
+			std::chrono::system_clock::now().time_since_epoch()).count();
+		return std::to_string(microsecondsUTC);
+	}
 	
 	/// point cloud storage
 	point_cloud_interactable* point_cloud_kit = new point_cloud_interactable();
@@ -243,6 +248,8 @@ public:
 	vec3 cur_right_hand_posi;
 	quat cur_right_hand_rot_quat = quat();
 	mat3 cur_right_hand_rot_as_mat;
+	vec3 cur_off_left;
+	vec3 cur_off_right;
 
 	// for point selection
 	// superbox and interaction modes, righthand instead of boxgui for now 
@@ -270,7 +277,7 @@ public:
 
 	int menu_theta = 28;
 
-	int active_group = 0; // unlimited  
+	int active_group = 2; // unlimited  
 	int active_btnidx = 0; // from 0-12 
 	float active_off_rotation = 0; // roulette
 	int max_group_num = 10;
@@ -289,17 +296,23 @@ public:
 		//supersampling_bbox = box3(vec3(-2,0,0),vec3(2,1,1));
 		//mode = interaction_mode::SUPERSAMPLING_DRAW;
 
-		gp0_btns.push_back("Teleport\nDirectional"); //0
-		gp0_btns.push_back("Teleport\nLifting"); //1
-		gp0_btns.push_back("Teleport\nFineGrain"); //2
-		gp0_btns.push_back("Teleport\nTeleport"); //3
+		gp0_btns.push_back("Teleport\nDirectional"); 
+		gp0_btns.push_back("Teleport\nLifting"); 
+		gp0_btns.push_back("Teleport\nFineGrain"); 
+		gp0_btns.push_back("Teleport\nTeleport"); 
 		gps.push_back(gp0_btns);
 
-		gp1_btns.push_back("PointCloud\nLoadMMOffice");//0
-		gp1_btns.push_back("PointCloud\nSuperSampling");//1
-		gp1_btns.push_back("PointCloud\nPickPoints");//2
-		gp1_btns.push_back("PointCloud\nLabelPoints");//3
+		gp1_btns.push_back("PointCloud\nLoadMMOffice");
+		gp1_btns.push_back("PointCloud\nSuperSampling");
+		gp1_btns.push_back("PointCloud\nPickPoints");
+		gp1_btns.push_back("PointCloud\nLabelPoints");
 		gps.push_back(gp1_btns);
+
+		gp2_btns.push_back("Meshing\nPickingPoints");
+		gp2_btns.push_back("Meshing\nAdjestPointSize");
+		gp2_btns.push_back("Meshing\nFaceCreation");
+		gp2_btns.push_back("Meshing\nSaveMesh");
+		gps.push_back(gp2_btns);
 	}
 
 	vec2 get_id_with_name(string btn_name) {

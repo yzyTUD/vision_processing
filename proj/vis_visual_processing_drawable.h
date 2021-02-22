@@ -267,6 +267,7 @@ bool visual_processing::init(cgv::render::context& ctx)
 	if (selection_kit!=nullptr) selection_kit->set_data_ptr(data_ptr);
 	if (handhold_near_kit != nullptr) handhold_near_kit->set_data_ptr(data_ptr);
 	if (tmpfixed_gui_kit != nullptr) tmpfixed_gui_kit->set_data_ptr(data_ptr);
+	if (mesh_kit != nullptr) mesh_kit->set_data_ptr(data_ptr);
 
 	// set the context ptrs 
 	if (selection_kit != nullptr) selection_kit->set_context_str(get_context());
