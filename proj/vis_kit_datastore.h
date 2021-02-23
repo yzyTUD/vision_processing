@@ -294,6 +294,10 @@ public:
 	std::vector<rgba> point_selection_colors; 
 	int max_num_of_regions = 7 + 16;
 
+	// 
+	std::vector<vec3> righthand_object_positions;
+	std::vector<rgb> righthand_object_colors;
+
 	vis_kit_data_store_shared() {
 		//initialize_trackable_list();
 		//supersampling_bbox = box3(vec3(-2,0,0),vec3(2,1,1));
@@ -344,6 +348,9 @@ public:
 			);
 			point_selection_colors.push_back(tmpcol);
 		}
+
+		righthand_object_positions.push_back(vec3(0));
+		righthand_object_colors.push_back(rgb(0, 0, 1));
 	}
 
 	vec2 get_id_with_name(string btn_name) {

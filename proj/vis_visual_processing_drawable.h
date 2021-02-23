@@ -189,7 +189,7 @@ void visual_processing::on_set(void* member_ptr)
 
 bool visual_processing::init(cgv::render::context& ctx)
 {
-	skybox_kit->init(ctx);
+	if(skybox_kit!=nullptr)skybox_kit->init(ctx);
 	//image_renderer_kit->init(ctx);
 
 	cgv::gui::connect_vr_server(true);
@@ -419,7 +419,7 @@ void visual_processing::init_frame(cgv::render::context& ctx)
 void visual_processing::draw(cgv::render::context& ctx)
 {
 	if(render_skybox)
-		if (skybox_kit) skybox_kit->draw(ctx);
+		if (skybox_kit != nullptr)skybox_kit->draw(ctx);
 	if (b_interactable) b_interactable->draw(ctx);
 	if (handhold_near_kit!=nullptr) handhold_near_kit->draw(ctx);
 	if (tmpfixed_gui_kit != nullptr) tmpfixed_gui_kit->draw(ctx);

@@ -207,7 +207,7 @@ public:
 					
 						if (data_ptr->check_roulette_selection(data_ptr->get_id_with_name("Meshing\nSaveMesh"))) {
 							// todo: add timestemp as file name 
-							M.write(data_ptr->data_dir + "/generated_mesh_vr_meshing_tool_"+ data_ptr->get_timestemp_for_filenames() +".obj");
+							M.write(data_ptr->data_dir + "/Meshes_VRMeshing/generated_"+ data_ptr->get_timestemp_for_filenames() +".obj");
 						}
 					}
 				}
@@ -495,19 +495,14 @@ public:
 			}
 		}
 	}
-	
-	// toimprove: effec.
+
 	void render_a_sphere_on_righthand(cgv::render::context& ctx) {
-		std::vector<vec3> points;
-		std::vector<rgb> point_colors;
-		points.push_back(data_ptr->cur_right_hand_posi + data_ptr->cur_off_right);
-		point_colors.push_back(rgb(0, 0, 1));
-		if (points.size()) {
+		if (data_ptr->righthand_object_positions.size()) {
 			auto& sr = cgv::render::ref_sphere_renderer(ctx);
 			sr.set_render_style(sphere_style_picking);
-			sr.set_position_array(ctx, points);
-			sr.set_color_array(ctx, point_colors);
-			sr.render(ctx, 0, points.size());
+			sr.set_position_array(ctx, data_ptr->righthand_object_positions);
+			sr.set_color_array(ctx, data_ptr->righthand_object_colors);
+			sr.render(ctx, 0, data_ptr->righthand_object_positions.size());
 		}
 	}
 	///

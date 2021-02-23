@@ -406,22 +406,17 @@ public:
 
 	}
 
-	// toimprove: effec.
 	void render_a_sphere_on_righthand(cgv::render::context& ctx) {
-		std::vector<vec3> points;
-		std::vector<rgb> point_colors;
-		points.push_back(data_ptr->cur_right_hand_posi + data_ptr->cur_off_right);
-		point_colors.push_back(rgb(0, 1, 0));
-		if (points.size()) {
+		if (data_ptr->righthand_object_positions.size()) {
 			glDepthMask(GL_FALSE);
 			glEnable(GL_BLEND);
 			glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
 			glDisable(GL_CULL_FACE);
 			auto& sr = cgv::render::ref_sphere_renderer(ctx);
 			sr.set_render_style(marking_style);
-			sr.set_position_array(ctx, points);
-			sr.set_color_array(ctx, point_colors);
-			sr.render(ctx, 0, points.size());
+			sr.set_position_array(ctx, data_ptr->righthand_object_positions);
+			sr.set_color_array(ctx, data_ptr->righthand_object_colors);
+			sr.render(ctx, 0, data_ptr->righthand_object_positions.size());
 			glDepthMask(GL_TRUE);
 		}
 	}

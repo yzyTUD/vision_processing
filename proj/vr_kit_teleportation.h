@@ -367,6 +367,9 @@ public:
 				off = vec3(0, 0, -0.2);
 				data_ptr->cur_right_hand_rot_quat.rotate(off);
 				data_ptr->cur_off_right = off;
+				//std::cout << "righthand_object_positions"<<data_ptr->righthand_object_positions.size() << std::endl;
+				if(data_ptr->righthand_object_positions.size()>0)
+					data_ptr->righthand_object_positions.at(0) = data_ptr->cur_right_hand_posi + off;
 
 				off = vec3(0, 0, -0.2);
 				data_ptr->cur_left_hand_rot_quat.rotate(off);

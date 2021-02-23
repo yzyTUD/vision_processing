@@ -66,7 +66,7 @@ public:
 	}
 	bool init(context& ctx) { 
 		skyprog.build_program(ctx, "skycube.glpr");
-		img_tex.create_from_images(ctx, data_dir + "/skybox/cm_{xp,xn,yp,yn,zp,zn}.jpg");
+		img_tex.create_from_images(ctx, data_dir + "/SkyBox/From_LearningOpenGL/cm_{xp,xn,yp,yn,zp,zn}.jpg");
 		return true;
 	}
 	/// setting the view transform yourself
