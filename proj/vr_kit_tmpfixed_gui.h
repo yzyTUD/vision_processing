@@ -67,6 +67,11 @@ private:
 
 	vec2 start_touching_point = vec2(0);
 	vec2 end_touching_point = vec2(0);
+
+	//
+	std::vector<vec3> quad_P;
+	std::vector<vec3> quad_N;
+	std::vector<vec2> quad_T;
 public:
 	/// initialize rotation angle
 	vr_kit_tmpfixed_gui()
@@ -86,6 +91,9 @@ public:
 				}
 			}
 		}
+
+		// random init 
+		tesselete_PNT_fan(0, 0.6, 0.6, 0, quat(), &quad_P, &quad_N, &quad_T);
 	}
 	// call me 
 	void set_data_ptr(vis_kit_data_store_shared* d_ptr) {
@@ -353,20 +361,93 @@ public:
 			rot.rotate(P->at(i));
 		}
 	}
+	///
+	void adjest_PNT_fan_at_runtime(int lev, float r, float s, float theta_as_angle, quat rot, std::vector<vec3>* P, std::vector<vec3>* N, std::vector<vec2>* T) {
+		float theta = 2 * M_PI * (theta_as_angle / 360.0f);
+		// 2d shape flexible 
+		/*P->push_back(vec3(0.2, 0, -0.4));
+		P->push_back(vec3(-0.2, 0, -0.4));
+		P->push_back(vec3(0.2, 0, -0.2));
+		P->push_back(vec3(-0.2, 0, -0.2));*/
+
+		float sums = 0;
+		for (int i = 0; i < lev; i++) {
+			sums += pow(1.2, i) * s;
+		}
+		r = 0.1 + lev * 0.01 + sums;
+		if (lev > 0)
+			s = lev * 1.2 * s;
+
+		P->at(0) = vec3(r * sin(theta / 2.0), 0, -(r + s) * cos(theta / 2.0));
+		P->at(1) = vec3(-r * sin(theta / 2.0), 0, -(r + s) * cos(theta / 2.0));
+		P->at(2) = vec3(r * sin(theta / 2.0), 0, -r * cos(theta / 2.0));
+		//
+		P->at(3) = vec3(-r * sin(theta / 2.0), 0, -(r + s) * cos(theta / 2.0));
+		P->at(4) = vec3(r * sin(theta / 2.0), 0, -r * cos(theta / 2.0));
+		P->at(5) = vec3(-r * sin(theta / 2.0), 0, -r * cos(theta / 2.0));
+		//
+		P->at(6) = vec3(r * sin(theta / 2.0), 0, -r * cos(theta / 2.0));
+		P->at(7) = vec3((s + r) * sin(theta / 2.0), 0, -(r + s) * cos(theta / 2.0));
+		P->at(8) = vec3(r * sin(theta / 2.0), 0, -(r + s) * cos(theta / 2.0));
+		//
+		P->at(9) = vec3(-r * sin(theta / 2.0), 0, -r * cos(theta / 2.0));
+		P->at(10) = vec3(-r * sin(theta / 2.0), 0, -(r + s) * cos(theta / 2.0));
+		P->at(11) = vec3(-(s + r) * sin(theta / 2.0), 0, -(r + s) * cos(theta / 2.0));
+
+		//T->push_back(vec2(1.0f, 1.0f));
+		//T->push_back(vec2(0.0f, 1.0f));
+		//T->push_back(vec2(1.0f, 0.0f));
+		////
+		//T->push_back(vec2(0.0f, 1.0f));
+		//T->push_back(vec2(1.0f, 0.0f));
+		//T->push_back(vec2(0.0f, 0.0f));
+
+		T->at(0) = vec2(0.0f, 0.0f);
+		T->at(1) = vec2(1.0f, 0.0f);
+		T->at(2) = vec2(0.0f, 1.0f);
+		T->at(3) = vec2(1.0f, 0.0f);
+		T->at(4) = vec2(0.0f, 1.0f);
+		T->at(5) = vec2(1.0f, 1.0f);
+
+		// random? 
+		T->at(6) = vec2(-1, -1);
+		T->at(7) = vec2(-1, -1);
+		T->at(8) = vec2(-1, -1);
+		T->at(9) = vec2(-1, -1);
+		T->at(10) = vec2(-1, -1);
+		T->at(11) = vec2(-1, -1);
+
+		vec3 normal = cross(P->at(0) - P->at(1), P->at(2) - P->at(1)); normal.normalize();
+		N->at(0) = normal;
+		N->at(1) = normal;
+		N->at(2) = normal;
+		N->at(3) = normal;
+		N->at(4) = normal;
+		N->at(5) = normal;
+		//
+		N->at(6) = normal;
+		N->at(7) = normal;
+		N->at(8) = normal;
+		N->at(9) = normal;
+		N->at(10) = normal;
+		N->at(11) = normal;
+
+		for (int i = 0; i < P->size(); i++) {
+			rot.rotate(P->at(i));
+		}
+	}
 	/// default val: /*float r = 0.2; float s = 0.2;*/
 	void render_menu_bar_quads(context& ctx, float r, float s, float theta_as_angle) {
 		for (auto btn : hmbmenubtns) {
 			if (btn.use_label && btn.group == data_ptr->active_group) {
 
-				std::vector<vec3> P;
-				std::vector<vec3> N;
-				std::vector<vec2> T;
+
 
 				quat rot;
 				rot = quat(vec3(0, 1, 0), 2 * M_PI * (btn.off_angle / 360.0f));
 				quat off_rot = quat(vec3(0, 1, 0), M_PI);
 				quat global_rot = quat(vec3(0, 1, 0), 2 * M_PI * (data_ptr->active_off_rotation / 360.0f));
-				tesselete_PNT_fan(btn.level, r, s, theta_as_angle, rot * off_rot * global_rot, &P, &N, &T);
+				adjest_PNT_fan_at_runtime(btn.level, r, s, theta_as_angle, rot * off_rot * global_rot, &quad_P, &quad_N, &quad_T);
 
 				// fixed part 
 				// handhold transformation
@@ -374,7 +455,7 @@ public:
 				if (data_ptr->check_btn_active_givenrot(btn.off_angle))
 					offset.y() = 0;
 				data_ptr->cur_left_hand_rot_quat.rotate(offset);
-				for (auto& p : P) {
+				for (auto& p : quad_P) {
 					data_ptr->cur_left_hand_rot_quat.rotate(p);
 					p += data_ptr->cur_left_hand_posi + offset;
 				}
@@ -382,25 +463,21 @@ public:
 				// enable texture 
 				cgv::render::shader_program& prog = ctx.ref_default_shader_program(true);
 				int pi = prog.get_position_index();
-				//int ni = prog.get_normal_index();
 				int ti = prog.get_texcoord_index();
 
-				cgv::render::attribute_array_binding::set_global_attribute_array(ctx, pi, P);
+				cgv::render::attribute_array_binding::set_global_attribute_array(ctx, pi, quad_P);
 				cgv::render::attribute_array_binding::enable_global_array(ctx, pi);
-				/*cgv::render::attribute_array_binding::set_global_attribute_array(ctx, ni, N);
-				cgv::render::attribute_array_binding::enable_global_array(ctx, ni);*/
-				cgv::render::attribute_array_binding::set_global_attribute_array(ctx, ti, T);
+				cgv::render::attribute_array_binding::set_global_attribute_array(ctx, ti, quad_T);
 				cgv::render::attribute_array_binding::enable_global_array(ctx, ti);
 				glDisable(GL_CULL_FACE);
 				prog.enable(ctx);
 				btn.labeltex->label_tex.enable(ctx);
 				ctx.set_color(rgb(1, 1, 1));
-				glDrawArrays(GL_TRIANGLES, 0, (GLsizei)P.size());
+				glDrawArrays(GL_TRIANGLES, 0, (GLsizei)quad_P.size());
 				btn.labeltex->label_tex.disable(ctx);
 				prog.disable(ctx);
 				glEnable(GL_CULL_FACE);
 				cgv::render::attribute_array_binding::disable_global_array(ctx, pi);
-				//cgv::render::attribute_array_binding::disable_global_array(ctx, ni);
 				cgv::render::attribute_array_binding::disable_global_array(ctx, ti);
 			}
 		}
