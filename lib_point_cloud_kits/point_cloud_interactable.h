@@ -90,7 +90,11 @@ public:
 	/// open a new point cloud
 	bool open(const std::string& fn);
 
+	bool generate_pc_hemisphere();
+
 	void store_original_pc();
+	
+	bool generate_pc_cube();
 	///
 	void downsampling(int step, int num_of_points_wanted, int which_strategy);
 

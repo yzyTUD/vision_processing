@@ -66,6 +66,76 @@ bool point_cloud_interactable::open(const std::string& fn)
 	return true;
 }
 
+bool point_cloud_interactable::generate_pc_hemisphere() {
+	pc.clear_all();
+	int samples_per_row = 200;
+	int nr_rows = 400;
+	Pnt extent = Pnt(1, 1, 1);
+	Rgba c = Rgba(0.5, 0.5, 0.5, 1);
+	float R = 1.0f;
+	Pnt offset = Pnt(0, 1, 0);
+	pc.clear();
+	for (Idx li = 0; li < nr_rows; ++li) {
+		float y = (float)li / (nr_rows - 1) - 0.5f;
+		for (Idx ci = 0; ci < samples_per_row; ++ci) {
+			float x = (float)ci / (samples_per_row - 1) - 0.5f;
+			Pnt p, n;
+			float r2 = x * x + y * y;
+			if (r2 > 0.25f) {
+				p = Pnt(x, 0, y) + offset;
+				//n = vec3(0, 0, 1);
+			}
+			else {
+				float g = sqrt(R * R - r2);
+				float f = g - sqrt(R * R - 0.25f);
+				p = Pnt(x, f, y) + offset;
+				//n = vec3(x / g, y / g, 1);
+			}
+			Idx pi = pc.add_point(extent * p, c);
+			//pc.nml(pi) = normalize(n/extent);
+		}
+	}
+	on_point_cloud_change_callback(PCC_NEW_POINT_CLOUD);
+	return true;
+}
+
+
+bool point_cloud_interactable::generate_pc_cube() {
+	pc.clear_all();
+	int samples_per_row = 200;
+	int nr_rows = 400;
+	vec3 extent = vec3(1, 1, 1);
+	rgba c = rgba(0.5, 0.5, 0.5, 1);
+	pc.clear();
+	for (int li = 0; li < nr_rows; ++li) {
+		float y = (float)li / (nr_rows - 1) - 0.5f;
+		for (int ci = 0; ci < samples_per_row; ++ci) {
+			float x = (float)ci / (samples_per_row - 1) - 0.5f;
+			vec3 p, n;
+			if (x < 0.25 && x > -0.25 && y < 0.25 && y > -0.25) {
+				if (abs(x - 0.25f) < 0.005f || abs(x + 0.25f) < 0.005f ||
+					abs(y - 0.25f) < 0.0025f || abs(y + 0.25f) < 0.0025f) {
+					for (int zi = 0; zi < 50; ++zi) {
+						float z = ((float)zi / (50 - 1)) * 0.25f;
+						p = vec3(x, z, y);
+						pc.add_point(extent * p, c);
+					}
+				}
+				else {
+					p = vec3(x, 0.25f, y);
+					pc.add_point(extent * p, c);
+				}
+			}
+			else {
+				p = vec3(x, 0, y);
+				pc.add_point(extent * p, c);
+			}
+		}
+	}
+	on_point_cloud_change_callback(PCC_NEW_POINT_CLOUD);
+	return true;
+}
+
 void point_cloud_interactable::downsampling(int step, int num_of_points_wanted, int which_strategy) {
 	if(which_strategy == 0)
 		pc.downsampling(step);

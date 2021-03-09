@@ -1,0 +1,1097 @@
+
+    ---
+    mixed background/ MA/ master thesis 
+        basic concepts:
+            matching: find correspondences
+            bring 3D scans in same coordinate  system
+            fusion: merge partial scans
+            point filtering
+            estimate globally  consistent surface
+            Delaunay-Tetrahedralization
+            Robust  and fast implementations in CGAL  or qhull. 
+            convex hull
+        cg2_slides 
+            build neighbourgrouph 
+                Riemannian-Graph: directed 
+                symmetrized Riemannian-Graph: no direction 
+            Outlier filter 
+                In not symmetrized RiemannianGraph most edges of 
+                    an outlier  point are outgoing and only few  ingoing 
+            sampling density estimation 
+                sampling density ? is defined  as the minimum radius of a circle  in tangential space
+                Sampling density typically  varies over surface
+                can be estimeted from average  distance to 3rd up to sixth nearest  
+                    neighbor points. 
+            Tangent Space Estimation, normal computation 
+                optimization problem
+                    Linear least squares
+                    basic localization weighting
+                Iterated Re-weightes Least Squares, IRLS fitting 
+                    solves the discontinuities problem 
+                bilateral fitting 
+                    couple the local optimzation
+                        problems into a global, nonlinear optimization problem
+                globally consistent normal 
+                position of 3D scanner defines outside direction
+                typically this is done by building neighbor graph and propagate
+                    normal orientation along graph edges
+            compute curvature
+                use the tailor series of 𝑔(𝑥, 𝑦) around the 2D origin to
+                    compute the curvature properties
+                Solve with weighted pseudo inverse or with SVD
+                https://dl.acm.org/doi/pdf/10.5555/601671.601673
+            feature detection/ modification  
+                https://www.researchgate.net/publication/2554207_Feature_Extraction_from_Point_Clouds
+                what feature can be expected 
+                    corner
+                    sharp corner 
+                    close sheets
+                    edges 
+                    faces 
+                Spin images 
+                    can well distinguish different
+                    local surface types
+                denoising 
+                    https://dl.acm.org/doi/pdf/10.1145/882262.882368
+                    https://dl.acm.org/doi/pdf/10.1145/882262.882367
+                control the density 
+        effecient rendering of point clouds 
+            https://www.researchgate.net/profile/Soeren_Discher/publication/325619805_A_Point-Based_and_Image-Based_Multi-Pass_Rendering_Technique_for_Visualizing_Massive_3D_Point_Clouds_in_VR_Environments/links/5b191550aca272021ceed577/A-Point-Based-and-Image-Based-Multi-Pass-Rendering-Technique-for-Visualizing-Massive-3D-Point-Clouds-in-VR-Environments.pdf
+                Virtual reality  (VR) applications rely on high frame rates (i.e., around 90 fps as opposed to 30 - 60 fps) and show high sensitivity  to any kind of visual artifacts
+                combined using a multipass rendering pipeline
+                s containing up to 2.6 billion points to show the practicability and scalability of our approach.
+                granting users  the perception of being physically present in a 3D virtual environment
+                For complex sites, e.g., buildings with a highly detailed  interior, or large areas
+                a Airborne scan of a city.
+                Terrestrial indoor scan
+                measuring of distances as well as rotating and scaling of the  rendered data
+                s light detection and ranging (LiDAR)
+                precision rates of  up to a few centimeters or millimeters
+                unmanned aircraft systems (UAS)
+                hundreds of gigabytes of raw data
+                Large unstructured collections of 3D points
+                In VR  applications additional challenges are raised
+                has to be rendered for two displays  simultaneously
+                tend to be more noticeable on VR displays,  can easily break the immersion
+                update after a physical movement by the user, becomes too high
+                the built-in displays of VR devices such as Oculus  Rift or HTC Vive operate at 90 Hz
+                frames have to be rendered at a considerably higher  speed compared to non-immersive applications
+                widely used in a variety of geospatial [9] and non-geospatial applications
+                out-of-core rendering
+                spatial data structures
+                subdivide 3D point clouds into small, representative subsets  that are suitable for real-time rendering.
+                view frustum culling
+                portal culling
+                Culling techniques used to reduce the amount  of points to be rendered: View frustum culling (yellow),  occlusion culling (orange), detail culling (red). 
+                Data subset selection, point cloud rendering, and image-based postprocessing. 
+                Data Subset Selection
+                subsets are determined on a per-frame basis
+                points are aggregated based on their spatial position to  accommodate for the perspective distortion resulting in  areas farther away from the current view position to appear smaller on screen
+                detail culling
+                For each 3D point cloud a separate  kd-tree is generated in a preprocessing step.
+                Paraboloid Rendering
+                Paraboloid rendering is a technique introduced by  Sch黷z
+                aims to further reduce visual clutter  by rendering points not as flat
+                Close-up view
+                Multisampling
+                provides  a smoother color transition between neighboring  fragments by sampling them several times
+                Measurements on an Oculus Rift lead to comparable, slightly better results due to the tighter view  frustum. T
+                cyclic overlap
+                piercing polygons.
+                https://hal.inria.fr/hal-01348404v2/document
+            https://www.vrvis.at/publications/pdfs/PB-VRVis-2019-008.pdf
+                Discrete LOD structure with sudden jumps in density and popping artifacts under motion
+                No visible seams across different levels of detail due to a continuous reduction in density
+                https://www.mdpi.com/2072-4292/12/14/2224/htm
+                hierarchically organized  chunks with varying extent and density
+                which results in sudden  changes of density from one level of detail to another
+                We propose a continuous level-of-detail method that exhibits gradual rather than sudden changes in density
+                . Our method continuously  recreates a down-sampled vertex buffer from the full point cloud,  based on camera orientation, position, and distance to the camera
+                The improved acceptance  of our method was successfully evaluated in a user study.
+                the lack of mipmapping
+                whereas scans of large areas and whole countries may  consist of hundreds of billions of points. 
+                hierarchical acceleration structures are used in order  to efficiently load and render these amounts of data
+                in-core rendering of data sets that fit in GPU memory, but which  are still too large to be rendered in real time in VR
+                As the distance to the viewer increases,  the density of the chunks to be rendered decreases
+                Chunk-wise  handling of LODs has emerged as the state of the art
+                coarse-grained management of data reduces overhead on file I/O,
+                The disadvantage, however, is that these  chunks are noticeable in the rendered image, especially at lower  levels of detail and during motion.
+                Progressive Rendering
+            https://www.cg.tuwien.ac.at/research/publications/2017/FRAISS-2017-PCU/
+            Fast Out-of-Core Octree Generation for Massive Point Clouds
+                https://www.cg.tuwien.ac.at/research/publications/2020/SCHUETZ-2020-MPC/SCHUETZ-2020-MPC-paper.pdf
+            Efficient Loading and Visualization of Massive Feature-Richt Point Clouds Without Hierarchical Acceleration Structures
+                https://www.cg.tuwien.ac.at/research/publications/2020/OTEPKA-2020-PPC/OTEPKA-2020-PPC-paper.pdf
+            Progressive Real-Time Rendering of One Billion Points Without Hierarchical Acceleration Structures
+                https://github.com/m-schuetz/skye
+                https://www.cg.tuwien.ac.at/research/publications/2020/schuetz-2020-PPC/schuetz-2020-PPC-paper.pdf
+            [2018 sig]Progressive Real-Time Rendering of Unprocessed Point Clouds
+                https://dl.acm.org/doi/pdf/10.1145/3230744.3230816
+        judge if point included effeciently 
+            imp. in vertex shader 
+        GPU related stuffs 
+            https://zhuanlan.zhihu.com/p/61358167
+                CPU的流水线较长，控制器较为复杂，计算趋于线性执行（可部分并行）
+                CPU内部ALU数量较少，所以不适合做数值计算密集型的数学计算。
+                GPU的流水线很短，控制器较为简单，内部集成了大量ALU
+                可并行执行的数学计算抛给GPU执行（例如，图像处理、视频编解码、物理粒子计算等
+                叫做显存（VRAM）
+                提交渲染数据时，尽量批量提交，减少CPU向GPU提交数据次数
+                尽量避免从GPU回读数据，这样可以减少两者数据交互。
+                GPU被划分成多个GPCs(Graphics Processing Cluster)
+                避免在shader中使用if else：因为按照SIMD的执行方式，if else可能会完全不生效，导致两个分支都要走一遍。同样循环中的break也会导致这样的问题。
+                Compute shader是一个通用的着色器，它使用在渲染管线之外，即它不是用来绘制一个图元或渲染像素的。那它是用与什么的呢？Compute shader利用GPUs的并行计算处理能力来做通用计算任务
+                由vertex shader 完成。输入与输出一一对应，即一个顶点被处理后仍然是一个顶点，各顶点间的处理相互独立
+                可以并行
+        point cloud alignment, registration 
+            sum:
+                the least correspondences points would be? 
+                    3 
+                correspondences can be? 
+                    point-to-point, point-2-plane, line-to-line 
+                icp assumes the crspds are estimated, not given as input 
+
+            slides 
+                icp algorithm
+                    features are points, lines, planes 
+                    registration of 3d scans 
+                    find a rigid transformation 
+                kabsch algorithm 
+                    solve a eqution and a rigid transformation will be generated 
+                see pics 
+            course codes 
+                err-https://igl.ethz.ch/projects/ARAP/svd_rot.pdf
+                correct-https://ieeexplore.ieee.org/document/88573
+                http://hua-zhou.github.io/teaching/biostatm280-2017spring/slides/16-eigsvd/eigsvd.html
+            
+                1. taken as heuristic, error!, full matching can only work as exact match
+                    for the same object! 
+                    > mesh feature computes correctly
+                    > for further use (checking)
+                2. local minima can be partially cured by re set min val 
+                3. feature can not compute iteratiely, may cause eror when not accurate, even 1e-7
+                4. feature matching can be done randomly, with out considering distance 
+                
+            https://en.wikipedia.org/wiki/Iterative_closest_point
+            MeshLab 
+                manually select feature points 
+                https://www.youtube.com/watch?v=jAXAxQvX8Cc          
+            2013, Go-ICP: Solving 3D Registration Efficiently and Globally Optimally
+                http://jlyang.org/iccv13_go-icp.pdf
+            2016, Go-ICP: A Globally Optimal Solution to 3D ICP Point-Set Registration
+                http://jlyang.org/tpami16_go-icp_preprint.pdf
+                https://github.com/yangjiaolong/Go-ICP
+                ICP is however well-known to  suffer from local minima.
+                combines it with a branch-and-bound (BnB)  scheme
+                outlier robustness
+                The concept of ICP is simple and intuitive. 
+                    It alternates between estimating geometric transformation 
+                    (rotation and translation), and estimating the 
+                    point-wise correspondences
+                widely used in computer vision, and beyond computer vision
+                ICP is however also well-known for its suffering from  
+                    the issue of local minima
+                Despite that this drawback of local-minima is generally well-known, 
+                    relatively few papers have tackled this issue explicitly
+            2019, A Symmetric Objective Function for ICP
+                https://gfx.cs.princeton.edu/pubs/Rusinkiewicz_2019_ASO/symm_icp.pdf
+            [2020]Point Cloud Registration Algorithm Based on the Grey Wolf Optimizer.
+                https://ieeexplore.ieee.org/stamp/stamp.jsp?tp=&arnumber=9159580
+            [2020]Evaluation of the ICP Algorithm in 3D Point Cloud Registration
+                https://ieeexplore.ieee.org/stamp/stamp.jsp?tp=&arnumber=9060927
+            [2020]Color Point Cloud Registration Based on Supervoxel Correspondence
+                https://ieeexplore.ieee.org/stamp/stamp.jsp?tp=&arnumber=8950119
+            [2017]https://www.ipb.uni-bonn.de/pdfs/foerstner17efficient.pdf
+        Curvature computation and map to colors!  
+            https://www.researchgate.net/publication/333418053_Efficient_Curvature_Estimation_for_Oriented_Point_Clouds
+            https://pdf.sciencedirectassets.com/282073/1-s2.0-S2212017314X00022/1-s2.0-S2212017313006828/main.pdf?X-Amz-Security-Token=IQoJb3JpZ2luX2VjEGUaCXVzLWVhc3QtMSJGMEQCIEytzKIS%2BNBW5fYKf4%2BTfzK6aLy8Ga2yxhjQnkJ6T16xAiB%2Fp%2BpkXgzSsoZhe5zJhCIZhSU67fXevr4NI74DC6MVdSq0AwgeEAMaDDA1OTAwMzU0Njg2NSIM1CpVmUNR7Lufz9ScKpEDuJIXS7QH6RWH8kEtEDaAk1jJu0SImAnxiPfR9qaVJomryfzXgef2JbLV%2FaHYlfxdFC3wmz6ZwW9%2BklhNY37sb9g0XWVfQzRdCSCvAu1aLSrGj6hIpdVSwIoS6O4HqMh1t9jPU6jAlQPDLrpeZ6N3w6FSQTQlR6uHNz59sGoOGmhPyaBvJuRfYSmxtvptpHASes%2Bsd3vs1jWS5HKiFdDUKfTg81UJPYtwu%2FB4STVzJ0KfdTL1asHjRUQfEbwhlhy%2FwsiD0FCDe1xuNX5Xp8ftrdwG480r7emNnpjj8AEJJHf9Yg5VUFtMKQGV%2FpswMRHlfX7qNbMwbryi2NbXrvswqWDw5X0AE4u%2FEY49tU8aOkCIh9dtrCCKTkma437%2FOQYXsJZtm6JWrOiPebJIDNXP8c91TyPIICQBXoZ24ddb0SLq90XusAtU4s2FPJzxIRFPlElAkxwmK4q%2FuSEz47l1idJV%2Ba84eOIHY7dtJ3lpL%2BcYVaXRXzKmBemLDyQlZWljK1yJSaw1GQH4xFn0zea6Mkcwnbme%2FwU67AHxLxFEprNLy5oqoN7dWM6evUyaEzwMANPWTksr7JMvFmxlZEUkyWMm9zjdaSMAop6%2Fe2SqbwpIWuSOPLTkrZio0KUZWyQLd%2B6Lc9aOZpo%2B9n9IP8WxZFj0GIwcHWwcx%2FHX1pgW%2FI%2BDB1YHK2gTD9VIhUF5xujkSZkNon1l16rwo6Pgo0AV7qaiA5RdMG1NsdhNXY2LvxkAFXxlxBMlZotO1qRXmAcPNfV6byP8dbMxDugLx7GwwLdawS%2F0EMKcSsU1uuyBBZrcwjE%2FWK62CGiYl7EIXmpBjLAOy%2BX8RZwpCud3qwkI3XBXZeSKcA%3D%3D&X-Amz-Algorithm=AWS4-HMAC-SHA256&X-Amz-Date=20201226T211739Z&X-Amz-SignedHeaders=host&X-Amz-Expires=300&X-Amz-Credential=ASIAQ3PHCVTY34VWLATM%2F20201226%2Fus-east-1%2Fs3%2Faws4_request&X-Amz-Signature=0fd6a1a78d07d8e21431ee93a3719f7b94924cd1b1874883e7f5f0f4fb155a77&hash=fe91f390a754eb723d9cd6b03b6b8b794549292b6c4e5873bfae4b9d8e6d4397&host=68042c943591013ac2b2430a89b270f6af2c76d8dfd086a07176afe7c76c2c61&pii=S2212017313006828&tid=spdf-2b4cb487-93c8-4dc9-9091-2d6546a8693d&sid=90e05b5c4f34d543f37bf661f070dfb0a7bdgxrqb&type=client
+            http://homepages.inf.ed.ac.uk/rbf/CVonline/LOCAL_COPIES/AV0405/MUIR/av-2.html
+            
+            https://github.com/alecjacobson/geometry-processing-curvature
+            http://gts.sourceforge.net/darcs/gts-devel/src/curvature.c
+            https://libigl.github.io/tutorial/#gaussian-curvature
+
+            https://blenderartists.org/t/addon-mesh-curvature-to-vertex-colors/641381/3
+        region growing:
+            https://www.int-arch-photogramm-remote-sens-spatial-inf-sci.net/XLII-3-W10/153/2020/isprs-archives-XLII-3-W10-153-2020.pdf
+            https://www.ais.uni-bonn.de/papers/IAS_2012_Holz.pdf
+            https://core.ac.uk/download/pdf/141884213.pdf
+        feature extraction, local features:
+            the generating file format 
+        surface fitting:
+        generate, output, rendering: reconstruction 
+            https://hal.inria.fr/hal-01348404v2/document
+            https://www.mdpi.com/2072-4292/12/14/2224/htm
+        Labeling, semantic segmenation 
+        deeplearning on point clouds (future work)
+            https://arxiv.org/pdf/1912.12033.pdf
+        scanning besed modeling pipeline
+            build nighbourgrouph 
+                Riemannian-Graph: directed 
+                symmetrized Riemannian-Graph: no direction 
+            Outlier filter 
+                In not symmetrized RiemannianGraph most edges of 
+                    an outlier  point are outgoing and only few  ingoing 
+            sampling density estimation 
+                sampling density ? is defined  as the minimum radius of a circle  in tangential space
+                Sampling density typically  varies over surface
+                can be estimeted from average  distance to 3rd up to sixth nearest  
+                    neighbor points. 
+            Tangent Space Estimation, normal computation 
+                optimization problem
+                    Linear least squares
+                    basic localization weighting
+                Iterated Re-weightes Least Squares, IRLS fitting 
+                    solves the discontinuities problem 
+                bilateral fitting 
+                    couple the local optimzation
+                        problems into a global, nonlinear optimization problem
+                globally consistent normal 
+                position of 3D scanner defines outside direction
+                typically this is done by building neighbor graph and propagate
+                    normal orientation along graph edges
+            compute curvature
+                use the tailor series of 𝑔(𝑥, 𝑦) around the 2D origin to
+                    compute the curvature properties
+                Solve with weighted pseudo inverse or with SVD
+                https://dl.acm.org/doi/pdf/10.5555/601671.601673
+            feature detection/ modification  
+                https://www.researchgate.net/publication/2554207_Feature_Extraction_from_Point_Clouds
+                what feature can be expected 
+                    corner
+                    sharp corner 
+                    close sheets
+                    edges 
+                    faces 
+                Spin images 
+                    can well distinguish different
+                    local surface types
+                denoising 
+                    https://dl.acm.org/doi/pdf/10.1145/882262.882368
+                    https://dl.acm.org/doi/pdf/10.1145/882262.882367
+                control the density 
+        modeling
+        cad 
+        spline 
+        region growing 
+        triangulation 
+        3d printing 
+            gcode generation, slicing 
+            adjestment  
+                height adjestment 
+                temp. 
+                    pingtai
+        the support of spline in obj format 
+
+    ---
+    pointclouds -> semantic
+        topic: point cloud reduction/ processing/ feature extraction/ rendering 
+            preview 
+                https://github.com/Yochengliu/awesome-point-cloud-analysis
+                pcl 
+                    https://pcl.readthedocs.io/projects/tutorials/en/latest/pcl_visualizer.html
+                    p: pc operations?
+                    p: quick test? 
+                        with a cmake project
+                        make it private repo todo 
+                    https://pcl.readthedocs.io/projects/tutorials/en/latest/walkthrough.html#walkthrough
+                what is local features?
+                    estimated from local near points 
+                    characterize a point using the information provided by its k closest point neighbors
+                what are spatial decomposition techniques? 
+                    usually split into smaller chunks using spatial decomposition techniques such as octrees or kD-trees
+                
+            *features? 
+                ok-map surface normal to color 
+                colorize points by curvature 
+                edge/corner detection 
+                    https://arxiv.org/ftp/arxiv/papers/1809/1809.10468.pdf
+                keypoints
+                    3D-SIFT 
+                    NARF keypoints
+
+
+            keyword
+                pointcloud cleaning tool 
+            hands-on 
+                https://github.com/charlesq34/pointnet
+                
+            devices 
+                Leica BLK360 
+
+            approaches 
+                +deep learning approaches 
+                [2016] PointNet: Deep Learning on Point Sets for 3D Classification and Segmentation
+                    https://web.stanford.edu/~rqi/pointnet/
+                    https://github.com/charlesq34/pointnet
+                [2016] Potree: Rendering Large Point Clouds in Web Browsers
+                    https://www.cg.tuwien.ac.at/research/publications/2016/SCHUETZ-2016-POT/SCHUETZ-2016-POT-thesis.pdf
+                [2019] Feature-Preserving Simplification of Point Cloud by Using Clustering Approach Based on Mean Curvature
+                    https://art-science.org/journal/v14n4/v14n4pp117/artsci-v14n4pp117.pdf
+            stru 
+
+    --- 
+    pointclouds -> meshes
+        
+        topic: surface reconstruction from [point clouds]
+            
+            hands-on tools/ inspire:
+                soft:
+                    cloudcompare 
+                        Poisson recon with point clouds 
+                    meshlab 
+                        pointclouds feed in 
+                    meshroom 
+                        https://meshroom-manual.readthedocs.io/en/latest/node-reference/nodes/Texturing.html
+                        ...
+                    RealityCapture 
+                        https://www.youtube.com/watch?v=-CwdugODkmQ
+                        in a combined method 
+                        works! * 
+                    Recap Photo
+                        mesh as input? 
+                    blender 
+                        https://www.youtube.com/watch?v=h01fZH1eu0k
+                        https://en.wikibooks.org/wiki/Blender_3D:_Noob_to_Pro/UV_Map_Basics
+                        https://www.youtube.com/watch?v=2b64oeC6wKg
+                        https://blenderartists.org/t/merging-dense-mesh-obj-into-single-mesh-keeping-texture-mapping/1203923
+                        ...
+                    Cinema 4D  
+                        https://3dscanexpert.com/3d-scan-uv-texture-remap-c4d/ 
+                    geometryhub
+                        uv unfolding 
+                    artec recon texturing 
+
+                coding libs:
+                    cloudcompare
+                        further plugins? 
+                    pcl 
+                    libigl 
+                    cgal 
+                        https://doc.cgal.org/latest/Manual/tuto_reconstruction.html
+
+                    pcl 
+                    mvs
+                        may supported in meshroom 
+                        https://github.com/nmoehrle/mvs-texturing
+                    G2LTex
+                        https://github.com/fdp0525/G2LTex
+                        as depth frames 
+                        under ubuntu 
+                    the one from gumhold 
+                    open3d 
+                        http://www.open3d.org/docs/0.10.0/index.html
+
+            explore 
+                https://arxiv.org/list/cs.GR/recent
+                dense reconstruction
+                depth images 
+                high quality meshes 
+
+            approaches:
+                https://arxiv.org/list/cs.GR/recent
+                [Bernardini99] Ball-Pivoting 
+                [2001] power crust
+                    using the hull convex hull code by Ken Clarkson
+                    The power crust, 6th ACM Symposium on Solid Modeling, 2001
+                    The power crust, unions of balls, and the medial axis transform, 2001
+                [2006] Poisson
+                    https://github.com/mkazhdan/PoissonRecon
+                    http://sites.fas.harvard.edu/~cs277/papers/poissonrecon.pdf
+                    M. Kazhdan, M. Bolitho, H. Hoppe, Poisson surface
+                    reconstruction, Symposium on Geometry Processing
+                    2006, 61-70
+                    color values from the input samples can be obtained by calling:
+                    https://github.com/mkazhdan/PoissonRecon
+                    http://www.cs.jhu.edu/~misha/MyPapers/SGP06.pdf
+                    https://github.com/mkazhdan/PoissonRecon#EXECUTABLES
+                    http://www.cs.jhu.edu/~misha/Code/
+                    http://www.cs.jhu.edu/~misha/Code/PoissonMesh/TextureStitcher/
+                [2007] out-of-core poisson 
+                [2007] Efficient RANSAC for Point-Cloud Shape Detection
+                    https://cg.cs.uni-bonn.de/en/publications/paper-details/schnabel-2007-efficient/
+                [2012] Fast Range Image Segmentation and Smoothing using Approximate Surface Reconstruction and Region Growing
+                    https://www.ais.uni-bonn.de/papers/IAS_2012_Holz.pdf    
+                [2013] SSDPoisson 
+                [König13] by gumhold https://tud.qucosa.de/api/qucosa%3A27391/attachment/ATT-0/ 
+                [2014] State of the Art in Surface Reconstruction from Point Clouds
+                    https://matthewberger.github.io/papers/reconstar.pdf
+                [2015] Structured Indoor Modeling
+                    https://openaccess.thecvf.com/content_iccv_2015/papers/Ikehata_Structured_Indoor_Modeling_ICCV_2015_paper.pdf
+                [2017] Field-Aligned Online Surface Reconstruction
+                    https://dl.acm.org/doi/pdf/10.1145/3072959.3073635
+                    OnlineSurfaceReconstruction
+                    https://github.com/NSchertler/OnlineSurfaceReconstruction
+                [2017/2019] PolyFit: Polygonal Surface Reconstruction from Point Clouds
+                    https://3d.bk.tudelft.nl/liangliang/publications/2017/polyfit/PolyFit-ICCV2017.pdf
+                    seeking for an appropriate
+                        combination of them to obtain a manifold polygonal
+                        surface model without boundary
+                    usage 
+                        // make sure point cloud has normals!, in ply format is better 
+                        use mapple to extract planes (ransac) -> bvg format 
+                        import yo polyfit -> 
+                    * Since Aug.5, 2019, PolyFit is officially part of CGAL.
+                    a good commercial example .... 
+                    binary labeling problem
+                    Our method is based on  a hypothesizing and selection strategy
+                    We first generate a  reasonably large set of face candidates by intersecting the  extracted planar primitives
+                    Then an optimal subset of the  candidate faces is selected through optimization
+                    enforce the final polygonal  surface model to be manifold and watertight
+                    generate lightweight polygonal surface models  of arbitrary piecewise planar objects
+                    recovering sharp features and is robust to  noise, outliers, and missing data
+                    it has been extensively researched in  the past few decades
+                    man-made objects such as buildings)
+                    Second, it  should be able to recover sharp features of the objects.
+                    C:\Users\yzhon\Downloads\PolyFit_data\PolyFit_data
+                    as bvg (Binary Vertex Group) format.
+                    bvg (Binary Vertex Group) format.
+                    ASCII format vg also works but slow.
+                    PolyFit assumes that the model is closed and all necessary planes are provided.
+                    Gurobi, SCIP, GLPK, and lp_solve, are provided (with source code) in PolyFit
+                    The GLPK and lp_solve solvers only manage to solve small problems. 
+                    may not guarantee to succeed
+                    incorporates a progress logger in the user interface
+                [2017] A Survey of Surface Reconstruction from Point Clouds
+                    https://hal.inria.fr/hal-01348404v2/document
+                [2019] Dense 3D Point Cloud Reconstruction Using a Deep Pyramid Network
+                    https://github.com/val-iisc/densepcr
+                
+                [2018] InteriorNet: Mega-scale Multi-sensor Photo-realistic Indoor Scenes Dataset
+
+                [2019] The Replica Dataset: A Digital Replica of Indoor Spaces
+                    https://arxiv.org/pdf/1906.05797.pdf
+                    https://github.com/facebookresearch/Replica-Dataset
+                    from facebook research 
+
+                [sig2020] [0.2] Automatic 3D Reconstruction of Structured Indoor Environments tutorial notes 
+                    https://dl.acm.org/doi/pdf/10.1145/3388769.3407469
+                    need to cope with noisy  and partial captured data
+                    many open research problems remain,
+                    bridging complementary views coming from computer graphics  and computer vision
+                    https://dl.acm.org/doi/pdf/10.1145/3388769.3407469
+                    Automatic 3D Reconstruction of  Structured Indoor Environments
+                    we provide an up-to-date integrative view of the field
+                    main components of a  structured reconstruction pipeline
+                    We finally  point out relevant research issues and analyze research trends
+                    SIGGRAPH2020 Courses
+
+
+
+
+                toread:
+                    Mls
+                    APSS
+                    RIMLS
+                    Voronoi Graph ＋ PCA
+                    Wavelet
+                    https://lgg.epfl.ch/publications/2014/reconstar/paper.pdf
+                    Nico papers: 
+                        https://tud.qucosa.de/api/qucosa%3A32056/attachment/ATT-0/?L=1
+                    https://arxiv.org/pdf/1703.04079.pdf
+                    https://3d.bk.tudelft.nl/liangliang/publications/2009/BATR_2009.pdf
+                    https://www.mdpi.com/2220-9964/9/5/330/pdf
+                    RandLANet: Efficient Semantic Segmentation of Large-Scale PointClouds
+                    Pytorch: Learning Efficient Point Cloud Generation for Dense 3D Object Reconstruction
+                    https://tud.qucosa.de/search/?no_cache=1&L=1&tx_dpf_frontendsearch%5Baction%5D=search&tx_dpf_frontendsearch%5Bcontroller%5D=SearchFE
+                    G2LTex
+                        http://graphvision.whu.edu.cn/papers/fuyangping-Texture%20Mapping%20for%203D%20Reconstruction%20with%20RGB-D%20Sensor.pdf
+                    https://github.com/NVlabs/intrinsic3d
+                    https://github.com/AOT-AG/DicomToMesh
+                    https://github.com/zishun/HRBFQI
+                    https://github.com/VVingerfly/surfRecon
+
+            stru: (pointing upwards)
+                Voronoi based methods 
+                    Crust
+                    Power Crust 
+                    cocone
+                    umbrella filter
+                        project point neighborhood into 2D tangent space
+                        compute local 2D Delaunay triangulation   
+                    [König13]            
+                Indicator Function Based Reconstruction
+                    Poisson
+                    Screened Poisson
+                        M. Kazhdan, H. Hoppe. Screened Poisson surface
+                            reconstruction, ACM Trans. Graphics, 32(3), 2013
+                        SSD: Smooth Signed Distance Surface Reconstruction
+
+        topic: SfM 
+            preview 
+                benchmark
+                    rectified images from DTU benchmark
+                https://zhuanlan.zhihu.com/p/131590433
+                SfM 
+                    https://zhuanlan.zhihu.com/p/78533248
+                    Structure From Motion(SFM) 是从一系列包含视觉运动信息的多幅二维图像序列中估计三维结构的技术
+                    SFM和立体视觉的区别
+                shape from shading: SfS
+                PointMVSNet is a deep point-based deep framework for multi-view stereo (MVS).
+                    PointMVSNet generates per-view depth map.
+            hands-on 
+                soft
+                    https://github.com/alicevision/meshroom
+                libs 
+                    https://github.com/alicevision/meshroom
+                    https://openmvg.readthedocs.io/en/latest/
+            approaches: 
+
+            stru: 
+
+        topic: SfS
+            ...
+
+        topic: Structure from [depth videos/ videos] 
+            prob:
+                depth video capturing? 
+                depth video recon? 
+            hands-on 
+
+            approaches:
+                [2017] bundlefusion
+                    most easy and powerful one 
+                    recon from depth video 
+                    it is not on point clouds actually 
+            
+            stru: 
+                ...
+        
+        topic: polyfit, from point cloud to meshes constructive way 
+            preview: 
+                provided by cgal 
+            keyword:
+                fit point cloud to primitives 
+            approaches: 
+
+            stru: 
+
+    --- 
+    meshes -> meshes 
+        
+        topic: mesh reduction/ geometry processing 
+            preview 
+            hands-on 
+                RGL epfl publications: 
+                    http://rgl.epfl.ch/publications
+
+            approaches
+                [2015]  Instant Field-Aligned Meshes
+                    https://igl.ethz.ch/projects/instant-meshes/instant-meshes-SA-2015-jakob-et-al.pdf
+            stru
+
+    --- 
+    meshes -> textured meshes  
+        
+        topic: texture reconstruction
+            preview: 
+                基本知识 
+                    https://zhuanlan.zhihu.com/p/144332091  
+                    让场景拥有丰富的颜色信息
+                    纹理贴图精度大小所带来的问题
+                    我们可以将三维物体上的任意一个点都映射到一个2维平面之上
+                    每次利用光照模型进行计算的时候根据映射关系就能查到这个点的漫反射系数是多少
+                    有了映射关系，对渲染结果会有一个非常大提升，因为很多fancy的效果都可以通过texture的设计得到
+                    这就要从纹理坐标（UV）说起了
+                    至于一个顶点所对应在纹理空间的坐标是怎么得到的，这就并不是程序员们关心的了
+                    因此只需要在三维world space中每个顶点的信息之中存储下该顶点在texture space的(u,v)坐标信息
+                    有一种特殊的纹理称为tile，这种纹理的特征是重复拼接之后上下左右都是连续的，因此这种纹理可以复制很多张贴在墙面或地板上。
+                    重复利用这种贴图
+                    https://pic3.zhimg.com/80/v2-7ac2e368b1b3287e5ebb4fef55d5dc82_1440w.jpg
+                    考虑如果纹理精度特别小(reslution低)或者纹理精度特别大(reslution大)会分别引起什么问题呢
+                    更加精细的选择后结果就会明显好很多:
+                    难的是后序的纹理过大过小引发的问题，可能相对而言有些抽象，需要自己仔细思考思考
+                    包括解决问题的一些方法Mipmaps，各向异性过滤什么的
+                    GAMES101-现代计算机图形学入门-闫令琪
+                    https://pic2.zhimg.com/80/v2-cbe5ed359de8bbf3f59825e74c38fefd_1440w.jpg
+                    http://www.reynantemartinez.com/how-to-generate-texture-maps-from-a-single-image.html
+                    要创建真实世界中罕见的材质，皮肤就不好找了。
+                    可以将三维 Mesh(网格)以指定方式与颜色、贴图等组合，完成复杂的计算输出（渲染器可读取的点和颜色的对应关系）
+                    为什么 Shaders 运行特别快？因为它们常常运行在专门为并行处理（parallel processing）而设计的 GPU 上面。
+                    包含一些针对向量和矩阵操作的有用特性。
+                    内存的增长速度远远跟不上纹理分辨率的增长速度。特别是对于移动平台，如果要做高复杂度的地形，并且地形上比如会有车印这些各种贴花，那对于贴图的使用是非常频繁的
+                    贴图tile成很多小块，然后为每块指定一个ID号，最后pack到一张大的贴图中
+                    动态downsample
+                    Chen_Ka_AdaptiveVirtualTexture
+                    Texture antialiasing (MIPMAP)
+                    Signed Distance Function
+                    可以用每个patch的model space UV
+                    it may not support all flavors of obj. 
+                    share the other problematic model you mention
+                    https://geometrycollective.github.io/boundary-first-flattening/
+                    https://github.com/GeometryCollective/paper-template
+                    procedural rendering 
+                    http://www.alecjacobson.com/weblog/?tag=libigl
+                    已通过某种方式编辑或修改曲面
+                    无非是为了完成一个共同目标：用计算机表现真实可信的 Shading。
+                        Shading 是真实世界中的光影效果，它是由物体表面材质、灯光、观察者的视角等多种因素共同决定的
+                        Diffuse Map 漫反射：模拟一个发光物对物体的方向性影响(Directional Impact)。它是光照模型中最显著的组成部分
+                        Normal/Bump Map 法线：决定物体形状的垂直于它的法线向量，提供有关物体表面深度的细节。每一种颜色代表了不同的轴向
+                        Displacement Map 位移：使用高度图将经过纹理化的表面的实际几何点位
+                        Gloss/Roughness Map 光泽  
+                
+                处理走样失真
+                    最近的那个像素点，往往会造成严重的走样。
+                    双线性插值的方法缓解这种走样现象
+                    能够很好的缓解走样失真现象，并且计算速度较高。
+                    (tips:还有一种插值方法叫做双三次插值(Bicubic),是利用三次方程来进行两次插值，效果可能更好，但是计算速度很低不在这里具体讨论了)
+                    近处锯齿！远处摩尔纹！非常严重的走样现象，为什么会导致这样的一个现象呢？
+                    远处圆圈里的footprint必然比近处的要大，因此必须要准备不同level的区域查询才可以，而这正是Mipmap。
+                    很遗憾，在本文的那个地板的例子之中，费了这么大力气依然不能完美解决，如下图结果:
+                    远处的地板产生一种过曝的现象，完全糊在了一起。该如何解决这个最后的问题呢——各向异性过滤。
+                    有的所需要的是仅仅是水平方向的高level，有的需要的仅仅是竖直方向上的高level，因此这也就启发了各向异性的过滤
+                    有的所需要的是仅仅是水平方向的高level
+                    https://pic2.zhimg.com/80/v2-ff995b8eddf01433063df0d7eca9f175_1440w.jpg
+                    个人感觉，应该是要算出水平方向的level D0，再算一个竖直方向的level D1，
+                        然后算根据这两个level去各项异性过滤的texture里面找一张最合适的
+            
+                Virtual Texture Mapping
+                    这里作者也提出了新的mipmap对应的方案，就是一次比原来的mipmap增加一个级别。
+                    A virtual texture2 is a mip?mapped texture used as cache to allow a much higher  resolution texture to be emulated for real?time rendering, while only partly residing in  texture memory
+                    LOD selection
+                    float precision, disk streaming, UV borders,  mip?map generation
+                    large rich environments with many details
+                    CrysisTM shows the need for texture streaming:  
+                    virtual texture
+                    https://developer.amd.com/wordpress/media/2013/01/Chapter02-Mittring-Advanced_Virtual_Texture_Topics.pdf
+                
+                Procedural Texture 
+                    程序化生成的纹理 
+                
+                位图图像
+                    用数码相机拍摄的照片、扫描仪扫描的图片以及计算机截屏图等都属于位图。
+                
+                the .gltf file format 
+                    may reference external binary and texture resources
+                    Graphics Language Transmission Format
+                    has been adopted by other 3D graphics application vendors.
+                    Vertices are stored in a counter-clockwise order by default
+                    https://en.wikipedia.org/wiki/Wavefront_.obj_file#Texture_maps
+                    standard file format for three-dimensional scenes and models.
+                
+                有序点云和无序点云
+                    一般使用tof或者结构光原理的深度相机获取的点云是有序点云，而无序点云一般是激光雷达其他设备获取的，无序点就用下面的图理解吧。
+
+            prob: uv texture mapping in game and film making. industry standard? 
+                summ: uv 展开，然后艺术家手动绑上去的。也有直接往模型上画的技术比如PTex
+                建模的时候纹理贴图是怎么生成的: https://www.zhihu.com/question/49399106
+                    i use painter to texture my models and uv mapping will waist many of my time . 
+                        i hope substance support ptex soon 
+                    https://www.unwrap3d.com/u3d/tutorial_uv_mapping_repaint_mesh.aspx
+                    https://zhxx1987.github.io/
+                    https://v.youku.com/v_show/id_XNDM3ODU0MzQxNg==.html?spm=a2h0j.11185381.listitem_page1.5!8~A
+                    mental ray 3.10.
+                prob: 多个材质如何渲染
+                f：uv展开, 用blender, maya填充
+                
+            hands-on: 
+                soft:
+                    ZBrush 
+                        is a digital sculpting tool that combines 3D/2.5D modeling, texturing and painting. 
+                        It uses a proprietary "pixol" technology which stores lighting, color, material, orientation, and depth information for the points making up all objects on the screen
+                        Our flagship product and the industry standard for 3D sculpting
+                        since we only supplied 3 colors, not the huge color palette we're seeing right now.
+                        This is all the result of something called fragment interpolation in the fragment shader. 
+                        results in a lot more fragments than vertices originally specified. 
+                        The rasterizer then determines the positions of each of those fragments based on where they reside on the triangle shape.         
+                    Maya texture mapping 
+                        蓝色意味着光照图精度过低
+                        在 UE4 中构建光照图时可能出现穿帮。红色意味着光照图精度过高
+                        应用在现有几何体上有浪费之嫌。
+                        图像中，饼干盒的前、后、上、下和两侧都包含用 Adobe? Photoshop?（.PSD 格式）创建的 2D 艺术图
+                        https://download.autodesk.com/us/maya/maya_2014_gettingstarted_chs/images/GUID-4408F054-A27F-4792-BC3A-119D5A4E3655-low.png
+                        纹理坐标好计算，贴图也就是一张简单的矩形图片
+                        https://www.zhihu.com/question/49399106
+                    Blender texturing
+                        UV mapping is a technique used to "wrap" a 2D image texture onto a 3D mesh
+                            "U" and "V" are the names of the axes of a plane,
+                            UV/Image Editor. 
+                        https://en.wikibooks.org/wiki/Blender_3D:_Noob_to_Pro/UV_Map_Basics
+                            equator
+                            This tells the UV unwrapper to cut the mesh along these edges.
+                            create a window for the UV mapping
+                            Save the following image (click to view in full high resolution (4,096 × 2,048 pixels)):
+                            Then with the grab, rotate and scale tools
+                            adjust the UV islands
+                            Admire your new creation
+                            To make the texture visible in renderings, you also need to add the texture to the sphere as a new material.
+                            Select the globe texture from the dropdown menu.
+                            I've changed the lighting and the camera position to make the image more interesting
+                            I also added a star background
+                            spherical mapping.
+                            blue marble
+                            most detailed true-color image of the entire Earth to date
+                            seamless, true-color mosaic of every square kilometer (.386 square mile) of our planet
+                            https://earthobservatory.nasa.gov/features/BlueMarble/BlueMarble_2002.php
+                            you should see a very different UV map, as shown below. Note that only the 'Unwrap' option will use the seams we just made, all of the other options completely ignore it.
+                            UVs fit more evenly over the texture
+                            Now rerender your model, and you will see that there are no seams!
+                            Noob to Pro
+                            https://en.wikibooks.org/wiki/Blender_3D:_Noob_to_Pro 
+
+                        https://www.youtube.com/watch?v=bP_1XfpEy80  
+                    geometryhub
+                        http://geometryhub.net/notes/uvunfold
+                        有些应用场景不需要稠密的网格，需要对网格进行简化
+                        网格简化不会影响图片的分辨率，下左图与上面的稠密网格比较，视觉上的色彩是差不多的。
+                        用原始图片做纹理贴图，在不同图片接缝处，有明显的色差痕迹。纹理色彩融合可以提升纹理贴图整体的色彩融合度
+                        如果能把它与参数平面建立一一映射，那么它也就被参数化了，这个映射就是UV展开
+                        只有圆盘拓扑结构的网格才能展开到平面上
+                        一种是曲面本身的几何所决定的，比如球面展开到平面，一定会产生扭曲。想要减少展开的扭曲程度，可以在扭曲程度大的地方增加曲面割线。另一种是展开算法中的约束产生的扭曲，比如固定边界的UV展开
+                        一种直观的观察展开扭曲程度的方式是，把一张棋盘格图片贴到网格上，棋盘格越均匀，UV展开扭曲越小。
+                        http://geometryhub.net/images/texturecoord.jpg
+                        顶点坐标与纹理坐标其实没有直接联系
+                        他们是用过三角面片间接联系起来的
+                        顶点并没有纹理坐标的概念，只有三角形有纹理坐标的概念
+                        如果没有割缝产生，那么每个顶点在其相邻三角形内的纹理坐标都是一样的
+                        单连通圆盘拓扑的UV展开：如图1情况所示。这种情况下，顶点和纹理坐标是一一对应的，一个顶点可以存一个纹理坐标。一般这类的UV展开，都是使用的顶点纹理坐标的概念。
+                        UV展开的应用里，经常需要创建一些网格割缝
+                        好的割缝，一般有这些性质：
+                        长度很短  割线光滑  沿着特征边  分布在视觉不明显的地方  在全自动UV展开应用里，割缝首先要能把网格割成一片一片的圆盘结构
+                        网格UV展开到平面后，把网格对应的贴图填充到UV坐标域，就得到了右边的纹理图。
+                        填充
+                        网格在渲染的时候，每个三角片离散化后，每个离散点会根据UV坐标值去纹理图里拾取颜色。
+                            拾取的方法，可以是UV坐标值最近点颜色，也可以根据UV坐标值的相邻四个像素做双线性差值。
+                            http://geometryhub.net/notes/meshmapping
+                        S和T通过刚性变换就可以注册对齐，如下左图所示。如果S和T有相同的网格连接关系，那么F可以是一个刚性变换
+                        如果S和T的网格连接关系有差异，则S和T互为对方的Remesh网格。
+                        第二类情况，S和T是同一类物体，S和T可以通过近似刚性变换注册对齐，或者叫非刚性注册，如下中间图所示。
+                        第三类情况，S和T是不同类的物体，但是形状上相似，有相同的拓扑结构。比如下面右图所示，S和T都为四肢动物，都有尾巴。它们之间的映射比第二类要复杂一些。
+                        双射：两个网格在映射区域的映射，期望是一个双射。
+                        扭曲度：映射扭曲度经常用于度量映射的好坏，优化能量里也常见扭曲度的度量。最好的情况是保距的，也就是S上两点的距离，在映射到T上后，也保持同样的距离
+                        纹理迁移
+                        彩色网格主要分两类，一类是彩色顶点网格，一类是彩色贴图网格。
+                        网格顶点带有颜色
+                        三角形的颜色由网格顶点颜色插值得到
+                        网格的色彩分辨率等于顶点分辨率
+                        网格的三角形的颜色对应于图像的一个三角片。网格的色彩分辨率等于图像的色彩分辨率
+                        当网格顶点比较少的时候，色彩信息会损失很多
+                        彩色贴图网格的色彩分辨率取决于纹理贴图的分辨率，与网格顶点分辨率无关，如图3所示，同样的网格，纹理贴图方式可以存储高于网格分辨率的色彩信息。
+                        纹理贴图方式可以存储高于网格分辨率的色彩信息。
+                        彩色贴图网格的制作
+                        点像对应的计算
+                        网格对应的点云有点像对应，可以通过投影的方式把点云的点像对应投影到网格上。
+                        不同的颜色代表不同的图片。左边贴图有明显的图像缝隙痕迹。右边贴图是优化后的结果，图像缝隙色差减小很多。    
+                        缝隙色差
+                        纹理贴图颜色融合
+                        右图是颜色融合后的效果。
+                        有序点云和无序点云
+                            .e57 is ordered point cloud 
+                        http://geometryhub.net/notes/pca
+                        http://geometryhub.net/en/magic3d
+                    realitycapture
+                        texture from e57 files, texture atlasing possible 
+                        limited input format for cracked version 
+                        transfer to ordered point cloud? 
+                            https://zhuanlan.zhihu.com/p/34816510
+                    3DF Zephyr Lite
+                        250 eu per month 
+                        no crack version possible 
+                    contextcapture
+                        https://www.bentley.com/en/products/product-line/reality-modeling-software/contextcapture
+                    Mudbox Autodesk 
+
+                libs:
+                    libigl 
+
+            approaches:
+                /// mixed 
+                Kinect Fusion Microsoft Research 
+                    as no built-in support for rendering a texture-mapped image.
+                https://www.mdpi.com/2072-4292/12/23/3908/pdf
+                https://en.wikipedia.org/wiki/Projective_texture_mapping
+                    Texture matrix is introduced in section 2.11.2 "Matrices" of the OpenGL 2.0 specification.
+                    Generating Texture Coordinates
+                    the other from the projector point of view.
+                    this is the eye-space vertex position if the considered projector would have been an observer.
+                https://math.stackexchange.com/questions/681376/texture-mapping-from-a-camera-image-knowing-the-camera-pose
+                    apply a texture (taken from a camera) on a 3D surface
+                    sorry for my poor drawing skills
+                    Here is a picture representing what I'm trying to achieve
+                    If I take a point that is not in my camera range, the corresponding 2D point would not make any sense and so the texture mapping will be wrong
+                    this point doesn't have an associated texture color
+                    Nicely written question
+                    I didn't expect that it would be so simple.
+                    once you strip off the "1"
+                
+                [1998] Efficient View-Dependent Image-Based Rendering with Projective Texture-Mapping
+                    https://www.pauldebevec.com/Research/VDTM/debevec_vdtm_egrw98.pdf
+                    If multiple views are incorporated one  must determine which image is best to be mapped onto  which part of the surface
+                    the angle between the  viewing direction during acquisition and the surface  normal may be considered
+                    projective texture  mapping 
+                    use the recovered geometry and the available real views  to generate novel views of the scene quickly and realistically.
+                    with known locations and known imaging geom
+                    in the same lighting conditions
+                    Surfaces in the scene are not extremely specular
+                    View-Dependent Texture Mapping (VDTM)
+                    the rendering result with all the  holes filled. 
+                    https://i.stack.imgur.com/SmVmD.png
+                    UVProject
+                    handle 360 textures
+                    https://i.stack.imgur.com/o55e8.png
+                    https://i.stack.imgur.com/6vCd6.gif
+                [2000] Automated Texture Registration and Stitching for Real World Models
+                    https://domino.mpi-inf.mpg.de/intranet/ag4/ag4publ.nsf/AuthorEditorIndividualView/10318a7f1923f921c12569dc003ca4ee/$FILE/pg2000.pdf
+                    consumer quality digital cameras
+                    Alternatively, the user can skip some steps  in the algorithm providing a rough alignment
+                    a complete texture for an object
+                    Imaging All Visible Surfaces
+                    collect data for all visible surfaces
+                    optimal set of required views respecting the viewing  angle
+                    no further 3D–2D registration is needed
+                    correspond to known points on the model’s  surface.
+                    the camera transformation for the current view can be directly derived using standard camera calibration techniques
+                    Kriegman et al. [7] use T-junctions  and other image features to constrain the model’s position and orientation
+                    attach artificial landmarks to the object’s surface which are detected automatically in the images
+                    these marks destroy  the texture and have to be removed afterwards
+                    one may of course select corresponding pixels manually
+                    A lot of previous algorithms try to find the camera  transformation by minimizing the error between the  contour found in the image and the contour of the projected 3D model
+                    recover the different camera parameters
+                    non-linear optimization algorithm like  Levenberg-Marquardt, simulated annealing, or the  downhill simplex method can be used
+                    more efficient algorithm to calculate the  distance between silhouettes instead of contours.
+                    projective texture  mapping 
+                [tvcg] 2001 High-Quality Texture Reconstruction  from Multiple Scans
+                    https://ieeexplore.ieee.org/stamp/stamp.jsp?tp=&arnumber=965346
+                [2008] Masked Photo Blending: mapping dense photographic dataset on 
+                    high-resolution sampled 3D models
+                [Burley2008] Ptex
+                    https://people.cs.clemson.edu/~ekp/courses/dpa8090/assets/papers/Burley2008Ptex.pdf 
+                    We propose a new texture mapping method for Catmull-Clark subdivision 
+                        surfaces that requires no explicit parameterization
+                    Supports Catmull-Clark subdivision surfaces (including quad and non-quad faces), Loop subdivision surfaces, and polymeshes (either all-quad or all-triangle).
+                    a novel per-face adjacency map, in a single texture file per surface.
+                    adjacency data
+                    UV assignment
+                    Catmull-Clark subdivision surfaces
+                    procedural texture
+                    painstaking manual setup
+                    and no visible seams.
+                    intrinsic per-face parameterization of the subdivision mesh
+                    A key benefit of using the intrinsic parameterization is
+                    the freedom from having to assign UVs before painting.
+                    i'm free this evening
+                    3D纹理重建,贴图       
+                [cg2008] Mapping dense photographic data set on high-resolution sampled 3D models
+                    https://citeseerx.ist.psu.edu/viewdoc/download?doi=10.1.1.169.8816&rep=rep1&type=pdf
+                    high-resolution digital cameras
+                    The problem is how to manage all this data to produce 3D models that could fit the interactive rendering constraints
+                    texture synthesis
+                    mesh parametrization
+                    finding a parametrization for such  large meshes and managing such large textures can be prohibitive
+                    colorimetric criteria
+                    multivariate blending function
+                    selectively mapped on the geometry
+                    acquire  very dense sampling of both geometric and optical  surface properties of real objects
+                    composed of millions of triangles
+                    The resolution of digital cameras’ CCD improved  also in an impressive manner
+                    a significant overlap exists in those pixel dataset
+                    recomputing the inverse projection
+                    multi-resolution texture atlas
+                [eccv14] Mvs-texturing
+                    http://citeseerx.ist.psu.edu/viewdoc/download;jsessionid=17875004FACDF08081B04B2681B7FD1D?doi=10.1.1.431.7318&rep=rep1&type=pdf
+                    https://www.gcc.tu-darmstadt.de/home/proj/texrecon/
+                    https://github.com/nmoehrle/mvs-texturing
+                    however, that  color information is still encoded as per-vertex color
+                    and therefore coupled to  mesh resolution
+                    a convincing experience for end users while keeping their size 
+                        manageable is  still missing: texture
+                    texturing 3D reconstructions 
+                    texture acquisition
+                    Still, they use  per-vertex colors and are therefore limited to the mesh resolution
+                    limited to the mesh resolution
+                    We argue that texture reconstruction is vitally important for creating realistic  models without increasing their geometric complexity
+                    without increasing their geometric complexity
+                    a practical method should be efficient enough to  handle even large models in a reasonable time frame
+                    Texturing a 3D model from multiple registered images
+                    a texture atlas (also called a sprite sheet or an image sprite) is an image containing multiple smaller images, usually packed together to reduce overall dimensions
+                    A sub-image is drawn using custom texture coordinates to pick it out of the atlas.
+                [cvpr18] G2LTex
+                    https://yanqingan.github.io/docs/cvpr18_texture.pdf
+                    https://github.com/fdp0525/G2LTex
+                [tog17] FIELD-ALIGNED SURFACE RECONSTRUCTION
+                    https://dl.acm.org/doi/pdf/10.1145/3072959.3073635
+                    The  key property of our algorithm is that it sidesteps the signed-distance computation 
+                        of classical reconstruction techniques in favor of direct filtering,  
+                        parametrization, and mesh and texture extraction
+                    final quality field-aligned textured mesh
+                    displayed  in real-time to the user and can be easily resolved by adding further localized  scans
+                    The final reconstructed, semiregular, and textured model is computed on-the-fly 
+                        as new geometry is acquired.
+                    The approximately linear cost of our reconstruction pipeline makes it ideal for large datasets.
+                    clearly visible
+                    approximate linear cost is clearly visible
+                    equipped with a local parametrization, which is used for generating color and displacement maps
+                    not guaranteed  to produce manifold output
+                    or using  our hole-filling brush
+                    We believe that this algorithm is  useful in contexts other than range scanning
+                    reconstruction  of time varying datasets
+                    the data is represented as an implicit surface or a CSG tree
+                [cvpr2020] TextureFusion: High-Quality Texture Acquisition for Real-Time RGB-D Scanning
+                    https://openaccess.thecvf.com/content_CVPR_2020/papers/Lee_TextureFusion_High-Quality_Texture_Acquisition_for_Real-Time_RGB-D_Scanning_CVPR_2020_paper.pdf
+                    a progressive texture fusion  method, specially designed for real-time RGB-D scanning
+                    surface geometry
+                    camera pose
+                    accumulating  the depth stream into a voxel grid of the truncated surface  distance function (TSDF)
+                    camera pose for  each frame is estimated by the iterative closest point (ICP)
+                    Color Per Voxel 
+                    the quality of color information is often limited by  the long-lasting tradeoff between spatial resolution and time  performance
+                    register texture to geometry
+                    non-rigid texture optimization for real-time  RGB-D scanning.
+                    Geometry update Texture update
+                [siggraph17] Bundlefusion 
+                    https://arxiv.org/pdf/1604.01093.pdf
+                    transfered from vertex color to texture atlas, not real texture 
+
+            stru:
+                highlev
+                    没有什么算法是真正实用到通吃的, 3d Recon应用环境多变
+                        有的需要好的视觉效果，有的需要实时, 有的需要低成本，有的需要高精度的几何重建。
+                        有的需要完整度，有的只需要一个视角。有的需要点云，有的需要网格，有的需要封闭曲面。
+                    sfm方法比结构光更方便，无需事先标定相机，
+                        但精度差些，目前很多用无人机对大型建筑建模就是用的sfm方法。
+                    Tone the sfm acquisition
+                        https://zhuanlan.zhihu.com/p/55636031
+                    Assigning UVs traditionally has been the responsibility of the  Look Development department
+                        creates the textures  and shaders that define the look of the models
+                related work
+                    Blending-based method
+                        projected the captured images onto the surface of the geometric model according  to the intrinsic and extrinsic orientation parameters of the camera
+                        suitable for processing close-range and small-range  models, such as indoor scenes and small objects
+                        requires high calculation accuracy
+                    Parameterization-based method
+                        mapping the 3D  mesh model to the 2D texture image domain
+                        computes the texture coordinate for each triangle face
+                        This method generates small amounts of texture charts
+                        but the 2D texture image domain is deformed  compared to the original image, which will inevitably cause the loss of texture information 
+                            and is  not conducive to improving the texture reconstruction effect.
+                    Projection-based method
+                        projective texture mapping
+                        Lempitsky et al. [28] first proposed to use the MRF energy function to select an optimal image for each triangle face
+                        Yang et al. [31]  sampled the image sequence by using the spatio-temporal adaptive method. 
+                
+            mixed:
+                https://groups.google.com/g/ptex
+                http://threepark.net/slamdata/bedroom_loop_image_2/fusion_res.zip
+                http://threepark.net
+                http://pers.ge.imati.cnr.it/livesu/papers/Liv19/Liv19.pdf
+                http://developer.download.nvidia.com/assets/gamedev/docs/RealtimePtex-siggraph2011.pdf
+                https://www.gdcvault.com/play/1017757/Eliminating-Texture-Waste-Borderless-Realtime
+                http://www.cs.ubc.ca/labs/imager/tr/2018/OptCuts/doc/OptCuts_small.pdf
+                https://geometrycollective.github.io/boundary-first-flattening/  
+                https://ptex.us/ptexpaper.html
+                    Support arbitrary resolutions on a per-face basis
+                https://developer.nvidia.com/siggraph-2011
+            
+    --- 
+    meshes -> rendered pixels
+        
+        topic: neural rendering
+            preview 
+            approaches
+                [2019] Deferred Neural Rendering: Image Synthesis using Neural Textures 
+                    https://arxiv.org/abs/1904.12356
+                    https://github.com/SSRSGJYD/NeuralTexture
+                    https://github.com/A-Dying-Pig/OpenGL_NeuralTexture
+                        with roughly the following steps:
+                        1.install the zlib: https://github.com/horta/zlib.install
+                        2.update the glfw repository under the "external" folder, the current one is corrupted
+                            this can be done by cloning the https://github.com/glfw/glfw.git project 
+                        3.generate a vs project with cmake, open the project as normal 
+                        4.copy the *.fragmentshader and *.vertexshader files to the build directory 
+                        5.change the output directory in main.cpp, line 41-43, set the output directories. Pay attention, 
+                            one has to enlarge the file_name array if have a longer file name. 
+                            (actually we have to modify it beacause the default size 10 is too small)
+                        6.run the program 
+            
+
+            stru 
+
+        topic: real time ray tracing 
+            preview 
+            approaches 
+                Disney opensource 
+                    * Disney Animation publications from academic journals and industry conferences.
+                    * https://github.com/wdas
+                    * https://github.com/wdas/ptex.git
+                    * https://www.disneyanimation.com/data-sets/
+                        https://wdas-datasets-disneyanimation-com.s3-us-west-2.amazonaws.com/moanaislandscene/island-basepackage-v1.1.tgz
+                            This data set contains everything necessary to render 
+                                a version of the Motunui island featured in the 2016 film Moana
+                            Remove expensive, manual model unwrap step from art  pipeline
+            stru 
+
+    ---
+    pointclouds -> rendered pixels 
+        Fenek 
+        Potree 
+
+    ---
+    application: very nice reconstructed model, vr ready 
+        workflow old: projective texturing 
+        
+        workflow 16022021: *tobetransformed 
+            1.lidar camera point cloud acquisition, best with camera positions -> .e57 file 
+            -> 2.point cloud cleaning wiht software or coding libs eg. cloudcompare and pcl -> .txt file 
+                may have to repare camera positions, include it into the scene 
+                export unordered point cloud but with frames and campositions 
+                fine clean with vr pc cleaner 
+                currently only cloudcompare possible (prob. when exporting/ importing)
+            3. .txt -> .e57 file with cam pose * (most hard one for we do not know how RC works actually, and familiar with .e57 file library)
+                this is down with a customed version of CC, we should choose which cam pose to use and which 
+                    verison of RC to be used as export 
+            4.RealityCapture: recon + texturing -> obj with mtl 
+            -> 5.simplify the generated mesh
+            6.refine point cloud when needed -> 2 
+            f: we shall continuesly simplify the workflow 
+            f:
+                - quality is limited to the meshing, we can improve the point clouds but not sure about their mesh quality 
+                + good news is that it can 
+            [personal]: p: realitycapture can not read unordered point cloud 
+                quicktest: load a pcd -> e57 file to RC  
+                a: modify the cloudcompare, to support ordered point cloud 
+                    http://www.danielgm.net/cc/forum/viewtopic.php?t=2257
+                    https://blog.csdn.net/cuglxw/article/details/75073820
+                        ordered point cloud 
+                        有序点云按顺序排列，可以很容易的找到它的相邻点信息。
+                        无效点信息也有用，可以通过它快速准确的找到点云边界。
+                        有序点云一般是在相机坐标系里的，所以法线是面向相机的，所以法线定向问题自然就解决了。
+                        颜色代表了法线Z分量。有些扫描仪在边界处的误差比较大，可以用这个方法很快速准确的去掉边界处的点。
+                        有些点是无效的，一般用(0, 0, 0)来代替
+                    https://zhuanlan.zhihu.com/p/34816510
+                        涉及具体数据怎么排列，参考简化过程
+                ok 
+            p: no campose after edit externally, not consistant! campose and cloud not match 
+                a: change e57 header metadata/ entries
+                    https://www.laserscanningforum.com/forum/viewtopic.php?t=15309
+                    https://github.com/CloudCompare/CloudCompare/issues/665
+                    not working, we can create groups but can not export 
+                a: adjest campose in realitycapture? if e57 can not export correct positions  
+                2d features seems not correct still  
+                a: use py add pose node 
+                    p: pointcloud changes! not clear how it did this 
+                a: directly use c++ library?  
+                    file:///C:/Users/yzhon/Downloads/E57SimpleImpl_doc-1.1.312/E57SimpleImpl_doc-1.1.312-x86-windows-mgw43/html/classe57_1_1_reader.html
+                    https://github.com/ryanfb/e57tools/blob/master/src/e57validate.cpp
+                    no simple example demostrates e57 file reading 
+                a: modify CC directly 
+                    https://github.com/CloudCompare/CloudCompare/blob/0dc77240911371e8d569ee3d9b97e84e8a249cf6/plugins/core/IO/qE57IO/src/E57Filter.cpp
+                    OK 
+                    but diff. version requires diff. format: older version requires ordered point cloud, which can not be read 
+                    order point cloud supported 
+                f: old version does not support 0 as position input! 
+                f: do not extraction from e57 files (some restriction on workflow)
+                f: adjest pose matrix and which version you want to use(old version can only support ordered pointcloud) ... 
+                ok 
+                p: can not use cloudcompare e57 plugin on other envs, missing xer....dll? seems not 
+            
+        workflow 18022021: 
+            clean point clouds 
+            best mesh 
+            best images  
+                p: image packing 
+                    a: https://github.com/TeamHypersomnia/rectpack2D#windows
+                        compile error c++20 
+                    a: https://github.com/peterennis/Mosaic-1
+                p: face selection 
+                    a: with external tool: meshmixer 
+

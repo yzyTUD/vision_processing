@@ -525,6 +525,7 @@ void visual_processing::apply_further_transformation() {
 ///  read the whole pc to data_ptr->point_cloud_kit
 void visual_processing::read_pc() {
 	data_ptr->point_cloud_kit->read_pc_with_dialog(false);
+	post_redraw();
 	// the original pc will be automatically stored 
 }
 
@@ -576,6 +577,12 @@ bool visual_processing::load_next_shot() {
 
 void visual_processing::compute_nmls_if_is_required() {
 	one_shot_360pc->compute_normals();
+}
+
+void visual_processing::force_nml_computing() {
+	data_ptr->point_cloud_kit->compute_normals();
+	data_ptr->point_cloud_kit->orient_normals();
+	post_redraw();
 }
 
 void visual_processing::append_current_shot_to_stored_cloud() {
@@ -693,6 +700,19 @@ void visual_processing::create_gui() {
 	add_member_control(this, "point size", data_ptr->point_cloud_kit->surfel_style.point_size, "value_slider", "min=0.2;max=10;log=false;ticks=false;");
 	add_member_control(this, "render skybox", render_skybox, "check");
 	add_member_control(this, "render_nmls", data_ptr->point_cloud_kit->show_nmls, "check");
+
+	if (begin_tree_node("Point Cloud Generation", render_skybox, true, "level=3")) {
+		connect_copy(add_button("generate_pc_hemisphere")->click, 
+			rebind(this, &visual_processing::generate_pc_hemisphere));
+		connect_copy(add_button("generate_pc_cube")->click,
+			rebind(this, &visual_processing::generate_pc_cube));
+
+		// 
+		connect_copy(add_button("force_nml_computing")->click, 
+			rebind(this, &visual_processing::force_nml_computing));
+		connect_copy(add_button("save")->click,
+			rebind(this, &visual_processing::write_read_pc_to_file));
+	}
 
 	if (begin_tree_node("Point Cloud ControlLOD", step, true, "level=3")) {
 		connect_copy(add_button("render_with_fullpc")->click, rebind(this, &visual_processing::render_with_fullpc));

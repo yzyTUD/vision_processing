@@ -234,6 +234,7 @@ protected:
 	bool write_ply(const std::string& file_name) const;
 	///
 	bool write_ptsn(const std::string& file_name) const;
+
 public:
 	///
 	bool from_CC = false;

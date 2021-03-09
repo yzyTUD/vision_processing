@@ -1,0 +1,19 @@
+
+    fw selection:
+        with CGV fw (clod rendering)
+        with IMEngine (better streaming, meshing)
+        with Unreal/ Unity (rendering/ creazy streaming)
+            try https://github.com/SFraissTU/BA_PointCloud.git
+                https://github.com/keijiro/Pcx
+            try https://www.youtube.com/watch?v=DR8sjoRmsPA
+                https://docs.unrealengine.com/en-US/WorkingWithContent/LidarPointCloudPlugin/LidarPointCloudPluginReference/index.html
+            transfor points to las firmat 
+    done: 
+        ok-generate point clouds/ export demo pcs 
+            procedure points generation
+    tasks: 
+        some compute shader effects/ turing extension 
+        xxx around your hand 
+        rubenfro effect 
+            https://rubenfro.com/orisha-snse-official-music-video
+        ...

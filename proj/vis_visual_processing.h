@@ -392,6 +392,8 @@ public:
 
 	void compute_nmls_if_is_required();
 
+	void force_nml_computing();
+
 	void append_current_shot_to_stored_cloud();
 
 	void write_stored_pc_to_file();
@@ -501,6 +503,10 @@ public:
 	void restore_supersampling() { data_ptr->point_cloud_kit->restore_supersampling(); }
 
 	void prepare_marking() { data_ptr->point_cloud_kit->prepare_marking(&data_ptr->point_selection_colors); }
+
+	// point cloud generation 
+	void generate_pc_hemisphere() { data_ptr->point_cloud_kit->generate_pc_hemisphere();post_redraw();}
+	void generate_pc_cube(){ data_ptr->point_cloud_kit->generate_pc_cube(); post_redraw(); }
 };
 
 ///@}
