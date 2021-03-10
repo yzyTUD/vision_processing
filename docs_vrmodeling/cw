@@ -101,6 +101,7 @@
     todo/req:
         core workflow: 
             point cloud editing support in vr 
+                group/ color picker
                 add deletion support: at least for vertices 
                 mark as deleted, check when rendering 
                     like skip in drawable 

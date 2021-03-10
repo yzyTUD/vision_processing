@@ -507,6 +507,9 @@ public:
 	// point cloud generation 
 	void generate_pc_hemisphere() { data_ptr->point_cloud_kit->generate_pc_hemisphere();post_redraw();}
 	void generate_pc_cube(){ data_ptr->point_cloud_kit->generate_pc_cube(); post_redraw(); }
+
+	void rotate_right(){ data_ptr->active_off_rotation -= 30; }
+	void rotate_left() { data_ptr->active_off_rotation += 30; }
 };
 
 ///@}

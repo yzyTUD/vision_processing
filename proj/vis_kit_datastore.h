@@ -276,7 +276,7 @@ public:
 
 	int menu_theta = 28;
 
-	int active_group = 2; // unlimited  
+	int active_group = 1; // unlimited  
 	int active_btnidx = 0; // from 0-12 
 	float active_off_rotation = 0; // roulette
 	int max_group_num = 10;
@@ -292,11 +292,16 @@ public:
 
 	// point cloud marking colors 
 	std::vector<rgba> point_selection_colors; 
-	int max_num_of_regions = 7 + 16;
+	int max_num_of_regions = 7 + 5 * 5;
 
 	// 
 	std::vector<vec3> righthand_object_positions;
 	std::vector<rgb> righthand_object_colors;
+	vec3 offset_right_global = vec3(0, 0, -0.2);
+
+	std::vector<vec3> lefthand_object_positions;
+	std::vector<rgb> lefthand_object_colors;
+	std::vector<vec3> lefthand_palette_initialpose_positions;
 
 	vis_kit_data_store_shared() {
 		//initialize_trackable_list();
@@ -304,9 +309,9 @@ public:
 		//mode = interaction_mode::SUPERSAMPLING_DRAW;
 
 		gp0_btns.push_back("Teleport\nRotate");
-		gp0_btns.push_back("Teleport\nDirectional"); 
-		gp0_btns.push_back("Teleport\nLifting"); 
-		gp0_btns.push_back("Teleport\nFineGrain"); 
+		gp0_btns.push_back("Teleport\nDirectional");
+		gp0_btns.push_back("Teleport\nLifting");
+		gp0_btns.push_back("Teleport\nFineGrain");
 		gp0_btns.push_back("Teleport\nTeleport");
 		gps.push_back(gp0_btns);
 
@@ -316,6 +321,7 @@ public:
 		gp1_btns.push_back("PointCloud\nMarking");
 		gp1_btns.push_back("PointCloud\nPointSize");
 		gp1_btns.push_back("PointCloud\nShowNml");
+		gp1_btns.push_back("PointCloud\nGroupPicker");
 		gps.push_back(gp1_btns);
 
 		gp2_btns.push_back("Meshing\nPickingPoints");
@@ -341,16 +347,28 @@ public:
 		point_selection_colors.push_back(rgba(14.0f / 255, 100.0f / 255, 16.0f / 255, 1.0f));
 		for (int i = 0; i < max_num_of_regions - 7; i++) {
 			rgba tmpcol = rgba(
-				0.6f * distribution(generator) + 0.1f,
-				1.0f - 0.6f * distribution(generator),
+				0.9f * distribution(generator) + 0.1f,
+				0.9f * distribution(generator) + 0.1f,
 				0.9f * distribution(generator) + 0.1f,
 				1.0f
 			);
 			point_selection_colors.push_back(tmpcol);
 		}
 
+		// initial values 
 		righthand_object_positions.push_back(vec3(0));
 		righthand_object_colors.push_back(rgb(0, 0, 1));
+		vec3 offset_right_global = vec3(0, 0, -0.2);
+
+		for (int ix = -2; ix < 3; ix++) {
+			for (int iz = 1; iz < 6; iz++) {
+				lefthand_object_positions.push_back(vec3(ix * 0.05, 0.1, -iz * 0.05));
+				lefthand_palette_initialpose_positions.push_back(vec3(ix * 0.05, 0.1, -iz * 0.05));
+			}
+		}
+		lefthand_object_colors.reserve(max_num_of_regions - 7);
+		for (int i = 0; i < (max_num_of_regions - 7); i++)
+			lefthand_object_colors[i] = point_selection_colors[7 + i];
 	}
 
 	vec2 get_id_with_name(string btn_name) {

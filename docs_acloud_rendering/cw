@@ -8,6 +8,10 @@
             try https://www.youtube.com/watch?v=DR8sjoRmsPA
                 https://docs.unrealengine.com/en-US/WorkingWithContent/LidarPointCloudPlugin/LidarPointCloudPluginReference/index.html
             transfor points to las firmat 
+            [-]
+                loading of point clouds takes too much time 
+                as well as the projects 
+                
     done: 
         ok-generate point clouds/ export demo pcs 
             procedure points generation
@@ -16,4 +20,6 @@
         xxx around your hand 
         rubenfro effect 
             https://rubenfro.com/orisha-snse-official-music-video
+        ref deformaiton from unity projects 
+
         ...

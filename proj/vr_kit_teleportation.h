@@ -364,16 +364,29 @@ public:
 				if (points.size()>1)
 					points.at(1) = global_offset;*/
 				vec3 off;
-				off = vec3(0, 0, -0.2);
+
+				// update handhold gui for right hand 
+				off = data_ptr->offset_right_global;
 				data_ptr->cur_right_hand_rot_quat.rotate(off);
 				data_ptr->cur_off_right = off;
-				//std::cout << "righthand_object_positions"<<data_ptr->righthand_object_positions.size() << std::endl;
-				if(data_ptr->righthand_object_positions.size()>0)
-					data_ptr->righthand_object_positions.at(0) = data_ptr->cur_right_hand_posi + off;
+				//
+				if (data_ptr->righthand_object_positions.size() == 0)
+					data_ptr->righthand_object_positions.push_back(vec3(0));
+				// 
+				data_ptr->righthand_object_positions.at(0) = 
+					data_ptr->cur_right_hand_posi + data_ptr->cur_off_right;
 
-				off = vec3(0, 0, -0.2);
-				data_ptr->cur_left_hand_rot_quat.rotate(off);
-				data_ptr->cur_off_left = off;
+				// update palette positions for left hand 
+				if (data_ptr->check_roulette_selection(data_ptr->get_id_with_name("PointCloud\nGroupPicker"))) {
+					for (int i = 0; i < data_ptr->lefthand_object_positions.size();i++) {
+						// to a temp varible, make sure the original positions not changed 
+						off = data_ptr->lefthand_palette_initialpose_positions[i];
+						// rotates to corrent position at run time, local 
+						data_ptr->cur_left_hand_rot_quat.rotate(off);
+						// convert to world position 
+						data_ptr->lefthand_object_positions[i] = data_ptr->cur_left_hand_posi + off;
+					}
+				}
 			}
 			return true;
 		}

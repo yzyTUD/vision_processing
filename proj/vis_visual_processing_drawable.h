@@ -320,8 +320,13 @@ bool visual_processing::handle(cgv::gui::event& e)
 						data_ptr->point_cloud_kit->downsampling(step, num_points / 2.0, 1);
 					}
 				}
-				if (data_ptr->check_roulette_selection(data_ptr->get_id_with_name("PointCloud\nShowNml"))) { // selection 
+				// selection = nShowNml
+				if (data_ptr->check_roulette_selection(data_ptr->get_id_with_name("PointCloud\nShowNml"))) { 
 					data_ptr->point_cloud_kit->show_nmls = !data_ptr->point_cloud_kit->show_nmls;
+				}
+				// selection = PointCloud\nGroupPicker
+				if (data_ptr->check_roulette_selection(data_ptr->get_id_with_name("PointCloud\nGroupPick"))) { 
+					//data_ptr->point_cloud_kit->show_nmls = !data_ptr->point_cloud_kit->show_nmls;
 				}
 			}
 		}
@@ -688,7 +693,12 @@ void visual_processing::load_image_from_bin_files() {
 void visual_processing::create_gui() {
 	add_decorator("visual_processing_main", "heading", "level=2");
 	//paratone_1
-	add_member_control(this, "paratone_1", data_ptr->paratone_1, "value_slider", "min=-1;max=1;log=false;ticks=true;");
+	//
+	connect_copy(add_button("rotate_right")->click,
+		rebind(this, &visual_processing::rotate_right));
+	connect_copy(add_button("rotate_left")->click,
+		rebind(this, &visual_processing::rotate_left));
+	add_member_control(this, "active_group", data_ptr->active_group, "value_slider", "min=0;max=10;log=false;ticks=true;");
 	add_member_control(this, "paratone_2", data_ptr->paratone_2, "value_slider", "min=-1;max=1;log=false;ticks=true;");
 	add_member_control(this, "paratone_3", data_ptr->paratone_3, "value_slider", "min=-1;max=1;log=false;ticks=true;");
 	add_member_control(this, "paratone_4", data_ptr->paratone_4, "value_slider", "min=-1;max=1;log=false;ticks=true;");

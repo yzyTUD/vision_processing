@@ -50,6 +50,9 @@ private:
 	// point marking 
 	sphere_render_style marking_style;
 
+	// group picker 
+	sphere_render_style palette_style;
+
 public:
 	/// initialize rotation angle
 	vis_kit_selection()
@@ -62,6 +65,9 @@ public:
 
 		marking_style.radius = 0.02;
 		marking_style.material.set_transparency(0.4);
+
+		palette_style.radius = 0.02;
+		//palette_style.material.set_transparency(1);
 		
 	}
 	// call me 
@@ -399,11 +405,25 @@ public:
 		if (data_ptr->check_roulette_selection(data_ptr->get_id_with_name("PointCloud\nMarking"))) {
 			render_a_sphere_on_righthand(ctx);
 		}
+		if (data_ptr->check_roulette_selection(data_ptr->get_id_with_name("PointCloud\nGroupPicker"))) {
+			//render_a_sphere_on_righthand(ctx);
+			render_palette_on_left_hand(ctx);
+		}
 	}
 
 	// call me 
 	void finish_draw(context& ctx) {
 
+	}
+
+	void render_palette_on_left_hand(cgv::render::context& ctx) {
+		if (data_ptr->lefthand_object_positions.size()) {
+			auto& sr = cgv::render::ref_sphere_renderer(ctx);
+			sr.set_render_style(palette_style);
+			sr.set_position_array(ctx, data_ptr->lefthand_object_positions);
+			sr.set_color_array(ctx, data_ptr->lefthand_object_colors);
+			sr.render(ctx, 0, data_ptr->lefthand_object_positions.size());
+		}
 	}
 
 	void render_a_sphere_on_righthand(cgv::render::context& ctx) {
