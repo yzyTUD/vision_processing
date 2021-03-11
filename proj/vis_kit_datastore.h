@@ -295,13 +295,18 @@ public:
 	int max_num_of_regions = 7 + 5 * 5;
 
 	// 
-	std::vector<vec3> righthand_object_positions;
-	std::vector<rgb> righthand_object_colors;
-	vec3 offset_right_global = vec3(0, 0, -0.2);
-
+	std::vector<vec3> righthand_object_positions; // dynamic, only one position, can be used globally
 	std::vector<vec3> lefthand_object_positions;
-	std::vector<rgb> lefthand_object_colors;
-	std::vector<vec3> lefthand_palette_initialpose_positions;
+	std::vector<rgb> righthand_object_colors; // 
+	vec3 offset_right_global = vec3(0, 0, -0.2);
+	vec3 offset_left_global = vec3(0, 0, -0.2);
+
+	std::vector<vec3> palette_lefthand_object_positions; // dynamic positions used for rendering 
+	std::vector<rgb> palette_lefthand_object_colors;
+	std::vector<rgb> palette_righthand_object_colors;
+	std::vector<vec3> palette_lefthand_palette_initialpose_positions;
+
+	float range = 1;
 
 	vis_kit_data_store_shared() {
 		//initialize_trackable_list();
@@ -355,20 +360,27 @@ public:
 			point_selection_colors.push_back(tmpcol);
 		}
 
-		// initial values 
+		// 
 		righthand_object_positions.push_back(vec3(0));
+		lefthand_object_positions.push_back(vec3(0));
 		righthand_object_colors.push_back(rgb(0, 0, 1));
 		vec3 offset_right_global = vec3(0, 0, -0.2);
 
+
+		// pallete rendering 
 		for (int ix = -2; ix < 3; ix++) {
 			for (int iz = 1; iz < 6; iz++) {
-				lefthand_object_positions.push_back(vec3(ix * 0.05, 0.1, -iz * 0.05));
-				lefthand_palette_initialpose_positions.push_back(vec3(ix * 0.05, 0.1, -iz * 0.05));
+				palette_lefthand_object_positions.push_back(vec3(ix * 0.05, 0.1, -iz * 0.05));
+				palette_lefthand_palette_initialpose_positions.push_back(vec3(ix * 0.05, 0.1, -iz * 0.05));
 			}
 		}
-		lefthand_object_colors.reserve(max_num_of_regions - 7);
+		palette_lefthand_object_colors.reserve(max_num_of_regions - 7);
 		for (int i = 0; i < (max_num_of_regions - 7); i++)
-			lefthand_object_colors[i] = point_selection_colors[7 + i];
+			palette_lefthand_object_colors[i] = point_selection_colors[7 + i];
+		palette_righthand_object_colors.push_back(point_selection_colors[7]);
+
+		// acloud rendering 
+		point_cloud_kit->enable_acloud_effect = true;
 	}
 
 	vec2 get_id_with_name(string btn_name) {

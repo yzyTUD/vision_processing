@@ -52,6 +52,11 @@ public:
 	bool ensure_view_pointer();
 	void set_arrays(cgv::render::context& ctx, size_t offset = 0, size_t count = -1);
 
+	vec3 left_controller_position = vec3(0);
+	vec3 right_controller_position = vec3(0);
+	float range = 0.1;
+	bool enable_acloud_effect = true;
+
 	gl_point_cloud_drawable();
 
 	bool read(const std::string& file_name);

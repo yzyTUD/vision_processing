@@ -220,6 +220,11 @@ void gl_point_cloud_drawable::draw_points(context& ctx)
 	s_renderer.validate_and_enable(ctx);
 	surfel_style.use_group_color = tmp;
 
+	s_renderer.ref_prog().set_uniform(ctx, "enable_acloud_effect", enable_acloud_effect);
+	s_renderer.ref_prog().set_uniform(ctx, "left_controller_position", left_controller_position);
+	s_renderer.ref_prog().set_uniform(ctx, "right_controller_position", right_controller_position);
+	s_renderer.ref_prog().set_uniform(ctx, "range", range);
+
 	std::size_t n = (show_point_end - show_point_begin) / show_point_step;
 	GLint offset = GLint(show_point_begin / show_point_step);
 

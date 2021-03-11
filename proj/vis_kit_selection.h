@@ -364,6 +364,34 @@ public:
 					data_ptr->righthand_dir_list.push_back(direction);
 				}*/
 			}
+			if (ci != -1) {
+				// check and update current point group selection -> which color are we using 
+				int smallestpalleteIdx = -1;
+				bool hasOverlaping = false;
+				float dist = std::numeric_limits<float>::max();
+				for (int i = 0; i < data_ptr->palette_lefthand_object_positions.size();i++) {
+					// just take the first one, righthand_object_positions has only one element
+					float cur_dist = (data_ptr->palette_lefthand_object_positions[i] 
+						- data_ptr->righthand_object_positions[0]).length();
+					if (cur_dist < dist) {
+						dist = cur_dist;
+						smallestpalleteIdx = i;
+					}
+				}
+				// update color with the one has minimal dist to the RC 
+				if (dist < palette_style.radius) {
+					hasOverlaping = true;
+					data_ptr->palette_righthand_object_colors[0] = 
+						data_ptr->palette_lefthand_object_colors[smallestpalleteIdx];
+					// todo: update picking group information 
+
+				}
+
+				data_ptr->point_cloud_kit->right_controller_position = data_ptr->cur_right_hand_posi;
+				data_ptr->point_cloud_kit->left_controller_position = data_ptr->cur_left_hand_posi;
+				data_ptr->point_cloud_kit->range = data_ptr->range;
+			}
+
 		}
 		}
 		return false;
@@ -406,8 +434,8 @@ public:
 			render_a_sphere_on_righthand(ctx);
 		}
 		if (data_ptr->check_roulette_selection(data_ptr->get_id_with_name("PointCloud\nGroupPicker"))) {
-			//render_a_sphere_on_righthand(ctx);
 			render_palette_on_left_hand(ctx);
+			render_palette_sphere_on_righthand(ctx);
 		}
 	}
 
@@ -417,12 +445,27 @@ public:
 	}
 
 	void render_palette_on_left_hand(cgv::render::context& ctx) {
-		if (data_ptr->lefthand_object_positions.size()) {
+		if (data_ptr->palette_lefthand_object_positions.size()) {
 			auto& sr = cgv::render::ref_sphere_renderer(ctx);
 			sr.set_render_style(palette_style);
-			sr.set_position_array(ctx, data_ptr->lefthand_object_positions);
-			sr.set_color_array(ctx, data_ptr->lefthand_object_colors);
-			sr.render(ctx, 0, data_ptr->lefthand_object_positions.size());
+			sr.set_position_array(ctx, data_ptr->palette_lefthand_object_positions);
+			sr.set_color_array(ctx, data_ptr->palette_lefthand_object_colors);
+			sr.render(ctx, 0, data_ptr->palette_lefthand_object_positions.size());
+		}
+	}
+
+	void render_palette_sphere_on_righthand(cgv::render::context& ctx) {
+		if (data_ptr->righthand_object_positions.size()) {
+			glDepthMask(GL_FALSE);
+			glEnable(GL_BLEND);
+			glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
+			glDisable(GL_CULL_FACE);
+			auto& sr = cgv::render::ref_sphere_renderer(ctx);
+			sr.set_render_style(marking_style);
+			sr.set_position_array(ctx, data_ptr->righthand_object_positions);
+			sr.set_color_array(ctx, data_ptr->palette_righthand_object_colors);
+			sr.render(ctx, 0, data_ptr->righthand_object_positions.size());
+			glDepthMask(GL_TRUE);
 		}
 	}
 
