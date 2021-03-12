@@ -67,6 +67,7 @@ public:
 	bool enable_headset_culling = true;
 
 	bool arrays_uploaded = false;
+	attribute_array_manager surfel_aam;
 
 	gl_point_cloud_drawable();
 

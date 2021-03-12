@@ -112,6 +112,7 @@
                 split into chunks 
             split into chunks?
                 good for road1-2
+                devide to 10M points per chunk 
 
     > surface recon after cleaned 
         with realitycapture workflow 
