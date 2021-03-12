@@ -108,6 +108,11 @@
                     
                 )
         performance issue when compared to IMEngine 
+            glGenBuffers(GL_ARRAY_BUFFER,)
+            glBufferData(BufferTargets[type], totalSize, data, GL_DYNAMIC_DRAW);
+            s1: use vao/vbos directly
+            s3: remove the "set_position_array"
+            s2: split into chunks 
         core workflow: 
             point cloud editing support in vr 
                 group/ color picker

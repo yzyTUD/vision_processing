@@ -52,6 +52,11 @@ public:
 	bool ensure_view_pointer();
 	void set_arrays(cgv::render::context& ctx, size_t offset = 0, size_t count = -1);
 
+	// yzy, raw opengl rendering 
+	void upload_arrays();
+	// 
+	void draw_points_raw();
+
 	vec3 headset_position = vec3(0);
 	vec3 headset_direction = vec3(0);
 	vec3 left_controller_position = vec3(0);

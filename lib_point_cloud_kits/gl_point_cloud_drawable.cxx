@@ -186,6 +186,15 @@ void gl_point_cloud_drawable::set_arrays(context& ctx, size_t offset, size_t cou
 		s_renderer.set_normal_array(ctx, &pc.nml(unsigned(offset)), count, unsigned(sizeof(Nml))*show_point_step);
 
 }
+
+void gl_point_cloud_drawable::upload_arrays() {
+
+}
+
+void gl_point_cloud_drawable::draw_points_raw() {
+
+}
+
 void gl_point_cloud_drawable::draw_points(context& ctx)
 {
 
@@ -307,7 +316,6 @@ void gl_point_cloud_drawable::draw_normals(context& ctx)
 	GLint offset = GLint(show_point_begin / show_point_step);
 	n_renderer.render(ctx, offset,n);
 }
-
 
 bool gl_point_cloud_drawable::init(cgv::render::context& ctx)
 {

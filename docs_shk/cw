@@ -105,18 +105,28 @@
     
     > points processing 
         points cleaning with vr 
-        points cleaning for quick test 
-        points classification 
+            performace issue: 
+                ok-basic improvement the rendering with culling
+                ok-raw opengl rendering test 
+                raw opengl rendering integration 
+                split into chunks 
+            split into chunks?
+                good for road1-2
 
     > surface recon after cleaned 
         with realitycapture workflow 
         with OnlineSurfaceRecon workflow 
         with PolyFit workflow 
         bake vertex colors to meshes 
+
+        road: room-scale cleaned points -> realitycapture
+        road: partical logical points -> OSR -> Texture Recon 
+        road: sematical segmentation -> PolyFit
+        road: bake vertex colors to meshes -> Retextureing 
     
     > oculus support: acloud rendering 
         a. build and run apk on quest 
         b. aframe test, render point clouds 
         c. remote streaming 
-        
+
     

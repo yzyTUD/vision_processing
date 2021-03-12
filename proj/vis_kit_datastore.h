@@ -384,9 +384,9 @@ public:
 				palette_lefthand_palette_initialpose_positions.push_back(vec3(ix * 0.05, 0.1, -iz * 0.05));
 			}
 		}
-		palette_lefthand_object_colors.reserve(max_num_of_regions - 7);
+		//palette_lefthand_object_colors.reserve(max_num_of_regions - 7);
 		for (int i = 0; i < (max_num_of_regions - 7); i++)
-			palette_lefthand_object_colors[i] = point_selection_colors[7 + i];
+			palette_lefthand_object_colors.push_back(point_selection_colors[7 + i]);
 		palette_righthand_object_colors.push_back(point_selection_colors[7]);
 
 		// acloud rendering 
