@@ -10,6 +10,7 @@
 #include <cgv_gl/normal_renderer.h>
 #include <cgv_gl/box_renderer.h>
 #include <cgv_gl/box_wire_renderer.h>
+#include <libs/cgv_gl/clod_point_renderer.h>
 
 #include "lib_begin.h"
 
@@ -17,46 +18,46 @@
 /** drawable for a point cloud that manages a neighbor graph and a normal estimator and supports rendering of point cloud and bounding box. */
 class CGV_API gl_point_cloud_drawable : public cgv::render::drawable, public point_cloud_types
 {
+	struct Point {
+		vec4 position;
+		vec4 color;
+	};
+	
 public:
+	gl_point_cloud_drawable();
+
+	/*storage*/
 	point_cloud pc;
 
+	/*clod rendering*/
+	cgv::render::clod_point_renderer cp_renderer;
+	cgv::render::clod_point_render_style cp_style;
+	int lod_mode = (int)cgv::render::LoDMode::RANDOM_POISSON;
+	bool renderer_out_of_date = true;
+
+	/*raw renmdering*/
+	GLuint raw_vao;
+	GLuint raw_vbo_position;
+	GLuint raw_vbo_color;
+	GLuint raw_vbo_normal;
+	bool raw_renderer_out_of_date = true;
+	cgv::render::shader_program raw_prog;
+
+	/*surfel rendering*/
+	cgv::render::surfel_renderer s_renderer;
 	cgv::render::surfel_render_style surfel_style;
+
+	/*normal rendering*/ 
+	cgv::render::normal_renderer n_renderer;
 	cgv::render::normal_render_style normal_style;
+
+	/*bbox rendering*/
 	cgv::render::surface_render_style box_style;
 	cgv::render::line_render_style box_wire_style;
-
-	cgv::render::surfel_renderer s_renderer;
-	cgv::render::normal_renderer n_renderer;
 	cgv::render::box_renderer b_renderer;
 	cgv::render::box_wire_renderer bw_renderer;
 
-	bool show_points;
-	bool show_box;
-	bool show_boxes;
-	bool show_nmls;
-	bool sort_points;
-	bool use_component_colors;
-	bool use_component_transformations;
-	rgba box_color;
-	
-	std::vector<Clr>* use_these_point_colors;
-	std::vector<RGBA>* use_these_point_palette;
-	std::vector<cgv::type::uint8_type>* use_these_point_color_indices;
-	std::vector<RGBA>* use_these_component_colors;
-
-	// reduction to subset 
-	unsigned show_point_step;
-	std::size_t show_point_begin, show_point_end;
-	unsigned nr_draw_calls;
-	cgv::render::view* view_ptr;
-	bool ensure_view_pointer();
-	void set_arrays(cgv::render::context& ctx, size_t offset = 0, size_t count = -1);
-
-	// yzy, raw opengl rendering 
-	void upload_arrays();
-	// 
-	void draw_points_raw();
-
+	/*render with culling*/
 	vec3 headset_position = vec3(0);
 	vec3 headset_direction = vec3(0);
 	vec3 left_controller_position = vec3(0);
@@ -66,21 +67,48 @@ public:
 	bool enable_acloud_effect = true;
 	bool enable_headset_culling = true;
 
-	bool arrays_uploaded = false;
-	attribute_array_manager surfel_aam;
+	/*palette rendering, render with color palletes*/
+	std::vector<Clr>* use_these_point_colors;
+	std::vector<RGBA>* use_these_point_palette;
+	std::vector<cgv::type::uint8_type>* use_these_point_color_indices;
+	std::vector<RGBA>* use_these_component_colors;
 
-	gl_point_cloud_drawable();
+	/*cpu reduction*/
+	unsigned show_point_step;
+	std::size_t show_point_begin, show_point_end;
+	unsigned nr_draw_calls;
+	cgv::render::view* view_ptr;
+	bool ensure_view_pointer();
 
-	bool read(const std::string& file_name);
-	bool append(const std::string& file_name, bool add_component = true);
-	bool write(const std::string& file_name);
+	/*controlling varibles*/ 
+	bool show_points;
+	bool show_box;
+	bool show_boxes;
+	bool show_nmls;
+	bool sort_points;
+	bool use_component_colors;
+	bool use_component_transformations;
+	rgba box_color;
 	
+	/*drawables */
 	void render_boxes(cgv::render::context& ctx, cgv::render::group_renderer& R, cgv::render::group_render_style& RS);
 	void draw_box(cgv::render::context& ctx, const Box& box, const rgba& clr);
 	void draw_boxes(cgv::render::context& ctx);
 	void draw_points(cgv::render::context& ctx);
+	void draw_raw(cgv::render::context& ctx);
+	void draw_points_raw(cgv::render::context& ctx);
+	void draw_points_clod(cgv::render::context& ctx);
+	void on_clod_rendering_settings_changed();
 	void draw_normals(cgv::render::context& ctx);
 
+public:
+	/*IO*/
+	bool read(const std::string& file_name);
+	bool append(const std::string& file_name, bool add_component = true);
+	bool write(const std::string& file_name);
+	void set_arrays(cgv::render::context& ctx, size_t offset = 0, size_t count = -1);
+
+	/*interfaces*/ 
 	bool init(cgv::render::context& ctx);
 	void draw(cgv::render::context& ctx);
 	void clear(cgv::render::context& ctx);

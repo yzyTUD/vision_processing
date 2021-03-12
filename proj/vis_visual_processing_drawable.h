@@ -735,7 +735,7 @@ void visual_processing::create_gui() {
 	connect_copy(add_button("read_pc")->click, rebind(this, &visual_processing::read_pc));
 	add_member_control(this, "from_CC_txt", data_ptr->point_cloud_kit->pc.from_CC, "check");
 	connect_copy(add_control("render_pc", render_pc, "check")->value_change, rebind(static_cast<drawable*>(this), &visual_processing::post_redraw));
-	add_member_control(this, "point size", data_ptr->point_cloud_kit->surfel_style.point_size, "value_slider", "min=0.2;max=10;log=false;ticks=false;");
+	add_member_control(this, "point size", data_ptr->point_cloud_kit->cp_style.pointSize, "value_slider", "min=0.2;max=10;log=false;ticks=false;");
 	add_member_control(this, "render skybox", render_skybox, "check");
 	add_member_control(this, "render_nmls", data_ptr->point_cloud_kit->show_nmls, "check");
 

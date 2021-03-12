@@ -30,6 +30,7 @@ gl_point_cloud_drawable::gl_point_cloud_drawable()
 	surfel_style.blend_points = false;
 	surfel_style.measure_point_size_in_pixel = false;
 	surfel_style.blend_width_in_pixel = 0.0f;
+
 	box_color = rgba(0.5f, 0.5f, 0.5f, 1.0f);
 	box_style.illumination_mode = cgv::render::IM_TWO_SIDED;
 	box_style.culling_mode = cgv::render::CM_FRONTFACE;
@@ -187,19 +188,8 @@ void gl_point_cloud_drawable::set_arrays(context& ctx, size_t offset, size_t cou
 
 }
 
-void gl_point_cloud_drawable::upload_arrays() {
-
-}
-
-void gl_point_cloud_drawable::draw_points_raw() {
-
-}
-
 void gl_point_cloud_drawable::draw_points(context& ctx)
 {
-
-	/*if (!ensure_view_pointer())
-		exit(0);*/
 	show_point_begin = 0;
 	show_point_end = pc.get_nr_points();
 
@@ -303,6 +293,106 @@ void gl_point_cloud_drawable::draw_points(context& ctx)
 	s_renderer.disable(ctx);
 }
 
+void gl_point_cloud_drawable::draw_raw(context& ctx) { // quick test 
+	if (pc.get_nr_points() == 0)
+		return;
+	if (!show_points)
+		return;
+	if (raw_renderer_out_of_date) {
+		raw_prog.build_program(ctx, "default.glpr", true);
+		float vertices[] = {
+			// positions         // colors
+			 0.5f, -0.5f, 0.0f,1,  1.0f, 0.0f, 0.0f,1,   // bottom right
+			-0.5f, -0.5f, 0.0f,1,  0.0f, 1.0f, 0.0f,1,   // bottom left
+			 0.0f,  0.5f, 0.0f,1,  0.0f, 0.0f, 1.0f,1    // top 
+		};
+
+		glGenVertexArrays(1, &raw_vao);
+		glGenBuffers(1, &raw_vbo_position);
+
+		glBindVertexArray(raw_vao);
+		glBindBuffer(GL_ARRAY_BUFFER, raw_vbo_position);
+		glBufferData(GL_ARRAY_BUFFER, sizeof(vertices), &vertices, GL_STATIC_DRAW);
+		glVertexAttribPointer(0, 4, GL_FLOAT, GL_FALSE, 8 * sizeof(float), (void*)0);
+		glEnableVertexAttribArray(0);
+		glVertexAttribPointer(1, 4, GL_FLOAT, GL_FALSE, 8 * sizeof(float), (void*)(4 * sizeof(float)));
+		glEnableVertexAttribArray(1);
+		glBindBuffer(GL_ARRAY_BUFFER, 0);
+		glBindVertexArray(0);
+
+		raw_renderer_out_of_date = false;
+	}
+	raw_prog.enable(ctx);
+	glBindVertexArray(raw_vao);
+	glPointSize(5);
+	glDrawArrays(GL_POINTS, 0, 3);
+	glBindVertexArray(0);
+	raw_prog.disable(ctx);
+}
+
+
+
+void gl_point_cloud_drawable::draw_points_raw(context& ctx) {
+	if (pc.get_nr_points() == 0)
+		return;
+	if (!show_points)
+		return;
+	std::vector<Point> input_buffer_data;
+	if (raw_renderer_out_of_date) {
+		raw_prog.build_program(ctx, "default.glpr", true);
+
+		// prepare data 
+		for (int i = 0; i < pc.P.size(); i++) {
+			gl_point_cloud_drawable::Point p;
+			p.position = vec4(pc.P[i], 1);
+			p.color = vec4(0.6,0.6,0,1);
+			input_buffer_data.push_back(p);
+		}
+
+		glGenVertexArrays(1, &raw_vao);
+		glGenBuffers(1, &raw_vbo_position);
+
+		// upload and specify 
+		glBindVertexArray(raw_vao);
+		glBindBuffer(GL_ARRAY_BUFFER, raw_vbo_position);
+		glBufferData(GL_ARRAY_BUFFER, sizeof(Point) * input_buffer_data.size(), &input_buffer_data, GL_STATIC_DRAW);
+		glVertexAttribPointer(0, 4, GL_FLOAT, GL_FALSE, sizeof(Point), (void*)0);
+		glEnableVertexAttribArray(0);
+		glVertexAttribPointer(1, 4, GL_FLOAT, GL_FALSE, sizeof(Point) , (void*)(sizeof(Point::position)));
+		glEnableVertexAttribArray(1);
+		glBindBuffer(GL_ARRAY_BUFFER, 0);
+		glBindVertexArray(0);
+
+		raw_renderer_out_of_date = false;
+	}
+	raw_prog.enable(ctx);
+	glBindVertexArray(raw_vao);
+	glPointSize(5);
+	glDrawArrays(GL_POINTS, 0, input_buffer_data.size());
+	glBindVertexArray(0);
+	raw_prog.disable(ctx);
+}
+
+void gl_point_cloud_drawable::draw_points_clod(context& ctx) {
+	if (pc.get_nr_points() == 0)
+		return;
+	if (!show_points)
+		return;
+	if (renderer_out_of_date) {
+		cp_renderer.set_positions(ctx, pc.P);
+		cp_renderer.set_colors(ctx, pc.C);
+		cp_renderer.set_normals(ctx, pc.N);
+		cp_renderer.generate_lods((cgv::render::LoDMode)lod_mode);
+		renderer_out_of_date = false;
+	}
+	if (cp_renderer.enable(ctx))
+		cp_renderer.draw(ctx, 0, (size_t)pc.get_nr_points());
+}
+
+void gl_point_cloud_drawable::on_clod_rendering_settings_changed() {
+	renderer_out_of_date = true;
+}
+
 void gl_point_cloud_drawable::draw_normals(context& ctx)
 {
 	if (!show_nmls || !pc.has_normals())
@@ -320,6 +410,9 @@ void gl_point_cloud_drawable::draw_normals(context& ctx)
 
 bool gl_point_cloud_drawable::init(cgv::render::context& ctx)
 {
+	if (!cp_renderer.init(ctx))
+		return false;
+	cp_renderer.set_render_style(cp_style);
 	if (!s_renderer.init(ctx))
 		return false;
 	s_renderer.set_render_style(surfel_style);
@@ -352,7 +445,10 @@ void gl_point_cloud_drawable::draw(context& ctx)
 
 	draw_boxes(ctx);
 	draw_normals(ctx);
-	draw_points(ctx);
+	//draw_points(ctx);
+	//draw_points_clod(ctx);
+	draw_points_raw(ctx);
+	//draw_raw(ctx);
 }
 
 
