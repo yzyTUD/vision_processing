@@ -52,10 +52,16 @@ public:
 	bool ensure_view_pointer();
 	void set_arrays(cgv::render::context& ctx, size_t offset = 0, size_t count = -1);
 
+	vec3 headset_position = vec3(0);
+	vec3 headset_direction = vec3(0);
 	vec3 left_controller_position = vec3(0);
 	vec3 right_controller_position = vec3(0);
-	float range = 0.1;
+	float headset_culling_range = 2;
+	float controller_effect_range = 0.05;
 	bool enable_acloud_effect = true;
+	bool enable_headset_culling = true;
+
+	bool arrays_uploaded = false;
 
 	gl_point_cloud_drawable();
 

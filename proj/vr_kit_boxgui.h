@@ -513,7 +513,7 @@ public:
 				cgv::gui::vr_pose_event& vrpe = static_cast<cgv::gui::vr_pose_event&>(e);
 				// check for controller pose events
 				int ci = vrpe.get_trackable_index();
-				// left hand event 
+				// cur_right_hand_posi;
 				if (ci == left_rgbd_controller_index) {
 					// update positions 
 					cur_left_hand_posi = vrpe.get_position();

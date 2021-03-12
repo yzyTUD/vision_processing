@@ -387,9 +387,12 @@ public:
 
 				}
 
-				data_ptr->point_cloud_kit->right_controller_position = data_ptr->cur_right_hand_posi;
-				data_ptr->point_cloud_kit->left_controller_position = data_ptr->cur_left_hand_posi;
-				data_ptr->point_cloud_kit->range = data_ptr->range;
+				data_ptr->point_cloud_kit->headset_direction = data_ptr->headset_direction;
+				data_ptr->point_cloud_kit->headset_position = data_ptr->headset_object_positions[0];
+				data_ptr->point_cloud_kit->right_controller_position = data_ptr->righthand_object_positions[0];
+				data_ptr->point_cloud_kit->left_controller_position = data_ptr->lefthand_object_positions[0];
+				// do not update range 
+				//std::cout << "headset posi:" << data_ptr->point_cloud_kit->headset_position << std::endl;
 			}
 
 		}

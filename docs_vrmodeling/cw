@@ -99,6 +99,15 @@
             quick test pcl/other libs feature functions for point clouds 
     
     todo/req:
+        f: rendering effeciency: 
+            <2.0ms when empty load, <2.5ms when clipping everything 
+            should show green with steamvr 
+                (
+                    good frame time and bad frame time
+                    all frames should be marked as green
+                    
+                )
+        performance issue when compared to IMEngine 
         core workflow: 
             point cloud editing support in vr 
                 group/ color picker

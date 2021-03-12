@@ -241,14 +241,16 @@ public:
 	int right_rgbd_controller_index = 1;
 	vec3 cur_left_hand_posi;
 	vec3 cur_left_hand_dir;
-	mat3 cur_left_hand_rot;
 	quat cur_left_hand_rot_quat;
-	mat3 cur_left_hand_rot_mat;
 	vec3 cur_right_hand_posi;
 	quat cur_right_hand_rot_quat = quat();
-	mat3 cur_right_hand_rot_as_mat;
 	vec3 cur_off_left;
 	vec3 cur_off_right;
+	//mat3 cur_left_hand_rot;
+	//mat3 cur_left_hand_rot_mat;
+	//mat3 cur_right_hand_rot_as_mat;
+
+	vec3 cur_headset_position;
 
 	// for point selection
 	// superbox and interaction modes, righthand instead of boxgui for now 
@@ -295,18 +297,21 @@ public:
 	int max_num_of_regions = 7 + 5 * 5;
 
 	// 
+	std::vector<vec3> headset_object_positions; // dynamic 
+	vec3 headset_direction;
+
+	//
 	std::vector<vec3> righthand_object_positions; // dynamic, only one position, can be used globally
 	std::vector<vec3> lefthand_object_positions;
 	std::vector<rgb> righthand_object_colors; // 
 	vec3 offset_right_global = vec3(0, 0, -0.2);
 	vec3 offset_left_global = vec3(0, 0, -0.2);
+	vec3 offset_headset_global = vec3(0, 0, -0.2);
 
 	std::vector<vec3> palette_lefthand_object_positions; // dynamic positions used for rendering 
 	std::vector<rgb> palette_lefthand_object_colors;
 	std::vector<rgb> palette_righthand_object_colors;
 	std::vector<vec3> palette_lefthand_palette_initialpose_positions;
-
-	float range = 1;
 
 	vis_kit_data_store_shared() {
 		//initialize_trackable_list();
@@ -327,6 +332,11 @@ public:
 		gp1_btns.push_back("PointCloud\nPointSize");
 		gp1_btns.push_back("PointCloud\nShowNml");
 		gp1_btns.push_back("PointCloud\nGroupPicker");
+		gp1_btns.push_back("PointCloud\nToggle\nACloud");
+		gp1_btns.push_back("PointCloud\nACloud\nCtrl\nRange");
+		gp1_btns.push_back("PointCloud\nToggle\nCamera\nCulling");
+		gp1_btns.push_back("PointCloud\nCulling\nRange");
+		//
 		gps.push_back(gp1_btns);
 
 		gp2_btns.push_back("Meshing\nPickingPoints");
@@ -381,6 +391,7 @@ public:
 
 		// acloud rendering 
 		point_cloud_kit->enable_acloud_effect = true;
+		point_cloud_kit->enable_headset_culling = true;
 	}
 
 	vec2 get_id_with_name(string btn_name) {

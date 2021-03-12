@@ -226,7 +226,7 @@ bool visual_processing::init(cgv::render::context& ctx)
 	cgv::render::ref_rounded_cone_renderer(ctx, 1);
 
 	// config data_ptr->point_cloud_kit
-	data_ptr->point_cloud_kit->surfel_style.point_size = 1.5f;
+	data_ptr->point_cloud_kit->surfel_style.point_size = 0.1f;
 	data_ptr->point_cloud_kit->surfel_style.halo_color_strength = 0.0f;
 	data_ptr->point_cloud_kit->surfel_style.percentual_halo_width = 25.0f;
 	data_ptr->point_cloud_kit->surfel_style.blend_points = true;
@@ -328,6 +328,16 @@ bool visual_processing::handle(cgv::gui::event& e)
 				if (data_ptr->check_roulette_selection(data_ptr->get_id_with_name("PointCloud\nGroupPick"))) { 
 					//data_ptr->point_cloud_kit->show_nmls = !data_ptr->point_cloud_kit->show_nmls;
 				}
+				// 
+				if (data_ptr->check_roulette_selection(data_ptr->get_id_with_name("PointCloud\nToggle\nACloud"))) {
+					data_ptr->point_cloud_kit->enable_acloud_effect = 
+						!data_ptr->point_cloud_kit->enable_acloud_effect;
+				}
+
+				if (data_ptr->check_roulette_selection(data_ptr->get_id_with_name("PointCloud\nToggle\nCamera\nCulling"))) {
+					data_ptr->point_cloud_kit->enable_headset_culling = 
+						!data_ptr->point_cloud_kit->enable_headset_culling;
+				}
 			}
 		}
 		if (vrse.get_action() == cgv::gui::SA_MOVE) { // event 
@@ -339,6 +349,24 @@ bool visual_processing::handle(cgv::gui::event& e)
 					}
 					else {
 						data_ptr->point_cloud_kit->surfel_style.point_size -= 0.1f;
+					}
+				}
+				if (data_ptr->check_roulette_selection(data_ptr->get_id_with_name("PointCloud\nCulling\nRange"))) {
+					if (vrse.get_y() > 0) {
+						// larger point size 
+						data_ptr->point_cloud_kit->headset_culling_range += 0.1f;
+					}
+					else {
+						data_ptr->point_cloud_kit->headset_culling_range -= 0.1f;
+					}
+				} 
+				if (data_ptr->check_roulette_selection(data_ptr->get_id_with_name("PointCloud\nACloud\nCtrl\nRange"))) {
+					if (vrse.get_y() > 0) {
+						// larger point size 
+						data_ptr->point_cloud_kit->controller_effect_range += 0.01f;
+					}
+					else {
+						data_ptr->point_cloud_kit->controller_effect_range -= 0.01f;
 					}
 				}
 			}
@@ -412,7 +440,7 @@ void visual_processing::clear(cgv::render::context& ctx)
 
 void visual_processing::init_frame(cgv::render::context& ctx)
 {
-	b_interactable->init_frame(ctx);
+	if (b_interactable != nullptr)b_interactable->init_frame(ctx);
 	if (handhold_near_kit != nullptr) handhold_near_kit->init_frame(ctx);
 	if (tmpfixed_gui_kit != nullptr)tmpfixed_gui_kit->init_frame(ctx);
 	data_ptr->point_cloud_kit->init_frame(ctx);
@@ -425,7 +453,7 @@ void visual_processing::draw(cgv::render::context& ctx)
 {
 	if(render_skybox)
 		if (skybox_kit != nullptr)skybox_kit->draw(ctx);
-	if (b_interactable) b_interactable->draw(ctx);
+	if (b_interactable != nullptr) b_interactable->draw(ctx);
 	if (handhold_near_kit!=nullptr) handhold_near_kit->draw(ctx);
 	if (tmpfixed_gui_kit != nullptr) tmpfixed_gui_kit->draw(ctx);
 	if (render_pc) data_ptr->point_cloud_kit->draw(ctx);

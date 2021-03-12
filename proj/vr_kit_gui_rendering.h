@@ -34,13 +34,13 @@ private:
 	int right_rgbd_controller_index = 1;
 	vec3 cur_left_hand_posi;
 	vec3 cur_left_hand_dir;
-	mat3 cur_left_hand_rot;
 	quat cur_left_hand_rot_quat;
-	mat3 cur_left_hand_rot_mat;
+	//mat3 cur_left_hand_rot;
+	//mat3 cur_left_hand_rot_mat;
 
 	vec3 cur_right_hand_posi;
 	quat cur_right_hand_rot_quat;
-	mat3 cur_right_hand_rot_as_mat;
+	//mat3 cur_right_hand_rot_as_mat;
 	vec3 global_offset;
 	bool has_ctrl_posi = false;
 
@@ -157,14 +157,14 @@ public:
 				if (ci == left_rgbd_controller_index) {
 					// update positions 
 					cur_left_hand_posi = vrpe.get_position();
-					cur_left_hand_rot = vrpe.get_orientation();
 					cur_left_hand_rot_quat = vrpe.get_quaternion();
+					//cur_left_hand_rot = vrpe.get_orientation();
 				}
 				if (ci == right_rgbd_controller_index) {
 					cur_right_hand_posi = vrpe.get_position();
 					cur_right_hand_rot_quat = vrpe.get_quaternion();
-					vrpe.get_quaternion().put_matrix(cur_right_hand_rot_as_mat);
 					has_ctrl_posi = true;
+					//vrpe.get_quaternion().put_matrix(cur_right_hand_rot_as_mat);
 				}
 				if (ci != -1) {
 					global_offset = offset_in_ori_pose;

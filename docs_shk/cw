@@ -26,18 +26,7 @@
             1. face sel
             3. uv computation
             4. export
-        
-    > points processing 
-        points cleaning with vr 
-        points cleaning for quick test 
-        points classification 
-
-    > surface recon after cleaned 
-        with realitycapture workflow 
-        with OnlineSurfaceRecon workflow 
-        with PolyFit workflow 
-        bake vertex colors to meshes 
-        
+    
     model fitting 
         //add new simple mesh to the current scene: 
         simplify pc: subsample point cloud 
@@ -81,35 +70,53 @@
         climbing game
         et 1h   
 
-    Modeling 
-        *Similar stuff to our APB 
-        //
-            * very nice looking
-            * very nice looking, building scale, pbr, hdr mapping 
-                * high quality meshes and high quality textures 
-                * large & full of details 
-                * advanced modeling and rendering, ray tracing 
+    > Modeling 
+        *Found some similar stuff to our APB 
+            //
+                * very nice looking
+                * very nice looking, building scale, pbr, hdr mapping 
+                    * high quality meshes and high quality textures 
+                    * large & full of details 
+                    * advanced modeling and rendering, ray tracing 
 
-        for testing: 
-            https://sketchfab.com/3d-models/interior-experiment-6e9894bd8b134f2da03eeb1e68e4c95e
-            https://sketchfab.com/3d-models/mirrors-edge-apartment-interior-scene-9804e9f2fe284070b081c96ceaf8af96
-            https://sketchfab.com/3d-models/basketball-court-8d0c85a5356c432d884e4df5dbbe55b5
-            https://sketchfab.com/3d-models/corona-interior-baking-6a6a91c2e8f24e6092baab9853f0c3ed
-            https://sketchfab.com/3d-models/abandoned-warehouse-interior-scene-1d5285f2e0fd4211a27c8042496d5959
-            https://sketchfab.com/3d-models/vr-gallery-house-baked-8e3b280476eb4790af97e2abd3d9be59
-            mini_project_bedroom_on_sketchfab
+            for testing: 
+                https://sketchfab.com/3d-models/interior-experiment-6e9894bd8b134f2da03eeb1e68e4c95e
+                https://sketchfab.com/3d-models/mirrors-edge-apartment-interior-scene-9804e9f2fe284070b081c96ceaf8af96
+                https://sketchfab.com/3d-models/basketball-court-8d0c85a5356c432d884e4df5dbbe55b5
+                https://sketchfab.com/3d-models/corona-interior-baking-6a6a91c2e8f24e6092baab9853f0c3ed
+                https://sketchfab.com/3d-models/abandoned-warehouse-interior-scene-1d5285f2e0fd4211a27c8042496d5959
+                https://sketchfab.com/3d-models/vr-gallery-house-baked-8e3b280476eb4790af97e2abd3d9be59
+                mini_project_bedroom_on_sketchfab
 
-            https://sketchfab.com/3d-models/asian-castle-855dc8f24ee54cb4a25d63297b3ec408
+                https://sketchfab.com/3d-models/asian-castle-855dc8f24ee54cb4a25d63297b3ec408
 
-        -> 
-            studio lab
-                https://sketchfab.com/3d-models/school-court-e3795fc204104ba993769cbd4b43364e
-                https://sketchfab.com/3d-models/baseball-stadium-843246f5b7d14d6a8888e048acab1853
-                https://sketchfab.com/3d-models/football-stadium-9c4f91943a19414d956932ceefe9b0b7
-                https://sketchfab.com/3d-models/bowling-lane-a9818326222b42429a7ac93fb87c1b0c
+            -> 
+                studio lab
+                    https://sketchfab.com/3d-models/school-court-e3795fc204104ba993769cbd4b43364e
+                    https://sketchfab.com/3d-models/baseball-stadium-843246f5b7d14d6a8888e048acab1853
+                    https://sketchfab.com/3d-models/football-stadium-9c4f91943a19414d956932ceefe9b0b7
+                    https://sketchfab.com/3d-models/bowling-lane-a9818326222b42429a7ac93fb87c1b0c
 
-            Marcin Lubecki
-                https://sketchfab.com/3d-models/concert-hall-amphitheater-vr-baked-max-scene-7f3ccb1af4b545448e0d8076b8620ffb
-            
-            mixed 
-                https://sketchfab.com/3d-models/wimbledon-11d2ddd33a4c4cf8acd4bc5e085bee6c
+                Marcin Lubecki
+                    https://sketchfab.com/3d-models/concert-hall-amphitheater-vr-baked-max-scene-7f3ccb1af4b545448e0d8076b8620ffb
+                
+                mixed 
+                    https://sketchfab.com/3d-models/wimbledon-11d2ddd33a4c4cf8acd4bc5e085bee6c
+    
+    > points processing 
+        points cleaning with vr 
+        points cleaning for quick test 
+        points classification 
+
+    > surface recon after cleaned 
+        with realitycapture workflow 
+        with OnlineSurfaceRecon workflow 
+        with PolyFit workflow 
+        bake vertex colors to meshes 
+    
+    > oculus support: acloud rendering 
+        a. build and run apk on quest 
+        b. aframe test, render point clouds 
+        c. remote streaming 
+        
+    

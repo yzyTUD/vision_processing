@@ -210,20 +210,30 @@ void gl_point_cloud_drawable::draw_points(context& ctx)
 		s_renderer.set_group_index_array(ctx, &pc.component_index(0), pc.get_nr_points());
 	}
 
-	set_arrays(ctx);
+	//if (!arrays_uploaded) {
+		set_arrays(ctx);
+	//	arrays_uploaded = true;
+	//}
 
 	bool tmp = surfel_style.use_group_color;
 	if (pc.has_components() && use_these_component_colors)
 		surfel_style.use_group_color = true;
 	else if (use_these_point_colors || (use_these_point_color_indices && use_these_point_palette))
 		surfel_style.use_group_color = false;
-	s_renderer.validate_and_enable(ctx);
 	surfel_style.use_group_color = tmp;
+
+	s_renderer.validate_and_enable(ctx);
+
+	s_renderer.ref_prog().set_uniform(ctx, "enable_headset_culling", enable_headset_culling);
+	s_renderer.ref_prog().set_uniform(ctx, "headset_position", headset_position);
+	s_renderer.ref_prog().set_uniform(ctx, "headset_direction", headset_direction);
+	//
+	s_renderer.ref_prog().set_uniform(ctx, "headset_culling_range", headset_culling_range);
 
 	s_renderer.ref_prog().set_uniform(ctx, "enable_acloud_effect", enable_acloud_effect);
 	s_renderer.ref_prog().set_uniform(ctx, "left_controller_position", left_controller_position);
 	s_renderer.ref_prog().set_uniform(ctx, "right_controller_position", right_controller_position);
-	s_renderer.ref_prog().set_uniform(ctx, "range", range);
+	s_renderer.ref_prog().set_uniform(ctx, "controller_effect_range", controller_effect_range);
 
 	std::size_t n = (show_point_end - show_point_begin) / show_point_step;
 	GLint offset = GLint(show_point_begin / show_point_step);

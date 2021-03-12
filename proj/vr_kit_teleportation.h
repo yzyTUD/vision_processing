@@ -326,11 +326,9 @@ public:
 			// check for controller pose events
 			int ci = vrpe.get_trackable_index();
 			vec3 origin, direction;
-			// left hand event 
 			if (ci == data_ptr->left_rgbd_controller_index) {
 				// update positions 
 				data_ptr->cur_left_hand_posi = vrpe.get_position();
-				data_ptr->cur_left_hand_rot = vrpe.get_orientation();
 				data_ptr->cur_left_hand_rot_quat = vrpe.get_quaternion();
 				vrpe.get_state().controller[ci].put_ray(&origin(0), &direction(0));
 				data_ptr->cur_left_hand_dir = direction;
@@ -338,7 +336,6 @@ public:
 			if (ci == data_ptr->right_rgbd_controller_index) {
 				data_ptr->cur_right_hand_posi = vrpe.get_position();
 				data_ptr->cur_right_hand_rot_quat = vrpe.get_quaternion();
-				vrpe.get_quaternion().put_matrix(data_ptr->cur_right_hand_rot_as_mat);
 				has_ctrl_posi = true;
 				//if (mode == interaction_mode::CLIMB && hand_touching) {
 				//	if (accept_event) {
@@ -364,6 +361,16 @@ public:
 				if (points.size()>1)
 					points.at(1) = global_offset;*/
 				vec3 off;
+
+				if (data_ptr->headset_object_positions.size() == 0)
+					data_ptr->headset_object_positions.push_back(vec3(0));
+				data_ptr->headset_object_positions[0].x() = vrpe.get_state().hmd.pose[9];
+				data_ptr->headset_object_positions[0].y() = vrpe.get_state().hmd.pose[10];
+				data_ptr->headset_object_positions[0].z() = vrpe.get_state().hmd.pose[11];
+				//headset_direction?
+				data_ptr->headset_direction.x() = -vrpe.get_state().hmd.pose[6];
+				data_ptr->headset_direction.y() = -vrpe.get_state().hmd.pose[7];
+				data_ptr->headset_direction.z() = -vrpe.get_state().hmd.pose[8];
 
 				// update handhold gui position for right hand 
 				off = data_ptr->offset_right_global;

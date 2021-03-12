@@ -179,18 +179,20 @@ protected:
 	std::vector<rgb> point_and_cam_colors;
 
 	// all necessary kits 
-	boxgui_interactable* b_interactable = new boxgui_interactable();
+	vis_kit_data_store_shared* data_ptr = new vis_kit_data_store_shared();
 	vr_kit_tmpfixed_gui* tmpfixed_gui_kit = new vr_kit_tmpfixed_gui();
 	vr_kit_light* light_kit = new vr_kit_light();
-	vr_kit_skybox* skybox_kit = new vr_kit_skybox();
 	vr_kit_teleportation* teleportation_kit = new vr_kit_teleportation();
-	vis_kit_data_store_shared* data_ptr = new vis_kit_data_store_shared();
 
 	// optional kits 
+		//= new boxgui_interactable();
+		//= new vr_kit_handhold_near_gui();
+		//= nullptr;
+	vr_kit_skybox* skybox_kit = new vr_kit_skybox();
+	boxgui_interactable* b_interactable = nullptr;
 	vis_kit_meshes* mesh_kit = nullptr;
 	vis_kit_meshes* mesh_kit_2 = nullptr;
 	vr_kit_handhold_near_gui* handhold_near_kit = nullptr;
-		//= new vr_kit_handhold_near_gui();
 	vr_kit_roller_coaster_1* roller_coaster_kit_1 = nullptr; 
 	vr_kit_draw* draw_kit = nullptr; 
 	vr_kit_motioncap* motioncap_kit = nullptr; 

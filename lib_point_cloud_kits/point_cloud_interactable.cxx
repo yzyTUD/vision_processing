@@ -1388,12 +1388,12 @@ void point_cloud_interactable::init_frame(cgv::render::context& ctx)
 }
 void point_cloud_interactable::draw(cgv::render::context& ctx)
 {
-	if (pc.get_nr_points() != 0) {
-		glVertexPointer(3, GL_FLOAT, 0, &(pc.pnt(0).x()));
-		glEnableClientState(GL_VERTEX_ARRAY);
-		draw_graph(ctx);
-		glDisableClientState(GL_VERTEX_ARRAY);
-	}
+	//if (pc.get_nr_points() != 0) {
+	//	glVertexPointer(3, GL_FLOAT, 0, &(pc.pnt(0).x()));
+	//	glEnableClientState(GL_VERTEX_ARRAY);
+	//	draw_graph(ctx);
+	//	glDisableClientState(GL_VERTEX_ARRAY);
+	//}
 
 	/*if (interact_state != IS_DRAW_FULL_FRAME)
 		std::swap(show_point_step, interact_point_step);*/
