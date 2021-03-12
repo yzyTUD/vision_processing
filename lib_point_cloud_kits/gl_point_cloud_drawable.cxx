@@ -43,7 +43,7 @@ gl_point_cloud_drawable::gl_point_cloud_drawable()
 	use_component_colors = false;
 	use_component_transformations = false;
 }
-///
+
 bool gl_point_cloud_drawable::read(const std::string& _file_name)
 {
 	std::string fn = cgv::base::find_data_file(_file_name, "cpD");
@@ -330,36 +330,52 @@ void gl_point_cloud_drawable::draw_raw(context& ctx) { // quick test
 	raw_prog.disable(ctx);
 }
 
-
-
 void gl_point_cloud_drawable::draw_points_raw(context& ctx) {
 	if (pc.get_nr_points() == 0)
 		return;
 	if (!show_points)
 		return;
-	std::vector<Point> input_buffer_data;
 	if (raw_renderer_out_of_date) {
-		raw_prog.build_program(ctx, "default.glpr", true);
+		if(!raw_prog.is_linked())
+			raw_prog.build_program(ctx, "surfel_simplified.glpr", true);
 
-		// prepare data 
+		// prepare data, * 
+		input_buffer_data.clear();
 		for (int i = 0; i < pc.P.size(); i++) {
-			gl_point_cloud_drawable::Point p;
-			p.position = vec4(pc.P[i], 1);
-			p.color = vec4(0.6,0.6,0,1);
+			VertexAttributeBinding p;
+			p.position = pc.P[i];
+			p.color = pc.C[i];
+			p.normal = pc.N[i];
 			input_buffer_data.push_back(p);
 		}
 
+		// generate and bind vao 
 		glGenVertexArrays(1, &raw_vao);
 		glGenBuffers(1, &raw_vbo_position);
-
-		// upload and specify 
 		glBindVertexArray(raw_vao);
+		// upload all data chunk 
 		glBindBuffer(GL_ARRAY_BUFFER, raw_vbo_position);
-		glBufferData(GL_ARRAY_BUFFER, sizeof(Point) * input_buffer_data.size(), &input_buffer_data, GL_STATIC_DRAW);
-		glVertexAttribPointer(0, 4, GL_FLOAT, GL_FALSE, sizeof(Point), (void*)0);
-		glEnableVertexAttribArray(0);
-		glVertexAttribPointer(1, 4, GL_FLOAT, GL_FALSE, sizeof(Point) , (void*)(sizeof(Point::position)));
-		glEnableVertexAttribArray(1);
+		glBufferData(GL_ARRAY_BUFFER, input_buffer_data.size() * sizeof(VertexAttributeBinding), input_buffer_data.data(), GL_STATIC_DRAW);
+		// find all locations to be used, *
+		int strip_size = sizeof(VertexAttributeBinding);
+		int color_var_size = 3;
+		int color_loc = raw_prog.get_attribute_location(ctx, "color");
+		int position_var_size = 3;
+		int position_loc = raw_prog.get_attribute_location(ctx, "position");
+		int normal_var_size = 3;
+		int normal_loc = raw_prog.get_attribute_location(ctx, "normal");
+		// specify their format, * 
+		glVertexAttribPointer(color_loc,color_var_size, GL_UNSIGNED_BYTE, GL_TRUE, strip_size,
+			(void*)offsetof(struct VertexAttributeBinding, color));
+		glVertexAttribPointer(position_loc, position_var_size, GL_FLOAT, GL_FALSE, strip_size,
+			(void*)offsetof(struct VertexAttributeBinding, position));
+		glVertexAttribPointer(normal_loc, normal_var_size, GL_FLOAT, GL_FALSE, strip_size,
+			(void*)offsetof(struct VertexAttributeBinding, normal));
+		// enable them, * 
+		glEnableVertexAttribArray(color_loc);
+		glEnableVertexAttribArray(position_loc);
+		glEnableVertexAttribArray(normal_loc);
+		// unbind
 		glBindBuffer(GL_ARRAY_BUFFER, 0);
 		glBindVertexArray(0);
 
@@ -367,7 +383,28 @@ void gl_point_cloud_drawable::draw_points_raw(context& ctx) {
 	}
 	raw_prog.enable(ctx);
 	glBindVertexArray(raw_vao);
-	glPointSize(5);
+	// setup uniforms 
+	glDisable(GL_CULL_FACE);
+	int y_view_angle = 45;
+	float pixel_extent_per_depth = (float)(2.0 * tan(0.5 * 0.0174532925199 * y_view_angle) / ctx.get_height());
+	raw_prog.set_uniform(ctx, "pixel_extent_per_depth", pixel_extent_per_depth);
+	raw_prog.set_uniform(ctx, "orient_splats", true);
+	raw_prog.set_uniform(ctx, "point_size", point_size);
+	raw_prog.set_uniform(ctx, "map_color_to_material", 3); // must have 
+	/*raw_prog.set_uniform(ctx, "halo_width_in_pixel", 10);
+	* //
+	*/
+	raw_prog.set_uniform(ctx, "blend_points", true);
+	raw_prog.set_uniform(ctx, "percentual_halo_width", percentual_halo_width);
+
+	//raw_prog.set_uniform(ctx, "enable_headset_culling", enable_headset_culling);
+	//raw_prog.set_uniform(ctx, "headset_position", headset_position);
+	//raw_prog.set_uniform(ctx, "headset_direction", headset_direction);
+	//raw_prog.set_uniform(ctx, "headset_culling_range", headset_culling_range);
+	//raw_prog.set_uniform(ctx, "enable_acloud_effect", enable_acloud_effect);
+	//raw_prog.set_uniform(ctx, "left_controller_position", left_controller_position);
+	//raw_prog.set_uniform(ctx, "right_controller_position", right_controller_position);
+	//raw_prog.set_uniform(ctx, "controller_effect_range", controller_effect_range);
 	glDrawArrays(GL_POINTS, 0, input_buffer_data.size());
 	glBindVertexArray(0);
 	raw_prog.disable(ctx);
@@ -381,8 +418,8 @@ void gl_point_cloud_drawable::draw_points_clod(context& ctx) {
 	if (renderer_out_of_date) {
 		cp_renderer.set_positions(ctx, pc.P);
 		cp_renderer.set_colors(ctx, pc.C);
-		cp_renderer.set_normals(ctx, pc.N);
 		cp_renderer.generate_lods((cgv::render::LoDMode)lod_mode);
+		cp_renderer.set_normals(ctx, pc.N);
 		renderer_out_of_date = false;
 	}
 	if (cp_renderer.enable(ctx))
@@ -391,6 +428,7 @@ void gl_point_cloud_drawable::draw_points_clod(context& ctx) {
 
 void gl_point_cloud_drawable::on_clod_rendering_settings_changed() {
 	renderer_out_of_date = true;
+	raw_renderer_out_of_date = true;
 }
 
 void gl_point_cloud_drawable::draw_normals(context& ctx)

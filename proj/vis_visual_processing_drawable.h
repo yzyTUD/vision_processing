@@ -558,6 +558,7 @@ void visual_processing::apply_further_transformation() {
 ///  read the whole pc to data_ptr->point_cloud_kit
 void visual_processing::read_pc() {
 	data_ptr->point_cloud_kit->read_pc_with_dialog(false);
+	data_ptr->point_cloud_kit->on_clod_rendering_settings_changed();
 	post_redraw();
 	// the original pc will be automatically stored 
 }
@@ -735,7 +736,10 @@ void visual_processing::create_gui() {
 	connect_copy(add_button("read_pc")->click, rebind(this, &visual_processing::read_pc));
 	add_member_control(this, "from_CC_txt", data_ptr->point_cloud_kit->pc.from_CC, "check");
 	connect_copy(add_control("render_pc", render_pc, "check")->value_change, rebind(static_cast<drawable*>(this), &visual_processing::post_redraw));
-	add_member_control(this, "point size", data_ptr->point_cloud_kit->cp_style.pointSize, "value_slider", "min=0.2;max=10;log=false;ticks=false;");
+	add_member_control(this, "point size", data_ptr->point_cloud_kit->point_size, 
+		"value_slider", "min=0.05;max=5;log=false;ticks=false;");
+	add_member_control(this, "percentual_halo_width", data_ptr->point_cloud_kit->percentual_halo_width,
+		"value_slider", "min=0.05;max=5;log=false;ticks=false;");
 	add_member_control(this, "render skybox", render_skybox, "check");
 	add_member_control(this, "render_nmls", data_ptr->point_cloud_kit->show_nmls, "check");
 

@@ -18,11 +18,12 @@
 /** drawable for a point cloud that manages a neighbor graph and a normal estimator and supports rendering of point cloud and bounding box. */
 class CGV_API gl_point_cloud_drawable : public cgv::render::drawable, public point_cloud_types
 {
-	struct Point {
-		vec4 position;
-		vec4 color;
+	struct VertexAttributeBinding {
+		vec3 position;
+		rgb8 color;
+		vec3 normal;
+		float point_size;
 	};
-	
 public:
 	gl_point_cloud_drawable();
 
@@ -42,6 +43,9 @@ public:
 	GLuint raw_vbo_normal;
 	bool raw_renderer_out_of_date = true;
 	cgv::render::shader_program raw_prog;
+	std::vector<VertexAttributeBinding> input_buffer_data;
+	float point_size = 0.1;
+	float percentual_halo_width = 0.3f;
 
 	/*surfel rendering*/
 	cgv::render::surfel_renderer s_renderer;
