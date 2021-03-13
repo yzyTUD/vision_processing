@@ -41,8 +41,7 @@ void point_cloud_interactable::update_file_name(const std::string& ffn, bool app
 	new_file_name = file_name;
 	update_member(&new_file_name);
 }
-
-// file io
+/// file io
 bool point_cloud_interactable::save(const std::string& fn)
 {
 	if (!write(fn)) {
@@ -52,6 +51,7 @@ bool point_cloud_interactable::save(const std::string& fn)
 	update_file_name(fn);
 	return true;
 }
+///
 bool point_cloud_interactable::open(const std::string& fn)
 {
 	if (!read(fn)) {
@@ -65,7 +65,7 @@ bool point_cloud_interactable::open(const std::string& fn)
 	//auto_downsampling();
 	return true;
 }
-
+///
 bool point_cloud_interactable::generate_pc_hemisphere() {
 	pc.clear_all();
 	int samples_per_row = 200;
@@ -98,8 +98,7 @@ bool point_cloud_interactable::generate_pc_hemisphere() {
 	on_point_cloud_change_callback(PCC_NEW_POINT_CLOUD);
 	return true;
 }
-
-
+///
 bool point_cloud_interactable::generate_pc_cube() {
 	pc.clear_all();
 	int samples_per_row = 200;
@@ -135,7 +134,7 @@ bool point_cloud_interactable::generate_pc_cube() {
 	on_point_cloud_change_callback(PCC_NEW_POINT_CLOUD);
 	return true;
 }
-
+///
 void point_cloud_interactable::downsampling(int step, int num_of_points_wanted, int which_strategy) {
 	if(which_strategy == 0)
 		pc.downsampling(step);
@@ -145,19 +144,16 @@ void point_cloud_interactable::downsampling(int step, int num_of_points_wanted, 
 	on_point_cloud_change_callback(PCC_POINTS_RESIZE);
 	post_redraw();
 }
-
 // inner. this should be called after read a pc 
 void point_cloud_interactable::store_original_pc() {
 	oripc = pc;
 }
-
 // inner 
 void point_cloud_interactable::auto_downsampling() {
 	int best_point_num = 1000 * 1000;
 	if(pc.get_nr_points()> best_point_num)
 		downsampling(-1, best_point_num, 1);
 }
-
 // call me: called in data_store header, from vr_kit_selection 
 void point_cloud_interactable::supersampling_within_clips(std::vector<Pnt> positions, std::vector<Dir> dirs) {
 	pc_to_be_append = oripc;
@@ -168,7 +164,6 @@ void point_cloud_interactable::supersampling_within_clips(std::vector<Pnt> posit
 	on_point_cloud_change_callback(PCC_POINTS_RESIZE);
 	post_redraw();
 }
-
 // call me: not called, designed in data_storage, modify bbox in vr_kit_selection
 void point_cloud_interactable::supersampling_with_bbox(box3 range_as_box) {
 	// store original pc 
@@ -179,7 +174,6 @@ void point_cloud_interactable::supersampling_with_bbox(box3 range_as_box) {
 	on_point_cloud_change_callback(PCC_POINTS_RESIZE);
 	post_redraw();
 }
-
 // call me: called in main class, gui 
 void point_cloud_interactable::restore_supersampling() {
 	pc = oripc;
@@ -188,7 +182,6 @@ void point_cloud_interactable::restore_supersampling() {
 	on_point_cloud_change_callback(PCC_NEW_POINT_CLOUD);
 	post_redraw();
 }
-
 // call me 
 void point_cloud_interactable::render_with_fullpc() {
 	// store original pc
@@ -201,7 +194,7 @@ void point_cloud_interactable::render_with_fullpc() {
 	on_point_cloud_change_callback(PCC_NEW_POINT_CLOUD);
 	post_redraw();
 }
-
+///
 bool point_cloud_interactable::open_directory(const std::string& dn)
 {
 	std::vector<std::string> file_names;
@@ -235,6 +228,7 @@ bool point_cloud_interactable::open_directory(const std::string& dn)
 	update_file_name(dn);
 	return true;
 }
+///
 bool point_cloud_interactable::open_and_append(const std::string& fn)
 {
 	if (!append(fn)) {
@@ -245,6 +239,7 @@ bool point_cloud_interactable::open_and_append(const std::string& fn)
 	update_file_name(fn, true);
 	return true;
 }
+///
 bool point_cloud_interactable::open_or_append(cgv::gui::event& e, const std::string& file_name)
 {
 	cgv::utils::tokenizer T(file_name);
@@ -269,7 +264,7 @@ bool point_cloud_interactable::read_pc_with_dialog(bool append) {
 	open(f);
 	return true;
 }
-
+///
 bool point_cloud_interactable::read_pc_with_dialog_queue(bool append) {
 	if (!append)
 		clear_all();
@@ -279,7 +274,7 @@ bool point_cloud_interactable::read_pc_with_dialog_queue(bool append) {
 		open(f);
 	return true;
 }
-
+///
 bool point_cloud_interactable::read_pc_subsampled_with_dialog() {
 	std::string f = cgv::gui::file_open_dialog("Open", "Point Cloud:*");
 	clear_all();
@@ -288,7 +283,7 @@ bool point_cloud_interactable::read_pc_subsampled_with_dialog() {
 	show_point_end = pc.get_nr_points();
 	return true;
 }
-
+///
 void point_cloud_interactable::write_pc_to_file() {
 	/*auto microsecondsUTC = std::chrono::duration_cast<std::chrono::microseconds>(
 		std::chrono::system_clock::now().time_since_epoch()).count();
@@ -297,7 +292,7 @@ void point_cloud_interactable::write_pc_to_file() {
 	std::string f = cgv::gui::file_save_dialog("Open", "Save Point Cloud:*");
 	pc.write(f);
 }
-
+///
 bool point_cloud_interactable::read_pc_campose(cgv::render::context& ctx, quat initialcamq) {
 	std::string f = cgv::gui::file_open_dialog("Open", "Point Cloud:*");
 	pc.read_campose(f);
@@ -318,7 +313,7 @@ bool point_cloud_interactable::read_pc_campose(cgv::render::context& ctx, quat i
 
 	return true;
 }
-
+///
 bool point_cloud_interactable::check_valid_pc_and_campose()
 {
 	bool succ = pc.cam_posi.x() != -1000
@@ -335,11 +330,11 @@ bool point_cloud_interactable::check_valid_pc_and_campose()
 	}
 	return succ;
 }
-
+///
 void point_cloud_interactable::apply_further_transformation(int which, quat q, vec3 t) {
 	image_renderer_list.at(which).apply_further_transformation(q, t);
 }
-
+///
 void point_cloud_interactable::align_leica_scans_with_cgv() {
 	quat rz = quat(vec3(0, 0, 1), 25 * M_PI / 180);
 	quat rx = quat(vec3(1, 0, 0), -90 * M_PI / 180);
@@ -354,7 +349,6 @@ void point_cloud_interactable::align_leica_scans_with_cgv() {
 	// approximate 1m from ground 
 	//pc.translate(vec3(0,1,0));
 }
-
 ///
 void point_cloud_interactable::prepare_marking(std::vector<rgba>* psc) {
 	pc.point_selection.resize(pc.get_nr_points());
@@ -366,7 +360,6 @@ void point_cloud_interactable::prepare_marking(std::vector<rgba>* psc) {
 	use_these_point_color_indices = &pc.point_selection;
 
 }
-
 ///
 void point_cloud_interactable::mark_points_with_conroller(Pnt p, float r, bool confirmed, int objctive) {
 	if (pc.get_nr_points()) {
@@ -428,7 +421,6 @@ void point_cloud_interactable::mark_points_with_conroller(Pnt p, float r, bool c
 		//post_redraw();
 	}
 }
-
 ///
 void point_cloud_interactable::prepare_grow(bool read_from_file, std::vector<rgba>* psc, int max_num_regions) {
 	// if no selection present, clear point_selection
@@ -525,7 +517,7 @@ void point_cloud_interactable::grow_one_step_bfs(bool check_nml, int which_group
 		//std::cout << "seed empty, stop." << std::endl;
 	}
 }
-///
+/// check if all points growed 
 bool point_cloud_interactable::all_points_growed() {
 	for (auto ps : pc.point_selection) {
 		if (ps == 0)
@@ -533,7 +525,7 @@ bool point_cloud_interactable::all_points_growed() {
 	}
 	return true;
 }
-/// 
+/// ensure all points to be growed 
 void point_cloud_interactable::grow_one_step_bfs_ensure() {
 	//// bfs simple approach
 	//std::vector<int> knn;
@@ -576,14 +568,14 @@ void point_cloud_interactable::grow_one_step_bfs_ensure() {
 	//	post_redraw();
 	//}
 }
-
-///
+/// for now, we only set confirmed to true 
 void point_cloud_interactable::mark_points_inside_selection_tool(Pnt p, float r, bool confirmed, int objctive)
 {
 	if (pc.get_nr_points()) {
 		ensure_tree_ds();
 		float closest_dist = tree_ds->find_closest_and_its_dist(p);
 		//std::cout << "closest_dist = "<< closest_dist << std::endl;
+		// restore the color marked visually, this is better to be done with gpu
 		if (closest_dist > r) {
 			if (marked == true){
 				for (Idx i = 0; i < (Idx)pc.get_nr_points(); ++i) {
@@ -636,7 +628,6 @@ void point_cloud_interactable::mark_points_inside_selection_tool(Pnt p, float r,
 		}
 	}
 }
-
 /// only need to compute once after record the current frame
 bool point_cloud_interactable::assign_pc_and_ensure_source_tree_ds(point_cloud& _pc) {
 	if (_pc.get_nr_points()) {
@@ -689,7 +680,6 @@ void point_cloud_interactable::ensure_point_selection() {
 		}
 	}
 }
-
 /// subsampled_target will be computed acc to p, r information 
 void point_cloud_interactable::subsampling_target(
 	Pnt& p, float& r, bool confirmed) {
@@ -811,6 +801,7 @@ void point_cloud_interactable::subsampling_source(
 		}
 	}
 }
+///
 void point_cloud_interactable::collect_to_subsampled_pcs() {
 	pc_last_subsampled.clear_all();
 	pc_to_be_append_subsampled.clear_all();
@@ -826,7 +817,7 @@ void point_cloud_interactable::collect_to_subsampled_pcs() {
 	}
 	
 }
-
+///
 void point_cloud_interactable::highlight_last_pc() {
 	if (num_of_pcs > 0) {
 		tmppc = pc;
@@ -842,7 +833,7 @@ void point_cloud_interactable::highlight_last_pc() {
 		v = point_cloud::P_C::ICP_SOURCE_HIGHLIGHT;
 	}
 }
-
+///
 void point_cloud_interactable::reset_highlighted_last_pc() {
 	pc = tmppc;
 	ensure_point_selection_pc();
@@ -852,13 +843,11 @@ void point_cloud_interactable::reset_highlighted_last_pc() {
 	use_these_point_color_indices = &pc.point_selection;
 	is_highlighting = false;
 }
-
-/// as a test 
+/// quick test 
 void point_cloud_interactable::fill_subsampled_pcs_with_cur_pc_as_a_test() {
 	pc_last_subsampled = pc_last;
 	pc_to_be_append_subsampled = pc_to_be_append;
 }
-
 ///
 void point_cloud_interactable::register_with_subsampled_pcs(point_cloud& _pc) {
 	if(!pc_last_subsampled.get_nr_points())
@@ -887,7 +876,6 @@ void point_cloud_interactable::register_with_subsampled_pcs(point_cloud& _pc) {
 		_pc.translate(translation);
 	}
 }
-
 /// register without subsampling 
 void point_cloud_interactable::register_cur_and_last_pc_if_present() {
 	// align pc_to_be_append to last_pc 
@@ -909,6 +897,7 @@ void point_cloud_interactable::register_cur_and_last_pc_if_present() {
 		//err: empty pcs 
 	}
 }
+///
 void point_cloud_interactable::pc_changed() {
 	ng.clear();
 	tree_ds_out_of_date = true;
@@ -981,8 +970,7 @@ void point_cloud_interactable::interact_callback(double t, double dt)
 	}
 
 }
-
-
+///
 void point_cloud_interactable::ensure_tree_ds()
 {
 	if (tree_ds_out_of_date) {
@@ -993,6 +981,7 @@ void point_cloud_interactable::ensure_tree_ds()
 		tree_ds_out_of_date = false;
 	}
 }
+///
 void point_cloud_interactable::build_neighbor_graph()
 {
 	// use component wise implementation if we do have more than one component 
@@ -1014,7 +1003,7 @@ void point_cloud_interactable::build_neighbor_graph()
 		<< ", he = " << ng.nr_half_edges
 		<< " ==> " << (float)ng.nr_half_edges / ((unsigned)(pc.get_nr_points())) << " half edges per vertex" << std::endl;
 }
-
+///
 void point_cloud_interactable::build_neighbor_graph_componentwise()
 {
 	// prepare neighbor graph data structure
@@ -1060,7 +1049,7 @@ void point_cloud_interactable::build_neighbor_graph_componentwise()
 
 	on_point_cloud_change_callback(PCC_NEIGHBORGRAPH_CREATE);
 }
-
+///
 bool point_cloud_interactable::get_picked_point(int x, int y, unsigned& index)
 {
 	cgv::math::fvec<double, 3> world_location;
@@ -1097,9 +1086,7 @@ bool point_cloud_interactable::get_picked_point(int x, int y, unsigned& index)
 	index = i_closest;
 	return true;
 }
-
-
-
+///
 void point_cloud_interactable::compute_normals()
 {
 	// already has nmls or too few points are given 
@@ -1122,6 +1109,7 @@ void point_cloud_interactable::compute_normals()
 	on_point_cloud_change_callback(PCC_NORMALS);
 	post_redraw();
 }
+///
 void point_cloud_interactable::recompute_normals()
 {
 	if (ng.empty())
@@ -1133,6 +1121,7 @@ void point_cloud_interactable::recompute_normals()
 	on_point_cloud_change_callback(PCC_NORMALS);
 	post_redraw();
 }
+///
 void point_cloud_interactable::toggle_normal_orientations()
 {
 	if (!pc.has_normals())
@@ -1142,6 +1131,7 @@ void point_cloud_interactable::toggle_normal_orientations()
 	on_point_cloud_change_callback(PCC_NORMALS);
 	post_redraw();
 }
+///
 void point_cloud_interactable::orient_normals()
 {
 	if (ng.empty())
@@ -1152,6 +1142,7 @@ void point_cloud_interactable::orient_normals()
 	on_point_cloud_change_callback(PCC_NORMALS);
 	post_redraw();
 }
+///
 void point_cloud_interactable::orient_normals_to_view_point()
 {
 	if (ensure_view_pointer()) {
@@ -1163,6 +1154,7 @@ void point_cloud_interactable::orient_normals_to_view_point()
 		post_redraw();
 	}
 }
+///
 void point_cloud_interactable::orient_normals_to_view_point_vr(vec3 cam_posi)
 {
 	//if (ensure_view_pointer()) {
@@ -1173,7 +1165,7 @@ void point_cloud_interactable::orient_normals_to_view_point_vr(vec3 cam_posi)
 		post_redraw();
 	//}
 }
-
+///
 void point_cloud_interactable::compute_feature_points()
 {
 	feature_points.clear();
@@ -1215,14 +1207,12 @@ void point_cloud_interactable::compute_feature_points()
 	}
 	on_point_cloud_change_callback(PCC_COLORS);
 }
-
 /// call this before using the view ptr for the first time
 bool point_cloud_interactable::ensure_view_pointer()
 {
 	return cgv::base::ensure_by_find(this, view_ptr);
 }
-
-
+///
 point_cloud_interactable::point_cloud_interactable() : ne(pc, ng)
 {
 	set_name("Point Cloud Viewer");
@@ -1257,6 +1247,7 @@ point_cloud_interactable::point_cloud_interactable() : ne(pc, ng)
 	frame_pointers.push_back(0);
 
 }
+///
 void point_cloud_interactable::auto_set_view()
 {
 	if (pc.get_nr_points() == 0)
@@ -1273,12 +1264,12 @@ void point_cloud_interactable::auto_set_view()
 	cgv::gui::animate_with_linear_blend(view_ptrs[0]->ref_focus(), dvec3(pc.box().get_center()), 0.5)->set_base_ptr(this);
 	post_redraw();
 }
-
-
+///
 std::string point_cloud_interactable::get_type_name() const
 {
 	return "point_cloud_interactable";
 }
+///
 bool point_cloud_interactable::self_reflect(cgv::reflect::reflection_handler& srh)
 {
 	if (srh.reflect_member("do_append", do_append) &&
@@ -1304,10 +1295,12 @@ bool point_cloud_interactable::self_reflect(cgv::reflect::reflection_handler& sr
 		return true;
 	return false;
 }
+///
 void point_cloud_interactable::stream_help(std::ostream& os)
 {
 	os << "PC: open (Ctrl-O), append (Ctrl-A), toggle <p>oints, <n>ormals, <b>ox, <g>graph, <i>llum" << std::endl;
 }
+///
 void point_cloud_interactable::stream_stats(std::ostream& os)
 {
 	os << "PC: #P=" << pc.get_nr_points()
@@ -1315,8 +1308,7 @@ void point_cloud_interactable::stream_stats(std::ostream& os)
 		<< ", #C=" << (pc.has_colors() ? pc.get_nr_points() : 0) 
 		<< ", B=" << pc.box().get_center() << "<" << pc.box().get_extent() << ">" << std::endl;
 }
-
-
+///
 void point_cloud_interactable::draw_edge_color(unsigned int vi, unsigned int j, bool is_symm, bool is_start) const
 {
 	if (is_symm)
@@ -1328,6 +1320,7 @@ void point_cloud_interactable::draw_edge_color(unsigned int vi, unsigned int j, 
 			glColor3f(1, 1, 0.5f);
 	}
 }
+///
 void point_cloud_interactable::draw_graph(cgv::render::context& ctx)
 {
 	if (!show_neighbor_graph)
@@ -1361,6 +1354,7 @@ void point_cloud_interactable::draw_graph(cgv::render::context& ctx)
 	glEnd();
 	glEnable(GL_LIGHTING);
 }
+///
 bool point_cloud_interactable::init(cgv::render::context& ctx)
 {
 	if (!gl_point_cloud_drawable::init(ctx))
@@ -1370,6 +1364,7 @@ bool point_cloud_interactable::init(cgv::render::context& ctx)
 
 	return true;
 }
+///
 void point_cloud_interactable::init_frame(cgv::render::context& ctx)
 {
 	static bool my_tab_selected = false;
@@ -1386,6 +1381,7 @@ void point_cloud_interactable::init_frame(cgv::render::context& ctx)
 	}
 	gl_point_cloud_drawable::init_frame(ctx);
 }
+///
 void point_cloud_interactable::draw(cgv::render::context& ctx)
 {
 	//if (pc.get_nr_points() != 0) {
@@ -1425,10 +1421,7 @@ void point_cloud_interactable::draw(cgv::render::context& ctx)
 		renderer.render(ctx, 0, fea_box.size());
 	}
 }
-
-
-
-
+///
 void point_cloud_interactable::configure_subsample_controls()
 {
 	if (find_control(show_point_begin)) {
@@ -1439,6 +1432,7 @@ void point_cloud_interactable::configure_subsample_controls()
 		find_control(show_point_start)->set("max", pc.get_nr_points() - show_point_count);
 	}
 }
+///
 void point_cloud_interactable::handle_args(std::vector<std::string>& args)
 {
 	for (unsigned ai = 0; ai < args.size(); ++ai) {
@@ -1450,7 +1444,6 @@ void point_cloud_interactable::handle_args(std::vector<std::string>& args)
 		}
 	}
 }
-
 ///
 bool point_cloud_interactable::handle(cgv::gui::event& e)
 {
@@ -1608,7 +1601,6 @@ bool point_cloud_interactable::handle(cgv::gui::event& e)
 
 	return false;
 }
-
 ///
 void point_cloud_interactable::on_point_cloud_change_callback(PointCloudChangeEvent pcc_event)
 {
@@ -1655,6 +1647,7 @@ void point_cloud_interactable::on_point_cloud_change_callback(PointCloudChangeEv
 	}
 	post_redraw();
 }
+///
 void point_cloud_interactable::on_set(void* member_ptr)
 {
 	if (member_ptr == &ne.localization_scale || member_ptr == &ne.normal_sigma || member_ptr == &ne.bw_type || member_ptr == &ne.plane_distance_scale) {
@@ -1719,6 +1712,7 @@ void point_cloud_interactable::on_set(void* member_ptr)
 	update_member(member_ptr);
 	post_redraw();
 }
+///
 void point_cloud_interactable::create_gui()
 {
 	add_decorator(get_name(), "heading", "level=2");

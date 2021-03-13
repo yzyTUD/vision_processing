@@ -31,12 +31,12 @@ public:
 	point_cloud pc;
 	
 	/*
-		0 - raw rendering 
-		1 - point rendering 
-		2 - surfel rendering 
-		3 - clod rendering 
+		1 - raw rendering 
+		2 - point rendering 
+		3 - surfel rendering 
+		4 - clod rendering 
 	*/
-	int RENDERING_STRATEGY = 1;
+	int RENDERING_STRATEGY = 3;
 	bool is_switching = false;
 
 	/*raw rendering*/

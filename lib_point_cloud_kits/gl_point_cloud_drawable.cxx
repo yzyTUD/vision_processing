@@ -233,7 +233,6 @@ void gl_point_cloud_drawable::draw_points_surfel(context& ctx)
 	s_renderer.ref_prog().set_uniform(ctx, "enable_headset_culling", enable_headset_culling);
 	s_renderer.ref_prog().set_uniform(ctx, "headset_position", headset_position);
 	s_renderer.ref_prog().set_uniform(ctx, "headset_direction", headset_direction);
-	//
 	s_renderer.ref_prog().set_uniform(ctx, "headset_culling_range", headset_culling_range);
 
 	s_renderer.ref_prog().set_uniform(ctx, "enable_acloud_effect", enable_acloud_effect);

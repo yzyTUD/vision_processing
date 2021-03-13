@@ -129,7 +129,7 @@ protected:
 	///
 	std::vector<bool> point_selection_visited;
 
-	///
+	/// per vertex marked index 
 	enum P_C {
 		ORI = 0,
 		VISUAL_MARK = 1,
@@ -138,7 +138,7 @@ protected:
 		ICP_TARGET = 4,
 		ICP_SOURCE_HIGHLIGHT = 5,
 		ICP_TARGET_HIGHLIGHT = 6
-		// region id start from 7 
+		// region id start from 7 to 7 + 25 
 	};
 
 	/// container to store  one component index per point
