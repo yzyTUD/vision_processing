@@ -29,18 +29,21 @@ public:
 
 	/*storage*/
 	point_cloud pc;
+	
+	/*
+		0 - raw rendering 
+		1 - point rendering 
+		2 - surfel rendering 
+		3 - clod rendering 
+	*/
+	int RENDERING_STRATEGY = 1;
+	bool is_switching = false;
 
-	/*clod rendering*/
-	cgv::render::clod_point_renderer cp_renderer;
-	cgv::render::clod_point_render_style cp_style;
-	int lod_mode = (int)cgv::render::LoDMode::RANDOM_POISSON;
-	bool renderer_out_of_date = true;
-
-	/*raw renmdering*/
-	GLuint raw_vao;
-	GLuint raw_vbo_position;
-	GLuint raw_vbo_color;
-	GLuint raw_vbo_normal;
+	/*raw rendering*/
+	GLuint raw_vao = -1;
+	GLuint raw_vbo_position = -1;
+	GLuint raw_vbo_color = -1;
+	GLuint raw_vbo_normal = -1;
 	bool raw_renderer_out_of_date = true;
 	cgv::render::shader_program raw_prog;
 	std::vector<VertexAttributeBinding> input_buffer_data;
@@ -50,6 +53,15 @@ public:
 	/*surfel rendering*/
 	cgv::render::surfel_renderer s_renderer;
 	cgv::render::surfel_render_style surfel_style;
+
+	/*point rendering */
+	
+
+	/*clod rendering*/
+	cgv::render::clod_point_renderer cp_renderer;
+	cgv::render::clod_point_render_style cp_style;
+	int lod_mode = (int)cgv::render::LoDMode::RANDOM_POISSON;
+	bool renderer_out_of_date = true;
 
 	/*normal rendering*/ 
 	cgv::render::normal_renderer n_renderer;
@@ -98,9 +110,12 @@ public:
 	void render_boxes(cgv::render::context& ctx, cgv::render::group_renderer& R, cgv::render::group_render_style& RS);
 	void draw_box(cgv::render::context& ctx, const Box& box, const rgba& clr);
 	void draw_boxes(cgv::render::context& ctx);
-	void draw_points(cgv::render::context& ctx);
+	void draw_points_surfel(cgv::render::context& ctx);
+	void destruct_prog_and_buffers_when_switching(cgv::render::context& ctx);
 	void draw_raw(cgv::render::context& ctx);
-	void draw_points_raw(cgv::render::context& ctx);
+	void draw_points_quad(cgv::render::context& ctx); 
+	void switch_to_quad_rendering();
+	void draw_points_point_rendering(cgv::render::context& ctx);
 	void draw_points_clod(cgv::render::context& ctx);
 	void on_clod_rendering_settings_changed();
 	void draw_normals(cgv::render::context& ctx);

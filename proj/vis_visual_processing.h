@@ -418,6 +418,11 @@ public:
 
 	void load_image_from_bin_files();
 
+	void switch_rendering_mode_quad_based();
+	void switch_rendering_mode_point_based();
+	void switch_rendering_mode_surfel_based();
+	void switch_rendering_mode_clod_based();
+
 	void create_gui();
 
 	/// wrappers 

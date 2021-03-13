@@ -62,7 +62,7 @@ bool point_cloud_interactable::open(const std::string& fn)
 	on_point_cloud_change_callback(PCC_NEW_POINT_CLOUD);
 	//update_file_name(fn);
 	store_original_pc();
-	auto_downsampling();
+	//auto_downsampling();
 	return true;
 }
 

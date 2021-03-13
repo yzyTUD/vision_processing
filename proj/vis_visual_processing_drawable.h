@@ -16,7 +16,7 @@
 
 #include "vr_kit_intersection.h"
 
-
+///
 void visual_processing::init_cameras(vr::vr_kit* kit_ptr)
 {
 	vr::vr_camera* camera_ptr = kit_ptr->get_camera();
@@ -42,7 +42,7 @@ void visual_processing::init_cameras(vr::vr_kit* kit_ptr)
 	}
 	post_recreate_gui();
 }
-
+///
 void visual_processing::start_camera()
 {
 	if (!vr_view_ptr)
@@ -56,7 +56,7 @@ void visual_processing::start_camera()
 	if (!camera_ptr->start())
 		cgv::gui::message(camera_ptr->get_last_error());
 }
-
+///
 void visual_processing::stop_camera()
 {
 	if (!vr_view_ptr)
@@ -70,7 +70,6 @@ void visual_processing::stop_camera()
 	if (!camera_ptr->stop())
 		cgv::gui::message(camera_ptr->get_last_error());
 }
-
 /// compute intersection points of controller ray with movable boxes
 void visual_processing::compute_intersections(const vec3& origin, const vec3& direction, int ci, const rgb& color)
 {
@@ -100,7 +99,6 @@ void visual_processing::compute_intersections(const vec3& origin, const vec3& di
 		}
 	}
 }
-
 /// keep track of status changes
 void visual_processing::on_status_change(void* kit_handle, int ci, vr::VRStatus old_status, vr::VRStatus new_status)
 {
@@ -121,7 +119,6 @@ void visual_processing::on_status_change(void* kit_handle, int ci, vr::VRStatus 
 		post_recreate_gui();
 	}
 }
-
 /// register on device change events
 void visual_processing::on_device_change(void* kit_handle, bool attach)
 {
@@ -146,6 +143,7 @@ void visual_processing::on_device_change(void* kit_handle, bool attach)
 		}
 	}
 }
+///
 visual_processing::visual_processing() 
 {
 	//draw_kit = new vr_kit_draw();
@@ -176,17 +174,17 @@ visual_processing::visual_processing()
 	register_object(base_ptr(mesh_kit), "");
 	register_object(base_ptr(mesh_kit_2), "");
 }
-	
+///	
 void visual_processing::stream_help(std::ostream& os) {
 	os << "visual_processing: no shortcuts defined" << std::endl;
 }
-	
+///		
 void visual_processing::on_set(void* member_ptr)
 {
 	update_member(member_ptr);
 	post_redraw();
 }
-
+///	
 bool visual_processing::init(cgv::render::context& ctx)
 {
 	if(skybox_kit!=nullptr)skybox_kit->init(ctx);
@@ -292,7 +290,7 @@ bool visual_processing::init(cgv::render::context& ctx)
 
 	return true;
 }
-	
+///	
 bool visual_processing::handle(cgv::gui::event& e)
 {
 	if (b_interactable != nullptr)b_interactable->handle(e);
@@ -345,10 +343,10 @@ bool visual_processing::handle(cgv::gui::event& e)
 				if (data_ptr->check_roulette_selection(data_ptr->get_id_with_name("PointCloud\nPointSize"))) {
 					if (vrse.get_y() > 0) {
 						// larger point size 
-						data_ptr->point_cloud_kit->surfel_style.point_size += 0.1f;
+						data_ptr->point_cloud_kit->point_size += 0.1f;
 					}
 					else {
-						data_ptr->point_cloud_kit->surfel_style.point_size -= 0.1f;
+						data_ptr->point_cloud_kit->point_size -= 0.1f;
 					}
 				}
 				if (data_ptr->check_roulette_selection(data_ptr->get_id_with_name("PointCloud\nCulling\nRange"))) {
@@ -427,7 +425,7 @@ bool visual_processing::handle(cgv::gui::event& e)
 	}
 	return false;
 }
-
+///	
 void visual_processing::clear(cgv::render::context& ctx)
 {
 	cgv::render::ref_box_renderer(ctx, -1);
@@ -437,7 +435,7 @@ void visual_processing::clear(cgv::render::context& ctx)
 	one_shot_360pc->clear(ctx);
 	stored_cloud->clear(ctx);
 }
-
+///	
 void visual_processing::init_frame(cgv::render::context& ctx)
 {
 	if (b_interactable != nullptr)b_interactable->init_frame(ctx);
@@ -448,7 +446,7 @@ void visual_processing::init_frame(cgv::render::context& ctx)
 	stored_cloud->init_frame(ctx);
 	if(imagebox_kit!=nullptr)imagebox_kit->init_frame(ctx);
 }
-
+///	
 void visual_processing::draw(cgv::render::context& ctx)
 {
 	if(render_skybox)
@@ -478,7 +476,7 @@ void visual_processing::draw(cgv::render::context& ctx)
 	}
 
 }
-
+///	
 void visual_processing::finish_draw(cgv::render::context& ctx)
 {
 	if (teleportation_kit) teleportation_kit->finish_draw(ctx); 
@@ -531,12 +529,12 @@ void visual_processing::finish_draw(cgv::render::context& ctx)
 	//glDepthMask(GL_TRUE);
 	//glDisable(GL_BLEND);
 }
-
+///	
 void visual_processing::read_campose() {
 	data_ptr->point_cloud_kit->read_pc_campose(*get_context(), quat());
 	//render_pc = true;
 }
-
+///	
 void visual_processing::show_camposes() {
 	for (int i = 0; i < data_ptr->point_cloud_kit->pc.list_cam_translation.size(); i++) {
 		std::cout << "---w x y z: \nrot: " << 
@@ -548,13 +546,13 @@ void visual_processing::show_camposes() {
 		std::cout << "trans: " << data_ptr->point_cloud_kit->pc.list_cam_translation.at(i) << std::endl;
 	}
 }
-
-// for a visual feedback 
+///	for a visual feedback 
 void visual_processing::apply_further_transformation() {
 	data_ptr->point_cloud_kit->apply_further_transformation(0, quat(), vec3(1));
 }
-
-/* start pc reading and data_ptr->point_cloud_kit processing tool */
+////////////////////////////////////////////////////////////////////////
+//// pc reading and data_ptr->point_cloud_kit processing tool
+////////////////////////////////////////////////////////////////////////
 ///  read the whole pc to data_ptr->point_cloud_kit
 void visual_processing::read_pc() {
 	data_ptr->point_cloud_kit->read_pc_with_dialog(false);
@@ -562,86 +560,81 @@ void visual_processing::read_pc() {
 	post_redraw();
 	// the original pc will be automatically stored 
 }
-
+///
 void visual_processing::read_pc_queue() {
 	data_ptr->point_cloud_kit->read_pc_with_dialog_queue(false);
 }
-
+///
 void visual_processing::read_pc_append() {
 	data_ptr->point_cloud_kit->read_pc_with_dialog(true);
 }
-// perform actions to data_ptr->point_cloud_kit
-
 /// 
 void visual_processing::downsampling() {
 	data_ptr->point_cloud_kit->downsampling(step, num_of_points_wanted, strategy);
 }
-
+///
 void visual_processing::add_reflectance() {
 	// = true;
 }
-
-//
 ///
 void visual_processing::write_read_pc_to_file() {
 	data_ptr->point_cloud_kit->write_pc_to_file();
 }
-
+///
 void  visual_processing::align_leica_scans_with_cgv() {
 	data_ptr->point_cloud_kit->align_leica_scans_with_cgv();
 	stored_cloud->align_leica_scans_with_cgv();
 }
-
+///
 void  visual_processing::rotate_x() {
 	data_ptr->point_cloud_kit->pc.rotate(quat(vec3(1, 0, 0), 5 * M_PI / 180));
 	std::cout << "rotate 5 degree around x!" << std::endl;
 }
-
+///
 void  visual_processing::rotate_z() {
 	data_ptr->point_cloud_kit->pc.rotate(quat(vec3(0, 0, 1), 5 * M_PI / 180));
 	std::cout << "rotate 5 degree around z!" << std::endl;
 }
-
-/* end data_ptr->point_cloud_kit processing tool*/
+////////////////////////////////////////////////////////////////////////
+// 
+////////////////////////////////////////////////////////////////////////
 /// load one shot from data_ptr->point_cloud_kit according to .campose file  
 bool visual_processing::load_next_shot() {
 	one_shot_360pc->pc.clear_all_for_get_next_shot();
 	return one_shot_360pc->pc.get_next_shot(data_ptr->point_cloud_kit->pc);
 }
-
+///
 void visual_processing::compute_nmls_if_is_required() {
 	one_shot_360pc->compute_normals();
 }
-
+///
 void visual_processing::force_nml_computing() {
 	data_ptr->point_cloud_kit->compute_normals();
 	data_ptr->point_cloud_kit->orient_normals();
 	post_redraw();
 }
-
+///
 void visual_processing::append_current_shot_to_stored_cloud() {
 	stored_cloud->append_frame(one_shot_360pc->pc, false);
 	/// it is logical to have multiple clean functions 
 	one_shot_360pc->pc.clear_all_for_get_next_shot();
 }
-
 ///
 void visual_processing::write_stored_pc_to_file() {
 	stored_cloud->write_pc_to_file();
 }
-
+///
 void visual_processing::write_stored_pc_to_file_direct() {
 	stored_cloud->pc.write(cgv::base::ref_data_path_list()[0] + "/output.txt");
 }
-
+///
 void visual_processing::print_cloud_info() {
 	std::cout << "data_ptr->point_cloud_kit: " << data_ptr->point_cloud_kit->pc.get_nr_points() << std::endl;
 	std::cout << "one_shot_360pc: " << one_shot_360pc->pc.get_nr_points() << std::endl;
 	std::cout << "stored_cloud: " << stored_cloud->pc.get_nr_points() << std::endl;
 }
-
-// you should have points and camposes loaded first! 
-// sample save directly, subsample when required is simple 
+/// you should have points and camposes loaded first! 
+/// sample save directly, subsample when required is simple 
 void visual_processing::auto_conduct_nml_estimation_leica() {
 	int loop_num = data_ptr->point_cloud_kit->pc.num_of_shots;
 	int i = 0;
@@ -661,7 +654,6 @@ void visual_processing::auto_conduct_nml_estimation_leica() {
 	else
 		write_stored_pc_to_file();
 }
-
 /// deprecated 
 void visual_processing::add_to_file_list() {
 	std::vector<string> tmpfilelist;
@@ -674,13 +666,11 @@ void visual_processing::add_to_file_list() {
 		std::cout << "file: " << f <<" in list" << std::endl;
 	}
 }
-
 /// deprecated 
 void visual_processing::clean_file_list() {
 	f_names.clear();
 }
-
-// must have a corresp. campose file ! 
+/// must have a corresp. campose file ! 
 bool visual_processing::batch_compute_nmls_given_file_list() {
 	f_names.clear();
 	cgv::gui::files_open_dialog(f_names, "Open", "Point Cloud:*");
@@ -700,25 +690,58 @@ bool visual_processing::batch_compute_nmls_given_file_list() {
 	}
 	return true;
 }
-
+///
 bool visual_processing::batch_read_pc_queue_and_downsampling() {
 	return true;
 }
-
+///
 void visual_processing::clean_all_pcs() {
 	data_ptr->point_cloud_kit->clear_all();
 	one_shot_360pc->clear_all();
 	stored_cloud->clear_all();
 	std::cout << "all pcs cleared" << std::endl;
 }
-
+///
 void visual_processing::load_image_from_bin_files() {
 	//std::string f = cgv::gui::file_open_dialog("Open", "Images:*");
 	//image_renderer_kit->bind_image_to_camera_position(*get_context(),f,quat(),vec3(0,1,0));
 	//render_img = true;
 	//post_redraw();
 }
-
+////////////////////////////////////////////////////////////////////////
+//// rendering mode switching
+////////////////////////////////////////////////////////////////////////
+///
+void visual_processing::switch_rendering_mode_quad_based() {
+	data_ptr->point_cloud_kit->RENDERING_STRATEGY = 1;
+	data_ptr->point_cloud_kit->is_switching = true;
+	data_ptr->point_cloud_kit->on_clod_rendering_settings_changed();
+	post_redraw();
+}
+///
+void visual_processing::switch_rendering_mode_point_based() {
+	data_ptr->point_cloud_kit->RENDERING_STRATEGY = 2;
+	data_ptr->point_cloud_kit->is_switching = true;
+	data_ptr->point_cloud_kit->on_clod_rendering_settings_changed();
+	post_redraw();
+}
+///
+void visual_processing::switch_rendering_mode_surfel_based() {
+	data_ptr->point_cloud_kit->RENDERING_STRATEGY = 3;
+	data_ptr->point_cloud_kit->is_switching = true;
+	data_ptr->point_cloud_kit->on_clod_rendering_settings_changed();
+	post_redraw();
+}
+///
+void visual_processing::switch_rendering_mode_clod_based() {
+	data_ptr->point_cloud_kit->RENDERING_STRATEGY = 4;
+	data_ptr->point_cloud_kit->is_switching = true;
+	data_ptr->point_cloud_kit->on_clod_rendering_settings_changed();
+	post_redraw();
+}
+////////////////////////////////////////////////////////////////////////
+//// gui
+////////////////////////////////////////////////////////////////////////
 void visual_processing::create_gui() {
 	add_decorator("visual_processing_main", "heading", "level=2");
 	//paratone_1
@@ -742,6 +765,18 @@ void visual_processing::create_gui() {
 		"value_slider", "min=0.05;max=5;log=false;ticks=false;");
 	add_member_control(this, "render skybox", render_skybox, "check");
 	add_member_control(this, "render_nmls", data_ptr->point_cloud_kit->show_nmls, "check");
+	/*add_member_control(this, "RENDERING_STRATEGY", data_ptr->point_cloud_kit->RENDERING_STRATEGY, 
+		"value_slider", "min=0;max=4;log=false;ticks=true;");*/
+	//stich_rendering_mode_point_based 
+	connect_copy(add_button("render_with_points")->click, rebind(this, 
+		&visual_processing::switch_rendering_mode_point_based));
+	connect_copy(add_button("render_with_quads")->click, rebind(this, 
+		&visual_processing::switch_rendering_mode_quad_based));
+	connect_copy(add_button("render_with_surfel")->click, rebind(this,
+		&visual_processing::switch_rendering_mode_surfel_based));
+	connect_copy(add_button("render_with_clod")->click, rebind(this,
+		&visual_processing::switch_rendering_mode_clod_based));
+
 
 	if (begin_tree_node("Point Cloud Generation", render_skybox, true, "level=3")) {
 		connect_copy(add_button("generate_pc_hemisphere")->click, 
