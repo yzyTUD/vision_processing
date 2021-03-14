@@ -83,6 +83,10 @@ public:
 	bool enable_acloud_effect = true;
 	bool enable_headset_culling = true;
 
+	/*visual effects, shader control*/
+	bool visual_delete = false;
+	bool render_with_original_color = true;
+
 	/*palette rendering, render with color palletes*/
 	std::vector<Clr>* use_these_point_colors;
 	std::vector<RGBA>* use_these_point_palette;

@@ -147,7 +147,7 @@ public:
 	///
 	void reset_all_grows();
 	///
-	void init_region_growing_by_collecting_group_and_seeds_vr(int max_num_regions);
+	void init_region_growing_by_collecting_group_and_seeds_vr(); 
 	///
 	void init_region_growing_by_setting_group_and_seeds(int growing_group, std::queue<int> picked_id_list);
 	///

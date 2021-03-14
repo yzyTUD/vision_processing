@@ -360,7 +360,7 @@ void point_cloud_interactable::prepare_marking(std::vector<rgba>* psc) {
 	use_these_point_color_indices = &pc.point_selection;
 
 }
-///
+/// currently, we set confirmed to true. The visual feedback is better to be impl. in shaders.
 void point_cloud_interactable::mark_points_with_conroller(Pnt p, float r, bool confirmed, int objctive) {
 	if (pc.get_nr_points()) {
 		ensure_tree_ds();
@@ -369,8 +369,8 @@ void point_cloud_interactable::mark_points_with_conroller(Pnt p, float r, bool c
 		if (closest_dist > r) {
 			if (marked == true) {
 				for (Idx i = 0; i < (Idx)pc.get_nr_points(); ++i) {
-					if (pc.point_selection.at(i) == point_cloud::P_C::VISUAL_MARK)
-						pc.point_selection.at(i) = point_cloud::P_C::ORI;
+					if (pc.point_selection.at(i) == point_cloud::PointSelectiveAttribute::VISUAL_MARK)
+						pc.point_selection.at(i) = point_cloud::PointSelectiveAttribute::ORI;
 				}
 				marked = false;
 			}
@@ -393,7 +393,7 @@ void point_cloud_interactable::mark_points_with_conroller(Pnt p, float r, bool c
 						if (confirmed)
 							pc.point_selection.at(knn.at(i)) = objctive;
 						else {
-							pc.point_selection.at(knn.at(i)) = point_cloud::P_C::VISUAL_MARK;
+							pc.point_selection.at(knn.at(i)) = point_cloud::PointSelectiveAttribute::VISUAL_MARK;
 							marked = true;
 						}
 						pc.has_selection = true;
@@ -407,7 +407,7 @@ void point_cloud_interactable::mark_points_with_conroller(Pnt p, float r, bool c
 						if (confirmed)
 							pc.point_selection.at(i) = objctive;
 						else {
-							pc.point_selection.at(i) = point_cloud::P_C::VISUAL_MARK;
+							pc.point_selection.at(i) = point_cloud::PointSelectiveAttribute::VISUAL_MARK;
 							marked = true;
 						}
 						pc.has_selection = true;
@@ -426,7 +426,8 @@ void point_cloud_interactable::prepare_grow(bool read_from_file, std::vector<rgb
 	// if no selection present, clear point_selection
 	if (!read_from_file || !pc.has_selection) { 
 		pc.point_selection.resize(pc.get_nr_points());
-		for (auto& v : pc.point_selection) v = 0;
+		// initialize to 1
+		for (auto& v : pc.point_selection) v = 1u;
 	}
 
 	// reset rendering properties 
@@ -454,15 +455,15 @@ void point_cloud_interactable::reset_all_grows() {
 	// todo 
 }
 ///
-void point_cloud_interactable::init_region_growing_by_collecting_group_and_seeds_vr(int max_num_regions) {
+void point_cloud_interactable::init_region_growing_by_collecting_group_and_seeds_vr() {
 	// reset region seeds vars 
 	region_id_and_seeds.clear();
 	region_id_and_nml.clear();
 	std::queue<int> empty;
-	region_id_and_seeds.resize(max_num_regions, empty);
-	region_id_and_nml.resize(max_num_regions, vec3(0));
+	region_id_and_seeds.resize(pc.max_num_of_selections, empty);
+	region_id_and_nml.resize(pc.max_num_of_selections, vec3(0));
 	// collect all related idx and push to queue, ready to grow after this 
-	for (int gi = 7; gi<max_num_regions; gi++) {
+	for (int gi = pc.num_of_functional_selections; gi< pc.max_num_of_selections; gi++) {
 		for (int idx = 0; idx < pc.get_nr_points(); idx++) {
 			if (pc.point_selection.at(idx) == gi) {
 				region_id_and_seeds[gi].push(idx);
@@ -579,8 +580,8 @@ void point_cloud_interactable::mark_points_inside_selection_tool(Pnt p, float r,
 		if (closest_dist > r) {
 			if (marked == true){
 				for (Idx i = 0; i < (Idx)pc.get_nr_points(); ++i) {
-					if (pc.point_selection.at(i) == point_cloud::P_C::VISUAL_MARK)
-						pc.point_selection.at(i) = point_cloud::P_C::ORI;
+					if (pc.point_selection.at(i) == point_cloud::PointSelectiveAttribute::VISUAL_MARK)
+						pc.point_selection.at(i) = point_cloud::PointSelectiveAttribute::ORI;
 				}
 				marked = false;
 			}
@@ -603,7 +604,7 @@ void point_cloud_interactable::mark_points_inside_selection_tool(Pnt p, float r,
 						if(confirmed)
 							pc.point_selection.at(knn.at(i)) = objctive;
 						else {
-							pc.point_selection.at(knn.at(i)) = point_cloud::P_C::VISUAL_MARK;
+							pc.point_selection.at(knn.at(i)) = point_cloud::PointSelectiveAttribute::VISUAL_MARK;
 							marked = true;
 						}
 						pc.has_selection = true;
@@ -617,7 +618,7 @@ void point_cloud_interactable::mark_points_inside_selection_tool(Pnt p, float r,
 						if (confirmed)
 							pc.point_selection.at(i) = objctive;
 						else {
-							pc.point_selection.at(i) = point_cloud::P_C::VISUAL_MARK;
+							pc.point_selection.at(i) = point_cloud::PointSelectiveAttribute::VISUAL_MARK;
 							marked = true;
 						}
 						pc.has_selection = true;
@@ -652,7 +653,7 @@ void point_cloud_interactable::ensure_point_selection_pc() {
 		{
 			pc.point_selection.resize(pc.get_nr_points());
 			for (auto& v : pc.point_selection) {
-				v = point_cloud::P_C::ORI;
+				v = point_cloud::PointSelectiveAttribute::ORI;
 			}
 		}
 	}
@@ -665,7 +666,7 @@ void point_cloud_interactable::ensure_point_selection() {
 		{
 			pc_last.point_selection.resize(pc_last.get_nr_points());
 			for (auto& v : pc_last.point_selection) {
-				v = point_cloud::P_C::ORI;
+				v = point_cloud::PointSelectiveAttribute::ORI;
 			}
 		}
 	}
@@ -675,7 +676,7 @@ void point_cloud_interactable::ensure_point_selection() {
 		{
 			pc_to_be_append.point_selection.resize(pc_to_be_append.get_nr_points());
 			for (auto& v : pc_to_be_append.point_selection) {
-				v = point_cloud::P_C::ORI;
+				v = point_cloud::PointSelectiveAttribute::ORI;
 			}
 		}
 	}
@@ -691,8 +692,8 @@ void point_cloud_interactable::subsampling_target(
 		if (closest_dist > r) {
 			if (marked == true) {
 				for (Idx i = 0; i < (Idx)pc_last.get_nr_points(); ++i) {
-					if (pc_last.point_selection.at(i) == point_cloud::P_C::VISUAL_MARK)
-						pc_last.point_selection.at(i) = point_cloud::P_C::ORI;
+					if (pc_last.point_selection.at(i) == point_cloud::PointSelectiveAttribute::VISUAL_MARK)
+						pc_last.point_selection.at(i) = point_cloud::PointSelectiveAttribute::ORI;
 				}
 				marked = false;
 			}
@@ -713,9 +714,9 @@ void point_cloud_interactable::subsampling_target(
 					// check if is smaller than r 
 					if (dist_list.at(i) < r) {
 						if (confirmed)
-							pc_last.point_selection.at(knn.at(i)) = point_cloud::P_C::ICP_TARGET;
+							pc_last.point_selection.at(knn.at(i)) = point_cloud::PointSelectiveAttribute::ICP_TARGET;
 						else {
-							pc_last.point_selection.at(knn.at(i)) = point_cloud::P_C::VISUAL_MARK;
+							pc_last.point_selection.at(knn.at(i)) = point_cloud::PointSelectiveAttribute::VISUAL_MARK;
 							marked = true;
 						}
 						pc_last.has_selection = true;
@@ -727,9 +728,9 @@ void point_cloud_interactable::subsampling_target(
 				for (Idx i = 0; i < (Idx)pc_last.get_nr_points(); ++i) {
 					if ((pc_last.pnt(i) - p).length() < r) {
 						if (confirmed)
-							pc_last.point_selection.at(i) = point_cloud::P_C::ICP_TARGET;
+							pc_last.point_selection.at(i) = point_cloud::PointSelectiveAttribute::ICP_TARGET;
 						else {
-							pc_last.point_selection.at(i) = point_cloud::P_C::VISUAL_MARK;
+							pc_last.point_selection.at(i) = point_cloud::PointSelectiveAttribute::VISUAL_MARK;
 							marked = true;
 						}
 						pc_last.has_selection = true;
@@ -752,8 +753,8 @@ void point_cloud_interactable::subsampling_source(
 		if (closest_dist > r) {
 			if (marked == true) {
 				for (Idx i = 0; i < (Idx)pc_to_be_append.get_nr_points(); ++i) {
-					if (pc_to_be_append.point_selection.at(i) == point_cloud::P_C::VISUAL_MARK)
-						pc_to_be_append.point_selection.at(i) = point_cloud::P_C::ORI;
+					if (pc_to_be_append.point_selection.at(i) == point_cloud::PointSelectiveAttribute::VISUAL_MARK)
+						pc_to_be_append.point_selection.at(i) = point_cloud::PointSelectiveAttribute::ORI;
 				}
 				marked = false;
 			}
@@ -774,9 +775,9 @@ void point_cloud_interactable::subsampling_source(
 					// check if is smaller than r 
 					if (dist_list.at(i) < r) {
 						if (confirmed)
-							pc_to_be_append.point_selection.at(knn.at(i)) = point_cloud::P_C::ICP_SOURCE;
+							pc_to_be_append.point_selection.at(knn.at(i)) = point_cloud::PointSelectiveAttribute::ICP_SOURCE;
 						else {
-							pc_to_be_append.point_selection.at(knn.at(i)) = point_cloud::P_C::VISUAL_MARK;
+							pc_to_be_append.point_selection.at(knn.at(i)) = point_cloud::PointSelectiveAttribute::VISUAL_MARK;
 							marked = true;
 						}
 						pc_to_be_append.has_selection = true;
@@ -788,9 +789,9 @@ void point_cloud_interactable::subsampling_source(
 				for (Idx i = 0; i < (Idx)pc_to_be_append.get_nr_points(); ++i) {
 					if ((pc_to_be_append.pnt(i) - p).length() < r) {
 						if (confirmed)
-							pc_to_be_append.point_selection.at(i) = point_cloud::P_C::ICP_SOURCE;
+							pc_to_be_append.point_selection.at(i) = point_cloud::PointSelectiveAttribute::ICP_SOURCE;
 						else {
-							pc_to_be_append.point_selection.at(i) = point_cloud::P_C::VISUAL_MARK;
+							pc_to_be_append.point_selection.at(i) = point_cloud::PointSelectiveAttribute::VISUAL_MARK;
 							marked = true;
 						}
 						pc_to_be_append.has_selection = true;
@@ -806,12 +807,12 @@ void point_cloud_interactable::collect_to_subsampled_pcs() {
 	pc_last_subsampled.clear_all();
 	pc_to_be_append_subsampled.clear_all();
 	for (int i = 0; i < pc_last.get_nr_points(); i++) {
-		if (pc_last.point_selection.at(i) == point_cloud::P_C::ICP_TARGET) {
+		if (pc_last.point_selection.at(i) == point_cloud::PointSelectiveAttribute::ICP_TARGET) {
 			pc_last_subsampled.add_point_subsampling(pc_last.pnt(i), pc_last.nml(i));
 		}
 	}
 	for (int i = 0; i < pc_to_be_append.get_nr_points(); i++) {
-		if (pc_to_be_append.point_selection.at(i) == point_cloud::P_C::ICP_SOURCE) {
+		if (pc_to_be_append.point_selection.at(i) == point_cloud::PointSelectiveAttribute::ICP_SOURCE) {
 			pc_to_be_append_subsampled.add_point_subsampling(pc_to_be_append.pnt(i), pc_to_be_append.nml(i));
 		}
 	}
@@ -824,13 +825,13 @@ void point_cloud_interactable::highlight_last_pc() {
 		pc = pc_last;
 		ensure_point_selection();
 		for (auto& v : pc_last.point_selection) {
-			v = point_cloud::P_C::ICP_TARGET_HIGHLIGHT;
+			v = point_cloud::PointSelectiveAttribute::ICP_TARGET_HIGHLIGHT;
 		}
 		use_these_point_color_indices = &pc_last.point_selection;
 		is_highlighting = true;
 	}
 	for (auto& v : pc_to_be_append.point_selection) {
-		v = point_cloud::P_C::ICP_SOURCE_HIGHLIGHT;
+		v = point_cloud::PointSelectiveAttribute::ICP_SOURCE_HIGHLIGHT;
 	}
 }
 ///
@@ -838,7 +839,7 @@ void point_cloud_interactable::reset_highlighted_last_pc() {
 	pc = tmppc;
 	ensure_point_selection_pc();
 	for (auto& v : pc_last.point_selection) {
-		v = point_cloud::P_C::ORI;
+		v = point_cloud::PointSelectiveAttribute::ORI;
 	}
 	use_these_point_color_indices = &pc.point_selection;
 	is_highlighting = false;

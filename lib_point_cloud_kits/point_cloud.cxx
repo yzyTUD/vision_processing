@@ -444,6 +444,31 @@ void point_cloud::smart_append(const point_cloud& pc) {
 	box_out_of_date = true;
 }
 
+void point_cloud::remove_deleted_points_impl() {
+	vector<Pnt> tmp_P;
+	vector<Clr> tmp_C;
+	vector<Nml> tmp_N;
+
+	for (int i = 0; i < P.size(); i++) {
+		if (point_selection[i] != PointSelectiveAttribute::DEL) {
+			// preserve if on the same side 
+			tmp_P.push_back(P.at(i));
+			if (has_colors())
+				tmp_C.push_back(C.at(i));
+			if (has_normals())
+				tmp_N.push_back(N.at(i));
+		}
+	}
+
+	P = tmp_P;
+	if (has_colors())
+		C = tmp_C;
+	if (has_normals())
+		N = tmp_N;
+
+	box_out_of_date = true;
+}
+
 /// append another point cloud
 void point_cloud::append(const point_cloud& pc)
 {
@@ -1858,7 +1883,7 @@ bool point_cloud::read_obj(const string& _file_name)
 	point_cloud_obj_loader pc_obj(P,N,C,point_selection);
 	if (!exists(_file_name))
 		return false;
-	clear();
+	//clear();
 	if (!pc_obj.read_obj(_file_name))
 		return false;
 	cam_posi = pc_obj.cam_posi;

@@ -128,19 +128,28 @@ protected:
 	std::vector<cgv::type::uint8_type> point_selection;
 	///
 	std::vector<bool> point_selection_visited;
-
-	/// per vertex marked index 
-	enum P_C {
-		ORI = 0,
-		VISUAL_MARK = 1,
-		BOUNDARIES = 2,
-		ICP_SOURCE = 3,
-		ICP_TARGET = 4,
-		ICP_SOURCE_HIGHLIGHT = 5,
-		ICP_TARGET_HIGHLIGHT = 6
-		// region id start from 7 to 7 + 25 
+public:
+	/// per vertex marked index, PointSelectiveAttribute
+	/// 20 reserved
+	/// copy to shader file 
+	enum PointSelectiveAttribute {
+		VISUAL_MARK,
+		ORI = 1,
+		DEL,
+		BOUNDARIES,
+		ICP_SOURCE,
+		ICP_TARGET,
+		ICP_SOURCE_HIGHLIGHT,
+		ICP_TARGET_HIGHLIGHT,
+		// add new functional idx above
+		EndOfFunctionalIndices
+		// then, region id start from the end of this struct 
 	};
+	int num_of_functional_selections = 20;
+	int num_of_regions = 25;
+	int max_num_of_selections = num_of_functional_selections + num_of_regions;
 
+protected:
 	/// container to store  one component index per point
 	std::vector<unsigned> component_indices;
 
@@ -294,6 +303,8 @@ public:
 	void clear_all();
 	/// 
 	void clear_campose();
+	/// delete marked points 
+	void remove_deleted_points_impl();
 	/// append another point cloud
 	void append(const point_cloud& pc);
 	///

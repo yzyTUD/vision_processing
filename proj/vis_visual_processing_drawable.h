@@ -293,6 +293,7 @@ bool visual_processing::init(cgv::render::context& ctx)
 ///	
 bool visual_processing::handle(cgv::gui::event& e)
 {
+	/* do not return explicitly */
 	if (b_interactable != nullptr)b_interactable->handle(e);
 	if (handhold_near_kit != nullptr)handhold_near_kit->handle(e);
 	if (tmpfixed_gui_kit != nullptr)tmpfixed_gui_kit->handle(e);
@@ -303,6 +304,23 @@ bool visual_processing::handle(cgv::gui::event& e)
 	if (selection_kit != nullptr)selection_kit->handle(e);
 
 	// main handler for gui 
+	if (e.get_kind() == cgv::gui::EID_KEY) {
+		cgv::gui::vr_key_event& vrke = static_cast<cgv::gui::vr_key_event&>(e);
+		if (vrke.get_key() == vr::VR_MENU) { //
+			if (vrke.get_action() == cgv::gui::KA_PRESS) { //
+				if (vrke.get_controller_index() == data_ptr->right_rgbd_controller_index) { //
+					if (data_ptr->check_roulette_selection(data_ptr->get_id_with_name("PointCloud\nDelPoints\nTouchTo\nActivate"))) { //
+						// actual deletion 
+						/*data_ptr->point_cloud_kit->pc.remove_deleted_points_impl();
+						data_ptr->point_cloud_kit->on_point_cloud_change_callback(
+							PointCloudChangeEvent(PCC_POINTS_RESIZE + PCC_COMPONENTS_RESIZE));
+						post_redraw();*/
+						data_ptr->point_cloud_kit->visual_delete = !data_ptr->point_cloud_kit->visual_delete;
+					}
+				}
+			}
+		}
+	}
 	if (e.get_kind() == cgv::gui::EID_STICK) {
 		cgv::gui::vr_stick_event& vrse = static_cast<cgv::gui::vr_stick_event&>(e);
 		if (vrse.get_action() == cgv::gui::SA_TOUCH) { // event 
@@ -336,6 +354,21 @@ bool visual_processing::handle(cgv::gui::event& e)
 					data_ptr->point_cloud_kit->enable_headset_culling = 
 						!data_ptr->point_cloud_kit->enable_headset_culling;
 				}
+
+				// touch to activate deletion selection/marking of the points 
+				if (data_ptr->check_roulette_selection(data_ptr->get_id_with_name("PointCloud\nDelPoints\nTouchTo\nActivate"))) {
+					// this will be used in the throttle event 
+					selection_kit->current_selecting_idx = point_cloud::PointSelectiveAttribute::DEL;
+				}
+				// touch to activate 
+				if (data_ptr->check_roulette_selection(data_ptr->get_id_with_name("PointCloud\nMarkAs\nOrig"))) {
+					// this will be used in the throttle event 
+					selection_kit->current_selecting_idx = point_cloud::PointSelectiveAttribute::ORI;
+				}
+				// touch to toggle 
+				if (data_ptr->check_roulette_selection(data_ptr->get_id_with_name("PointCloud\nToggle\npcColor"))) {
+					data_ptr->point_cloud_kit->render_with_original_color = !data_ptr->point_cloud_kit->render_with_original_color;
+				}
 			}
 		}
 		if (vrse.get_action() == cgv::gui::SA_MOVE) { // event 
@@ -343,9 +376,11 @@ bool visual_processing::handle(cgv::gui::event& e)
 				if (data_ptr->check_roulette_selection(data_ptr->get_id_with_name("PointCloud\nPointSize"))) {
 					if (vrse.get_y() > 0) {
 						// larger point size 
+						data_ptr->point_cloud_kit->surfel_style.point_size += 0.1f;
 						data_ptr->point_cloud_kit->point_size += 0.1f;
 					}
 					else {
+						data_ptr->point_cloud_kit->surfel_style.point_size -= 0.1f;
 						data_ptr->point_cloud_kit->point_size -= 0.1f;
 					}
 				}

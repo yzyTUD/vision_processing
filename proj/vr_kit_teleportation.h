@@ -283,7 +283,7 @@ public:
 									&& ci == data_ptr->right_rgbd_controller_index) {
 								vrse.get_state().controller[ci].put_ray(&origin(0), &direction(0));
 								direction.normalize();
-								vr_view_ptr->set_tracking_origin(vr_view_ptr->get_tracking_origin() + direction);
+								vr_view_ptr->set_tracking_origin(vr_view_ptr->get_tracking_origin() + direction * 0.2);
 							}
 							// fine grain 
 							if (data_ptr->check_roulette_selection(data_ptr->get_id_with_name("Teleport\nFineGrain"))) {

@@ -292,9 +292,8 @@ public:
 	std::vector<std::string> gp2_btns;
 	std::vector<std::string> gp3_btns;
 
-	// point cloud marking colors 
+	// point cloud marking colors, the same in shaders 
 	std::vector<rgba> point_selection_colors; 
-	int max_num_of_regions = 7 + 5 * 5;
 
 	// 
 	std::vector<vec3> headset_object_positions; // dynamic 
@@ -325,18 +324,20 @@ public:
 		gp0_btns.push_back("Teleport\nTeleport");
 		gps.push_back(gp0_btns);
 
-		gp1_btns.push_back("PointCloud\nLoadMMOffice");
-		gp1_btns.push_back("PointCloud\nFoldingPoints");
-		gp1_btns.push_back("PointCloud\nSuperSampling");
-		gp1_btns.push_back("PointCloud\nMarking");
+		// full
 		gp1_btns.push_back("PointCloud\nPointSize");
-		gp1_btns.push_back("PointCloud\nShowNml");
 		gp1_btns.push_back("PointCloud\nGroupPicker");
+		gp1_btns.push_back("PointCloud\nDelPoints\nTouchTo\nActivate");
+		gp1_btns.push_back("PointCloud\nMarkAs\nOrig");
+		gp1_btns.push_back("PointCloud\nPrepare\nMarking");
+		gp1_btns.push_back("PointCloud\nToggle\npcColor");
+		//gp1_btns.push_back("PointCloud\nFoldingPoints");
+		gp1_btns.push_back("PointCloud\nSuperSampling");
+		gp1_btns.push_back("PointCloud\nShowNml");
 		gp1_btns.push_back("PointCloud\nToggle\nACloud");
 		gp1_btns.push_back("PointCloud\nACloud\nCtrl\nRange");
 		gp1_btns.push_back("PointCloud\nToggle\nCamera\nCulling");
 		gp1_btns.push_back("PointCloud\nCulling\nRange");
-		//
 		gps.push_back(gp1_btns);
 
 		gp2_btns.push_back("Meshing\nPickingPoints");
@@ -349,26 +350,132 @@ public:
 		std::default_random_engine generator;
 		std::uniform_real_distribution<float> distribution(0, 1);
 
-		// first 6 colors are fixed while the others are random generated 
 		float some_float = distribution(generator);
 		some_float = distribution(generator);
 		some_float = distribution(generator);
-		point_selection_colors.push_back(rgba(0.5f, 0.5f, 0.5f, 1.0f));
-		point_selection_colors.push_back(rgba(1.0f, 1.0f, 0.5f, 1.0f));
-		point_selection_colors.push_back(rgba(0.0f, 0.0f, 1.0f, 1.0f));
+
+		/*this is replaced by fixed color initialization */
+		//// first 7 colors are fixed while the others are random generated 
+		//// 7 fixed color for easier visual recognization 
+		//point_selection_colors.push_back(rgba(0.5f, 0.5f, 0.5f, 1.0f));
+		//point_selection_colors.push_back(rgba(1.0f, 1.0f, 0.5f, 1.0f));
+		//point_selection_colors.push_back(rgba(0.0f, 0.0f, 1.0f, 1.0f));
+		//point_selection_colors.push_back(rgba(1.0f, 0.0f, 0.0f, 1.0f));
+		//point_selection_colors.push_back(rgba(175.0f / 255, 109.0f / 255, 47.0f / 255, 1.0f));
+		//point_selection_colors.push_back(rgba(148.0f / 255, 10.0f / 255, 161.0f / 255, 1.0f));
+		//point_selection_colors.push_back(rgba(14.0f / 255, 100.0f / 255, 16.0f / 255, 1.0f));
+		//// the rest of colors for functional selection 
+		//for (int i = 0; i < point_cloud_kit->pc.num_of_functional_selections - 7; i++) {
+		//	rgba tmpcol = rgba(
+		//		0.9f * distribution(generator) + 0.1f,
+		//		0.9f * distribution(generator) + 0.1f,
+		//		0.9f * distribution(generator) + 0.1f,
+		//		1.0f
+		//	);
+		//	point_selection_colors.push_back(tmpcol);
+		//}
+		//// region/ face/ edge selection, 25 for now as a very quick test 
+		//for (int i = 0; i < point_cloud_kit->pc.num_of_regions; i++) {
+		//	rgba tmpcol = rgba(
+		//		0.9f * distribution(generator) + 0.1f,
+		//		0.9f * distribution(generator) + 0.1f,
+		//		0.9f * distribution(generator) + 0.1f,
+		//		1.0f
+		//	);
+		//	point_selection_colors.push_back(tmpcol);
+		//}
+
+		/*colors for functional selection */
+		point_selection_colors.push_back(rgba(1.0f, 1.0f, 0.5f, 1.0f)); 
+		point_selection_colors.push_back(rgba(0.5f, 0.5f, 0.5f, 1.0f)); // ori, may not visible
+		point_selection_colors.push_back(rgba(0.0f, 0.0f, 0.0f, 1.0f)); // del, may not visible, the same as ori? 
 		point_selection_colors.push_back(rgba(1.0f, 0.0f, 0.0f, 1.0f));
-		point_selection_colors.push_back(rgba(175.0f / 255, 109.0f / 255, 47.0f / 255, 1.0f));
-		point_selection_colors.push_back(rgba(148.0f / 255, 10.0f / 255, 161.0f / 255, 1.0f));
-		point_selection_colors.push_back(rgba(14.0f / 255, 100.0f / 255, 16.0f / 255, 1.0f));
-		for (int i = 0; i < max_num_of_regions - 7; i++) {
-			rgba tmpcol = rgba(
-				0.9f * distribution(generator) + 0.1f,
-				0.9f * distribution(generator) + 0.1f,
-				0.9f * distribution(generator) + 0.1f,
-				1.0f
-			);
-			point_selection_colors.push_back(tmpcol);
-		}
+		point_selection_colors.push_back(rgba(0.996815, 0.961756, 0.993593, 1));
+
+		point_selection_colors.push_back(rgba(0.241852, 0.970925, 0.9684, 1));
+		point_selection_colors.push_back(rgba(0.982999, 0.973534, 0.753255, 1));
+		point_selection_colors.push_back(rgba(0.536838, 0.198876, 0.96145, 1));
+		point_selection_colors.push_back(rgba(0.367326, 0.820252, 0.818295, 1));
+		point_selection_colors.push_back(rgba(0.479585, 0.104305, 0.227698, 1));
+
+		point_selection_colors.push_back(rgba(0.675787, 0.924162, 0.201218, 1));
+		point_selection_colors.push_back(rgba(0.963543, 0.890588, 0.812987, 1));
+		point_selection_colors.push_back(rgba(0.818136, 0.690167, 0.553296, 1));
+		point_selection_colors.push_back(rgba(0.864216, 0.425165, 0.132141, 1));
+		point_selection_colors.push_back(rgba(0.713224, 0.940594, 0.290732, 1));
+
+		point_selection_colors.push_back(rgba(0.781966, 0.458865, 0.710862, 1));
+		point_selection_colors.push_back(rgba(0.527283, 0.768819, 0.766583, 1));
+		point_selection_colors.push_back(rgba(0.68993, 0.479879, 0.453004, 1));
+		point_selection_colors.push_back(rgba(0.371722, 0.254068, 0.256479, 1));
+		point_selection_colors.push_back(rgba(0.12865, 0.817552, 0.735442, 1));
+		//
+		/*colors for region selection */
+		point_selection_colors.push_back(rgba(0.885186, 0.349231, 0.384895, 1));
+		point_selection_colors.push_back(rgba(0.187419, 0.234203, 0.141554, 1));
+		point_selection_colors.push_back(rgba(0.839713, 0.841112, 0.994662, 1));
+		point_selection_colors.push_back(rgba(0.38539, 0.212664, 0.725346, 1));
+		point_selection_colors.push_back(rgba(0.54153, 0.9552, 0.787375, 1));
+		point_selection_colors.push_back(rgba(0.49487, 0.697245, 0.131001, 1));
+		point_selection_colors.push_back(rgba(0.289188, 0.443403, 0.213307, 1));
+		point_selection_colors.push_back(rgba(0.81568, 0.146095, 0.788965, 1));
+		point_selection_colors.push_back(rgba(0.467858, 0.268185, 0.132797, 1));
+		point_selection_colors.push_back(rgba(0.501028, 0.51219, 0.540788, 1));
+		point_selection_colors.push_back(rgba(0.814578, 0.681682, 0.538812, 1));
+		point_selection_colors.push_back(rgba(0.779218, 0.928787, 0.738428, 1));
+		point_selection_colors.push_back(rgba(0.735197, 0.348423, 0.826778, 1));
+		point_selection_colors.push_back(rgba(0.689588, 0.102537, 0.711732, 1));
+		point_selection_colors.push_back(rgba(0.679565, 0.246351, 0.739634, 1));
+		point_selection_colors.push_back(rgba(0.548528, 0.51043, 0.207098, 1));
+		point_selection_colors.push_back(rgba(0.616379, 0.96377, 0.796525, 1));
+		point_selection_colors.push_back(rgba(0.626741, 0.889082, 0.406347, 1));
+		point_selection_colors.push_back(rgba(0.115997, 0.301431, 0.827358, 1));
+		point_selection_colors.push_back(rgba(0.329586, 0.839121, 0.77614, 1));
+		point_selection_colors.push_back(rgba(0.946067, 0.555361, 0.838757, 1));
+		point_selection_colors.push_back(rgba(0.901813, 0.4714, 0.729169, 1));
+		point_selection_colors.push_back(rgba(0.622861, 0.963362, 0.480849, 1));
+		point_selection_colors.push_back(rgba(0.224762, 0.242252, 0.592494, 1));
+		point_selection_colors.push_back(rgba(0.30714, 0.234365, 0.785558, 1));
+
+		/*procedure color generation*/
+		//for (int i = 0; i < point_cloud_kit->pc.max_num_of_selections; i++) {
+		//	rgba tmpcol = rgba(
+		//		0.9f * distribution(generator) + 0.1f,
+		//		0.9f * distribution(generator) + 0.1f,
+		//		0.9f * distribution(generator) + 0.1f,
+		//		1.0f
+		//	);
+		//	point_selection_colors.push_back(tmpcol);
+		//}
+		//// print them out 
+		//if (true) {
+		//	int i = 0;
+		//	for (auto c: point_selection_colors) {
+		//		std::cout << "point_selection_colors.push_back(rgba(" 
+		//			<< c[0] << "," << c[1] <<  ","  << c[2] << "," << c.alpha() << "));" << std::endl;
+		//		i++;
+		//		if (i == 20)std::cout << "//" << std::endl;
+		//	}
+		//}
+
+		// to shader 
+		/*
+		vec3 COLOR_MASKS[8] = vec3[]( 
+								vec3( 0.0, 0.0, 0.0 ),
+                                vec3( 0.5, 0.5, 0.5 ),
+                                ... 
+                              );
+		*/
+		//if (true) {
+		//	int i = 0;
+		//	std::cout << "vec4 COLOR_MASKS[" << point_selection_colors.size() << "] = vec4[](" << std::endl;
+		//	for (auto c: point_selection_colors) {
+		//		std::cout << "vec4(" << c[0] << "," << c[1] <<  ","  << c[2] << "," << c.alpha() <<")," << std::endl;
+		//		i++;
+		//		if (i == 20)std::cout << "//" << std::endl;
+		//	}
+		//	std::cout << ");" << std::endl;
+		//}
 
 		// 
 		righthand_object_positions.push_back(vec3(0));
@@ -376,21 +483,24 @@ public:
 		righthand_object_colors.push_back(rgb(0, 0, 1));
 		vec3 offset_right_global = vec3(0, 0, -0.2);
 
-
-		// pallete rendering 
+		// pallete rendering: positions 
 		for (int ix = -2; ix < 3; ix++) {
 			for (int iz = 1; iz < 6; iz++) {
 				palette_lefthand_object_positions.push_back(vec3(ix * 0.05, 0.1, -iz * 0.05));
 				palette_lefthand_palette_initialpose_positions.push_back(vec3(ix * 0.05, 0.1, -iz * 0.05));
 			}
 		}
-		//palette_lefthand_object_colors.reserve(max_num_of_regions - 7);
-		for (int i = 0; i < (max_num_of_regions - 7); i++)
-			palette_lefthand_object_colors.push_back(point_selection_colors[7 + i]);
-		palette_righthand_object_colors.push_back(point_selection_colors[7]);
+
+		// pallete rendering: colors  
+		//init the colors rendering on left and right hand  
+		for (int i = 0; i < point_cloud_kit->pc.num_of_regions; i++)
+			palette_lefthand_object_colors.push_back(
+				point_selection_colors[point_cloud_kit->pc.num_of_functional_selections + i]);
+		palette_righthand_object_colors.push_back(
+			point_selection_colors[point_cloud_kit->pc.num_of_functional_selections]);
 
 		// acloud rendering 
-		point_cloud_kit->enable_acloud_effect = true;
+		point_cloud_kit->enable_acloud_effect = false;
 		point_cloud_kit->enable_headset_culling = true;
 	}
 

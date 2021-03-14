@@ -53,7 +53,11 @@ private:
 	// group picker 
 	sphere_render_style palette_style;
 
+	//
+
 public:
+	/*public accessble varibles */
+	int current_selecting_idx = -1;
 	/// initialize rotation angle
 	vis_kit_selection()
 	{
@@ -212,12 +216,13 @@ public:
 			if (vrke.get_key() == vr::VR_MENU) { //
 				if (vrke.get_action() == cgv::gui::KA_PRESS) { //
 					if (vrke.get_controller_index() == data_ptr->right_rgbd_controller_index) { //
-						if (data_ptr->check_roulette_selection(data_ptr->get_id_with_name("PointCloud\nMarking"))) { //
-							data_ptr->point_cloud_kit->prepare_grow(false,&data_ptr->point_selection_colors,data_ptr->max_num_of_regions);
+						if (data_ptr->check_roulette_selection(data_ptr->get_id_with_name("PointCloud\nPrepare\nMarking"))) { //
+							data_ptr->point_cloud_kit->prepare_grow(false,
+								&data_ptr->point_selection_colors, 
+									data_ptr->point_cloud_kit->pc.max_num_of_selections);
 						}
 					}
 				}
-				return true;
 			}
 			//if (vrke.get_key() == vr::VR_DPAD_DOWN) { //
 			//	if (vrke.get_action() == cgv::gui::KA_PRESS) { //
@@ -260,143 +265,165 @@ public:
 						}
 					}
 				}
-				if (data_ptr->check_roulette_selection(data_ptr->get_id_with_name("PointCloud\nMarking"))) { // hold throttle to mark
-					if (v > 0) {
-						data_ptr->point_cloud_kit->mark_points_with_conroller(data_ptr->cur_right_hand_posi + data_ptr->cur_off_right,
-							marking_style.radius, true, 1);
-					}
-				}
-			}
-		}
-
-		// old version, old events 
-		switch (e.get_kind()) {
-
-		case cgv::gui::EID_KEY:
-		{
-			cgv::gui::vr_key_event& vrke = static_cast<cgv::gui::vr_key_event&>(e);
-			int ci = vrke.get_controller_index();
-			if (ci == data_ptr->right_rgbd_controller_index
-				&& vrke.get_key() == vr::VR_DPAD_DOWN
-				&& data_ptr->check_roulette_selection(data_ptr->get_id_with_name("PointCloud\nSuperSampling")))
-			{
-				if (vrke.get_action() == cgv::gui::KA_PRESS)
-				{
-					////clear bbox 
-					//data_ptr->supersampling_bbox.invalidate();
-					//picking = false;
-					//record_controller_behavier_draw_circle = !record_controller_behavier_draw_circle;
-					//// if is going to end 
-					//if (record_controller_behavier_draw_circle) {
-					//	data_ptr->compute_bounded_points_with_drawn_data();
-					//	data_ptr->righthand_posi_list.clear();
-					//	data_ptr->righthand_dir_list.clear();
-					//}
-					//std::cout << "righthanddown pressed!" << std::endl;
-				}
-			}
-			return true;
-		}
-		// THROTTLE to start the selection 
-		//case cgv::gui::EID_THROTTLE:
-		//{
-		//	auto& te = static_cast<cgv::gui::vr_throttle_event&>(e);
-		//	int ci = te.get_controller_index();
-		//	float v = te.get_value(); 
-		//	// e-c-s checking order 
-		//	bool d = (v == 1); // event 
-		//	if (ci == data_ptr->right_rgbd_controller_index)  // controller 
-		//		
-		//	}
-		//	return true;
-
-		//}
-		case cgv::gui::EID_STICK:
-		{
-			cgv::gui::vr_stick_event& vrse = static_cast<cgv::gui::vr_stick_event&>(e);
-			int ci = vrse.get_controller_index();
-			vec3 origin, direction;
-			if (ci != -1)
-				switch (vrse.get_action()) {
-				case cgv::gui::SA_TOUCH:
-					//std::cout << "righthand touch!" << std::endl;
-					if (ci == data_ptr->right_rgbd_controller_index 
-						&& data_ptr->check_roulette_selection(data_ptr->get_id_with_name("PointCloud\nSuperSampling"))
-							&& record_controller_behavier_draw_circle) {
-						vrse.get_state().controller[ci].put_ray(&origin(0), &direction(0));
-						data_ptr->righthand_posi_list.push_back(origin);
-						data_ptr->righthand_dir_list.push_back(direction); 
-					}
-					// quick test 
-					//if (ci == data_ptr->left_rgbd_controller_index) {
-					//	record_controller_behavier_draw_circle = !record_controller_behavier_draw_circle;
-					//	// if is going to end 
-					//	if (record_controller_behavier_draw_circle) {
-					//		data_ptr->compute_bounded_points_with_drawn_data();
-					//		data_ptr->righthand_posi_list.clear();
-					//		data_ptr->righthand_dir_list.clear();
-					//	}
-					//}
-					break;
-				case cgv::gui::SA_RELEASE:
-					break;
-				case cgv::gui::SA_PRESS:
-					break;
-				}
-			return true;
-		}
-		case cgv::gui::EID_POSE:
-		{
-			cgv::gui::vr_pose_event& vrpe = static_cast<cgv::gui::vr_pose_event&>(e);
-			// check for controller pose events
-			int ci = vrpe.get_trackable_index();
-			vec3 origin, direction;
-			// right hand event 
-			if (ci == data_ptr->right_rgbd_controller_index) {
-				//if (picking) {
-				//	//... bbox not so good for this task
+				//if (data_ptr->check_roulette_selection(data_ptr->get_id_with_name("PointCloud\nMarking"))) { // hold throttle to mark
+				//	if (v > 0 && current_selecting_idx!=-1) {
+				//		data_ptr->point_cloud_kit->mark_points_with_conroller(
+				//			data_ptr->cur_right_hand_posi + data_ptr->cur_off_right,
+				//				marking_style.radius, true, current_selecting_idx);
+				//	}
 				//}
-
-				// too many points to compute 
-				/*if (record_controller_behavier_draw_circle) {
-					vrpe.get_state().controller[ci].put_ray(&origin(0), &direction(0));
-					data_ptr->righthand_posi_list.push_back(origin);
-					data_ptr->righthand_dir_list.push_back(direction);
-				}*/
-			}
-			if (ci != -1) {
-				// check and update current point group selection -> which color are we using 
-				int smallestpalleteIdx = -1;
-				bool hasOverlaping = false;
-				float dist = std::numeric_limits<float>::max();
-				for (int i = 0; i < data_ptr->palette_lefthand_object_positions.size();i++) {
-					// just take the first one, righthand_object_positions has only one element
-					float cur_dist = (data_ptr->palette_lefthand_object_positions[i] 
-						- data_ptr->righthand_object_positions[0]).length();
-					if (cur_dist < dist) {
-						dist = cur_dist;
-						smallestpalleteIdx = i;
+				if (data_ptr->check_roulette_selection(data_ptr->get_id_with_name("PointCloud\nGroupPicker"))) { // hold throttle to mark
+					if (v > 0 && current_selecting_idx != -1) {
+						data_ptr->point_cloud_kit->mark_points_with_conroller(
+							data_ptr->cur_right_hand_posi + data_ptr->cur_off_right,
+								marking_style.radius, true, current_selecting_idx);
 					}
 				}
-				// update color with the one has minimal dist to the RC 
-				if (dist < palette_style.radius) {
-					hasOverlaping = true;
-					data_ptr->palette_righthand_object_colors[0] = 
-						data_ptr->palette_lefthand_object_colors[smallestpalleteIdx];
-					// todo: update picking group information 
+				if (data_ptr->check_roulette_selection(data_ptr->get_id_with_name("PointCloud\nDelPoints\nTouchTo\nActivate"))) { // hold throttle to mark
+					if (v > 0 && current_selecting_idx != -1) {
+						data_ptr->point_cloud_kit->mark_points_with_conroller(
+							data_ptr->cur_right_hand_posi + data_ptr->cur_off_right,
+								marking_style.radius, true, current_selecting_idx);
+					}
+				}
+				if (data_ptr->check_roulette_selection(data_ptr->get_id_with_name("PointCloud\nMarkAs\nOrig"))) { // hold throttle to mark
+					if (v > 0 && current_selecting_idx != -1) {
+						data_ptr->point_cloud_kit->mark_points_with_conroller(
+							data_ptr->cur_right_hand_posi + data_ptr->cur_off_right,
+								marking_style.radius, true, current_selecting_idx);
+					}
+				}
+				// allow more btns to paint here 
+			}
+		}
+		/// old version, old events. todo: rewrite this part with freq. test 
+		switch (e.get_kind()) {
+			case cgv::gui::EID_KEY:
+			{
+				cgv::gui::vr_key_event& vrke = static_cast<cgv::gui::vr_key_event&>(e);
+				int ci = vrke.get_controller_index();
+				if (ci == data_ptr->right_rgbd_controller_index
+					&& vrke.get_key() == vr::VR_DPAD_DOWN
+					&& data_ptr->check_roulette_selection(data_ptr->get_id_with_name("PointCloud\nSuperSampling")))
+				{
+					if (vrke.get_action() == cgv::gui::KA_PRESS)
+					{
+						////clear bbox 
+						//data_ptr->supersampling_bbox.invalidate();
+						//picking = false;
+						//record_controller_behavier_draw_circle = !record_controller_behavier_draw_circle;
+						//// if is going to end 
+						//if (record_controller_behavier_draw_circle) {
+						//	data_ptr->compute_bounded_points_with_drawn_data();
+						//	data_ptr->righthand_posi_list.clear();
+						//	data_ptr->righthand_dir_list.clear();
+						//}
+						//std::cout << "righthanddown pressed!" << std::endl;
+					}
+				}
+				return true;
+			}
+			// THROTTLE to start the selection 
+			//case cgv::gui::EID_THROTTLE:
+			//{
+			//	auto& te = static_cast<cgv::gui::vr_throttle_event&>(e);
+			//	int ci = te.get_controller_index();
+			//	float v = te.get_value(); 
+			//	// e-c-s checking order 
+			//	bool d = (v == 1); // event 
+			//	if (ci == data_ptr->right_rgbd_controller_index)  // controller 
+			//		
+			//	}
+			//	return true;
+			//}
+			case cgv::gui::EID_STICK:
+			{
+				cgv::gui::vr_stick_event& vrse = static_cast<cgv::gui::vr_stick_event&>(e);
+				int ci = vrse.get_controller_index();
+				vec3 origin, direction;
+				if (ci != -1)
+					switch (vrse.get_action()) {
+					case cgv::gui::SA_TOUCH:
+						//std::cout << "righthand touch!" << std::endl;
+						if (ci == data_ptr->right_rgbd_controller_index 
+							&& data_ptr->check_roulette_selection(data_ptr->get_id_with_name("PointCloud\nSuperSampling"))
+								&& record_controller_behavier_draw_circle) {
+							vrse.get_state().controller[ci].put_ray(&origin(0), &direction(0));
+							data_ptr->righthand_posi_list.push_back(origin);
+							data_ptr->righthand_dir_list.push_back(direction); 
+						}
+						// quick test 
+						//if (ci == data_ptr->left_rgbd_controller_index) {
+						//	record_controller_behavier_draw_circle = !record_controller_behavier_draw_circle;
+						//	// if is going to end 
+						//	if (record_controller_behavier_draw_circle) {
+						//		data_ptr->compute_bounded_points_with_drawn_data();
+						//		data_ptr->righthand_posi_list.clear();
+						//		data_ptr->righthand_dir_list.clear();
+						//	}
+						//}
+						break;
+					case cgv::gui::SA_RELEASE:
+						break;
+					case cgv::gui::SA_PRESS:
+						break;
+					}
+				return true;
+			}
+			case cgv::gui::EID_POSE:
+			{
+				cgv::gui::vr_pose_event& vrpe = static_cast<cgv::gui::vr_pose_event&>(e);
+				// check for controller pose events
+				int ci = vrpe.get_trackable_index();
+				vec3 origin, direction;
+				// right hand event 
+				if (ci == data_ptr->right_rgbd_controller_index) {
+					//if (picking) {
+					//	//... bbox not so good for this task
+					//}
 
+					// too many points to compute 
+					/*if (record_controller_behavier_draw_circle) {
+						vrpe.get_state().controller[ci].put_ray(&origin(0), &direction(0));
+						data_ptr->righthand_posi_list.push_back(origin);
+						data_ptr->righthand_dir_list.push_back(direction);
+					}*/
+				}
+				if (ci != -1) {
+					// check and update current point group selection -> which color are we using 
+					int smallestpalleteIdx = -1;
+					bool hasOverlaping = false;
+					float dist = std::numeric_limits<float>::max();
+					for (int i = 0; i < data_ptr->palette_lefthand_object_positions.size();i++) {
+						// just take the first one, righthand_object_positions has only one element
+						float cur_dist = (data_ptr->palette_lefthand_object_positions[i] 
+							- data_ptr->righthand_object_positions[0]).length();
+						if (cur_dist < dist) {
+							dist = cur_dist;
+							smallestpalleteIdx = i;
+						}
+					}
+					// update color with the one has minimal dist to the RC 
+					if (dist < palette_style.radius) {
+						hasOverlaping = true;
+						data_ptr->palette_righthand_object_colors[0] = 
+							data_ptr->palette_lefthand_object_colors[smallestpalleteIdx];
+						// ok-todo: update picking group information 
+						// current, we can only select regions, build on top of functional indices 
+						current_selecting_idx = data_ptr->point_cloud_kit->pc.num_of_functional_selections 
+							+ smallestpalleteIdx;
+					}
+
+					data_ptr->point_cloud_kit->headset_direction = data_ptr->headset_direction;
+					data_ptr->point_cloud_kit->headset_position = data_ptr->headset_object_positions[0];
+					data_ptr->point_cloud_kit->right_controller_position = data_ptr->righthand_object_positions[0];
+					data_ptr->point_cloud_kit->left_controller_position = data_ptr->lefthand_object_positions[0];
+					// do not update range 
+					//std::cout << "headset posi:" << data_ptr->point_cloud_kit->headset_position << std::endl;
 				}
 
-				data_ptr->point_cloud_kit->headset_direction = data_ptr->headset_direction;
-				data_ptr->point_cloud_kit->headset_position = data_ptr->headset_object_positions[0];
-				data_ptr->point_cloud_kit->right_controller_position = data_ptr->righthand_object_positions[0];
-				data_ptr->point_cloud_kit->left_controller_position = data_ptr->lefthand_object_positions[0];
-				// do not update range 
-				//std::cout << "headset posi:" << data_ptr->point_cloud_kit->headset_position << std::endl;
 			}
-
-		}
-		}
+			}
 		return false;
 	}
 	/// declare timer_event method to connect the shoot signal of the trigger
@@ -405,7 +432,7 @@ public:
 		
 	}
 	/// setting the view transform yourself
-	// call me 
+	/// call me 
 	void draw(context& ctx)
 	{
 		if (data_ptr == nullptr)
@@ -433,20 +460,28 @@ public:
 			else
 				render_a_handhold_box(ctx);
 		}		
-		if (data_ptr->check_roulette_selection(data_ptr->get_id_with_name("PointCloud\nMarking"))) {
+		if (data_ptr->check_roulette_selection(data_ptr->get_id_with_name("PointCloud\nMarkAs\nOrig"))) {
 			render_a_sphere_on_righthand(ctx);
+			//data_ptr->righthand_object_colors[0] = rgb(1,0,0,1);
+			data_ptr->righthand_object_colors[0] = data_ptr->point_selection_colors[1];
+		}
+		if (data_ptr->check_roulette_selection(data_ptr->get_id_with_name("PointCloud\nDelPoints\nTouchTo\nActivate"))) {
+			render_a_sphere_on_righthand(ctx);
+			data_ptr->righthand_object_colors[0] = data_ptr->point_selection_colors[2];
 		}
 		if (data_ptr->check_roulette_selection(data_ptr->get_id_with_name("PointCloud\nGroupPicker"))) {
 			render_palette_on_left_hand(ctx);
 			render_palette_sphere_on_righthand(ctx);
 		}
+		//if (data_ptr->check_roulette_selection(data_ptr->get_id_with_name("PointCloud\nMarking"))) {
+		//	render_a_sphere_on_righthand(ctx);
+		//}
 	}
-
-	// call me 
+	/// call me 
 	void finish_draw(context& ctx) {
 
 	}
-
+	///
 	void render_palette_on_left_hand(cgv::render::context& ctx) {
 		if (data_ptr->palette_lefthand_object_positions.size()) {
 			auto& sr = cgv::render::ref_sphere_renderer(ctx);
@@ -456,7 +491,7 @@ public:
 			sr.render(ctx, 0, data_ptr->palette_lefthand_object_positions.size());
 		}
 	}
-
+	///
 	void render_palette_sphere_on_righthand(cgv::render::context& ctx) {
 		if (data_ptr->righthand_object_positions.size()) {
 			glDepthMask(GL_FALSE);
@@ -471,7 +506,7 @@ public:
 			glDepthMask(GL_TRUE);
 		}
 	}
-
+	///
 	void render_a_sphere_on_righthand(cgv::render::context& ctx) {
 		if (data_ptr->righthand_object_positions.size()) {
 			glDepthMask(GL_FALSE);
@@ -486,7 +521,7 @@ public:
 			glDepthMask(GL_TRUE);
 		}
 	}
-
+	///
 	void render_line_cone_style(cgv::render::context& ctx, vec3 s,vec3 e, rgb c, float r = 0.002f) {
 		cgv::render::rounded_cone_render_style rounded_cone_style;
 
@@ -527,7 +562,7 @@ public:
 		}
 
 	}
-	
+	///
 	void render_a_box_given_posi_and_size(cgv::render::context& ctx,vec3 posi,float size) {
 		auto& prog = ctx.ref_surface_shader_program();
 		prog.set_uniform(ctx, "map_color_to_material", 3);
@@ -536,7 +571,7 @@ public:
 		ctx.tesselate_box(box3(posi - vec3(size / 2.0f), posi + vec3(size / 2.0f)), false, false);
 		prog.disable(ctx);
 	}
-
+	///
 	void render_an_arrow_with_starting_point_and_ending(cgv::render::context& ctx, vec3 s, vec3 e, rgb c, float r) {
 		auto& prog = ctx.ref_surface_shader_program();
 		prog.set_uniform(ctx, "map_color_to_material", 3);
@@ -546,7 +581,7 @@ public:
 		prog.disable(ctx);
 
 	}
-
+	///
 	void render_a_handhold_box(cgv::render::context& ctx) {
 		vec3 startingdir = vec3(0, 0, -0.1);
 		data_ptr->cur_right_hand_rot_quat.rotate(startingdir);
@@ -559,7 +594,7 @@ public:
 		ctx.tesselate_box(box3(endposi - vec3(0.01), endposi + vec3(0.01)), false, false);
 		prog.disable(ctx);
 	}
-
+	///
 	void render_a_handhold_arrow(cgv::render::context& ctx, rgb c, float r, float l = 2.0) {
 		if (data_ptr == nullptr)
 			return;
@@ -574,9 +609,8 @@ public:
 		ctx.tesselate_arrow(data_ptr->cur_right_hand_posi, endposi, r, l, 0.5f);
 		prog.disable(ctx);
 	}
-
-	// will be moved to render_kit header -> this header will be used for many kits 
-	// todo: tesselate_box_cone_style
+	/// will be moved to render_kit header -> this header will be used for many kits 
+	/// todo: tesselate_box_cone_style
 	void render_a_bbox(cgv::render::context& ctx, box3 b) {
 		if (b.is_valid()) {
 			auto& prog = ctx.ref_surface_shader_program();
@@ -587,7 +621,7 @@ public:
 			prog.disable(ctx);
 		}
 	}
-	
+	///
 	void finish_frame(context& ctx) {
 		/*if (!view_ptr)
 			return;

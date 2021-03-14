@@ -206,7 +206,7 @@ public:
 						}
 					
 						if (data_ptr->check_roulette_selection(data_ptr->get_id_with_name("Meshing\nSaveMesh"))) {
-							// todo: add timestemp as file name 
+							// ok-todo: add timestemp as file name 
 							M.write(data_ptr->data_dir + "/Meshes_VRMeshing/generated_"+ data_ptr->get_timestemp_for_filenames() +".obj");
 						}
 					}

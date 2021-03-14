@@ -180,9 +180,10 @@ void gl_point_cloud_drawable::set_arrays(context& ctx, size_t offset, size_t cou
 	if (pc.has_colors() || use_these_point_colors || (use_these_point_color_indices && use_these_point_palette)) {
 		if (use_these_point_colors)
 			s_renderer.set_color_array(ctx, &use_these_point_colors->at(offset), count, unsigned(sizeof(Clr))*show_point_step);
-		else if (use_these_point_color_indices && use_these_point_palette)
+		else if (use_these_point_color_indices && use_these_point_palette) {
+			s_renderer.set_color_array(ctx, &pc.clr(unsigned(offset)), count, unsigned(sizeof(Clr)) * show_point_step);
 			s_renderer.set_indexed_color_array(ctx, &use_these_point_color_indices->at(offset), count, *use_these_point_palette, show_point_step);
-		else
+		}else
 			s_renderer.set_color_array(ctx, &pc.clr(unsigned(offset)), count, unsigned(sizeof(Clr))*show_point_step);
 	}
 	if (pc.has_normals())
@@ -240,6 +241,9 @@ void gl_point_cloud_drawable::draw_points_surfel(context& ctx)
 	s_renderer.ref_prog().set_uniform(ctx, "right_controller_position", right_controller_position);
 	s_renderer.ref_prog().set_uniform(ctx, "controller_effect_range", controller_effect_range);
 
+	s_renderer.ref_prog().set_uniform(ctx, "visual_delete", visual_delete);
+	s_renderer.ref_prog().set_uniform(ctx, "render_with_original_color", render_with_original_color);
+	
 	std::size_t n = (show_point_end - show_point_begin) / show_point_step;
 	GLint offset = GLint(show_point_begin / show_point_step);
 

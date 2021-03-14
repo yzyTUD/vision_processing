@@ -509,7 +509,12 @@ public:
 	void supersampling_with_bbox() { data_ptr->point_cloud_kit->supersampling_with_bbox(data_ptr->supersampling_bbox); }
 	void restore_supersampling() { data_ptr->point_cloud_kit->restore_supersampling(); }
 
-	void prepare_marking() { data_ptr->point_cloud_kit->prepare_marking(&data_ptr->point_selection_colors); }
+	void prepare_marking() { 
+		//data_ptr->point_cloud_kit->prepare_marking(&data_ptr->point_selection_colors); 
+		data_ptr->point_cloud_kit->prepare_grow(false,
+			&data_ptr->point_selection_colors,
+			data_ptr->point_cloud_kit->pc.max_num_of_selections);
+	}
 
 	// point cloud generation 
 	void generate_pc_hemisphere() { data_ptr->point_cloud_kit->generate_pc_hemisphere();post_redraw();}
