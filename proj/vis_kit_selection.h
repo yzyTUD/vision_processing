@@ -217,6 +217,7 @@ public:
 				if (vrke.get_action() == cgv::gui::KA_PRESS) { //
 					if (vrke.get_controller_index() == data_ptr->right_rgbd_controller_index) { //
 						if (data_ptr->check_roulette_selection(data_ptr->get_id_with_name("PointCloud\nPrepare\nMarking"))) { //
+							
 							data_ptr->point_cloud_kit->prepare_grow(false,
 								&data_ptr->point_selection_colors, 
 									data_ptr->point_cloud_kit->pc.max_num_of_selections);
@@ -277,6 +278,11 @@ public:
 						data_ptr->point_cloud_kit->mark_points_with_conroller(
 							data_ptr->cur_right_hand_posi + data_ptr->cur_off_right,
 								marking_style.radius, true, current_selecting_idx);
+						if (data_ptr->point_cloud_kit->add_to_seed) {
+							// collect seeds
+							data_ptr->point_cloud_kit->init_region_growing_by_collecting_group_and_seeds_vr(current_selecting_idx);
+							// then, grow on timer event, sleep optionally 
+						}
 					}
 				}
 				if (data_ptr->check_roulette_selection(data_ptr->get_id_with_name("PointCloud\nDelPoints\nTouchTo\nActivate"))) { // hold throttle to mark

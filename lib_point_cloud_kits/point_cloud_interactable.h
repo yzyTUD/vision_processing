@@ -147,11 +147,13 @@ public:
 	///
 	void reset_all_grows();
 	///
-	void init_region_growing_by_collecting_group_and_seeds_vr(); 
+	void reset_region_growing_seeds();
+	///
+	void init_region_growing_by_collecting_group_and_seeds_vr(int current_selecting_idx);
 	///
 	void init_region_growing_by_setting_group_and_seeds(int growing_group, std::queue<int> picked_id_list);
 	///
-	void grow_one_step_bfs(bool check_nml, int which_group);
+	bool grow_one_step_bfs(bool check_nml, int which_group);
 	///
 	bool all_points_growed();
 	///
@@ -175,7 +177,14 @@ public:
 	///
 	void subsampling_target(Pnt& posi, float& radii, bool confirmed);
 	///
+	void do_region_growing_timer_event(double t, double dt);
+	///
 	bool marked = false;
+	bool do_region_growing_directly = true;
+	int steps_per_event_as_speed = 1000;
+	bool can_sleep = false;
+	bool add_to_seed = true;
+	bool can_parallel_grow = false;
 	//@}
 
 	/**@name rendering speedup techniques */
@@ -275,8 +284,8 @@ public:
 	point_cloud_types::Mat rotation;
 	point_cloud_types::Dir translation;
 	cgv::pointcloud::ICP::Sampling_Type icp_filter_type = cgv::pointcloud::ICP::RANDOM_SAMPLING;
-	std::vector<std::queue<int>> region_id_and_seeds;
-	std::vector<vec3> region_id_and_nml;
+	std::vector<std::queue<int>> region_id_and_seeds; // idx means region id, queue stores seeds 
+	std::vector<std::queue<vec3>> region_id_and_nmls; // idx means region id, queue stores normals 
 	std::vector<vr_kit_image_renderer> image_renderer_list;
 
 	//

@@ -230,7 +230,6 @@ void gl_point_cloud_drawable::draw_points_surfel(context& ctx)
 	surfel_style.use_group_color = tmp;
 
 	s_renderer.validate_and_enable(ctx);
-
 	s_renderer.ref_prog().set_uniform(ctx, "enable_headset_culling", enable_headset_culling);
 	s_renderer.ref_prog().set_uniform(ctx, "headset_position", headset_position);
 	s_renderer.ref_prog().set_uniform(ctx, "headset_direction", headset_direction);
@@ -453,7 +452,7 @@ void gl_point_cloud_drawable::draw_points_point_rendering(context& ctx) {
 		return;
 	if (raw_renderer_out_of_date) {
 		if (!raw_prog.is_linked())
-			raw_prog.build_program(ctx, "default.glpr", true);
+			raw_prog.build_program(ctx, "point_vr.glpr", true);
 		if (raw_vao == -1)
 			glGenVertexArrays(1, &raw_vao);
 		if (raw_vbo_position == -1)
@@ -461,7 +460,7 @@ void gl_point_cloud_drawable::draw_points_point_rendering(context& ctx) {
 
 		if (is_switching) {
 			raw_prog.destruct(ctx);
-			raw_prog.build_program(ctx, "default.glpr", true);
+			raw_prog.build_program(ctx, "point_vr.glpr", true);
 			glDeleteVertexArrays(1, &raw_vao);
 			glDeleteBuffers(1, &raw_vbo_position);
 			glGenVertexArrays(1, &raw_vao);
@@ -502,7 +501,7 @@ void gl_point_cloud_drawable::draw_points_point_rendering(context& ctx) {
 		// enable them, * 
 		glEnableVertexAttribArray(color_loc);
 		glEnableVertexAttribArray(position_loc);
-		glEnableVertexAttribArray(normal_loc);
+		if(normal_loc) glEnableVertexAttribArray(normal_loc);
 		// unbind
 		glBindBuffer(GL_ARRAY_BUFFER, 0);
 		glBindVertexArray(0);
@@ -513,6 +512,11 @@ void gl_point_cloud_drawable::draw_points_point_rendering(context& ctx) {
 	raw_prog.enable(ctx);
 	glBindVertexArray(raw_vao);
 	glPointSize(5);
+
+	raw_prog.set_uniform(ctx, "enable_headset_culling", enable_headset_culling);
+	raw_prog.set_uniform(ctx, "headset_position", headset_position);
+	raw_prog.set_uniform(ctx, "headset_direction", headset_direction);
+	raw_prog.set_uniform(ctx, "headset_culling_range", headset_culling_range);
 	// setup uniforms 
 	//int y_view_angle = 45;
 	//float pixel_extent_per_depth = (float)(2.0 * tan(0.5 * 0.0174532925199 * y_view_angle) / ctx.get_height());
@@ -578,9 +582,14 @@ bool gl_point_cloud_drawable::init(cgv::render::context& ctx)
 	if (!cp_renderer.init(ctx))
 		return false;
 	cp_renderer.set_render_style(cp_style);
+	if (!sl_manager.init(ctx))
+		return false;
 	if (!s_renderer.init(ctx))
 		return false;
+	// here to control use cpu mem or gpu mem 
+	s_renderer.enable_attribute_array_manager(ctx, sl_manager);
 	s_renderer.set_render_style(surfel_style);
+
 	if (!n_renderer.init(ctx))
 		return false;
 	n_renderer.set_render_style(normal_style);
@@ -598,6 +607,7 @@ bool gl_point_cloud_drawable::init(cgv::render::context& ctx)
 void gl_point_cloud_drawable::clear(cgv::render::context& ctx)
 {
 	s_renderer.clear(ctx);
+	sl_manager.destruct(ctx);
 	n_renderer.clear(ctx);
 	b_renderer.clear(ctx);
 	bw_renderer.clear(ctx);

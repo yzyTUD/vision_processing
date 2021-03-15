@@ -106,6 +106,7 @@ bool point_cloud_interactable::generate_pc_cube() {
 	vec3 extent = vec3(1, 1, 1);
 	rgba c = rgba(0.5, 0.5, 0.5, 1);
 	pc.clear();
+	pc.create_colors();
 	for (int li = 0; li < nr_rows; ++li) {
 		float y = (float)li / (nr_rows - 1) - 0.5f;
 		for (int ci = 0; ci < samples_per_row; ++ci) {
@@ -414,20 +415,30 @@ void point_cloud_interactable::mark_points_with_conroller(Pnt p, float r, bool c
 					}
 				}
 			}
-
 		}
-
 		on_point_cloud_change_callback(PCC_COLORS);
 		//post_redraw();
 	}
+
+	// only one point will be marked as seed 
+	//for (Idx i = 0; i < (Idx)pc.get_nr_points(); ++i) {
+	//	if ((pc.pnt(i) - p).length() < r) {
+	//		pc.point_selection.at(i) = objctive;
+	//		return;
+	//	}
+	//}
+	//on_point_cloud_change_callback(PCC_COLORS);
 }
-///
+/// max_num_regions is not used 
 void point_cloud_interactable::prepare_grow(bool read_from_file, std::vector<rgba>* psc, int max_num_regions) {
+	// atomic operation 
+	can_parallel_grow = false;
+
 	// if no selection present, clear point_selection
 	if (!read_from_file || !pc.has_selection) { 
 		pc.point_selection.resize(pc.get_nr_points());
 		// initialize to 1
-		for (auto& v : pc.point_selection) v = 1u;
+		for (auto& v : pc.point_selection) v = 1;
 	}
 
 	// reset rendering properties 
@@ -438,84 +449,143 @@ void point_cloud_interactable::prepare_grow(bool read_from_file, std::vector<rgb
 	// reset region growing properties 
 	pc.point_selection_visited.resize(pc.get_nr_points());
 	for (auto& v : pc.point_selection_visited) v = false;
-	// clear the seeds queue
-	std::queue<int> empty;
-	/*std::swap(seeds, empty);*/
+
+	// replaced by functions 
 	region_id_and_seeds.clear();
-	region_id_and_nml.clear();
+	region_id_and_nmls.clear();
+	std::queue<int> empty_indexqueue;
+	std::queue<vec3> empty_nmlqueue;
+	region_id_and_seeds.resize(pc.max_num_of_selections, empty_indexqueue);
+	region_id_and_nmls.resize(pc.max_num_of_selections, empty_nmlqueue);
 
-	region_id_and_seeds.resize(max_num_regions, empty);
-	region_id_and_nml.resize(max_num_regions, vec3(0));
-
-	ensure_tree_ds();
-	//post_redraw();
+	// enable again  
+	can_parallel_grow = true;
 }
 ///
 void point_cloud_interactable::reset_all_grows() {
 	// todo 
 }
-///
-void point_cloud_interactable::init_region_growing_by_collecting_group_and_seeds_vr() {
-	// reset region seeds vars 
+
+void point_cloud_interactable::reset_region_growing_seeds() {
 	region_id_and_seeds.clear();
-	region_id_and_nml.clear();
-	std::queue<int> empty;
-	region_id_and_seeds.resize(pc.max_num_of_selections, empty);
-	region_id_and_nml.resize(pc.max_num_of_selections, vec3(0));
+	region_id_and_nmls.clear();
+	std::queue<int> empty_indexqueue;
+	std::queue<vec3> empty_nmlqueue;
+	region_id_and_seeds.resize(pc.max_num_of_selections, empty_indexqueue);
+	region_id_and_nmls.resize(pc.max_num_of_selections, empty_nmlqueue);
+}
+/// push to queue operation, as an init to RG 
+void point_cloud_interactable::init_region_growing_by_collecting_group_and_seeds_vr(int current_selecting_idx) {
+	// old version:
+		//for (int gi = pc.num_of_functional_selections; gi< pc.max_num_of_selections; gi++) {
+		//	for (int idx = 0; idx < pc.get_nr_points(); idx++) {
+		//		if (pc.point_selection.at(idx) == gi) {
+		//			region_id_and_seeds[gi].push(idx);
+		//		}
+		//	}
+		//	region_id_and_nml[gi] = pc.nml(region_id_and_seeds[gi].front()); // the first nml, ranked in index order
+		//}
 	// collect all related idx and push to queue, ready to grow after this 
-	for (int gi = pc.num_of_functional_selections; gi< pc.max_num_of_selections; gi++) {
-		for (int idx = 0; idx < pc.get_nr_points(); idx++) {
-			if (pc.point_selection.at(idx) == gi) {
-				region_id_and_seeds[gi].push(idx);
-			}
+	// only region selection are accepted
+	// unsigned int shoud cast to int! -> only when comparing bet. them 
+	for (int pi = 0; pi < pc.get_nr_points(); pi++) {
+		if ((int)pc.point_selection.at(pi) == current_selecting_idx) {
+			// which group? which point?
+			region_id_and_seeds[pc.point_selection.at(pi)].emplace(pi);
+			region_id_and_nmls[pc.point_selection.at(pi)].emplace(pc.nml(pi));
+			pc.point_selection_visited[pi] = true;
 		}
-		region_id_and_nml[gi] = pc.nml(region_id_and_seeds[gi].front()); // the first nml, ranked in index order
 	}
 }
 /// init growing group
 void point_cloud_interactable::init_region_growing_by_setting_group_and_seeds(int growing_group, std::queue<int> picked_id_list) {
-	region_id_and_seeds[growing_group] = picked_id_list;
-	//region_id_and_seeds.insert(std::make_pair(growing_group, picked_id_list));
-	// use the first seed's normal for test 
-	region_id_and_nml[growing_group] = pc.nml(picked_id_list.front());
-	pc.has_selection = true;
+	//region_id_and_seeds[growing_group] = picked_id_list;
+	////region_id_and_seeds.insert(std::make_pair(growing_group, picked_id_list));
+	//// use the first seed's normal for test 
+	//region_id_and_nml[growing_group] = pc.nml(picked_id_list.front());
+	//pc.has_selection = true;
 }
+
 ///
-void point_cloud_interactable::grow_one_step_bfs(bool check_nml, int which_group) {
-	// bfs, simple approach
+void point_cloud_interactable::do_region_growing_timer_event(double t, double dt) {
+	//if (!can_sleep && do_region_growing_directly) {
+	//	int i = 0;
+	//	bool can_not_sleep = false;
+	//	while (i < steps_per_event_as_speed) {
+	//		// grow marked regions, not functional ones 
+	//		for (int gi = pc.num_of_functional_selections; gi < pc.max_num_of_selections; gi++)
+	//			can_not_sleep = can_not_sleep || grow_one_step_bfs(true, gi);
+	//		//post_redraw();
+	//		// check if can sleep: all grow_xxx return false, todo 
+	//		//if (!can_not_sleep)
+	//		//	can_sleep = true;
+	//		i++;
+	//	}
+	//}
+	//on_point_cloud_change_callback(PCC_COLORS);
+}
+
+///
+bool point_cloud_interactable::grow_one_step_bfs(bool check_nml, int which_group) {
+	// bfs, simple approach, do not update normal currently 
+	if (pc.get_nr_points() == 0)
+		return false;
+	if (pc.N.size() == 0)
+		return false;
+	if (region_id_and_seeds.size() == 0)
+		return false;
+
 	std::vector<int> knn;
+	ensure_tree_ds();
 	if (region_id_and_seeds[which_group].size()) {
 		int to_be_visit = region_id_and_seeds[which_group].front();
 		region_id_and_seeds[which_group].pop();
 		// 3 * 8 + 2 = 26
-		tree_ds->find_closest_points(pc.pnt(to_be_visit), 26, knn);
-
-		for (auto k : knn) {
-			if (!pc.point_selection_visited.at(k)) {
-				// compare nml
-				vec3 cur_k_nml = pc.nml(k);
-				//std::cout << "dot of nmls: " << dot(cur_nml, cur_k_nml) << std::endl;
-				// compare curvature
-				if (check_nml) {
-					if (dot(region_id_and_nml[which_group], cur_k_nml) > 0.97) {
+		if (to_be_visit > 0 && to_be_visit < pc.get_nr_points()) {
+			tree_ds->find_closest_points(pc.pnt(to_be_visit), 26, knn);
+			for (auto k : knn) {
+				if (!pc.point_selection_visited.at(k)) {
+					// compare nml
+					vec3 cur_k_nml = pc.nml(k);
+					//std::cout << "dot of nmls: " << dot(cur_nml, cur_k_nml) << std::endl;
+					// compare curvature
+					if (check_nml) {
+						bool pass_nml_check = false;
+						// iterate over the queue to check 
+						std::queue<vec3> tmp_q = region_id_and_nmls[which_group];
+						while (!tmp_q.empty()) {
+							if (dot(tmp_q.front(), cur_k_nml) > 0.97) {
+								pass_nml_check = true;
+								break;
+							}
+							tmp_q.pop();
+						}
+						/*if (dot(region_id_and_nmls[which_group].front(), cur_k_nml) > 0.97) {
+							pass_nml_check = true;
+						}*/
+						// if pass check, update and mark as new seed 
+						if (pass_nml_check) {
+							// update 
+							pc.point_selection.at(k) = which_group;
+							pc.point_selection_visited.at(k) = true;
+							region_id_and_seeds[which_group].emplace(k);
+						}
+					}
+					else {
 						// update 
 						pc.point_selection.at(k) = which_group;
 						pc.point_selection_visited.at(k) = true;
-						region_id_and_seeds[which_group].push(k);
+						region_id_and_seeds[which_group].emplace(k);
 					}
+					//std::cout << "is growing" << std::endl;
 				}
-				else {
-					// update 
-					pc.point_selection.at(k) = which_group;
-					pc.point_selection_visited.at(k) = true;
-					region_id_and_seeds[which_group].push(k);
-				}
-				//std::cout << "is growing" << std::endl;
 			}
 		}
+		return true;
 	}
 	else {
 		//std::cout << "seed empty, stop." << std::endl;
+		return false;
 	}
 }
 /// check if all points growed 
@@ -948,7 +1018,7 @@ void point_cloud_interactable::clear_all() {
 	translation.zeros();
 	icp_filter_type = cgv::pointcloud::ICP::RANDOM_SAMPLING;
 	region_id_and_seeds.clear();
-	region_id_and_nml.clear();
+	region_id_and_nmls.clear();
 
 	// todo: reset vars here ...
 	//use_these_point_colors = 0;

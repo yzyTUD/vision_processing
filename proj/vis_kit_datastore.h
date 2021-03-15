@@ -329,11 +329,14 @@ public:
 		gp1_btns.push_back("PointCloud\nGroupPicker");
 		gp1_btns.push_back("PointCloud\nDelPoints\nTouchTo\nActivate");
 		gp1_btns.push_back("PointCloud\nMarkAs\nOrig");
+
 		gp1_btns.push_back("PointCloud\nPrepare\nMarking");
 		gp1_btns.push_back("PointCloud\nToggle\npcColor");
 		//gp1_btns.push_back("PointCloud\nFoldingPoints");
-		gp1_btns.push_back("PointCloud\nSuperSampling");
+		//gp1_btns.push_back("PointCloud\nSuperSampling");
+		gp1_btns.push_back("PointCloud\nAutoRegion\nGrowing");
 		gp1_btns.push_back("PointCloud\nShowNml");
+
 		gp1_btns.push_back("PointCloud\nToggle\nACloud");
 		gp1_btns.push_back("PointCloud\nACloud\nCtrl\nRange");
 		gp1_btns.push_back("PointCloud\nToggle\nCamera\nCulling");

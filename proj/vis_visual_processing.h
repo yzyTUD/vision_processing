@@ -83,6 +83,9 @@ protected:
 	// for batch operations 
 	std::vector<std::string> f_names;
 
+	// parallel tasks 
+	std::thread* timer_thread;
+
 private:
 	bool label_outofdate; // whether label texture is out of date
 
@@ -214,6 +217,7 @@ public:
 	void on_status_change(void* kit_handle, int ci, vr::VRStatus old_status, vr::VRStatus new_status);
 	/// register on device change events
 	void on_device_change(void* kit_handle, bool attach);
+	void parallel_timer_event();
 public:
 	visual_processing();
 
@@ -518,7 +522,8 @@ public:
 
 	// point cloud generation 
 	void generate_pc_hemisphere() { data_ptr->point_cloud_kit->generate_pc_hemisphere();post_redraw();}
-	void generate_pc_cube(){ data_ptr->point_cloud_kit->generate_pc_cube(); post_redraw(); }
+	void generate_pc_cube() { data_ptr->point_cloud_kit->generate_pc_cube(); 
+		force_nml_computing(); prepare_marking(); post_redraw(); }
 
 	void rotate_right(){ data_ptr->active_off_rotation -= 30; }
 	void rotate_left() { data_ptr->active_off_rotation += 30; }

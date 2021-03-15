@@ -53,6 +53,7 @@ public:
 	/*surfel rendering*/
 	cgv::render::surfel_renderer s_renderer;
 	cgv::render::surfel_render_style surfel_style;
+	cgv::render::attribute_array_manager sl_manager;
 
 	/*point rendering */
 	

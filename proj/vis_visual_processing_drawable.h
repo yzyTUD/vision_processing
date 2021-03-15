@@ -143,6 +143,47 @@ void visual_processing::on_device_change(void* kit_handle, bool attach)
 		}
 	}
 }
+
+void visual_processing::parallel_timer_event() {
+	//if (!data_ptr->point_cloud_kit->can_sleep && data_ptr->point_cloud_kit->do_region_growing_directly) {
+		//int i = 0;
+		//bool can_not_sleep = false;
+		//while (i < data_ptr->point_cloud_kit->steps_per_event_as_speed) {
+		//	// grow marked regions, not functional ones 
+		//	for (int gi = data_ptr->point_cloud_kit->pc.num_of_functional_selections; 
+		//		gi < data_ptr->point_cloud_kit->pc.max_num_of_selections; gi++)
+		//		can_not_sleep = can_not_sleep || data_ptr->point_cloud_kit->grow_one_step_bfs(true, gi);
+		//	if(can_not_sleep)
+		//		post_redraw();
+		//	// check if can sleep: all grow_xxx return false, todo 
+		//	//if (!can_not_sleep)
+		//	//	can_sleep = true;
+		//	i++;
+		//}
+	//}
+	//data_ptr->point_cloud_kit->on_point_cloud_change_callback(PCC_COLORS);
+	while (true) {
+		// control the speed here 
+		if (data_ptr->point_cloud_kit->do_region_growing_directly)
+		if (data_ptr->point_cloud_kit->can_parallel_grow) {
+			// atomic
+			data_ptr->point_cloud_kit->can_parallel_grow = false;
+			int i = 0;
+			while (i<100) {
+				for (int gi = data_ptr->point_cloud_kit->pc.num_of_functional_selections;
+					gi < data_ptr->point_cloud_kit->pc.max_num_of_selections; gi++)
+				{
+					data_ptr->point_cloud_kit->grow_one_step_bfs(true, gi);
+					post_redraw();
+				}
+				i++;
+			}
+			data_ptr->point_cloud_kit->can_parallel_grow = true;
+		}
+		std::this_thread::sleep_for(std::chrono::milliseconds(10));
+	}
+}
+
 ///
 visual_processing::visual_processing() 
 {
@@ -166,6 +207,8 @@ visual_processing::visual_processing()
 	sphere_style.radius = 0.01;
 	connect(cgv::gui::ref_vr_server().on_device_change, this, &visual_processing::on_device_change);
 	connect(cgv::gui::ref_vr_server().on_status_change, this, &visual_processing::on_status_change);
+	//connect(get_animation_trigger().shoot, this, &visual_processing::timer_event);
+	timer_thread = new thread(&visual_processing::parallel_timer_event,this);
 	register_object(base_ptr(light_kit), "");
 
 	cone_style.radius = 0.01f;
@@ -369,6 +412,11 @@ bool visual_processing::handle(cgv::gui::event& e)
 				if (data_ptr->check_roulette_selection(data_ptr->get_id_with_name("PointCloud\nToggle\npcColor"))) {
 					data_ptr->point_cloud_kit->render_with_original_color = !data_ptr->point_cloud_kit->render_with_original_color;
 				}
+				// touch to toggle 
+				if (data_ptr->check_roulette_selection(data_ptr->get_id_with_name("PointCloud\nAutoRegion\nGrowing"))) {
+					data_ptr->point_cloud_kit->do_region_growing_directly = !data_ptr->point_cloud_kit->do_region_growing_directly;
+				}
+				//
 			}
 		}
 		if (vrse.get_action() == cgv::gui::SA_MOVE) { // event 
@@ -592,6 +640,9 @@ void visual_processing::apply_further_transformation() {
 void visual_processing::read_pc() {
 	data_ptr->point_cloud_kit->read_pc_with_dialog(false);
 	data_ptr->point_cloud_kit->on_clod_rendering_settings_changed();
+	data_ptr->point_cloud_kit->prepare_grow(false,
+		&data_ptr->point_selection_colors,
+		data_ptr->point_cloud_kit->pc.max_num_of_selections);
 	post_redraw();
 	// the original pc will be automatically stored 
 }
