@@ -345,7 +345,7 @@ public:
 		// adjuest range with move event
 		// press btn to confirm
 		std::vector<std::string> gp_btn_tmp;
-		gp_btn_tmp.push_back("PCCleaning\nFake\nDel"); 
+		gp_btn_tmp.push_back("PCCleaning\nFake\nDel");
 		gp_btn_tmp.push_back("PCCleaning\nFake\nSeleciton");
 		gp_btn_tmp.push_back("PCCleaning\nAddition\nPlane"); 
 		gps.push_back(gp_btn_tmp);

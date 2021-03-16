@@ -439,6 +439,7 @@ void point_cloud_interactable::prepare_grow(bool read_from_file, std::vector<rgb
 		pc.point_selection.resize(pc.get_nr_points());
 		// initialize to 1
 		for (auto& v : pc.point_selection) v = 1;
+		pc.has_selection = true;
 	}
 
 	// reset rendering properties 

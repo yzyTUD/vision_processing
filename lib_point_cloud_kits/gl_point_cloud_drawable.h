@@ -22,6 +22,7 @@ class CGV_API gl_point_cloud_drawable : public cgv::render::drawable, public poi
 		vec3 position;
 		rgb8 color;
 		vec3 normal;
+		int index; // per vertex index used for marking 
 		float point_size;
 	};
 public:
@@ -126,7 +127,7 @@ public:
 	void switch_to_quad_rendering();
 	void draw_points_point_rendering(cgv::render::context& ctx);
 	void draw_points_clod(cgv::render::context& ctx);
-	void on_clod_rendering_settings_changed();
+	void on_rendering_settings_changed();
 	void draw_normals(cgv::render::context& ctx);
 
 public:

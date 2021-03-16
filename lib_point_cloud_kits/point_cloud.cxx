@@ -2014,7 +2014,14 @@ bool point_cloud::write_ply(const std::string& file_name) const
 	PlyFile* ply_out = open_ply_for_write(file_name.c_str(), 2, propNames, PLY_BINARY_LE);
 	if (!ply_out) 
 		return false;
-	describe_element_ply (ply_out, "vertex", (int)P.size());
+	int real_vertex_num = 0;
+	for (int j = 0; j < (int)P.size(); j++) {
+		if (has_selection && (2 == (int)point_selection[j]))
+			continue;
+		else
+			real_vertex_num++;
+	}
+	describe_element_ply (ply_out, "vertex", real_vertex_num);
 	for (int p=0; p<10; ++p) 
 		describe_property_ply (ply_out, &vert_props[p]);
 	describe_element_ply (ply_out, "face", 0);
@@ -2024,6 +2031,9 @@ bool point_cloud::write_ply(const std::string& file_name) const
 	put_element_setup_ply (ply_out, "vertex");
 
 	for (int j = 0; j < (int)P.size(); j++) {
+		// delete unwanted points, can not recall
+		if (has_selection && (2 == (int)point_selection[j]))
+			continue;
 		PlyVertex vertex;
 		vertex.x = P[j][0];
 		vertex.y = P[j][1];
@@ -2039,9 +2049,13 @@ bool point_cloud::write_ply(const std::string& file_name) const
 			vertex.nz = 1.0f;
 		}
 		if (C.size() == P.size()) {
-			vertex.red = (unsigned char)(C[j][0]*255);
+			/*vertex.red = (unsigned char)(C[j][0]*255);
 			vertex.green = (unsigned char)(C[j][1]*255);
-			vertex.blue = (unsigned char)(C[j][2]*255);
+			vertex.blue = (unsigned char)(C[j][2]*255);*/
+
+			vertex.red = C[j][0];
+			vertex.green = C[j][1];
+			vertex.blue = C[j][2];
 		}
 		else {
 			vertex.red   = 255;

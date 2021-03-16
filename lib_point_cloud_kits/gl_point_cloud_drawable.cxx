@@ -362,7 +362,7 @@ void gl_point_cloud_drawable::draw_points_quad(context& ctx) {
 
 		if (is_switching) {
 			raw_prog.destruct(ctx);
-			raw_prog.build_program(ctx, "surfel_simplified.glpr", true);
+			raw_prog.build_program(ctx, "quad_vr.glpr", true);
 			glDeleteVertexArrays(1, &raw_vao);
 			glDeleteBuffers(1, &raw_vbo_position);
 			glGenVertexArrays(1, &raw_vao);
@@ -377,6 +377,10 @@ void gl_point_cloud_drawable::draw_points_quad(context& ctx) {
 			p.position = pc.P[i];
 			p.color = pc.C[i];
 			p.normal = pc.N[i];
+			if (pc.has_selection)
+				p.index = (int)pc.point_selection[i];
+			else
+				p.index = 1;
 			input_buffer_data.push_back(p);
 		}
 		// bind vao 
@@ -392,6 +396,8 @@ void gl_point_cloud_drawable::draw_points_quad(context& ctx) {
 		int position_loc = raw_prog.get_attribute_location(ctx, "position");
 		int normal_var_size = 3;
 		int normal_loc = raw_prog.get_attribute_location(ctx, "normal");
+		int index_var_size = 1;
+		int index_loc = raw_prog.get_attribute_location(ctx, "index");
 		// specify their format, * 
 		glVertexAttribPointer(color_loc,color_var_size, GL_UNSIGNED_BYTE, GL_TRUE, strip_size,
 			(void*)offsetof(struct VertexAttributeBinding, color));
@@ -399,10 +405,13 @@ void gl_point_cloud_drawable::draw_points_quad(context& ctx) {
 			(void*)offsetof(struct VertexAttributeBinding, position));
 		glVertexAttribPointer(normal_loc, normal_var_size, GL_FLOAT, GL_FALSE, strip_size,
 			(void*)offsetof(struct VertexAttributeBinding, normal));
+		glVertexAttribIPointer(index_loc, index_var_size, GL_INT, strip_size,
+			(void*)offsetof(struct VertexAttributeBinding, index));
 		// enable them, * 
 		glEnableVertexAttribArray(color_loc);
 		glEnableVertexAttribArray(position_loc);
 		glEnableVertexAttribArray(normal_loc);
+		glEnableVertexAttribArray(index_loc);
 		// unbind
 		glBindBuffer(GL_ARRAY_BUFFER, 0);
 		glBindVertexArray(0);
@@ -449,7 +458,7 @@ void gl_point_cloud_drawable::draw_points_quad(context& ctx) {
 // 
 void gl_point_cloud_drawable::switch_to_quad_rendering() {
 	RENDERING_STRATEGY = 1;
-	on_clod_rendering_settings_changed();
+	on_rendering_settings_changed();
 	is_switching = true;
 }
 
@@ -566,7 +575,7 @@ void gl_point_cloud_drawable::draw_points_clod(context& ctx) {
 		cp_renderer.draw(ctx, 0, (size_t)pc.get_nr_points());
 }
 
-void gl_point_cloud_drawable::on_clod_rendering_settings_changed() {
+void gl_point_cloud_drawable::on_rendering_settings_changed() {
 	renderer_out_of_date = true;
 	raw_renderer_out_of_date = true;
 }

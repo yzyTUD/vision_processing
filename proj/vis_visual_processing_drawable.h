@@ -386,6 +386,22 @@ bool visual_processing::handle(cgv::gui::event& e)
 						post_redraw();*/
 						data_ptr->point_cloud_kit->visual_delete = !data_ptr->point_cloud_kit->visual_delete;
 					}
+					if (data_ptr->check_roulette_selection(data_ptr->get_id_with_name("PCCleaning\nFake\nDel"))) {
+						// marking on cpu side 
+						data_ptr->point_cloud_kit->mark_points_with_conroller(
+							data_ptr->cur_right_hand_posi + data_ptr->cur_off_right,
+								data_ptr->point_cloud_kit->controller_effect_range, true, 
+									point_cloud::PointSelectiveAttribute::DEL);
+					}
+				}
+			}
+			if (vrke.get_action() == cgv::gui::KA_RELEASE) { //
+				if (vrke.get_controller_index() == data_ptr->right_rgbd_controller_index) { //
+					if (data_ptr->check_roulette_selection(data_ptr->get_id_with_name("PCCleaning\nFake\nDel"))) {
+						// update to gpu 
+						data_ptr->point_cloud_kit->on_rendering_settings_changed();
+						post_redraw();
+					}
 				}
 			}
 		}
@@ -674,7 +690,7 @@ void visual_processing::apply_further_transformation() {
 ///  read the whole pc to data_ptr->point_cloud_kit
 void visual_processing::read_pc() {
 	data_ptr->point_cloud_kit->read_pc_with_dialog(false);
-	data_ptr->point_cloud_kit->on_clod_rendering_settings_changed();
+	data_ptr->point_cloud_kit->on_rendering_settings_changed();
 	data_ptr->point_cloud_kit->prepare_grow(true,
 		&data_ptr->point_selection_colors,
 		data_ptr->point_cloud_kit->pc.max_num_of_selections);
@@ -836,28 +852,28 @@ void visual_processing::load_image_from_bin_files() {
 void visual_processing::switch_rendering_mode_quad_based() {
 	data_ptr->point_cloud_kit->RENDERING_STRATEGY = 1;
 	data_ptr->point_cloud_kit->is_switching = true;
-	data_ptr->point_cloud_kit->on_clod_rendering_settings_changed();
+	data_ptr->point_cloud_kit->on_rendering_settings_changed();
 	post_redraw();
 }
 ///
 void visual_processing::switch_rendering_mode_point_based() {
 	data_ptr->point_cloud_kit->RENDERING_STRATEGY = 2;
 	data_ptr->point_cloud_kit->is_switching = true;
-	data_ptr->point_cloud_kit->on_clod_rendering_settings_changed();
+	data_ptr->point_cloud_kit->on_rendering_settings_changed();
 	post_redraw();
 }
 ///
 void visual_processing::switch_rendering_mode_surfel_based() {
 	data_ptr->point_cloud_kit->RENDERING_STRATEGY = 3;
 	data_ptr->point_cloud_kit->is_switching = true;
-	data_ptr->point_cloud_kit->on_clod_rendering_settings_changed();
+	data_ptr->point_cloud_kit->on_rendering_settings_changed();
 	post_redraw();
 }
 ///
 void visual_processing::switch_rendering_mode_clod_based() {
 	data_ptr->point_cloud_kit->RENDERING_STRATEGY = 4;
 	data_ptr->point_cloud_kit->is_switching = true;
-	data_ptr->point_cloud_kit->on_clod_rendering_settings_changed();
+	data_ptr->point_cloud_kit->on_rendering_settings_changed();
 	post_redraw();
 }
 ////////////////////////////////////////////////////////////////////////
