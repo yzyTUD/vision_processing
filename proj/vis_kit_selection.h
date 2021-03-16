@@ -54,6 +54,7 @@ private:
 	sphere_render_style palette_style;
 
 	//
+	sphere_render_style shading_effect_style;
 
 public:
 	/*public accessble varibles */
@@ -72,6 +73,9 @@ public:
 
 		palette_style.radius = 0.02;
 		//palette_style.material.set_transparency(1);
+
+		//
+		shading_effect_style.material.set_transparency(0.4);
 		
 	}
 	// call me 
@@ -207,6 +211,31 @@ public:
 							marking_style.radius -= 0.001f;
 						}
 					}
+					// shading effects 
+					if (data_ptr->check_roulette_selection(data_ptr->get_id_with_name("PCCleaning\nFake\nDel"))) { // selection 
+						if (vrse.get_y() > 0) {
+							data_ptr->point_cloud_kit->controller_effect_range += 0.001f;
+						}
+						else {
+							data_ptr->point_cloud_kit->controller_effect_range -= 0.001f;
+						}
+					}
+					if (data_ptr->check_roulette_selection(data_ptr->get_id_with_name("PCCleaning\nFake\nSeleciton"))) { // selection 
+						if (vrse.get_y() > 0) {
+							data_ptr->point_cloud_kit->controller_effect_range += 0.001f;
+						}
+						else {
+							data_ptr->point_cloud_kit->controller_effect_range -= 0.001f;
+						}
+					}
+					if (data_ptr->check_roulette_selection(data_ptr->get_id_with_name("PCShading\nLinearMelting"))) { // selection 
+						if (vrse.get_y() > 0) {
+							data_ptr->point_cloud_kit->controller_effect_range += 0.001f;
+						}
+						else {
+							data_ptr->point_cloud_kit->controller_effect_range -= 0.001f;
+						}
+					}
 				}
 			}
 		}
@@ -217,7 +246,7 @@ public:
 				if (vrke.get_action() == cgv::gui::KA_PRESS) { //
 					if (vrke.get_controller_index() == data_ptr->right_rgbd_controller_index) { //
 						if (data_ptr->check_roulette_selection(data_ptr->get_id_with_name("PointCloud\nPrepare\nMarking"))) { //
-							
+							// this will overwrite face segmentations 
 							data_ptr->point_cloud_kit->prepare_grow(false,
 								&data_ptr->point_selection_colors, 
 									data_ptr->point_cloud_kit->pc.max_num_of_selections);
@@ -275,13 +304,17 @@ public:
 				//}
 				if (data_ptr->check_roulette_selection(data_ptr->get_id_with_name("PointCloud\nGroupPicker"))) { // hold throttle to mark
 					if (v > 0 && current_selecting_idx != -1) {
-						data_ptr->point_cloud_kit->mark_points_with_conroller(
-							data_ptr->cur_right_hand_posi + data_ptr->cur_off_right,
-								marking_style.radius, true, current_selecting_idx);
-						if (data_ptr->point_cloud_kit->add_to_seed) {
-							// collect seeds
-							data_ptr->point_cloud_kit->init_region_growing_by_collecting_group_and_seeds_vr(current_selecting_idx);
-							// then, grow on timer event, sleep optionally 
+						if (data_ptr->point_cloud_kit->can_parallel_grow == true) { // totest 
+							data_ptr->point_cloud_kit->can_parallel_grow = false;
+							data_ptr->point_cloud_kit->mark_points_with_conroller(
+								data_ptr->cur_right_hand_posi + data_ptr->cur_off_right,
+									marking_style.radius, true, current_selecting_idx);
+							if (data_ptr->point_cloud_kit->add_to_seed) {
+								// collect seeds
+								data_ptr->point_cloud_kit->init_region_growing_by_collecting_group_and_seeds_vr(current_selecting_idx);
+								// then, grow on timer event, sleep optionally 
+							}
+							data_ptr->point_cloud_kit->can_parallel_grow = true;
 						}
 					}
 				}
@@ -482,6 +515,17 @@ public:
 		//if (data_ptr->check_roulette_selection(data_ptr->get_id_with_name("PointCloud\nMarking"))) {
 		//	render_a_sphere_on_righthand(ctx);
 		//}
+		//render_a_sphere_on_righthand_shading_effect
+		// for shading effects 
+		if (data_ptr->check_roulette_selection(data_ptr->get_id_with_name("PCCleaning\nFake\nDel"))) {
+			render_a_sphere_on_righthand_shading_effect(ctx);
+		}
+		if (data_ptr->check_roulette_selection(data_ptr->get_id_with_name("PCCleaning\nFake\nSeleciton"))) {
+			render_a_sphere_on_righthand_shading_effect(ctx);
+		}
+		if (data_ptr->check_roulette_selection(data_ptr->get_id_with_name("PCShading\nLinearMelting"))) {
+			render_a_sphere_on_righthand_shading_effect(ctx);
+		}
 	}
 	/// call me 
 	void finish_draw(context& ctx) {
@@ -512,6 +556,26 @@ public:
 			glDepthMask(GL_TRUE);
 		}
 	}
+	/// for shading effect 
+	void render_a_sphere_on_righthand_shading_effect(cgv::render::context& ctx) {
+		if (data_ptr->righthand_object_positions.size()) {
+			shading_effect_style.radius = data_ptr->point_cloud_kit->controller_effect_range;
+			rgb oricol = data_ptr->righthand_object_colors[0];
+			data_ptr->righthand_object_colors[0] = rgb(0.6,0.6,0.6);
+			glDepthMask(GL_FALSE);
+			glEnable(GL_BLEND);
+			glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
+			glDisable(GL_CULL_FACE);
+			auto& sr = cgv::render::ref_sphere_renderer(ctx);
+			sr.set_render_style(shading_effect_style);
+			sr.set_position_array(ctx, data_ptr->righthand_object_positions);
+			sr.set_color_array(ctx, data_ptr->righthand_object_colors);
+			sr.render(ctx, 0, data_ptr->righthand_object_positions.size());
+			glDepthMask(GL_TRUE);
+			data_ptr->righthand_object_colors[0] = oricol;
+		}
+	}
+
 	///
 	void render_a_sphere_on_righthand(cgv::render::context& ctx) {
 		if (data_ptr->righthand_object_positions.size()) {

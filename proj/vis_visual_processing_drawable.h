@@ -144,24 +144,11 @@ void visual_processing::on_device_change(void* kit_handle, bool attach)
 	}
 }
 
+void visual_processing::timer_event(double t, double dt) {
+
+}
+
 void visual_processing::parallel_timer_event() {
-	//if (!data_ptr->point_cloud_kit->can_sleep && data_ptr->point_cloud_kit->do_region_growing_directly) {
-		//int i = 0;
-		//bool can_not_sleep = false;
-		//while (i < data_ptr->point_cloud_kit->steps_per_event_as_speed) {
-		//	// grow marked regions, not functional ones 
-		//	for (int gi = data_ptr->point_cloud_kit->pc.num_of_functional_selections; 
-		//		gi < data_ptr->point_cloud_kit->pc.max_num_of_selections; gi++)
-		//		can_not_sleep = can_not_sleep || data_ptr->point_cloud_kit->grow_one_step_bfs(true, gi);
-		//	if(can_not_sleep)
-		//		post_redraw();
-		//	// check if can sleep: all grow_xxx return false, todo 
-		//	//if (!can_not_sleep)
-		//	//	can_sleep = true;
-		//	i++;
-		//}
-	//}
-	//data_ptr->point_cloud_kit->on_point_cloud_change_callback(PCC_COLORS);
 	while (true) {
 		// control the speed here 
 		if (data_ptr->point_cloud_kit->do_region_growing_directly)
@@ -180,7 +167,7 @@ void visual_processing::parallel_timer_event() {
 			}
 			data_ptr->point_cloud_kit->can_parallel_grow = true;
 		}
-		std::this_thread::sleep_for(std::chrono::milliseconds(10));
+		std::this_thread::sleep_for(std::chrono::milliseconds(11));
 	}
 }
 
@@ -347,6 +334,45 @@ bool visual_processing::handle(cgv::gui::event& e)
 	if (selection_kit != nullptr)selection_kit->handle(e);
 
 	// main handler for gui 
+
+	// toggle operations 
+	if (e.get_kind() == cgv::gui::EID_THROTTLE) {
+		auto& te = static_cast<cgv::gui::vr_throttle_event&>(e);
+		float v = te.get_value();
+		bool d = (v == 1); // event 
+		if (te.get_controller_index() == data_ptr->right_rgbd_controller_index) {
+			if (d) {
+				// click to toggle 
+				if (data_ptr->check_roulette_selection(data_ptr->get_id_with_name("PCCleaning\nFake\nDel"))) {
+					if (data_ptr->point_cloud_kit->which_effect_righthand == 0) {
+						data_ptr->point_cloud_kit->which_effect_righthand = -1;
+					}
+					else {
+						data_ptr->point_cloud_kit->which_effect_righthand = 0;
+					}
+				}
+				// click to toggle 
+				if (data_ptr->check_roulette_selection(data_ptr->get_id_with_name("PCCleaning\nFake\nSeleciton"))) {
+					if (data_ptr->point_cloud_kit->which_effect_righthand == 1) {
+						data_ptr->point_cloud_kit->which_effect_righthand = -1;
+					}
+					else {
+						data_ptr->point_cloud_kit->which_effect_righthand = 1;
+					}
+				}
+				// click to toggle 
+				if (data_ptr->check_roulette_selection(data_ptr->get_id_with_name("PCShading\nLinearMelting"))) {
+					if (data_ptr->point_cloud_kit->which_effect_righthand == 2) {
+						data_ptr->point_cloud_kit->which_effect_righthand = -1;
+					}
+					else {
+						data_ptr->point_cloud_kit->which_effect_righthand = 2;
+					}
+				}
+			}
+		}
+	}
+	// menu key 
 	if (e.get_kind() == cgv::gui::EID_KEY) {
 		cgv::gui::vr_key_event& vrke = static_cast<cgv::gui::vr_key_event&>(e);
 		if (vrke.get_key() == vr::VR_MENU) { //
@@ -364,6 +390,7 @@ bool visual_processing::handle(cgv::gui::event& e)
 			}
 		}
 	}
+	// touch/ move to adjest 
 	if (e.get_kind() == cgv::gui::EID_STICK) {
 		cgv::gui::vr_stick_event& vrse = static_cast<cgv::gui::vr_stick_event&>(e);
 		if (vrse.get_action() == cgv::gui::SA_TOUCH) { // event 
@@ -416,7 +443,6 @@ bool visual_processing::handle(cgv::gui::event& e)
 				if (data_ptr->check_roulette_selection(data_ptr->get_id_with_name("PointCloud\nAutoRegion\nGrowing"))) {
 					data_ptr->point_cloud_kit->do_region_growing_directly = !data_ptr->point_cloud_kit->do_region_growing_directly;
 				}
-				//
 			}
 		}
 		if (vrse.get_action() == cgv::gui::SA_MOVE) { // event 
@@ -448,6 +474,15 @@ bool visual_processing::handle(cgv::gui::event& e)
 					}
 					else {
 						data_ptr->point_cloud_kit->controller_effect_range -= 0.01f;
+					}
+				}
+				if (data_ptr->check_roulette_selection(data_ptr->get_id_with_name("PCShading\nAdjustTheta"))) {
+					if (vrse.get_y() > 0) {
+						// larger point size 
+						data_ptr->point_cloud_kit->collapse_tantheta += 0.01f;
+					}
+					else {
+						data_ptr->point_cloud_kit->collapse_tantheta -= 0.01f;
 					}
 				}
 			}
@@ -640,7 +675,7 @@ void visual_processing::apply_further_transformation() {
 void visual_processing::read_pc() {
 	data_ptr->point_cloud_kit->read_pc_with_dialog(false);
 	data_ptr->point_cloud_kit->on_clod_rendering_settings_changed();
-	data_ptr->point_cloud_kit->prepare_grow(false,
+	data_ptr->point_cloud_kit->prepare_grow(true,
 		&data_ptr->point_selection_colors,
 		data_ptr->point_cloud_kit->pc.max_num_of_selections);
 	post_redraw();
@@ -843,6 +878,7 @@ void visual_processing::create_gui() {
 	add_member_control(this, "paratone_5", data_ptr->paratone_5, "value_slider", "min=-1;max=1;log=false;ticks=true;");
 
 	connect_copy(add_button("read_pc")->click, rebind(this, &visual_processing::read_pc));
+	add_member_control(this, "hmd_culling", data_ptr->point_cloud_kit->enable_headset_culling, "check");
 	add_member_control(this, "from_CC_txt", data_ptr->point_cloud_kit->pc.from_CC, "check");
 	connect_copy(add_control("render_pc", render_pc, "check")->value_change, rebind(static_cast<drawable*>(this), &visual_processing::post_redraw));
 	add_member_control(this, "point size", data_ptr->point_cloud_kit->point_size, 

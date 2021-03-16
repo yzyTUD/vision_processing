@@ -218,6 +218,7 @@ public:
 	/// register on device change events
 	void on_device_change(void* kit_handle, bool attach);
 	void parallel_timer_event();
+	void timer_event(double t, double dt);
 public:
 	visual_processing();
 

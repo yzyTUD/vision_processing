@@ -36,7 +36,7 @@ public:
 		3 - surfel rendering 
 		4 - clod rendering 
 	*/
-	int RENDERING_STRATEGY = 3;
+	int RENDERING_STRATEGY = 1;
 	bool is_switching = false;
 
 	/*raw rendering*/
@@ -83,10 +83,14 @@ public:
 	float controller_effect_range = 0.05;
 	bool enable_acloud_effect = true;
 	bool enable_headset_culling = true;
+	int which_effect_righthand = -1;
+	int which_effect_lefthand = -1;
+	int which_effect_headset = -1;
 
 	/*visual effects, shader control*/
 	bool visual_delete = false;
 	bool render_with_original_color = true;
+	float collapse_tantheta = 0.577;
 
 	/*palette rendering, render with color palletes*/
 	std::vector<Clr>* use_these_point_colors;

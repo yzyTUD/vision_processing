@@ -354,7 +354,7 @@ void gl_point_cloud_drawable::draw_points_quad(context& ctx) {
 		return;
 	if (raw_renderer_out_of_date) {
 		if (!raw_prog.is_linked())
-			raw_prog.build_program(ctx, "surfel_simplified.glpr", true);
+			raw_prog.build_program(ctx, "quad_vr.glpr", true);
 		if (raw_vao == -1)
 			glGenVertexArrays(1, &raw_vao);
 		if (raw_vbo_position == -1)
@@ -433,6 +433,15 @@ void gl_point_cloud_drawable::draw_points_quad(context& ctx) {
 	raw_prog.set_uniform(ctx, "left_controller_position", left_controller_position);
 	raw_prog.set_uniform(ctx, "right_controller_position", right_controller_position);
 	raw_prog.set_uniform(ctx, "controller_effect_range", controller_effect_range);
+
+	/*shading effects*/
+	raw_prog.set_uniform(ctx, "which_effect_righthand", which_effect_righthand);
+	raw_prog.set_uniform(ctx, "which_effect_lefthand", which_effect_lefthand);
+	raw_prog.set_uniform(ctx, "which_effect_headset", which_effect_headset);
+
+	/*adjustable effects */
+	raw_prog.set_uniform(ctx, "collapse_tantheta", collapse_tantheta);
+
 	glDrawArrays(GL_POINTS, 0, input_buffer_data.size());
 	glBindVertexArray(0);
 	raw_prog.disable(ctx);

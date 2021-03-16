@@ -435,7 +435,7 @@ void point_cloud_interactable::prepare_grow(bool read_from_file, std::vector<rgb
 	can_parallel_grow = false;
 
 	// if no selection present, clear point_selection
-	if (!read_from_file || !pc.has_selection) { 
+	if (!(read_from_file && pc.has_selection)) {
 		pc.point_selection.resize(pc.get_nr_points());
 		// initialize to 1
 		for (auto& v : pc.point_selection) v = 1;
@@ -505,7 +505,6 @@ void point_cloud_interactable::init_region_growing_by_setting_group_and_seeds(in
 	//region_id_and_nml[growing_group] = pc.nml(picked_id_list.front());
 	//pc.has_selection = true;
 }
-
 ///
 void point_cloud_interactable::do_region_growing_timer_event(double t, double dt) {
 	//if (!can_sleep && do_region_growing_directly) {
@@ -524,7 +523,6 @@ void point_cloud_interactable::do_region_growing_timer_event(double t, double dt
 	//}
 	//on_point_cloud_change_callback(PCC_COLORS);
 }
-
 ///
 bool point_cloud_interactable::grow_one_step_bfs(bool check_nml, int which_group) {
 	// bfs, simple approach, do not update normal currently 
@@ -542,7 +540,7 @@ bool point_cloud_interactable::grow_one_step_bfs(bool check_nml, int which_group
 		region_id_and_seeds[which_group].pop();
 		// 3 * 8 + 2 = 26
 		if (to_be_visit > 0 && to_be_visit < pc.get_nr_points()) {
-			tree_ds->find_closest_points(pc.pnt(to_be_visit), 26, knn);
+			tree_ds->find_closest_points(pc.pnt(to_be_visit), 8, knn);
 			for (auto k : knn) {
 				if (!pc.point_selection_visited.at(k)) {
 					// compare nml
