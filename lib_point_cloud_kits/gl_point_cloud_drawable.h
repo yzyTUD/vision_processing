@@ -23,6 +23,7 @@ class CGV_API gl_point_cloud_drawable : public cgv::render::drawable, public poi
 		rgb8 color;
 		vec3 normal;
 		int index; // per vertex index used for marking 
+		int scanindex;
 		float point_size;
 	};
 public:
@@ -92,6 +93,13 @@ public:
 	bool visual_delete = false;
 	bool render_with_original_color = true;
 	float collapse_tantheta = 0.577;
+	bool colorize_with_scan_index = true;
+	bool renderScan0 = true;
+	bool renderScan1 = true;
+	bool renderScan2 = true;
+	bool renderScan3 = true;
+	bool renderScan4 = true;
+	bool renderScan5 = true;
 
 	/*palette rendering, render with color palletes*/
 	std::vector<Clr>* use_these_point_colors;

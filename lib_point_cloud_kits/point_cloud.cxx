@@ -1899,6 +1899,8 @@ struct PlyVertex
   float x,y,z;             /* the usual 3-space position of a vertex */
   float nx, ny, nz;
   unsigned char red, green, blue, alpha;
+  float scan_idx;
+  unsigned char selection_idx;
 };
 
 static PlyProperty vert_props[] = { /* list of property information for a vertex */
@@ -1913,6 +1915,8 @@ static PlyProperty vert_props[] = { /* list of property information for a vertex
   {"blue", Uint8, Uint8, offsetof(PlyVertex,blue), 0, 0, 0, 0},
   {"alpha", Uint8, Uint8, offsetof(PlyVertex,alpha), 0, 0, 0, 0},
   {"intensity", Uint8, Uint8, offsetof(PlyVertex,red), 0, 0, 0, 0},
+  {"scalar_Original_cloud_index", Float32, Float32, offsetof(PlyVertex,scan_idx), 0, 0, 0, 0},
+  {"selection_idx", Uint8, Uint8, offsetof(PlyVertex,selection_idx), 0, 0, 0, 0},
 };
 
 typedef struct PlyFace {
@@ -1967,6 +1971,9 @@ bool point_cloud::read_ply(const string& _file_name)
 					has_C[0] = has_C[1] = has_C[2] = true;
 					is_intensity = true;
 				}
+				if (strcmp("scalar_Original_cloud_index", elem->props[pi]->name) == 0) {
+					has_scan_index = true;
+				}
 			}
 			if (!(has_P[0] && has_P[1] && has_P[2]))
 				std::cerr << "ply file " << _file_name << " has no complete position property!" << std::endl;
@@ -1977,6 +1984,8 @@ bool point_cloud::read_ply(const string& _file_name)
 				N.resize(nrVertices);
 			if (has_clrs)
 				C.resize(nrVertices);
+			if(has_scan_index)
+				point_scan_index.resize(nrVertices);
 			int p;
 			for (p=0; p<6; ++p) 
 				setup_property_ply(ply_in, &vert_props[p]);
@@ -1987,6 +1996,8 @@ bool point_cloud::read_ply(const string& _file_name)
 					if (has_C[p])
 						setup_property_ply(ply_in, &vert_props[6+p]);
 			}
+			if(has_scan_index)
+				setup_property_ply(ply_in, &vert_props[11]);
 			for (int j = 0; j < nrVertices; j++) {
 				if (j % 1000 == 0)
 					printf("%d Percent done.\r", (int)(100.0 * j / nrVertices));
@@ -1999,6 +2010,9 @@ bool point_cloud::read_ply(const string& _file_name)
 					C[j][0] = byte_to_color_component(vertex.red);
 					C[j][1] = byte_to_color_component(is_intensity ? vertex.red : vertex.green);
 					C[j][2] = byte_to_color_component(is_intensity ? vertex.red : vertex.blue);
+				}
+				if (has_scan_index) {
+					point_scan_index[j] = vertex.scan_idx;
 				}
 			}
 		}
@@ -2022,8 +2036,10 @@ bool point_cloud::write_ply(const std::string& file_name) const
 			real_vertex_num++;
 	}
 	describe_element_ply (ply_out, "vertex", real_vertex_num);
-	for (int p=0; p<10; ++p) 
+	for (int p=0; p<9; ++p) // * 
 		describe_property_ply (ply_out, &vert_props[p]);
+	if(has_scan_index)
+		describe_property_ply(ply_out, &vert_props[11]);
 	describe_element_ply (ply_out, "face", 0);
 	describe_property_ply (ply_out, &face_props[0]);
 	header_complete_ply(ply_out);
@@ -2031,6 +2047,8 @@ bool point_cloud::write_ply(const std::string& file_name) const
 	put_element_setup_ply (ply_out, "vertex");
 
 	for (int j = 0; j < (int)P.size(); j++) {
+		if (j % 1000 == 0)
+			printf("%d Percent done.\r", (int)(100.0 * j / (int)P.size()));
 		// delete unwanted points, can not recall
 		if (has_selection && (2 == (int)point_selection[j]))
 			continue;
@@ -2063,6 +2081,8 @@ bool point_cloud::write_ply(const std::string& file_name) const
 			vertex.blue  = 255;
 		}
 		vertex.alpha = 255;
+		if (has_scan_index)
+			vertex.scan_idx = point_scan_index[j];
 		put_element_ply(ply_out, (void *)&vertex);
 	}
 	put_element_setup_ply (ply_out, "face");

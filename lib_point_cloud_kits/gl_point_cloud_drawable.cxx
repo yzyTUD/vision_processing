@@ -378,9 +378,15 @@ void gl_point_cloud_drawable::draw_points_quad(context& ctx) {
 			p.color = pc.C[i];
 			p.normal = pc.N[i];
 			if (pc.has_selection)
-				p.index = (int)pc.point_selection[i];
+				// from uint8 -> int 
+				p.index = (int)pc.point_selection[i]; 
 			else
 				p.index = 1;
+			if (pc.has_scan_index)
+				// from 0 -> inf // from float -> int 
+				p.scanindex = (int)pc.point_scan_index[i]; 
+			else
+				p.scanindex = 0;
 			input_buffer_data.push_back(p);
 		}
 		// bind vao 
@@ -398,6 +404,8 @@ void gl_point_cloud_drawable::draw_points_quad(context& ctx) {
 		int normal_loc = raw_prog.get_attribute_location(ctx, "normal");
 		int index_var_size = 1;
 		int index_loc = raw_prog.get_attribute_location(ctx, "index");
+		int scanindex_var_size = 1;
+		int scanindex_loc = raw_prog.get_attribute_location(ctx, "scanindex");
 		// specify their format, * 
 		glVertexAttribPointer(color_loc,color_var_size, GL_UNSIGNED_BYTE, GL_TRUE, strip_size,
 			(void*)offsetof(struct VertexAttributeBinding, color));
@@ -407,11 +415,14 @@ void gl_point_cloud_drawable::draw_points_quad(context& ctx) {
 			(void*)offsetof(struct VertexAttributeBinding, normal));
 		glVertexAttribIPointer(index_loc, index_var_size, GL_INT, strip_size,
 			(void*)offsetof(struct VertexAttributeBinding, index));
+		glVertexAttribIPointer(scanindex_loc, scanindex_var_size, GL_INT, strip_size,
+			(void*)offsetof(struct VertexAttributeBinding, scanindex));
 		// enable them, * 
 		glEnableVertexAttribArray(color_loc);
 		glEnableVertexAttribArray(position_loc);
 		glEnableVertexAttribArray(normal_loc);
 		glEnableVertexAttribArray(index_loc);
+		glEnableVertexAttribArray(scanindex_loc);
 		// unbind
 		glBindBuffer(GL_ARRAY_BUFFER, 0);
 		glBindVertexArray(0);
@@ -450,6 +461,15 @@ void gl_point_cloud_drawable::draw_points_quad(context& ctx) {
 
 	/*adjustable effects */
 	raw_prog.set_uniform(ctx, "collapse_tantheta", collapse_tantheta);
+	raw_prog.set_uniform(ctx, "colorize_with_scan_index", colorize_with_scan_index);
+
+	/*scan index */
+	raw_prog.set_uniform(ctx, "renderScan0", renderScan0);
+	raw_prog.set_uniform(ctx, "renderScan1", renderScan1);
+	raw_prog.set_uniform(ctx, "renderScan2", renderScan2);
+	raw_prog.set_uniform(ctx, "renderScan3", renderScan3);
+	raw_prog.set_uniform(ctx, "renderScan4", renderScan4);
+	raw_prog.set_uniform(ctx, "renderScan5", renderScan5);
 
 	glDrawArrays(GL_POINTS, 0, input_buffer_data.size());
 	glBindVertexArray(0);

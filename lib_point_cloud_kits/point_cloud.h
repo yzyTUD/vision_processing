@@ -123,10 +123,11 @@ protected:
 	std::vector<PixCrd> I;
 	/// container for local features 
 	std::vector<Dir> F;
-
-	///
+	/// container for per vertex scan indices, which scan it belones to 
+	std::vector<float> point_scan_index; bool has_scan_index = false;
+	/// per-vertex attribute: which group the point belones to 
 	std::vector<cgv::type::uint8_type> point_selection;
-	///
+	/// per-vertex attribute: used for region growing 
 	std::vector<bool> point_selection_visited;
 public:
 	/// per vertex marked index, PointSelectiveAttribute

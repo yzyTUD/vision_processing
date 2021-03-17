@@ -903,6 +903,15 @@ void visual_processing::create_gui() {
 		"value_slider", "min=0.05;max=5;log=false;ticks=false;");
 	add_member_control(this, "render skybox", render_skybox, "check");
 	add_member_control(this, "render_nmls", data_ptr->point_cloud_kit->show_nmls, "check");
+	add_member_control(this, "colorize_with_scan_index", data_ptr->point_cloud_kit->colorize_with_scan_index, "check");
+
+	add_member_control(this, "renderScan0", data_ptr->point_cloud_kit->renderScan0, "check");
+	add_member_control(this, "renderScan1", data_ptr->point_cloud_kit->renderScan1, "check");
+	add_member_control(this, "renderScan2", data_ptr->point_cloud_kit->renderScan2, "check");
+	add_member_control(this, "renderScan3", data_ptr->point_cloud_kit->renderScan3, "check");
+	add_member_control(this, "renderScan4", data_ptr->point_cloud_kit->renderScan4, "check");
+	add_member_control(this, "renderScan5", data_ptr->point_cloud_kit->renderScan5, "check");
+
 	/*add_member_control(this, "RENDERING_STRATEGY", data_ptr->point_cloud_kit->RENDERING_STRATEGY, 
 		"value_slider", "min=0;max=4;log=false;ticks=true;");*/
 	//stich_rendering_mode_point_based 
