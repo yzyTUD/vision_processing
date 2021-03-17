@@ -121,7 +121,6 @@ public:
 	bool read_pc_subsampled_with_dialog();
 
 	/// read .campose file 
-	///
 	bool render_camposes = false;
 	///
 	bool read_pc_campose(cgv::render::context& ctx, quat initialcamq);
@@ -136,12 +135,18 @@ public:
 	///
 
 	/*direct marking on pc */
+	///
 	void prepare_marking(std::vector<rgba>* psc);
-
+	///
 	void mark_points_with_conroller(Pnt p, float r, bool confirmed, int objctive);
 
-	
-	/*region growing related*/
+	/*other operations after marked*/
+	// selective subsampling within given point type, with a global adjustable ratio 
+	void selective_subsampling_cpu(int objctive);
+	// 
+	float selective_subsampling_radio = 0.5;
+
+	/*region growing, give group information */
 	///
 	void prepare_grow(bool read_from_file, std::vector<rgba>* psc, int max_num_regions);
 	///
@@ -178,7 +183,7 @@ public:
 	void subsampling_target(Pnt& posi, float& radii, bool confirmed);
 	///
 	void do_region_growing_timer_event(double t, double dt);
-	///
+	/// varibles that used for region growing
 	bool marked = false;
 	bool do_region_growing_directly = true;
 	int steps_per_event_as_speed = 1000;
@@ -258,8 +263,6 @@ public:
 	std::vector<rgb> fea_box_color;
 	std::vector<vec3> fea_box_trans;
 	std::vector<quat> fea_box_rot;
-
-	// add here 
 
 	/// pointer to instance that defines the view
 	cgv::render::view* view_ptr;

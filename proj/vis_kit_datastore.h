@@ -317,6 +317,9 @@ public:
 		//supersampling_bbox = box3(vec3(-2,0,0),vec3(2,1,1));
 		//mode = interaction_mode::SUPERSAMPLING_DRAW;
 
+		//////////////////////////////////////////////////////////////////
+		//
+		//////////////////////////////////////////////////////////////////
 		gp0_btns.push_back("Teleport\nRotate");
 		gp0_btns.push_back("Teleport\nDirectional");
 		gp0_btns.push_back("Teleport\nLifting");
@@ -324,7 +327,9 @@ public:
 		gp0_btns.push_back("Teleport\nTeleport");
 		gps.push_back(gp0_btns);
 
+		//////////////////////////////////////////////////////////////////
 		// basic pc opereations, surfel, cpu side 
+		//////////////////////////////////////////////////////////////////
 		gp1_btns.push_back("PointCloud\nPointSize");
 		gp1_btns.push_back("PointCloud\nGroupPicker");
 		gp1_btns.push_back("PointCloud\nDelPoints\nTouchTo\nActivate");
@@ -341,16 +346,23 @@ public:
 		gp1_btns.push_back("PointCloud\nCulling\nRange");
 		gps.push_back(gp1_btns);
 
+		//////////////////////////////////////////////////////////////////
 		// point cloud cleaning 
 		// adjuest range with move event
 		// press btn to confirm
+		//////////////////////////////////////////////////////////////////
 		std::vector<std::string> gp_btn_tmp;
+		// deletion 
 		gp_btn_tmp.push_back("PCCleaning\nFake\nDel");
 		gp_btn_tmp.push_back("PCCleaning\nFake\nSeleciton");
+		gp_btn_tmp.push_back("PCCleaning\nSelective\nSubSampling");
+		// addition 
 		gp_btn_tmp.push_back("PCCleaning\nAddition\nPlane"); 
 		gps.push_back(gp_btn_tmp);
 
+		//////////////////////////////////////////////////////////////////
 		// point cloud shading effect 
+		//////////////////////////////////////////////////////////////////
 		gp_btn_tmp.clear();
 		gp_btn_tmp.push_back("PCShading\nLinearMelting");
 		gp_btn_tmp.push_back("PCShading\nAdjustTheta");

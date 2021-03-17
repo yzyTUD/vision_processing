@@ -142,6 +142,7 @@ public:
 		ICP_TARGET,
 		ICP_SOURCE_HIGHLIGHT,
 		ICP_TARGET_HIGHLIGHT,
+		TO_BE_SUBSAMPLED,
 		// add new functional idx above
 		EndOfFunctionalIndices
 		// then, region id start from the end of this struct 

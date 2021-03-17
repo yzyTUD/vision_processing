@@ -387,12 +387,20 @@ bool visual_processing::handle(cgv::gui::event& e)
 						data_ptr->point_cloud_kit->visual_delete = !data_ptr->point_cloud_kit->visual_delete;
 					}
 					if (data_ptr->check_roulette_selection(data_ptr->get_id_with_name("PCCleaning\nFake\nDel"))) {
-						// marking on cpu side 
+						// marking on cpu side, mark as deleted 
 						data_ptr->point_cloud_kit->mark_points_with_conroller(
 							data_ptr->cur_right_hand_posi + data_ptr->cur_off_right,
 								data_ptr->point_cloud_kit->controller_effect_range, true, 
 									point_cloud::PointSelectiveAttribute::DEL);
 					}
+					if (data_ptr->check_roulette_selection(data_ptr->get_id_with_name("PCCleaning\nSelective\nSubSampling"))) {
+						// marking on cpu side, mark as deleted 
+						data_ptr->point_cloud_kit->mark_points_with_conroller(
+							data_ptr->cur_right_hand_posi + data_ptr->cur_off_right,
+								data_ptr->point_cloud_kit->controller_effect_range, true,
+									point_cloud::PointSelectiveAttribute::TO_BE_SUBSAMPLED);
+					}
+					//
 				}
 			}
 			if (vrke.get_action() == cgv::gui::KA_RELEASE) { //

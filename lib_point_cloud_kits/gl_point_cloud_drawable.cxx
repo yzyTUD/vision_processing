@@ -438,7 +438,7 @@ void gl_point_cloud_drawable::draw_points_quad(context& ctx) {
 	raw_prog.set_uniform(ctx, "pixel_extent_per_depth", pixel_extent_per_depth);
 	raw_prog.set_uniform(ctx, "orient_splats", true);
 	raw_prog.set_uniform(ctx, "point_size", point_size);
-	raw_prog.set_uniform(ctx, "map_color_to_material", 3); // must have 
+	raw_prog.set_uniform(ctx, "map_color_to_material", 3); // must have this 
 	/*raw_prog.set_uniform(ctx, "halo_width_in_pixel", 10);
 	* //
 	*/
