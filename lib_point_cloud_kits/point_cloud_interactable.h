@@ -139,10 +139,12 @@ public:
 	void prepare_marking(std::vector<rgba>* psc);
 	///
 	void mark_points_with_conroller(Pnt p, float r, bool confirmed, int objctive);
+	///
+	void marking_test_mark_all_points_as_given_group(int objective);
 
 	/*other operations after marked*/
 	// selective subsampling within given point type, with a global adjustable ratio 
-	void selective_subsampling_cpu(int objctive);
+	void selective_subsampling_cpu();
 	// 
 	float selective_subsampling_radio = 0.5;
 

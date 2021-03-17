@@ -334,6 +334,7 @@ bool visual_processing::handle(cgv::gui::event& e)
 	if (selection_kit != nullptr)selection_kit->handle(e);
 
 	// main handler for gui 
+	// adding a new function: key function -> render -> adjustment
 
 	// toggle operations 
 	if (e.get_kind() == cgv::gui::EID_THROTTLE) {
@@ -386,6 +387,13 @@ bool visual_processing::handle(cgv::gui::event& e)
 						post_redraw();*/
 						data_ptr->point_cloud_kit->visual_delete = !data_ptr->point_cloud_kit->visual_delete;
 					}
+					if (data_ptr->check_roulette_selection(data_ptr->get_id_with_name("PCCleaning\nSelective\nSubSampling"))) {
+						// marking on cpu side, mark as deleted 
+						data_ptr->point_cloud_kit->mark_points_with_conroller(
+							data_ptr->cur_right_hand_posi + data_ptr->cur_off_right,
+								data_ptr->point_cloud_kit->controller_effect_range, true,
+									point_cloud::PointSelectiveAttribute::TO_BE_SUBSAMPLED);
+					}
 					if (data_ptr->check_roulette_selection(data_ptr->get_id_with_name("PCCleaning\nFake\nDel"))) {
 						// marking on cpu side, mark as deleted 
 						data_ptr->point_cloud_kit->mark_points_with_conroller(
@@ -394,13 +402,8 @@ bool visual_processing::handle(cgv::gui::event& e)
 									point_cloud::PointSelectiveAttribute::DEL);
 					}
 					if (data_ptr->check_roulette_selection(data_ptr->get_id_with_name("PCCleaning\nSelective\nSubSampling"))) {
-						// marking on cpu side, mark as deleted 
-						data_ptr->point_cloud_kit->mark_points_with_conroller(
-							data_ptr->cur_right_hand_posi + data_ptr->cur_off_right,
-								data_ptr->point_cloud_kit->controller_effect_range, true,
-									point_cloud::PointSelectiveAttribute::TO_BE_SUBSAMPLED);
+						selective_downsampling_menu_btn_press();
 					}
-					//
 				}
 			}
 			if (vrke.get_action() == cgv::gui::KA_RELEASE) { //
@@ -409,6 +412,9 @@ bool visual_processing::handle(cgv::gui::event& e)
 						// update to gpu 
 						data_ptr->point_cloud_kit->on_rendering_settings_changed();
 						post_redraw();
+					}
+					if (data_ptr->check_roulette_selection(data_ptr->get_id_with_name("PCCleaning\nSelective\nSubSampling"))) {
+						selective_downsampling_menu_btn_release();
 					}
 				}
 			}
@@ -509,6 +515,26 @@ bool visual_processing::handle(cgv::gui::event& e)
 						data_ptr->point_cloud_kit->collapse_tantheta -= 0.01f;
 					}
 				}
+				/*point cloud cleaning */
+				if (data_ptr->check_roulette_selection(data_ptr->get_id_with_name("PCCleaning\nSelective\nSubSampling"))) {
+					if (vrse.get_y() > 0) {
+						// larger point size 
+						data_ptr->point_cloud_kit->controller_effect_range += 0.01f;
+					}
+					else {
+						data_ptr->point_cloud_kit->controller_effect_range -= 0.01f;
+					}
+				}
+				if (data_ptr->check_roulette_selection(data_ptr->get_id_with_name("PCCleaning\nFake\nDel"))) {
+					if (vrse.get_y() > 0) {
+						// larger point size 
+						data_ptr->point_cloud_kit->controller_effect_range += 0.01f;
+					}
+					else {
+						data_ptr->point_cloud_kit->controller_effect_range -= 0.01f;
+					}
+				}
+
 			}
 		}
 
@@ -884,6 +910,37 @@ void visual_processing::switch_rendering_mode_clod_based() {
 	data_ptr->point_cloud_kit->on_rendering_settings_changed();
 	post_redraw();
 }
+
+void visual_processing::mark_all_points_as_tobedownsampled() {
+	data_ptr->point_cloud_kit->marking_test_mark_all_points_as_given_group(
+		(int)point_cloud::PointSelectiveAttribute::TO_BE_SUBSAMPLED);
+}
+
+void visual_processing::mark_all_active_points_as_tobedownsampled() {
+	for (int i = 0; i < data_ptr->point_cloud_kit->pc.get_nr_points(); i++) {
+		if (data_ptr->point_cloud_kit->pc.point_selection[i] != point_cloud::PointSelectiveAttribute::DEL)
+			data_ptr->point_cloud_kit->pc.point_selection[i] = 
+				point_cloud::PointSelectiveAttribute::TO_BE_SUBSAMPLED;
+	}
+}
+
+/*quick test and then, integrate*/
+void visual_processing::selective_downsampling_menu_btn_press() {
+	// mark -> TO_BE_SUBSAMPLED
+	data_ptr->point_cloud_kit->mark_points_with_conroller(
+		data_ptr->cur_right_hand_posi + data_ptr->cur_off_right,
+		data_ptr->point_cloud_kit->controller_effect_range, true,
+		point_cloud::PointSelectiveAttribute::TO_BE_SUBSAMPLED);
+	// TO_BE_SUBSAMPLED -> DEL
+	data_ptr->point_cloud_kit->selective_subsampling_cpu();
+}
+
+void visual_processing::selective_downsampling_menu_btn_release() {
+	// update to gpu 
+	data_ptr->point_cloud_kit->on_rendering_settings_changed();
+	post_redraw();
+}
+
 ////////////////////////////////////////////////////////////////////////
 //// gui
 ////////////////////////////////////////////////////////////////////////
@@ -919,6 +976,14 @@ void visual_processing::create_gui() {
 	add_member_control(this, "renderScan3", data_ptr->point_cloud_kit->renderScan3, "check");
 	add_member_control(this, "renderScan4", data_ptr->point_cloud_kit->renderScan4, "check");
 	add_member_control(this, "renderScan5", data_ptr->point_cloud_kit->renderScan5, "check");
+
+	//
+	connect_copy(add_button("mark_all_active_points_as_tobedownsampled")->click, rebind(this,
+		&visual_processing::mark_all_active_points_as_tobedownsampled));
+	connect_copy(add_button("selective_downsampling_menu_btn_press")->click, rebind(this,
+		&visual_processing::selective_downsampling_menu_btn_press));
+	connect_copy(add_button("selective_downsampling_menu_btn_release")->click, rebind(this,
+		&visual_processing::selective_downsampling_menu_btn_release));
 
 	/*add_member_control(this, "RENDERING_STRATEGY", data_ptr->point_cloud_kit->RENDERING_STRATEGY, 
 		"value_slider", "min=0;max=4;log=false;ticks=true;");*/

@@ -428,6 +428,12 @@ public:
 	void switch_rendering_mode_surfel_based();
 	void switch_rendering_mode_clod_based();
 
+	void mark_all_points_as_tobedownsampled();
+	void mark_all_active_points_as_tobedownsampled();
+
+	void selective_downsampling_menu_btn_press();
+	void selective_downsampling_menu_btn_release();
+
 	void create_gui();
 
 	/// wrappers 

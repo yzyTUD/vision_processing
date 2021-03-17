@@ -431,11 +431,30 @@ void point_cloud_interactable::mark_points_with_conroller(Pnt p, float r, bool c
 	//}
 	//on_point_cloud_change_callback(PCC_COLORS);
 }
+/// mark_all_points_as_given_group, still, you have to prepare first, typically done in reading process
+void point_cloud_interactable::marking_test_mark_all_points_as_given_group(int objective) {
+	for (int i = 0; i < pc.get_nr_points(); i++) {
+		// int -> uint8
+		pc.point_selection[i] = (cgv::type::uint8_type)objective;
+	}
+}
 
 /*operations after marked */
 /// 
-void selective_subsampling_cpu(int objctive) {
-
+void point_cloud_interactable::selective_subsampling_cpu() {
+	std::default_random_engine g;
+	std::uniform_real_distribution<float> d(0, 1);
+	// iterate all points 
+	for (int i = 0; i < pc.get_nr_points(); i++) {
+		// if marked as TO_BE_SUBSAMPLED 
+		if (point_cloud::PointSelectiveAttribute::TO_BE_SUBSAMPLED == pc.point_selection[i]) {
+			// if random condition fullfilled, the larger the radio, more points will be deleted
+			if (d(g) < selective_subsampling_radio) {
+				// mark it as deleted 
+				pc.point_selection[i] = point_cloud::PointSelectiveAttribute::DEL;
+			}
+		}
+	}
 }
 
 /*region growing after marked*/

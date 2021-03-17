@@ -110,7 +110,7 @@ public:
 class CGV_API point_cloud : public point_cloud_types
 {
 	typedef cgv::media::axis_aligned_box<float, 3> box3;
-protected:
+public:
 	/// container for point positions
 	std::vector<Pnt> P;
 	/// container for point normals

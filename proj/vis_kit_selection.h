@@ -512,18 +512,18 @@ public:
 			render_palette_on_left_hand(ctx);
 			render_palette_sphere_on_righthand(ctx);
 		}
-		//if (data_ptr->check_roulette_selection(data_ptr->get_id_with_name("PointCloud\nMarking"))) {
-		//	render_a_sphere_on_righthand(ctx);
-		//}
-		//render_a_sphere_on_righthand_shading_effect
-		// for shading effects 
-		if (data_ptr->check_roulette_selection(data_ptr->get_id_with_name("PCCleaning\nFake\nDel"))) {
-			render_a_sphere_on_righthand_shading_effect(ctx);
-		}
+		// shading effects 
 		if (data_ptr->check_roulette_selection(data_ptr->get_id_with_name("PCCleaning\nFake\nSeleciton"))) {
 			render_a_sphere_on_righthand_shading_effect(ctx);
 		}
 		if (data_ptr->check_roulette_selection(data_ptr->get_id_with_name("PCShading\nLinearMelting"))) {
+			render_a_sphere_on_righthand_shading_effect(ctx);
+		}
+		// point cloud cleaning 
+		if (data_ptr->check_roulette_selection(data_ptr->get_id_with_name("PCCleaning\nFake\nDel"))) {
+			render_a_sphere_on_righthand_shading_effect(ctx);
+		}
+		if (data_ptr->check_roulette_selection(data_ptr->get_id_with_name("PCCleaning\nSelective\nSubSampling"))) {
 			render_a_sphere_on_righthand_shading_effect(ctx);
 		}
 	}
