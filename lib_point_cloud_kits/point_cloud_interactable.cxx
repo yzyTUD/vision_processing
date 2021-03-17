@@ -457,6 +457,41 @@ void point_cloud_interactable::selective_subsampling_cpu() {
 	}
 }
 
+/*point addition */
+void point_cloud_interactable::spawn_points_in_the_handhold_quad(quat controllerq, vec3 controllert, vec3 quadextent) {
+	std::default_random_engine g;
+	std::uniform_real_distribution<float> d_x(-quadextent.x(), quadextent.x());
+	std::uniform_real_distribution<float> d_y(-quadextent.y(), quadextent.y());
+	std::uniform_real_distribution<float> d_z(-quadextent.z(), quadextent.z());
+	//point_cloud tmppc;
+	// todo: regular/ random switch 
+	for (int i = 0; i < num_of_points_to_be_added; i++) {
+		/*spawn a new point: randomly inside the given range*/ 
+		Pnt newP = Pnt(d_x(g), d_y(g), 0);
+		// local to global
+		controllerq.rotate(newP);
+		newP = newP + controllert;
+
+		/*new color attached*/
+		rgba newC = rgba(0.1, 0.6, 0.1, 1);
+
+		/*new normal*/
+		Nml newN = Nml(0,0,1);
+		controllerq.rotate(newN);
+
+		/*scan index  */
+		float newScanIndex = 0;
+
+		/*selection index*/
+		cgv::type::uint8_type newSelectionIndex = point_cloud::PointSelectiveAttribute::NEWLY_GENERATED;
+
+		// add to pc 
+		pc.add_point(newP, newC, newN, newScanIndex, newSelectionIndex);
+	}
+	// rebuild ann tree, managing rendering range..., crutial task when point cloud changes
+	on_point_cloud_change_callback(PCC_POINTS_RESIZE);
+}
+
 /*region growing after marked*/
 /// max_num_regions is not used 
 void point_cloud_interactable::prepare_grow(bool read_from_file, std::vector<rgba>* psc, int max_num_regions) {

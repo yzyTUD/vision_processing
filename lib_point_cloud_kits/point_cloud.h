@@ -143,6 +143,7 @@ public:
 		ICP_SOURCE_HIGHLIGHT,
 		ICP_TARGET_HIGHLIGHT,
 		TO_BE_SUBSAMPLED,
+		NEWLY_GENERATED,
 		// add new functional idx above
 		EndOfFunctionalIndices
 		// then, region id start from the end of this struct 
@@ -342,10 +343,13 @@ public:
 	void transform(const HMat& hmat);
 	/// add a point and allocate normal and color if necessary, return index of new point
 	size_t add_point(const Pnt& p);
-	/// 
-	size_t add_point_subsampling(const Pnt p, const Dir nml);
 	/// add a point and allocate normal and color if necessary, return index of new point
 	size_t add_point(const Pnt& p, const RGBA& c);
+	///
+	size_t add_point(const Pnt& p, const RGBA& c,
+		const Nml& nml, const float& point_scan_index, const cgv::type::uint8_type& point_selection);
+	/// 
+	size_t add_point_subsampling(const Pnt p, const Dir nml);
 	/// resize the point cloud
 	void resize(size_t nr_points);
 	//@}

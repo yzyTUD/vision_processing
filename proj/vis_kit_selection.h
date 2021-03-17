@@ -526,6 +526,14 @@ public:
 		if (data_ptr->check_roulette_selection(data_ptr->get_id_with_name("PCCleaning\nSelective\nSubSampling"))) {
 			render_a_sphere_on_righthand_shading_effect(ctx);
 		}
+		if (data_ptr->check_roulette_selection(data_ptr->get_id_with_name("PCCleaning\nAddition\nQuad"))) {
+			render_a_quad_on_righthand_vertical(ctx);
+		}
+
+		// quick test 
+		//render_a_quad_on_righthand_vertical(ctx);
+
+		//
 	}
 	/// call me 
 	void finish_draw(context& ctx) {
@@ -556,7 +564,8 @@ public:
 			glDepthMask(GL_TRUE);
 		}
 	}
-	/// for shading effect 
+	
+	/*shading effect*/ 
 	void render_a_sphere_on_righthand_shading_effect(cgv::render::context& ctx) {
 		if (data_ptr->righthand_object_positions.size()) {
 			shading_effect_style.radius = data_ptr->point_cloud_kit->controller_effect_range;
@@ -575,7 +584,61 @@ public:
 			data_ptr->righthand_object_colors[0] = oricol;
 		}
 	}
+	///
+	void render_a_point_cloud_on_right_hand_controller() {
 
+	}
+	
+	/*editing tool */
+	void render_a_quad_on_righthand_vertical(cgv::render::context& ctx) {
+		//data_ptr->righthand_object_positions[0]
+
+		vec3 quad_ext = data_ptr->quad_addition_ext;
+
+		vec3 p1(0.5 * quad_ext.x(), 0.5 * quad_ext.y(), 0);
+		vec3 p2(-0.5 * quad_ext.x(), 0.5 * quad_ext.y(), 0);
+		vec3 p3(0.5 * quad_ext.x(), -0.5 * quad_ext.y(), 0);
+		vec3 p4(-0.5 * quad_ext.x(), -0.5 * quad_ext.y(), 0);
+
+		data_ptr->cur_right_hand_rot_quat.rotate(p1);
+		data_ptr->cur_right_hand_rot_quat.rotate(p2);
+		data_ptr->cur_right_hand_rot_quat.rotate(p3);
+		data_ptr->cur_right_hand_rot_quat.rotate(p4);
+
+		p1 = p1 + data_ptr->righthand_object_positions[0];
+		p2 = p2 + data_ptr->righthand_object_positions[0];
+		p3 = p3 + data_ptr->righthand_object_positions[0];
+		p4 = p4 + data_ptr->righthand_object_positions[0];
+
+		std::vector<vec3> P;
+		std::vector<vec2> T;
+
+		P.push_back(p1); //T.push_back(vec2(1.0f, 1.0f));
+		P.push_back(p2); //T.push_back(vec2(0.0f, 1.0f));
+		P.push_back(p3); //T.push_back(vec2(1.0f, 0.0f));
+		P.push_back(p2); //T.push_back(vec2(0.0f, 1.0f));
+		P.push_back(p3); //T.push_back(vec2(1.0f, 0.0f));
+		P.push_back(p4); //T.push_back(vec2(0.0f, 0.0f));
+
+		cgv::render::shader_program& prog = ctx.ref_default_shader_program();
+		int pi = prog.get_position_index();
+		//int ti = prog.get_texcoord_index();
+
+		cgv::render::attribute_array_binding::set_global_attribute_array(ctx, pi, P);
+		cgv::render::attribute_array_binding::enable_global_array(ctx, pi);
+		/*cgv::render::attribute_array_binding::set_global_attribute_array(ctx, ti, T);
+		cgv::render::attribute_array_binding::enable_global_array(ctx, ti);*/
+		glDisable(GL_CULL_FACE);
+		prog.enable(ctx);
+		ctx.set_color(rgb(0,0.4,0));
+		glDrawArrays(GL_TRIANGLES, 0, (GLsizei)P.size());
+		prog.disable(ctx);
+		glEnable(GL_CULL_FACE);
+		cgv::render::attribute_array_binding::disable_global_array(ctx, pi);
+		//cgv::render::attribute_array_binding::disable_global_array(ctx, ti);
+	}
+
+	/**/
 	///
 	void render_a_sphere_on_righthand(cgv::render::context& ctx) {
 		if (data_ptr->righthand_object_positions.size()) {

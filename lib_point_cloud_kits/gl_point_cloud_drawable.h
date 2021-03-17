@@ -33,13 +33,15 @@ public:
 	point_cloud pc;
 	
 	/*
-		1 - raw rendering 
+		1 - quad rendering 
 		2 - point rendering 
 		3 - surfel rendering 
 		4 - clod rendering 
 	*/
 	int RENDERING_STRATEGY = 1;
 	bool is_switching = false;
+	// for small point clouds 
+	bool continus_redraw = false; 
 
 	/*raw rendering*/
 	GLuint raw_vao = -1;
@@ -93,13 +95,20 @@ public:
 	bool visual_delete = false;
 	bool render_with_original_color = true;
 	float collapse_tantheta = 0.577;
-	bool colorize_with_scan_index = true;
+	bool colorize_with_scan_index = false;
+	// uniforms used to toggle point cloud rendering from different scans (scan index)
 	bool renderScan0 = true;
 	bool renderScan1 = true;
 	bool renderScan2 = true;
 	bool renderScan3 = true;
 	bool renderScan4 = true;
 	bool renderScan5 = true;
+
+	/*point addition */
+	// this mat is not changing pc at runtime, but sill can be used when we need the transform
+	mat4 handhold_pc_modelMat; 
+	// those will be passed to shader as uniforms
+	bool use_additional_modelMat;
 
 	/*palette rendering, render with color palletes*/
 	std::vector<Clr>* use_these_point_colors;

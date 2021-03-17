@@ -820,6 +820,21 @@ size_t point_cloud::add_point(const Pnt& p)
 	return idx;
 }
 
+size_t point_cloud::add_point(const Pnt& p, const RGBA& c,
+	const Nml& nml, const float& scan_index, const cgv::type::uint8_type& sel) {
+
+	// check before this 
+
+	P.push_back(p);
+	C.push_back(c);
+	N.push_back(nml);
+	point_scan_index.push_back(scan_index);
+	point_selection.push_back(sel);
+
+	size_t idx = P.size();
+	return idx;
+}
+
 // add_point for subsampling 
 size_t point_cloud::add_point_subsampling(const Pnt p, const Dir nml)
 {

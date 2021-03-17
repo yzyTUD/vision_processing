@@ -148,6 +148,11 @@ public:
 	// 
 	float selective_subsampling_radio = 0.5;
 
+	/*point addition */
+	void spawn_points_in_the_handhold_quad(quat controllerq, vec3 controllert,vec3 quadextent);
+	///
+	int num_of_points_to_be_added = 100;
+
 	/*region growing, give group information */
 	///
 	void prepare_grow(bool read_from_file, std::vector<rgba>* psc, int max_num_regions);

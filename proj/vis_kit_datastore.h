@@ -202,6 +202,8 @@ public:
 	}
 	
 	point_cloud_interactable* point_cloud_kit = new point_cloud_interactable();
+	point_cloud_interactable* point_cloud_in_hand = new point_cloud_interactable();
+	bool render_handhold_pc = false;
 
 	/// main storage for motion data 
 	std::map<std::string, motion_storage_per_device> motion_storage;
@@ -312,6 +314,8 @@ public:
 	std::vector<rgb> palette_righthand_object_colors;
 	std::vector<vec3> palette_lefthand_palette_initialpose_positions;
 
+	vec3 quad_addition_ext = vec3(0.2);
+
 	vis_kit_data_store_shared() {
 		//initialize_trackable_list();
 		//supersampling_bbox = box3(vec3(-2,0,0),vec3(2,1,1));
@@ -357,7 +361,8 @@ public:
 		gp_btn_tmp.push_back("PCCleaning\nFake\nSeleciton");
 		gp_btn_tmp.push_back("PCCleaning\nSelective\nSubSampling");
 		// addition 
-		gp_btn_tmp.push_back("PCCleaning\nAddition\nPlane"); 
+		gp_btn_tmp.push_back("PCCleaning\nAddition\nQuad");  // maybe enough 
+		gp_btn_tmp.push_back("PCCleaning\nAddition\nSphere");
 		gps.push_back(gp_btn_tmp);
 
 		//////////////////////////////////////////////////////////////////
@@ -532,6 +537,23 @@ public:
 		// acloud rendering 
 		point_cloud_kit->enable_acloud_effect = false;
 		point_cloud_kit->enable_headset_culling = true;
+
+		// initialize a point cloud in your hand 
+		point_cloud_in_hand->surfel_style.point_size = 0.1f;
+		point_cloud_in_hand->surfel_style.halo_color_strength = 0.0f;
+		point_cloud_in_hand->surfel_style.percentual_halo_width = 25.0f;
+		point_cloud_in_hand->surfel_style.blend_points = true;
+		point_cloud_in_hand->surfel_style.blend_width_in_pixel = 1.0f;
+		point_cloud_in_hand->show_neighbor_graph = false;
+		point_cloud_in_hand->show_box = false;
+		point_cloud_in_hand->do_auto_view = false;
+		point_cloud_in_hand->pc.create_colors();
+		point_cloud_in_hand->RENDERING_STRATEGY = 1; // quad rendering 
+		point_cloud_in_hand->continus_redraw = true;
+		//point_cloud_in_hand->generate_pc_cube();
+		//point_cloud_in_hand->compute_normals();
+		//point_cloud_in_hand->orient_normals(); // Orientation with MST
+
 	}
 
 	vec2 get_id_with_name(string btn_name) {

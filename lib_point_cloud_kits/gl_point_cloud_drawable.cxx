@@ -352,7 +352,7 @@ void gl_point_cloud_drawable::draw_points_quad(context& ctx) {
 		return;
 	if (!show_points)
 		return;
-	if (raw_renderer_out_of_date) {
+	if (raw_renderer_out_of_date || continus_redraw) {
 		if (!raw_prog.is_linked())
 			raw_prog.build_program(ctx, "quad_vr.glpr", true);
 		if (raw_vao == -1)

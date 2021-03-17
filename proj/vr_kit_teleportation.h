@@ -334,6 +334,10 @@ public:
 				data_ptr->cur_left_hand_dir = direction;
 			}
 			if (ci == data_ptr->right_rgbd_controller_index) {
+				/*typedef cgv::math::fmat<float, 3, 4> mat3x4;
+				mat4 righthand_pose_modelMatrix;
+				mat3x4 poseMat = vrpe.get_pose_matrix();*/
+
 				data_ptr->cur_right_hand_posi = vrpe.get_position();
 				data_ptr->cur_right_hand_rot_quat = vrpe.get_quaternion();
 				has_ctrl_posi = true;

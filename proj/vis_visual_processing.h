@@ -434,6 +434,9 @@ public:
 	void selective_downsampling_menu_btn_press();
 	void selective_downsampling_menu_btn_release();
 
+	void quad_addition_menu_btn_press();
+	void quad_addition_menu_btn_release();
+
 	void create_gui();
 
 	/// wrappers 

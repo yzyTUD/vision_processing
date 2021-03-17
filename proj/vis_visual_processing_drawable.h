@@ -143,11 +143,11 @@ void visual_processing::on_device_change(void* kit_handle, bool attach)
 		}
 	}
 }
-
+/// timer event, freq depends on rendering 
 void visual_processing::timer_event(double t, double dt) {
 
 }
-
+/// timer event executes in an other parallel thread, fixed freq 
 void visual_processing::parallel_timer_event() {
 	while (true) {
 		// control the speed here 
@@ -170,7 +170,6 @@ void visual_processing::parallel_timer_event() {
 		std::this_thread::sleep_for(std::chrono::milliseconds(11));
 	}
 }
-
 ///
 visual_processing::visual_processing() 
 {
@@ -304,6 +303,7 @@ bool visual_processing::init(cgv::render::context& ctx)
 	if (selection_kit != nullptr) selection_kit->set_context_str(get_context());
 
 	data_ptr->point_cloud_kit->init(ctx);
+	data_ptr->point_cloud_in_hand->init(ctx);
 	one_shot_360pc->init(ctx);
 	stored_cloud->init(ctx);
 	if (draw_kit != nullptr) draw_kit->init(ctx);
@@ -404,6 +404,10 @@ bool visual_processing::handle(cgv::gui::event& e)
 					if (data_ptr->check_roulette_selection(data_ptr->get_id_with_name("PCCleaning\nSelective\nSubSampling"))) {
 						selective_downsampling_menu_btn_press();
 					}
+					if (data_ptr->check_roulette_selection(data_ptr->get_id_with_name("PCCleaning\nAddition\nQuad"))) {
+					
+					}
+					//
 				}
 			}
 			if (vrke.get_action() == cgv::gui::KA_RELEASE) { //
@@ -415,6 +419,9 @@ bool visual_processing::handle(cgv::gui::event& e)
 					}
 					if (data_ptr->check_roulette_selection(data_ptr->get_id_with_name("PCCleaning\nSelective\nSubSampling"))) {
 						selective_downsampling_menu_btn_release();
+					}
+					if (data_ptr->check_roulette_selection(data_ptr->get_id_with_name("PCCleaning\nAddition\nQuad"))) {
+
 					}
 				}
 			}
@@ -534,7 +541,21 @@ bool visual_processing::handle(cgv::gui::event& e)
 						data_ptr->point_cloud_kit->controller_effect_range -= 0.01f;
 					}
 				}
+				if (data_ptr->check_roulette_selection(data_ptr->get_id_with_name("PCCleaning\nAddition\nQuad"))) {
+					if (vrse.get_y() > 0 && abs(vrse.get_x()) < 0.1) {
+						data_ptr->quad_addition_ext.y() += 0.01f;
+					}
+					else if(vrse.get_y() < 0 && abs(vrse.get_x()) < 0.1){
+						data_ptr->quad_addition_ext.y() -= 0.01f;
+					}
 
+					if (vrse.get_x() > 0 && abs(vrse.get_y()) < 0.1) {
+						data_ptr->quad_addition_ext.x() += 0.01f;
+					}
+					else if (vrse.get_x() < 0 && abs(vrse.get_y()) < 0.1) {
+						data_ptr->quad_addition_ext.x() -= 0.01f;
+					}
+				}
 			}
 		}
 
@@ -623,6 +644,7 @@ void visual_processing::draw(cgv::render::context& ctx)
 	if (handhold_near_kit!=nullptr) handhold_near_kit->draw(ctx);
 	if (tmpfixed_gui_kit != nullptr) tmpfixed_gui_kit->draw(ctx);
 	if (render_pc) data_ptr->point_cloud_kit->draw(ctx);
+	if (data_ptr->render_handhold_pc) data_ptr->point_cloud_in_hand->draw(ctx);
 	if (roller_coaster_kit_1) roller_coaster_kit_1->draw(ctx);
 	if (draw_kit!=nullptr) draw_kit->render_trajectory(ctx);
 	if (motioncap_kit!=nullptr) motioncap_kit->draw(ctx);
@@ -929,13 +951,26 @@ void visual_processing::selective_downsampling_menu_btn_press() {
 	// mark -> TO_BE_SUBSAMPLED
 	data_ptr->point_cloud_kit->mark_points_with_conroller(
 		data_ptr->cur_right_hand_posi + data_ptr->cur_off_right,
-		data_ptr->point_cloud_kit->controller_effect_range, true,
-		point_cloud::PointSelectiveAttribute::TO_BE_SUBSAMPLED);
+			data_ptr->point_cloud_kit->controller_effect_range, true,
+				point_cloud::PointSelectiveAttribute::TO_BE_SUBSAMPLED);
 	// TO_BE_SUBSAMPLED -> DEL
 	data_ptr->point_cloud_kit->selective_subsampling_cpu();
 }
 
 void visual_processing::selective_downsampling_menu_btn_release() {
+	// update to gpu 
+	data_ptr->point_cloud_kit->on_rendering_settings_changed();
+	post_redraw();
+}
+
+void visual_processing::quad_addition_menu_btn_press() {
+	data_ptr->point_cloud_kit->spawn_points_in_the_handhold_quad(
+		data_ptr->cur_right_hand_rot_quat, 
+			data_ptr->righthand_object_positions[0], 
+				data_ptr->quad_addition_ext);
+}
+
+void visual_processing::quad_addition_menu_btn_release() {
 	// update to gpu 
 	data_ptr->point_cloud_kit->on_rendering_settings_changed();
 	post_redraw();
@@ -976,6 +1011,14 @@ void visual_processing::create_gui() {
 	add_member_control(this, "renderScan3", data_ptr->point_cloud_kit->renderScan3, "check");
 	add_member_control(this, "renderScan4", data_ptr->point_cloud_kit->renderScan4, "check");
 	add_member_control(this, "renderScan5", data_ptr->point_cloud_kit->renderScan5, "check");
+
+	//point addition 
+	add_member_control(this, "render_handhold_pc", data_ptr->render_handhold_pc, "check");
+	connect_copy(add_button("quad_addition_menu_btn_press")->click, rebind(this,
+		&visual_processing::quad_addition_menu_btn_press));
+	connect_copy(add_button("quad_addition_menu_btn_release")->click, rebind(this,
+		&visual_processing::quad_addition_menu_btn_release));
+	
 
 	//
 	connect_copy(add_button("mark_all_active_points_as_tobedownsampled")->click, rebind(this,
