@@ -232,7 +232,7 @@ public:
 	std::vector<rgb>  icimg;
 	std::vector<int>  ibidximg;
 	std::vector<int>  icidximg;
-	imagebox_array* iba;
+	imagebox_array* iba = nullptr;
 	std::vector<vec3> pick_points;
 	std::vector<rgb> pick_colors;
 

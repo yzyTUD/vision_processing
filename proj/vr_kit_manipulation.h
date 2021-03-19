@@ -112,31 +112,32 @@ public:
 			}
 		}
 
-		for (size_t i = 0; i < data_ptr->iba->boxarr.size(); ++i) {
-			vec3 origin_box_i = origin - data_ptr->iba->posiarr[i];
-			data_ptr->iba->oriarr[i].inverse_rotate(origin_box_i);
-			vec3 direction_box_i = direction;
-			data_ptr->iba->oriarr[i].inverse_rotate(direction_box_i);
-			float t_result;
-			vec3  p_result;
-			vec3  n_result;
-			if (cgv::media::ray_axis_aligned_box_intersection(
-				origin_box_i, direction_box_i,
-				data_ptr->iba->boxarr[i],
-				t_result, p_result, n_result, 0.000001f)) {
+		if(data_ptr->iba!=nullptr)
+			for (size_t i = 0; i < data_ptr->iba->boxarr.size(); ++i) {
+				vec3 origin_box_i = origin - data_ptr->iba->posiarr[i];
+				data_ptr->iba->oriarr[i].inverse_rotate(origin_box_i);
+				vec3 direction_box_i = direction;
+				data_ptr->iba->oriarr[i].inverse_rotate(direction_box_i);
+				float t_result;
+				vec3  p_result;
+				vec3  n_result;
+				if (cgv::media::ray_axis_aligned_box_intersection(
+					origin_box_i, direction_box_i,
+					data_ptr->iba->boxarr[i],
+					t_result, p_result, n_result, 0.000001f)) {
 
-				// transform result back to world coordinates
-				data_ptr->iba->oriarr[i].rotate(p_result);
-				p_result += data_ptr->iba->posiarr[i];
-				data_ptr->iba->oriarr[i].rotate(n_result);
+					// transform result back to world coordinates
+					data_ptr->iba->oriarr[i].rotate(p_result);
+					p_result += data_ptr->iba->posiarr[i];
+					data_ptr->iba->oriarr[i].rotate(n_result);
 
-				// store intersection information
-				data_ptr->ipimg.push_back(p_result);
-				data_ptr->icimg.push_back(color);
-				data_ptr->ibidximg.push_back((int)i);
-				data_ptr->icidximg.push_back(ci);
+					// store intersection information
+					data_ptr->ipimg.push_back(p_result);
+					data_ptr->icimg.push_back(color);
+					data_ptr->ibidximg.push_back((int)i);
+					data_ptr->icidximg.push_back(ci);
+				}
 			}
-		}
 	}
 	
 	void init_trackable_data_store() {
