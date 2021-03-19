@@ -51,7 +51,8 @@ public:
 	void set_data_ptr(vis_kit_data_store_shared* d_ptr) {
 		data_ptr = d_ptr;
 		// after we have data ptr 
-		gen_random_movable_boxes();
+		//gen_random_movable_boxes();
+		//gen_random_trackables_given_names();
 	}
 	void set_vr_view_ptr(vr_view_interactor* p) {
 		vr_view_ptr = p;
@@ -301,6 +302,8 @@ public:
 
 	}
 	
+	// initialize random boxes, to reply, we have to render them first! 
+	// with names matching the ones in .tj file 
 	void gen_random_movable_boxes() {
 		if (data_ptr==nullptr)
 			return;
@@ -335,6 +338,45 @@ public:
 			data_ptr->trackable_box_list.back().set_color(data_ptr->movable_box_colors[i]);
 		}
 	}
+
+	// read the name list directly from data_ptr
+	void gen_random_trackables_given_names() {
+		if (data_ptr == nullptr)
+			return;
+		float tw = 0.8f;
+		float td = 0.8f;
+		float th = 0.72f;
+		float tW = 0.03f;
+		int nr = data_ptr->names_tj_rendering.size();
+		std::default_random_engine generator;
+		std::uniform_real_distribution<float> distribution(0, 1);
+		std::uniform_real_distribution<float> signed_distribution(-1, 1);
+		for (size_t i = 0; i < nr; ++i) {
+			float x = distribution(generator);
+			float y = distribution(generator);
+			vec3 extent(distribution(generator), distribution(generator), distribution(generator));
+			extent += 0.01f;
+			extent *= std::min(tw, td) * 0.1f;
+
+			vec3 center(-0.5f * tw + x * tw, th + tW, -0.5f * td + y * td);
+			data_ptr->movable_boxes.push_back(box3(-0.5f * extent, 0.5f * extent));
+			data_ptr->movable_box_colors.push_back(rgb(distribution(generator), distribution(generator), distribution(generator)));
+			data_ptr->movable_box_translations.push_back(center);
+			quat rot(signed_distribution(generator), signed_distribution(generator), signed_distribution(generator), signed_distribution(generator));
+			rot.normalize();
+			data_ptr->movable_box_rotations.push_back(rot);
+
+			// init trackable_box_list 
+			// upload_to_trackable_list
+			data_ptr->trackable_box_list.push_back(*(
+				new trackable_box(data_ptr->names_tj_rendering.at(i),
+					box3(-0.5f * extent, 0.5f * extent))));
+			data_ptr->trackable_box_list.back().set_position_orientation_write(
+				data_ptr->movable_box_translations[i], data_ptr->movable_box_rotations[i]);
+			data_ptr->trackable_box_list.back().set_color(data_ptr->movable_box_colors[i]);
+		}
+	}
+
 	/// call this 
 	void render_random_boxes(context& ctx) {
 		if (data_ptr) {

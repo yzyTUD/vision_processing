@@ -139,17 +139,17 @@ public:
 		data_ptr->iba = new imagebox_array();
 
 		std::vector<std::string> fnl;
-		fnl.push_back(data_ptr->data_dir + "/imir_images/image_1.jpg");
-		fnl.push_back(data_ptr->data_dir + "/imir_images/image_2.jpg");
-		fnl.push_back(data_ptr->data_dir + "/imir_images/image_3.jpg");
-		fnl.push_back(data_ptr->data_dir + "/imir_images/image_4.jpg");
-		fnl.push_back(data_ptr->data_dir + "/imir_images/image_5.jpg");
-		fnl.push_back(data_ptr->data_dir + "/imir_images/image_6.jpg");
-		fnl.push_back(data_ptr->data_dir + "/imir_images/image_7.jpg");
-		fnl.push_back(data_ptr->data_dir + "/imir_images/image_8.jpg");
-		fnl.push_back(data_ptr->data_dir + "/imir_images/image_9.jpg");
-		fnl.push_back(data_ptr->data_dir + "/imir_images/image_10.jpg");
-		fnl.push_back(data_ptr->data_dir + "/imir_images/image_11.jpg");
+		fnl.push_back(data_ptr->data_dir + "/Images_IMIR/image_1.jpg");
+		fnl.push_back(data_ptr->data_dir + "/Images_IMIR/image_2.jpg");
+		fnl.push_back(data_ptr->data_dir + "/Images_IMIR/image_3.jpg");
+		fnl.push_back(data_ptr->data_dir + "/Images_IMIR/image_4.jpg");
+		fnl.push_back(data_ptr->data_dir + "/Images_IMIR/image_5.jpg");
+		fnl.push_back(data_ptr->data_dir + "/Images_IMIR/image_6.jpg");
+		fnl.push_back(data_ptr->data_dir + "/Images_IMIR/image_7.jpg");
+		fnl.push_back(data_ptr->data_dir + "/Images_IMIR/image_8.jpg");
+		fnl.push_back(data_ptr->data_dir + "/Images_IMIR/image_9.jpg");
+		fnl.push_back(data_ptr->data_dir + "/Images_IMIR/image_10.jpg");
+		fnl.push_back(data_ptr->data_dir + "/Images_IMIR/image_11.jpg");
 		init_given_a_list_of_file_names(ctx, &fnl);
 
 		data_ptr->iba->prepare_rendering_once();

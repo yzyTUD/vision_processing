@@ -446,6 +446,7 @@ public:
 
 	void start_replay_all() { motioncap_kit->start_replay_all(); }
 	void save_to_tj_file() { motioncap_kit->save_to_tj_file(); }
+	void stop_and_clear_mocap_data() { motioncap_kit->stop_and_clear_mocap_data(); }
 	void read_tj_file() { motioncap_kit->read_tj_file(); }
 	void compute_coordinates_with_rot_correction() { 
 		quat rotq;

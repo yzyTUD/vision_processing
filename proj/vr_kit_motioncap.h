@@ -29,6 +29,15 @@ using namespace std;
 #include "vis_kit_trackable.h"
 #include "vis_kit_datastore.h"
 
+
+////////////////////////////////////////////
+//	take response for data uploading and downloading 
+//	have to push to movable boxes
+//	trackerbles are rendered separatly, we manipulate positions and 
+//	orientations here 
+//	objects asking for a position in timer event, if not present, do nothing 
+//		query by name 
+////////////////////////////////////////////
 class vr_kit_motioncap :
 	public base,    // base class of all to be registered classes
 	public provider, // is derived from tacker, which is not necessary as base anymore
@@ -245,8 +254,11 @@ public:
 			ss >> c;
 			if (c._Equal("d")) {
 				ss >> c;
+				// c is the name of the device as string 
 				data_ptr->motion_storage_read.insert(std::pair<std::string, motion_storage_per_device>(c,*(new motion_storage_per_device())));
 				current_device_name = c;
+				if(!(c._Equal("hmd") || c._Equal("left_hand") || c._Equal("right_hand")))
+					data_ptr->names_tj_rendering.push_back(c);
 			}
 			if (c._Equal("b")) {
 				vec3 t_min_pnt;
@@ -271,6 +283,67 @@ public:
 				data_ptr->motion_storage_read.find(current_device_name)->second.device_orie.push_back(tmp_ori);
 			}
 		}
+
+		gen_random_trackables_after_reading_tj_files();
+	}
+
+	// generate rendering stuff, num equals to the number of objects stored in file 
+	// will ask for update by name matching 
+	// initial positions are random generated  and size 
+	void gen_random_trackables_after_reading_tj_files() {
+		if (data_ptr == nullptr)
+			return;
+		float tw = 0.8f;
+		float td = 0.8f;
+		float th = 0.72f;
+		float tW = 0.03f;
+		int nr = data_ptr->names_tj_rendering.size();
+		std::default_random_engine generator;
+		std::uniform_real_distribution<float> distribution(0, 1);
+		std::uniform_real_distribution<float> signed_distribution(-1, 1);
+		for (size_t i = 0; i < nr; ++i) {
+			float x = distribution(generator);
+			float y = distribution(generator);
+			vec3 extent(distribution(generator), distribution(generator), distribution(generator));
+			extent += 0.01f;
+			extent *= std::min(tw, td) * 0.1f;
+
+			vec3 center(-0.5f * tw + x * tw, th + tW, -0.5f * td + y * td);
+			data_ptr->movable_boxes.push_back(box3(-0.5f * extent, 0.5f * extent));
+			data_ptr->movable_box_colors.push_back(rgb(distribution(generator), distribution(generator), distribution(generator)));
+			data_ptr->movable_box_translations.push_back(center);
+			quat rot(signed_distribution(generator), signed_distribution(generator), signed_distribution(generator), signed_distribution(generator));
+			rot.normalize();
+			data_ptr->movable_box_rotations.push_back(rot);
+
+			// init trackable_box_list 
+			// upload_to_trackable_list
+			data_ptr->trackable_box_list.push_back(*(
+				new trackable_box(data_ptr->names_tj_rendering.at(i),
+					box3(-0.5f * extent, 0.5f * extent))));
+			data_ptr->trackable_box_list.back().set_position_orientation_write(
+				data_ptr->movable_box_translations[i], data_ptr->movable_box_rotations[i]);
+			data_ptr->trackable_box_list.back().set_color(data_ptr->movable_box_colors[i]);
+		}
+	}
+
+	void stop_and_clear_mocap_data() {
+		/// main storage for motion data 
+		data_ptr->motion_storage.clear();
+		data_ptr->motion_storage_read.clear();
+		data_ptr->is_replay = false;
+		data_ptr->rec_pose = false;
+
+		/// can be seen as an abstract data wrapper 
+		//data_ptr->trackable_list.clear();
+		data_ptr->trackable_box_list.clear();
+		data_ptr->names_tj_rendering.clear();
+		//data_ptr->trackable_imagebox_list.clear();
+
+		data_ptr->movable_boxes.clear();
+		data_ptr->movable_box_colors.clear();
+		data_ptr->movable_box_translations.clear();
+		data_ptr->movable_box_rotations.clear();
 	}
 	/// overload the create gui method
 	void create_gui()

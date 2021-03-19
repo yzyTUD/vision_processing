@@ -113,16 +113,14 @@ public:
 		P.push_back(p3); T.push_back(vec2(1.0f, 0.0f));
 		P.push_back(p4); T.push_back(vec2(0.0f, 0.0f));
 
-		vec3 normal = cross(p1 - p2, p3 - p2); normal.normalize();
+		/*vec3 normal = cross(p1 - p2, p3 - p2); normal.normalize();
 		N.push_back(normal);
 		N.push_back(normal);
 		N.push_back(normal);
-		N.push_back(normal);
+		N.push_back(normal);*/
 
 		cgv::render::attribute_array_binding::set_global_attribute_array(ctx, pi, P);
 		cgv::render::attribute_array_binding::enable_global_array(ctx, pi);
-		cgv::render::attribute_array_binding::set_global_attribute_array(ctx, ni, N);
-		cgv::render::attribute_array_binding::enable_global_array(ctx, ni);
 		cgv::render::attribute_array_binding::set_global_attribute_array(ctx, ti, T);
 		cgv::render::attribute_array_binding::enable_global_array(ctx, ti);
 		prog.enable(ctx);
@@ -134,7 +132,6 @@ public:
 		//tex.disable(ctx);
 		prog.disable(ctx);
 		cgv::render::attribute_array_binding::disable_global_array(ctx, pi);
-		cgv::render::attribute_array_binding::disable_global_array(ctx, ni);
 		cgv::render::attribute_array_binding::disable_global_array(ctx, ti);
 
 	}
@@ -223,6 +220,7 @@ public:
 	std::vector<vec3> movable_box_translations;
 	std::vector<quat> movable_box_rotations;
 	cgv::render::box_render_style movable_style;	
+
 	// intersection points
 	std::vector<vec3> intersection_points;
 	std::vector<rgb>  intersection_colors;
@@ -315,6 +313,9 @@ public:
 	std::vector<vec3> palette_lefthand_palette_initialpose_positions;
 
 	vec3 quad_addition_ext = vec3(0.2);
+
+	// give/ read a name list, render their 
+	std::vector<std::string> names_tj_rendering;
 
 	vis_kit_data_store_shared() {
 		//initialize_trackable_list();
@@ -730,6 +731,7 @@ public:
 	/// from list to drawable 
 	void download_from_trackable_list_per_frame() {
 		// full download when reading tj files 
+		// be careful 
 		for (int i = 0; i < trackable_box_list.size();i++) {
 			movable_boxes.at(i) = trackable_box_list.at(i).b;
 			trackable_box_list.at(i).get_position_orientation_read(movable_box_translations.at(i), movable_box_rotations.at(i));

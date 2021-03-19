@@ -179,8 +179,10 @@ visual_processing::visual_processing()
 	selection_kit = new vis_kit_selection(); // for 2d->3d selection, and 3d selection, point cloud selection included 
 
 	//imagebox_kit = new vr_kit_imagebox();
-	//motioncap_kit = new vr_kit_motioncap();
-	//manipulation_kit = new vr_kit_manipulation();
+	motioncap_kit = new vr_kit_motioncap();
+	data_ptr->initialize_trackable_list();
+	manipulation_kit = new vr_kit_manipulation();
+	//imagebox_kit = new vr_kit_imagebox();
 	//roller_coaster_kit_1 = new vr_kit_roller_coaster_1();
 
 	set_name("visual_processing");
@@ -1137,8 +1139,10 @@ void visual_processing::create_gui() {
 		connect_copy(add_button("read_tj_file")->click, rebind(this, &visual_processing::read_tj_file));
 		add_member_control(this, "start_rec", data_ptr->rec_pose, "check");
 		//add_member_control(this, "replay", motioncap_kit->replay, "check");
+		//
 		add_member_control(this, "instanced_redraw", motioncap_kit->instanced_redraw, "check");
 		connect_copy(add_button("start_replay_all")->click, rebind(this, &visual_processing::start_replay_all));
+		connect_copy(add_button("stop_and_clear_mocap_data")->click, rebind(this, &visual_processing::stop_and_clear_mocap_data));
 	}
 
 	if (begin_tree_node("Selection kit", pick_point_index, true, "level=3")) {
