@@ -56,6 +56,14 @@ enum PointCloudChangeEvent
 
 };
 
+class pointHistoryEntry {
+public:
+	int point_index;
+	int from_selection;
+	int to_selection;
+	int timestamp;
+	//
+};
 
 /** the point cloud view adds a gui to the gl_point_cloud_drawable_base and adds
     some basic processing like normal computation as well as some debug rendering
@@ -140,7 +148,22 @@ public:
 	///
 	void mark_points_with_conroller(Pnt p, float r, bool confirmed, int objctive);
 	///
+	void before_marking_history_recording();
+	///
+	std::vector< std::vector<pointHistoryEntry>> point_marking_history;
+	/// how many steps are you going back, offset in the 
+	/// make sure to check it no larger than the size of the history 
+	int history_indexer = 0;
+	///
 	void marking_test_mark_all_points_as_given_group(int objective);
+	///
+	void reset_last_marking_non_processed_part(int which_is_marked_and_not_used);
+	///
+	void reset_last_marked_points();
+	///
+	void step_back_last_selection();
+	///
+	void step_forward_selection();
 
 	/*other operations after marked*/
 	// selective subsampling within given point type, with a global adjustable ratio 

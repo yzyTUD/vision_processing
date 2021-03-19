@@ -144,24 +144,30 @@ public:
 		}
 		return false;
 	}
+	//
+	int timer_count = 0;
 	/// declare timer_event method to connect the shoot signal of the trigger
 	void timer_event(double t, double dt)
 	{
+		timer_count++;
 		if (data_ptr==nullptr)
 			return;
 		if (data_ptr->rec_pose) {
 			// this can maintain unchanged when adding more trackables
 			data_ptr->upload_to_motion_storage();
 		}
-		if (data_ptr->is_replay) { 
-			if (cur_frame >= num_of_frames)
-				cur_frame = 0;
-			// this can maintain unchanged when adding more trackables
-			data_ptr->download_from_motion_storage_read_per_frame(cur_frame);
-			data_ptr->download_from_trackable_list_per_frame();
+		if (data_ptr->is_replay ) {
+			if ((timer_count % data_ptr->frame_factor == 0)) {
+				if (cur_frame >= num_of_frames)
+					cur_frame = 0;
+				// this can maintain unchanged when adding more trackables
+				data_ptr->download_from_motion_storage_read_per_frame(cur_frame);
+				data_ptr->download_from_trackable_list_per_frame();
 			
-			std::cout << "cur_frame: " << cur_frame << std::endl;
-			cur_frame++;
+				std::cout << "cur_frame: " << cur_frame << std::endl;
+				cur_frame++;
+			}
+			
 		}
 	}
 	/// setting the view transform yourself
@@ -174,8 +180,6 @@ public:
 			for (auto& t : data_ptr->trackable_list) {
 				//trackable* tt = &t;
 				//trackable_mesh* tt = static_cast<trackable_mesh*>(&t);
-				//t.draw(ctx);
-				//TODO 
 				t.draw(ctx);
 			}
 			// add here
@@ -202,8 +206,12 @@ public:
 		if (data_ptr==nullptr)
 			return;
 		// this can maintain unchanged when adding more trackables
-		num_of_frames = data_ptr->motion_storage_read.find(data_ptr->trackable_list.at(0).get_name())
+		if(data_ptr->trackable_box_list.size() &&
+			data_ptr->motion_storage_read.find(data_ptr->trackable_box_list.at(0).get_name())
+				!= data_ptr->motion_storage_read.end())
+		num_of_frames = data_ptr->motion_storage_read.find(data_ptr->trackable_box_list.at(0).get_name())
 			->second.device_posi.size();
+
 		data_ptr->enable_replay_all();
 	}
 	///
@@ -243,6 +251,11 @@ public:
 		if (is.fail())
 			return false;
 		std::string current_device_name;
+		std::default_random_engine g;
+		std::uniform_real_distribution<float> d(0, 1);
+		float tw = 0.8f;
+		float td = 0.8f;
+		bool read_until_next_d = false;
 		while (!is.eof()) {
 			char buffer[2048];
 			is.getline(&buffer[0], 2048);
@@ -250,34 +263,91 @@ public:
 			if (line.empty())
 				continue;
 			std::stringstream ss(line, std::ios_base::in);
+			
+			// just a quick test error may occ. 
+			bool no_bbox = true;
+			bool no_color = true;
 			string c;
 			ss >> c;
+			// ignore current d
+			if (c._Equal("id")) {
+				//while (ss){
+				//	ss >> c;
+				//	data_ptr->tj_rendering_ignore[stoi(c)] = true;
+				//}
+				read_until_next_d = true;
+			}
 			if (c._Equal("d")) {
+				read_until_next_d = false;
 				ss >> c;
 				// c is the name of the device as string 
 				data_ptr->motion_storage_read.insert(std::pair<std::string, motion_storage_per_device>(c,*(new motion_storage_per_device())));
 				current_device_name = c;
-				if(!(c._Equal("hmd") || c._Equal("left_hand") || c._Equal("right_hand")))
+				/*if(!(c._Equal("hmd") || c._Equal("left_hand") || c._Equal("right_hand")))
+					data_ptr->names_tj_rendering.push_back(c);*/
+
+				/*if ((c._Equal("Cube") ||
+					c._Equal("rigRoot") ||
+					c._Equal("Cube_(1)") || 
+					c._Equal("Cube_(2)") || 
+					c._Equal("Cube_(3)")
+				))*/
 					data_ptr->names_tj_rendering.push_back(c);
+					//data_ptr->tj_rendering_ignore.push_back(false);
 			}
 			if (c._Equal("b")) {
+				if (read_until_next_d)
+					continue;
 				vec3 t_min_pnt;
 				ss >> t_min_pnt;
 				vec3 t_max_pnt;
 				ss >> t_max_pnt;
 				data_ptr->motion_storage_read.find(current_device_name)->second.b = box3(t_min_pnt,t_max_pnt);
 			}
+			if (no_bbox)
+			{
+				if (read_until_next_d)
+					continue;
+				/*vec3 extent(d(g), d(g), d(g));
+				extent += 0.01f;
+				extent *= std::min(tw, td) * 0.1f;*/
+
+				vec3 extent;
+				if(!(current_device_name._Equal("Cube")|| 
+					current_device_name._Equal("Cube_(1)")|| 
+					current_device_name._Equal("Cube_(2)")|| 
+					current_device_name._Equal("Cube_(3)")
+				))
+					extent = vec3(0.02);
+				else {
+					extent = vec3(0.08);
+				}
+				data_ptr->motion_storage_read.find(current_device_name)->second.b =
+					box3(-0.5f * extent, 0.5f * extent);
+			}
+			if (no_color) {
+				if (read_until_next_d)
+					continue;
+				data_ptr->motion_storage_read.find(current_device_name)->second.color
+					= rgb(d(g), d(g), d(g));
+			}
 			if (c._Equal("c")) {
+				if (read_until_next_d)
+					continue;
 				vec3 tmp_col;
 				ss >> tmp_col;
 				data_ptr->motion_storage_read.find(current_device_name)->second.color = rgb(tmp_col.x(), tmp_col.y(), tmp_col.z());
 			}
 			if (c._Equal("p")) {
+				if (read_until_next_d)
+					continue;
 				vec3 tmp_vec3;
 				ss >> tmp_vec3;
 				data_ptr->motion_storage_read.find(current_device_name)->second.device_posi.push_back(tmp_vec3);
 			}
 			if (c._Equal("o")) {
+				if (read_until_next_d)
+					continue;
 				quat tmp_ori;
 				ss >> tmp_ori;
 				data_ptr->motion_storage_read.find(current_device_name)->second.device_orie.push_back(tmp_ori);
@@ -285,6 +355,7 @@ public:
 		}
 
 		gen_random_trackables_after_reading_tj_files();
+		start_replay_all();
 	}
 
 	// generate rendering stuff, num equals to the number of objects stored in file 
@@ -297,6 +368,7 @@ public:
 		float td = 0.8f;
 		float th = 0.72f;
 		float tW = 0.03f;
+
 		int nr = data_ptr->names_tj_rendering.size();
 		std::default_random_engine generator;
 		std::uniform_real_distribution<float> distribution(0, 1);

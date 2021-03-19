@@ -180,7 +180,7 @@ visual_processing::visual_processing()
 
 	//imagebox_kit = new vr_kit_imagebox();
 	motioncap_kit = new vr_kit_motioncap();
-	data_ptr->initialize_trackable_list();
+	//data_ptr->initialize_trackable_list();
 	manipulation_kit = new vr_kit_manipulation();
 	//imagebox_kit = new vr_kit_imagebox();
 	//roller_coaster_kit_1 = new vr_kit_roller_coaster_1();
@@ -407,7 +407,7 @@ bool visual_processing::handle(cgv::gui::event& e)
 						selective_downsampling_menu_btn_press();
 					}
 					if (data_ptr->check_roulette_selection(data_ptr->get_id_with_name("PCCleaning\nAddition\nQuad"))) {
-					
+						quad_addition_menu_btn_press();
 					}
 					//
 				}
@@ -423,7 +423,7 @@ bool visual_processing::handle(cgv::gui::event& e)
 						selective_downsampling_menu_btn_release();
 					}
 					if (data_ptr->check_roulette_selection(data_ptr->get_id_with_name("PCCleaning\nAddition\nQuad"))) {
-
+						quad_addition_menu_btn_release();
 					}
 				}
 			}
@@ -482,6 +482,14 @@ bool visual_processing::handle(cgv::gui::event& e)
 				if (data_ptr->check_roulette_selection(data_ptr->get_id_with_name("PointCloud\nAutoRegion\nGrowing"))) {
 					data_ptr->point_cloud_kit->do_region_growing_directly = !data_ptr->point_cloud_kit->do_region_growing_directly;
 				}
+				//PCCleaning\nStepBackWard
+				if (data_ptr->check_roulette_selection(data_ptr->get_id_with_name("PCCleaning\nStepBackWard"))) {
+					data_ptr->point_cloud_kit->step_back_last_selection();
+				}
+				if (data_ptr->check_roulette_selection(data_ptr->get_id_with_name("PCCleaning\nStepForWard"))) {
+					data_ptr->point_cloud_kit->step_forward_selection();
+				}
+
 			}
 		}
 		if (vrse.get_action() == cgv::gui::SA_MOVE) { // event 
@@ -950,11 +958,17 @@ void visual_processing::mark_all_active_points_as_tobedownsampled() {
 
 /*quick test and then, integrate*/
 void visual_processing::selective_downsampling_menu_btn_press() {
+	// prepare marking, ready to record data 
+	data_ptr->point_cloud_kit->before_marking_history_recording();
 	// mark -> TO_BE_SUBSAMPLED
 	data_ptr->point_cloud_kit->mark_points_with_conroller(
 		data_ptr->cur_right_hand_posi + data_ptr->cur_off_right,
 			data_ptr->point_cloud_kit->controller_effect_range, true,
 				point_cloud::PointSelectiveAttribute::TO_BE_SUBSAMPLED);
+	// reset unused marks (some time needs)
+	// do not keep them as TO_BE_SUBSAMPLED, unwanted effect 
+	data_ptr->point_cloud_kit->reset_last_marking_non_processed_part(
+		point_cloud::PointSelectiveAttribute::TO_BE_SUBSAMPLED);
 	// TO_BE_SUBSAMPLED -> DEL
 	data_ptr->point_cloud_kit->selective_subsampling_cpu();
 }
@@ -1143,6 +1157,31 @@ void visual_processing::create_gui() {
 		add_member_control(this, "instanced_redraw", motioncap_kit->instanced_redraw, "check");
 		connect_copy(add_button("start_replay_all")->click, rebind(this, &visual_processing::start_replay_all));
 		connect_copy(add_button("stop_and_clear_mocap_data")->click, rebind(this, &visual_processing::stop_and_clear_mocap_data));
+		add_member_control(this, "is_replay", data_ptr->is_replay, "check");
+
+		//for (int i = 0; i < 44; i++) {
+		//	data_ptr->tj_rendering_ignore.push_back(false);
+		//}
+
+		//
+		/*for(int i = 0;i< data_ptr->tj_rendering_ignore.size();i++)
+			add_member_control(this, "ignore#"+to_string(i), data_ptr->tj_rendering_ignore.at(i), "check");*/
+
+		/*add_member_control(this, "ignore#0", data_ptr->tj_rendering_ignore.at(0), "check");
+		add_member_control(this, "ignore#1", data_ptr->tj_rendering_ignore.at(1), "check");
+		add_member_control(this, "ignore#2", data_ptr->tj_rendering_ignore.at(2), "check");
+		add_member_control(this, "ignore#3", data_ptr->tj_rendering_ignore.at(3), "check");
+		add_member_control(this, "ignore#4", data_ptr->tj_rendering_ignore.at(4), "check");*/
+
+		//
+		/*for (int i = 0; i < data_ptr->tj_rendering_ignore.size(); ++i) 
+			add_member_control(this, "ignore", data_ptr->tj_rendering_ignore[i], "check");*/
+
+		//add_member_control(this, "ignore#1", data_ptr->tj_rendering_ignore_0, "check");
+
+		add_member_control(this, "frame_factor", data_ptr->frame_factor, "value_slider", "min=1;max=43;log=false;ticks=true;");
+
+
 	}
 
 	if (begin_tree_node("Selection kit", pick_point_index, true, "level=3")) {

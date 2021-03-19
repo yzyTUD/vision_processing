@@ -363,6 +363,65 @@ void point_cloud_interactable::prepare_marking(std::vector<rgba>* psc) {
 	use_these_point_color_indices = &pc.point_selection;
 
 }
+
+///
+void point_cloud_interactable::before_marking_history_recording() {
+	std::vector<pointHistoryEntry> current_selection;
+	point_marking_history.push_back(current_selection);
+}
+
+///
+void point_cloud_interactable::reset_last_marking_non_processed_part(int which_is_marked_and_not_used) {
+	// iterate all point indices recorded last time 
+	for (int i = 0; i < point_marking_history.back().size(); i++) {
+		// reset if not changed marking, that is, which_is_marked_and_not_used
+		// current point index: point_marking_history.back().at(i).point_index
+		// current selection: pc.point_selection.at(point_marking_history.back().at(i))
+		if (pc.point_selection.at(point_marking_history.back().at(i).point_index) == (int)which_is_marked_and_not_used) {
+			pc.point_selection.at(point_marking_history.back().at(i).point_index) 
+				= point_cloud::PointSelectiveAttribute::ORI;
+		}
+	}
+}
+
+/// not finished -> to be tested
+void point_cloud_interactable::reset_last_marked_points() {
+	// a list of current changing: point_marking_history.back()
+	// element, .at(i), is pointHistoryEntry
+	// set the value to current selection bundle -> to_	
+	// step too much 
+	if (history_indexer >= (point_marking_history.size() - 1))
+		return;
+	for (int i = 0; i < point_marking_history.at(point_marking_history.size() - 1 - history_indexer).size(); i++) {
+		pc.point_selection.at(point_marking_history.at(point_marking_history.size() - history_indexer - 1)
+			.at(i).point_index)
+			= point_marking_history.back().at(i).from_selection;
+	}
+	// step back virtually
+	history_indexer++;
+}
+
+// errors may occour when step too much 
+void point_cloud_interactable::step_back_last_selection() {
+	reset_last_marked_points();
+}
+
+// not finished -> to be tested
+// errors may occour when step too much 
+void point_cloud_interactable::step_forward_selection() {
+	// step too much 
+	if (history_indexer < 1)
+		return;
+	// set the value to current selection bundle -> to_
+	for (int i = 0; i < point_marking_history.at(point_marking_history.size() - history_indexer - 1).size(); i++) {
+		pc.point_selection.at(point_marking_history.at(point_marking_history.size() - history_indexer - 1)
+			.at(i).point_index)
+			= point_marking_history.back().at(i).to_selection;
+	}
+	// step next 
+	history_indexer--;
+}
+
 /// currently, we set confirmed to true. The visual feedback is better to be impl. in shaders.
 void point_cloud_interactable::mark_points_with_conroller(Pnt p, float r, bool confirmed, int objctive) {
 	if (pc.get_nr_points()) {
@@ -393,8 +452,17 @@ void point_cloud_interactable::mark_points_with_conroller(Pnt p, float r, bool c
 				for (int i = 0; i < knn.size(); i++) {
 					// check if is smaller than r 
 					if (dist_list.at(i) < r) {
-						if (confirmed)
+						if (confirmed) {
+							//
 							pc.point_selection.at(knn.at(i)) = objctive;
+
+							// record tracing information
+							pointHistoryEntry phe;
+							phe.point_index = knn.at(i);
+							phe.from_selection = pc.point_selection.at(knn.at(i));
+							phe.to_selection = objctive;
+							point_marking_history.back().push_back(phe);
+						}
 						else {
 							pc.point_selection.at(knn.at(i)) = point_cloud::PointSelectiveAttribute::VISUAL_MARK;
 							marked = true;
@@ -407,8 +475,17 @@ void point_cloud_interactable::mark_points_with_conroller(Pnt p, float r, bool c
 				// too few points are estimated, iter the entire cloud 
 				for (Idx i = 0; i < (Idx)pc.get_nr_points(); ++i) {
 					if ((pc.pnt(i) - p).length() < r) {
-						if (confirmed)
+						if (confirmed) {
+							//
 							pc.point_selection.at(i) = objctive;
+
+							// record tracing information
+							pointHistoryEntry phe;
+							phe.point_index = knn.at(i);
+							phe.from_selection = pc.point_selection.at(knn.at(i));
+							phe.to_selection = objctive;
+							point_marking_history.back().push_back(phe);
+						}
 						else {
 							pc.point_selection.at(i) = point_cloud::PointSelectiveAttribute::VISUAL_MARK;
 							marked = true;

@@ -317,7 +317,11 @@ public:
 	// give/ read a name list, render their 
 	std::vector<std::string> names_tj_rendering;
 
+	//
+	int frame_factor = 1;
+
 	vis_kit_data_store_shared() {
+
 		//initialize_trackable_list();
 		//supersampling_bbox = box3(vec3(-2,0,0),vec3(2,1,1));
 		//mode = interaction_mode::SUPERSAMPLING_DRAW;
@@ -364,6 +368,9 @@ public:
 		// addition 
 		gp_btn_tmp.push_back("PCCleaning\nAddition\nQuad");  // maybe enough 
 		gp_btn_tmp.push_back("PCCleaning\nAddition\nSphere");
+		//
+		gp_btn_tmp.push_back("PCCleaning\nStepBackWard");
+		gp_btn_tmp.push_back("PCCleaning\nStepForward");
 		gps.push_back(gp_btn_tmp);
 
 		//////////////////////////////////////////////////////////////////
@@ -703,7 +710,8 @@ public:
 				continue;
 			}
 			else {
-				t.set_position_orientation_read(mt->second.device_posi.at(cur_frame), mt->second.device_orie.at(cur_frame));
+				if (cur_frame <= (mt->second.device_posi.size() - 1) && cur_frame <= (mt->second.device_orie.size() - 1))
+					t.set_position_orientation_read(mt->second.device_posi.at(cur_frame), mt->second.device_orie.at(cur_frame));
 			}
 		}
 		for (auto& t : trackable_box_list) {
@@ -713,7 +721,8 @@ public:
 				continue;
 			}
 			else {
-				t.set_position_orientation_read(mt->second.device_posi.at(cur_frame), mt->second.device_orie.at(cur_frame));
+				if(cur_frame<=(mt->second.device_posi.size()-1) && cur_frame <= (mt->second.device_orie.size() - 1))
+					t.set_position_orientation_read(mt->second.device_posi.at(cur_frame), mt->second.device_orie.at(cur_frame));
 			}
 		}
 		for (auto& t : trackable_imagebox_list) {
@@ -723,7 +732,8 @@ public:
 				continue;
 			}
 			else {
-				t.set_position_orientation_read(mt->second.device_posi.at(cur_frame), mt->second.device_orie.at(cur_frame));
+				if (cur_frame <= (mt->second.device_posi.size() - 1) && cur_frame <= (mt->second.device_orie.size() - 1))
+					t.set_position_orientation_read(mt->second.device_posi.at(cur_frame), mt->second.device_orie.at(cur_frame));
 			}
 		}
 		// add here 
@@ -736,6 +746,8 @@ public:
 			movable_boxes.at(i) = trackable_box_list.at(i).b;
 			trackable_box_list.at(i).get_position_orientation_read(movable_box_translations.at(i), movable_box_rotations.at(i));
 			//movable_box_colors.at(i) = trackable_box_list.at(i).get_color();
+			//vec3 extent = vec3(paratone_3, paratone_4, paratone_5);
+			//trackable_box_list.at(i).b = box3(-0.5f * extent, 0.5f * extent);
 		}
 		for (int i = 0; i < trackable_imagebox_list.size(); i++) {
 			iba->boxarr.at(i) = trackable_imagebox_list.at(i).b;
