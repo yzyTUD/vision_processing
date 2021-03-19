@@ -132,6 +132,7 @@ bool point_cloud_interactable::generate_pc_cube() {
 			}
 		}
 	}
+	pc.box_out_of_date = true;
 	on_point_cloud_change_callback(PCC_NEW_POINT_CLOUD);
 	return true;
 }
@@ -365,7 +366,7 @@ void point_cloud_interactable::prepare_marking(std::vector<rgba>* psc) {
 }
 
 ///
-void point_cloud_interactable::before_marking_history_recording() {
+void point_cloud_interactable::new_history_recording() {
 	std::vector<pointHistoryEntry> current_selection;
 	point_marking_history.push_back(current_selection);
 }
@@ -390,12 +391,12 @@ void point_cloud_interactable::reset_last_marked_points() {
 	// element, .at(i), is pointHistoryEntry
 	// set the value to current selection bundle -> to_	
 	// step too much 
-	if (history_indexer >= (point_marking_history.size() - 1))
+	if (history_indexer > (point_marking_history.size() - 1))
 		return;
 	for (int i = 0; i < point_marking_history.at(point_marking_history.size() - 1 - history_indexer).size(); i++) {
 		pc.point_selection.at(point_marking_history.at(point_marking_history.size() - history_indexer - 1)
 			.at(i).point_index)
-			= point_marking_history.back().at(i).from_selection;
+			= point_marking_history.at(point_marking_history.size() - 1 - history_indexer).at(i).from_selection;
 	}
 	// step back virtually
 	history_indexer++;
@@ -416,7 +417,7 @@ void point_cloud_interactable::step_forward_selection() {
 	for (int i = 0; i < point_marking_history.at(point_marking_history.size() - history_indexer - 1).size(); i++) {
 		pc.point_selection.at(point_marking_history.at(point_marking_history.size() - history_indexer - 1)
 			.at(i).point_index)
-			= point_marking_history.back().at(i).to_selection;
+			= point_marking_history.at(point_marking_history.size() - history_indexer - 1).at(i).to_selection;
 	}
 	// step next 
 	history_indexer--;
@@ -424,6 +425,7 @@ void point_cloud_interactable::step_forward_selection() {
 
 /// currently, we set confirmed to true. The visual feedback is better to be impl. in shaders.
 void point_cloud_interactable::mark_points_with_conroller(Pnt p, float r, bool confirmed, int objctive) {
+	new_history_recording();
 	if (pc.get_nr_points()) {
 		ensure_tree_ds();
 		float closest_dist = tree_ds->find_closest_and_its_dist(p);
@@ -453,15 +455,14 @@ void point_cloud_interactable::mark_points_with_conroller(Pnt p, float r, bool c
 					// check if is smaller than r 
 					if (dist_list.at(i) < r) {
 						if (confirmed) {
-							//
-							pc.point_selection.at(knn.at(i)) = objctive;
-
 							// record tracing information
 							pointHistoryEntry phe;
 							phe.point_index = knn.at(i);
 							phe.from_selection = pc.point_selection.at(knn.at(i));
 							phe.to_selection = objctive;
 							point_marking_history.back().push_back(phe);
+							// perfrom 
+							pc.point_selection.at(knn.at(i)) = objctive;
 						}
 						else {
 							pc.point_selection.at(knn.at(i)) = point_cloud::PointSelectiveAttribute::VISUAL_MARK;
@@ -476,15 +477,14 @@ void point_cloud_interactable::mark_points_with_conroller(Pnt p, float r, bool c
 				for (Idx i = 0; i < (Idx)pc.get_nr_points(); ++i) {
 					if ((pc.pnt(i) - p).length() < r) {
 						if (confirmed) {
-							//
-							pc.point_selection.at(i) = objctive;
-
 							// record tracing information
 							pointHistoryEntry phe;
-							phe.point_index = knn.at(i);
-							phe.from_selection = pc.point_selection.at(knn.at(i));
+							phe.point_index = i;
+							phe.from_selection = pc.point_selection.at(i);
 							phe.to_selection = objctive;
 							point_marking_history.back().push_back(phe);
+							// perform real operations 
+							pc.point_selection.at(i) = objctive;
 						}
 						else {
 							pc.point_selection.at(i) = point_cloud::PointSelectiveAttribute::VISUAL_MARK;
@@ -565,6 +565,7 @@ void point_cloud_interactable::spawn_points_in_the_handhold_quad(quat controller
 		// add to pc 
 		pc.add_point(newP, newC, newN, newScanIndex, newSelectionIndex);
 	}
+	pc.box_out_of_date = true;
 	// rebuild ann tree, managing rendering range..., crutial task when point cloud changes
 	on_point_cloud_change_callback(PCC_POINTS_RESIZE);
 }

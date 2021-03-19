@@ -355,12 +355,21 @@ public:
 		gp1_btns.push_back("PointCloud\nCulling\nRange");
 		gps.push_back(gp1_btns);
 
+		//
+		std::vector<std::string> gp_btn_tmp;
+
+		//////////////////////////////////////////////////////////////////
+		// point cloud demo generator  
+		//////////////////////////////////////////////////////////////////
+		gp_btn_tmp.clear();
+		gp_btn_tmp.push_back("PointCloud\nGenCube");
+		gps.push_back(gp_btn_tmp);
+
 		//////////////////////////////////////////////////////////////////
 		// point cloud cleaning 
 		// adjuest range with move event
 		// press btn to confirm
 		//////////////////////////////////////////////////////////////////
-		std::vector<std::string> gp_btn_tmp;
 		// deletion 
 		gp_btn_tmp.push_back("PCCleaning\nFake\nDel");
 		gp_btn_tmp.push_back("PCCleaning\nFake\nSeleciton");
@@ -382,20 +391,36 @@ public:
 		gp_btn_tmp.push_back("PCShading\nSphericalMelting"); 
 		gps.push_back(gp_btn_tmp);
 
-
+		//////////////////////////////////////////////////////////////////
+		// point cloud shading effect 
+		//////////////////////////////////////////////////////////////////
 		gp2_btns.push_back("Meshing\nPickingPoints");
 		gp2_btns.push_back("Meshing\nAdjestPointSize");
 		gp2_btns.push_back("Meshing\nFaceCreation");
 		gp2_btns.push_back("Meshing\nSaveMesh");
 		gps.push_back(gp2_btns);
 
+		//////////////////////////////////////////////////////////////////
+		// animating 
+		//////////////////////////////////////////////////////////////////
+		gp_btn_tmp.clear();
+		gp_btn_tmp.push_back("Animating\nPause");
+		gp_btn_tmp.push_back("Animating\nContinue");
+		gp_btn_tmp.push_back("Animating\nRecord");
+		gp_btn_tmp.push_back("Animating\nStopRecording");
+		gp_btn_tmp.push_back("Animating\nDiscrard\nRecording");
+		gp_btn_tmp.push_back("Animating\nSaveRecoding");
+		gp_btn_tmp.push_back("Animating\nReplay");
+		/*gp_btn_tmp.push_back("Animating\");
+		gp_btn_tmp.push_back("Animating\");*/
+		gps.push_back(gp_btn_tmp);
 
-		std::default_random_engine generator;
-		std::uniform_real_distribution<float> distribution(0, 1);
 
-		float some_float = distribution(generator);
-		some_float = distribution(generator);
-		some_float = distribution(generator);
+		//std::default_random_engine generator;
+		//std::uniform_real_distribution<float> distribution(0, 1);
+		//float some_float = distribution(generator);
+		//some_float = distribution(generator);
+		//some_float = distribution(generator);
 
 		/*this is replaced by fixed color initialization */
 		//// first 7 colors are fixed while the others are random generated 

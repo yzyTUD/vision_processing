@@ -4,7 +4,7 @@
 name(main):selected="visual_processing"
 
 
-name(vr interactor):hmd_scale=1.0;hmd_mesh_file_name="generic_hmd.obj"
+//name(vr interactor):hmd_scale=1.0;hmd_mesh_file_name="generic_hmd.obj"
 name(vr interactor):controller_scale=1.0;controller_mesh_file_name="vr_controller_vive_1_5.obj"
 //name(vr interactor):tracker_scale=1.0;tracker_mesh_file_name="t.obj"
 //name(vr interactor):base_scale=1.0;base_mesh_file_name=""

@@ -298,7 +298,7 @@ public:
 		if (data_ptr==nullptr)
 			return;
 		//if (!data_ptr->is_replay) 
-		render_lines_for_controllers(ctx);
+		//render_lines_for_controllers(ctx);
 		render_random_boxes(ctx);
 
 	}

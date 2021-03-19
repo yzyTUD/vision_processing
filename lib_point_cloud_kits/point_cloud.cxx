@@ -2536,6 +2536,7 @@ point_cloud::Pnt point_cloud::transformed_pnt(size_t i) const
 }
 
 /// return box
+// lazy bbxox compiuting 
 const point_cloud::Box& point_cloud::box(Idx ci) const
 {
 	if (ci == -1) {

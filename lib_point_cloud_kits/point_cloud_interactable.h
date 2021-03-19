@@ -148,7 +148,7 @@ public:
 	///
 	void mark_points_with_conroller(Pnt p, float r, bool confirmed, int objctive);
 	///
-	void before_marking_history_recording();
+	void new_history_recording();
 	///
 	std::vector< std::vector<pointHistoryEntry>> point_marking_history;
 	/// how many steps are you going back, offset in the 

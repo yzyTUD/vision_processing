@@ -431,11 +431,19 @@ public:
 	void mark_all_points_as_tobedownsampled();
 	void mark_all_active_points_as_tobedownsampled();
 
+	void del_menu_btn_press();
+	void del_menu_btn_release();
+
 	void selective_downsampling_menu_btn_press();
 	void selective_downsampling_menu_btn_release();
 
 	void quad_addition_menu_btn_press();
 	void quad_addition_menu_btn_release();
+
+	void send_updated_point_cloud_to_gpu();
+
+	void step_back_selection();
+	void step_forward_selection();
 
 	void create_gui();
 

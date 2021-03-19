@@ -389,19 +389,8 @@ bool visual_processing::handle(cgv::gui::event& e)
 						post_redraw();*/
 						data_ptr->point_cloud_kit->visual_delete = !data_ptr->point_cloud_kit->visual_delete;
 					}
-					if (data_ptr->check_roulette_selection(data_ptr->get_id_with_name("PCCleaning\nSelective\nSubSampling"))) {
-						// marking on cpu side, mark as deleted 
-						data_ptr->point_cloud_kit->mark_points_with_conroller(
-							data_ptr->cur_right_hand_posi + data_ptr->cur_off_right,
-								data_ptr->point_cloud_kit->controller_effect_range, true,
-									point_cloud::PointSelectiveAttribute::TO_BE_SUBSAMPLED);
-					}
 					if (data_ptr->check_roulette_selection(data_ptr->get_id_with_name("PCCleaning\nFake\nDel"))) {
-						// marking on cpu side, mark as deleted 
-						data_ptr->point_cloud_kit->mark_points_with_conroller(
-							data_ptr->cur_right_hand_posi + data_ptr->cur_off_right,
-								data_ptr->point_cloud_kit->controller_effect_range, true, 
-									point_cloud::PointSelectiveAttribute::DEL);
+						del_menu_btn_press();
 					}
 					if (data_ptr->check_roulette_selection(data_ptr->get_id_with_name("PCCleaning\nSelective\nSubSampling"))) {
 						selective_downsampling_menu_btn_press();
@@ -415,9 +404,7 @@ bool visual_processing::handle(cgv::gui::event& e)
 			if (vrke.get_action() == cgv::gui::KA_RELEASE) { //
 				if (vrke.get_controller_index() == data_ptr->right_rgbd_controller_index) { //
 					if (data_ptr->check_roulette_selection(data_ptr->get_id_with_name("PCCleaning\nFake\nDel"))) {
-						// update to gpu 
-						data_ptr->point_cloud_kit->on_rendering_settings_changed();
-						post_redraw();
+						del_menu_btn_release();
 					}
 					if (data_ptr->check_roulette_selection(data_ptr->get_id_with_name("PCCleaning\nSelective\nSubSampling"))) {
 						selective_downsampling_menu_btn_release();
@@ -434,6 +421,7 @@ bool visual_processing::handle(cgv::gui::event& e)
 		cgv::gui::vr_stick_event& vrse = static_cast<cgv::gui::vr_stick_event&>(e);
 		if (vrse.get_action() == cgv::gui::SA_TOUCH) { // event 
 			if (vrse.get_controller_index() == data_ptr->right_rgbd_controller_index) { // controller 
+				/*basic point cloud operations */
 				if (data_ptr->check_roulette_selection(data_ptr->get_id_with_name("PointCloud\nFoldingPoints"))) { // selection 
 					if (vrse.get_y() > 0) {
 						// supersampling 
@@ -458,12 +446,11 @@ bool visual_processing::handle(cgv::gui::event& e)
 					data_ptr->point_cloud_kit->enable_acloud_effect = 
 						!data_ptr->point_cloud_kit->enable_acloud_effect;
 				}
-
+				//
 				if (data_ptr->check_roulette_selection(data_ptr->get_id_with_name("PointCloud\nToggle\nCamera\nCulling"))) {
 					data_ptr->point_cloud_kit->enable_headset_culling = 
 						!data_ptr->point_cloud_kit->enable_headset_culling;
 				}
-
 				// touch to activate deletion selection/marking of the points 
 				if (data_ptr->check_roulette_selection(data_ptr->get_id_with_name("PointCloud\nDelPoints\nTouchTo\nActivate"))) {
 					// this will be used in the throttle event 
@@ -482,14 +469,30 @@ bool visual_processing::handle(cgv::gui::event& e)
 				if (data_ptr->check_roulette_selection(data_ptr->get_id_with_name("PointCloud\nAutoRegion\nGrowing"))) {
 					data_ptr->point_cloud_kit->do_region_growing_directly = !data_ptr->point_cloud_kit->do_region_growing_directly;
 				}
-				//PCCleaning\nStepBackWard
+				
+				/*point cleaning */
 				if (data_ptr->check_roulette_selection(data_ptr->get_id_with_name("PCCleaning\nStepBackWard"))) {
 					data_ptr->point_cloud_kit->step_back_last_selection();
+					send_updated_point_cloud_to_gpu();
 				}
 				if (data_ptr->check_roulette_selection(data_ptr->get_id_with_name("PCCleaning\nStepForWard"))) {
 					data_ptr->point_cloud_kit->step_forward_selection();
+					send_updated_point_cloud_to_gpu();
 				}
 
+				/*animating */ 
+				if (data_ptr->check_roulette_selection(data_ptr->get_id_with_name("Animating\nPause"))) {
+					data_ptr->is_replay = false;
+				}
+				if (data_ptr->check_roulette_selection(data_ptr->get_id_with_name("Animating\nContinue"))) {
+					data_ptr->is_replay = true;
+				}
+
+				/*demo point cloud loading */
+				if (data_ptr->check_roulette_selection(data_ptr->get_id_with_name("PointCloud\nGenCube"))) {
+					generate_pc_cube(); // well prepared to be used 
+					send_updated_point_cloud_to_gpu();
+				}
 			}
 		}
 		if (vrse.get_action() == cgv::gui::SA_MOVE) { // event 
@@ -949,6 +952,8 @@ void visual_processing::mark_all_points_as_tobedownsampled() {
 }
 
 void visual_processing::mark_all_active_points_as_tobedownsampled() {
+	data_ptr->point_cloud_kit->new_history_recording();
+	//
 	for (int i = 0; i < data_ptr->point_cloud_kit->pc.get_nr_points(); i++) {
 		if (data_ptr->point_cloud_kit->pc.point_selection[i] != point_cloud::PointSelectiveAttribute::DEL)
 			data_ptr->point_cloud_kit->pc.point_selection[i] = 
@@ -957,20 +962,33 @@ void visual_processing::mark_all_active_points_as_tobedownsampled() {
 }
 
 /*quick test and then, integrate*/
+
+void visual_processing::del_menu_btn_press() {
+	// marking on cpu side, mark as deleted 
+	data_ptr->point_cloud_kit->mark_points_with_conroller(
+		data_ptr->cur_right_hand_posi + data_ptr->cur_off_right,
+		data_ptr->point_cloud_kit->controller_effect_range, true,
+		point_cloud::PointSelectiveAttribute::DEL);
+}
+
+void visual_processing::del_menu_btn_release() {
+	// update to gpu 
+	data_ptr->point_cloud_kit->on_rendering_settings_changed();
+	post_redraw();
+}
+
 void visual_processing::selective_downsampling_menu_btn_press() {
-	// prepare marking, ready to record data 
-	data_ptr->point_cloud_kit->before_marking_history_recording();
 	// mark -> TO_BE_SUBSAMPLED
 	data_ptr->point_cloud_kit->mark_points_with_conroller(
 		data_ptr->cur_right_hand_posi + data_ptr->cur_off_right,
 			data_ptr->point_cloud_kit->controller_effect_range, true,
 				point_cloud::PointSelectiveAttribute::TO_BE_SUBSAMPLED);
+	// TO_BE_SUBSAMPLED -> DEL
+	data_ptr->point_cloud_kit->selective_subsampling_cpu();
 	// reset unused marks (some time needs)
 	// do not keep them as TO_BE_SUBSAMPLED, unwanted effect 
 	data_ptr->point_cloud_kit->reset_last_marking_non_processed_part(
 		point_cloud::PointSelectiveAttribute::TO_BE_SUBSAMPLED);
-	// TO_BE_SUBSAMPLED -> DEL
-	data_ptr->point_cloud_kit->selective_subsampling_cpu();
 }
 
 void visual_processing::selective_downsampling_menu_btn_release() {
@@ -980,16 +998,35 @@ void visual_processing::selective_downsampling_menu_btn_release() {
 }
 
 void visual_processing::quad_addition_menu_btn_press() {
+	// wait until flag avaliable
+	while(data_ptr->point_cloud_kit->can_parallel_grow == false){}
+	// can perform operations to the cloud 
+	// lock if you want to change ds, rebuild tree 
+	data_ptr->point_cloud_kit->can_parallel_grow = false;
 	data_ptr->point_cloud_kit->spawn_points_in_the_handhold_quad(
 		data_ptr->cur_right_hand_rot_quat, 
 			data_ptr->righthand_object_positions[0], 
 				data_ptr->quad_addition_ext);
+	data_ptr->point_cloud_kit->can_parallel_grow = true;
 }
 
 void visual_processing::quad_addition_menu_btn_release() {
 	// update to gpu 
 	data_ptr->point_cloud_kit->on_rendering_settings_changed();
 	post_redraw();
+}
+
+void visual_processing::send_updated_point_cloud_to_gpu() {
+	// update to gpu 
+	data_ptr->point_cloud_kit->on_rendering_settings_changed();
+	post_redraw();
+}
+
+void visual_processing::step_back_selection() {
+	data_ptr->point_cloud_kit->reset_last_marked_points();
+}
+void visual_processing::step_forward_selection() {
+	data_ptr->point_cloud_kit->step_forward_selection();
 }
 
 ////////////////////////////////////////////////////////////////////////
@@ -1035,6 +1072,11 @@ void visual_processing::create_gui() {
 	connect_copy(add_button("quad_addition_menu_btn_release")->click, rebind(this,
 		&visual_processing::quad_addition_menu_btn_release));
 	
+	//
+	connect_copy(add_button("step_back_selection")->click, rebind(this,
+		&visual_processing::step_back_selection));
+	connect_copy(add_button("step_forward_selection")->click, rebind(this,
+		&visual_processing::step_forward_selection));
 
 	//
 	connect_copy(add_button("mark_all_active_points_as_tobedownsampled")->click, rebind(this,

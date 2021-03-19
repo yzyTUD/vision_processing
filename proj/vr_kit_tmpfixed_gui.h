@@ -33,6 +33,7 @@ public:
 	int group;
 	float off_angle;
 	int level;
+
 	quadbtn(int which_group) {
 		group = which_group;
 		off_angle = 0;
@@ -58,6 +59,10 @@ class vr_kit_tmpfixed_gui :
 private:
 	vis_kit_data_store_shared* data_ptr = nullptr;
 	std::vector<quadbtn> hmbmenubtns;
+	/*not finished, manage btns to goups regarding to events*/
+	std::vector<int> TouchOperationBtnGroup;
+	std::vector<int> PressMenuOperationBtnGroup;
+	std::vector<int> ReleaseMenuOperationBtnGroup;
 	// general font information
 	std::vector<const char*> font_names;
 	std::string font_enum_decl;
@@ -96,6 +101,7 @@ public:
 		tesselete_PNT_fan(0, 0.6, 0.6, 0, quat(), &quad_P, &quad_N, &quad_T);
 	}
 	// call me 
+	// convert from gps to btns for rendering later 
 	void set_data_ptr(vis_kit_data_store_shared* d_ptr) {
 		data_ptr = d_ptr;
 		for (int i = 0; i < data_ptr->gps.size(); i++) {
