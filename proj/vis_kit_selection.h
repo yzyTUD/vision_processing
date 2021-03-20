@@ -56,13 +56,26 @@ private:
 	//
 	sphere_render_style shading_effect_style;
 
+	// animating 
+	bool render_an_animating_tube_configured = false;
+	std::vector<vec3> P;
+	std::vector<float> R;
+	std::vector<rgb> C;
+	cgv::render::rounded_cone_render_style rounded_cone_style;
+	vec3 timeline_left_end = vec3(-0.1, 0.05, -0.02);
+	vec3 timeline_right_end = vec3(0.1, 0.05, -0.02);
+
+	//
+	vec3 updated_left_end = vec3(0);
+	vec3 updated_right_end = vec3(0);
+
 public:
 	/*public accessble varibles */
 	int current_selecting_idx = -1;
 	/// initialize rotation angle
 	vis_kit_selection()
 	{
-		//connect(get_animation_trigger().shoot, this, &vis_kit_selection::timer_event); 
+		connect(get_animation_trigger().shoot, this, &vis_kit_selection::timer_event); 
 		/*sphere_style.map_color_to_material = CM_COLOR_AND_OPACITY;
 		sphere_style.surface_color = rgb(0.8f, 0.4f, 0.4f);
 		sphere_style.radius = 0.1;*/
@@ -170,7 +183,6 @@ public:
 		post_redraw();
 		return true;
 	}
-
 
 	/// overload to handle events, return true if event was processed
 	/// call me
@@ -465,10 +477,56 @@ public:
 			}
 		return false;
 	}
+	float angle = 0;
 	/// declare timer_event method to connect the shoot signal of the trigger
 	void timer_event(double, double dt)
 	{
-		
+		if (data_ptr->render_an_animating_tube) {
+			angle+=data_ptr->speed;
+			if (angle > 360) {
+				angle = 0;
+			}
+
+			// a temp var. to be rotated 
+			vec3 timeline_left_end_copy = data_ptr->tube_left_end + vec3(0,-0.05,0.02);
+			vec3 timeline_right_end_copy = data_ptr->tube_right_end + vec3(0, -0.05, 0.02);
+
+			// 
+			quat combinedQ = quat();
+			bool combinedComputation = false;
+
+			// controller rotation first 
+			if (combinedComputation) {
+				combinedQ = combinedQ * data_ptr->cur_right_hand_rot_quat;
+			}
+			else {
+				data_ptr->cur_right_hand_rot_quat.rotate(timeline_left_end_copy);
+				data_ptr->cur_right_hand_rot_quat.rotate(timeline_right_end_copy);
+			}
+
+			// update positions, anim rotation 
+			vec3 current_axis = 
+				data_ptr->get_global_from_local_righthand(vec3(0, 0, 1)) - data_ptr->get_global_from_local_righthand(vec3(0, 0, 0));
+			quat q = quat(current_axis,angle);
+
+			if (combinedComputation) {
+				combinedQ = combinedQ * q;
+			}
+			else {
+				q.rotate(timeline_left_end_copy);
+				q.rotate(timeline_right_end_copy);
+			}
+
+			/*combinedQ.rotate(timeline_left_end_copy);
+			combinedQ.rotate(timeline_right_end_copy);*/
+
+			// apply trasformation offset 
+			vec3 transOffset = vec3(0,0.1,-0.2);
+
+			// do not rotate them, just assign 
+			updated_left_end = data_ptr->get_global_from_local_righthand(timeline_left_end_copy + transOffset);
+			updated_right_end = data_ptr->get_global_from_local_righthand(timeline_right_end_copy + transOffset);
+		}
 	}
 	/// setting the view transform yourself
 	/// call me 
@@ -484,7 +542,6 @@ public:
 			render_an_arrow_with_starting_point_and_ending(ctx, data_ptr->righthand_posi_list.at(i)
 				, data_ptr->righthand_posi_list.at(i) + data_ptr->righthand_dir_list.at(i) * 0.2, rgb(0, 0.4, 0), 0.05);
 		}
-
 		// supersampling mode 
 		if (data_ptr->check_roulette_selection(data_ptr->get_id_with_name("PointCloud\nSuperSampling")))
 		{
@@ -529,15 +586,43 @@ public:
 		if (data_ptr->check_roulette_selection(data_ptr->get_id_with_name("PCCleaning\nAddition\nQuad"))) {
 			render_a_quad_on_righthand_vertical(ctx);
 		}
-
+		// animating 
+		render_an_animating_tube_impl(ctx);
 		// quick test 
 		//render_a_quad_on_righthand_vertical(ctx);
-
-		//
 	}
 	/// call me 
 	void finish_draw(context& ctx) {
 
+	}
+	///
+	void render_an_animating_tube_impl(cgv::render::context& ctx){
+		if (!render_an_animating_tube_configured) {
+			P.push_back(timeline_left_end);
+			P.push_back(timeline_right_end);
+			R.push_back(0.002);
+			R.push_back(0.002);
+			C.push_back(0.6);
+			C.push_back(0.6);
+			render_an_animating_tube_configured = true;
+		}
+		// update positions, local to global at run time 
+		if (!data_ptr->render_an_animating_tube) {
+			P[0] = data_ptr->get_global_from_local_righthand(timeline_left_end);
+			P[1] = data_ptr->get_global_from_local_righthand(timeline_right_end);
+		}
+		else {
+			P[0] = updated_left_end;
+			P[1] = updated_right_end;
+		}
+		//
+		auto& cr = cgv::render::ref_rounded_cone_renderer(ctx);
+		cr.set_render_style(rounded_cone_style);
+		//cr.set_eye_position(vr_view_ptr->get_eye_of_kit());
+		cr.set_position_array(ctx, P);
+		cr.set_color_array(ctx, C);
+		cr.set_radius_array(ctx, R);
+		cr.render(ctx, 0, P.size());
 	}
 	///
 	void render_palette_on_left_hand(cgv::render::context& ctx) {

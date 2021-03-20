@@ -445,6 +445,9 @@ public:
 	void step_back_selection();
 	void step_forward_selection();
 
+	void enlarge_tube_length();
+	void schrink_tube_length();
+
 	void create_gui();
 
 	/// wrappers 

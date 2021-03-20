@@ -487,6 +487,9 @@ bool visual_processing::handle(cgv::gui::event& e)
 				if (data_ptr->check_roulette_selection(data_ptr->get_id_with_name("Animating\nContinue"))) {
 					data_ptr->is_replay = true;
 				}
+				if (data_ptr->check_roulette_selection(data_ptr->get_id_with_name("Animating\nRenderAnAnimating\nTube"))) {
+					data_ptr->render_an_animating_tube = !data_ptr->render_an_animating_tube;
+				}
 
 				/*demo point cloud loading */
 				if (data_ptr->check_roulette_selection(data_ptr->get_id_with_name("PointCloud\nGenCube"))) {
@@ -1029,6 +1032,9 @@ void visual_processing::step_forward_selection() {
 	data_ptr->point_cloud_kit->step_forward_selection();
 }
 
+void visual_processing::enlarge_tube_length() { data_ptr->enlarge_tube_length(); }
+void visual_processing::schrink_tube_length() { data_ptr->schrink_tube_length(); }
+
 ////////////////////////////////////////////////////////////////////////
 //// gui
 ////////////////////////////////////////////////////////////////////////
@@ -1064,6 +1070,13 @@ void visual_processing::create_gui() {
 	add_member_control(this, "renderScan3", data_ptr->point_cloud_kit->renderScan3, "check");
 	add_member_control(this, "renderScan4", data_ptr->point_cloud_kit->renderScan4, "check");
 	add_member_control(this, "renderScan5", data_ptr->point_cloud_kit->renderScan5, "check");
+
+	// 
+	add_member_control(this, "render_an_animating_tube", data_ptr->render_an_animating_tube, "check");
+	connect_copy(add_button("enlarge_tube_length")->click, rebind(this,
+		&visual_processing::enlarge_tube_length));
+	connect_copy(add_button("schrink_tube_length")->click, rebind(this,
+		&visual_processing::schrink_tube_length));
 
 	//point addition 
 	add_member_control(this, "render_handhold_pc", data_ptr->render_handhold_pc, "check");

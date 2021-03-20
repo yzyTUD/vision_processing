@@ -320,6 +320,24 @@ public:
 	//
 	int frame_factor = 1;
 
+	// for anim replay 
+	vec3 realtimeOffset = vec3(0);
+
+	//
+	bool render_an_animating_tube = false;
+	float speed = 3;
+	vec3 tube_left_end = vec3(-0.1, 0.05, -0.02);
+	vec3 tube_right_end = vec3(0.1, 0.05, -0.02);
+	// external api 
+	void enlarge_tube_length() {
+		tube_left_end.x() -= 0.05;
+		tube_right_end.x() += 0.05;
+	}
+	void schrink_tube_length() {
+		tube_left_end.x() += 0.05;
+		tube_right_end.x() -= 0.05;
+	}
+
 	vis_kit_data_store_shared() {
 
 		//initialize_trackable_list();
@@ -406,6 +424,7 @@ public:
 		gp_btn_tmp.clear();
 		gp_btn_tmp.push_back("Animating\nPause");
 		gp_btn_tmp.push_back("Animating\nContinue");
+		gp_btn_tmp.push_back("Animating\nRenderAnAnimating\nTube");
 		gp_btn_tmp.push_back("Animating\nRecord");
 		gp_btn_tmp.push_back("Animating\nStopRecording");
 		gp_btn_tmp.push_back("Animating\nDiscrard\nRecording");
@@ -587,6 +606,20 @@ public:
 		//point_cloud_in_hand->compute_normals();
 		//point_cloud_in_hand->orient_normals(); // Orientation with MST
 
+	}
+
+	vec3 get_global_from_local_lefthand(vec3 localoffset) {
+		vec3 p = cur_left_hand_posi;
+		cur_left_hand_rot_quat.rotate(localoffset);
+		p = p + localoffset;
+		return p;
+	}
+
+	vec3 get_global_from_local_righthand(vec3 localoffset) {
+		vec3 p = cur_right_hand_posi;
+		cur_right_hand_rot_quat.rotate(localoffset);
+		p = p + localoffset;
+		return p;
 	}
 
 	vec2 get_id_with_name(string btn_name) {

@@ -62,6 +62,17 @@ private:
 	bool have_new_mesh = false;
 	int cur_frame = 0;
 	int num_of_frames = 0;
+
+
+	//////////////////////////////render_a_timeline//////////////////////////////
+	std::vector<vec3> P;
+	std::vector<float> R;
+	std::vector<rgb> C;
+	cgv::render::rounded_cone_render_style rounded_cone_style;
+	vec3 timeline_left_end = vec3(-0.1, 0.05, -0.02);
+	vec3 timeline_right_end = vec3(0.1, 0.05, -0.02);
+	bool render_a_timeline_configured = false;
+
 public:
 	//bool rec_pose = false;
 	//bool replay = false;
@@ -69,7 +80,8 @@ public:
 	/// initialize rotation angle
 	vr_kit_motioncap()
 	{
-		connect(get_animation_trigger().shoot, this, &vr_kit_motioncap::timer_event);	
+		connect(get_animation_trigger().shoot, this, &vr_kit_motioncap::timer_event);
+
 	}
 	void set_data_ptr(vis_kit_data_store_shared* d_ptr) {
 		data_ptr = d_ptr;
@@ -166,6 +178,11 @@ public:
 			
 				std::cout << "cur_frame: " << cur_frame << std::endl;
 				cur_frame++;
+				data_ptr->realtimeOffset = vec3(
+					timeline_left_end.x() + ( timeline_right_end.x() - timeline_left_end.x())*(float)cur_frame/num_of_frames, 
+					timeline_left_end.y(), 
+					timeline_left_end.z());
+				data_ptr->realtimeOffset = data_ptr->get_global_from_local_lefthand(data_ptr->realtimeOffset);
 			}
 			
 		}
@@ -175,8 +192,13 @@ public:
 	void draw(context& ctx)
 	{
 		if (data_ptr) {
-			if (!data_ptr->rec_pose)
+			if (!data_ptr->rec_pose) {
 				render_a_handhold_box(ctx);
+			}
+			if (data_ptr->is_replay) {
+				render_a_timeline(ctx);
+				render_a_timelineBox(ctx);
+			}
 			for (auto& t : data_ptr->trackable_list) {
 				//trackable* tt = &t;
 				//trackable_mesh* tt = static_cast<trackable_mesh*>(&t);
@@ -184,7 +206,75 @@ public:
 			}
 			// add here
 		}
+	}
 
+	///
+	void render_a_timeline(cgv::render::context& ctx) {
+		if (!render_a_timeline_configured) {
+			P.push_back(timeline_left_end);
+			P.push_back(timeline_right_end);
+			R.push_back(0.002);
+			R.push_back(0.002);
+			C.push_back(0.6);
+			C.push_back(0.6);
+			render_a_timeline_configured = true;
+		}
+
+		// update positions, local to global at run time 
+		P[0] = data_ptr->get_global_from_local_lefthand(timeline_left_end);
+		P[1] = data_ptr->get_global_from_local_lefthand(timeline_right_end);
+
+		//
+		auto& cr = cgv::render::ref_rounded_cone_renderer(ctx);
+		cr.set_render_style(rounded_cone_style);
+		//cr.set_eye_position(vr_view_ptr->get_eye_of_kit());
+		cr.set_position_array(ctx, P);
+		cr.set_color_array(ctx, C);
+		cr.set_radius_array(ctx, R);
+		cr.render(ctx, 0, P.size());
+	}
+
+	////////////////////////////////////////////////////////////
+	std::vector<box3> timelineBoxBase;
+	std::vector<vec3> timelinePosi;
+	std::vector<quat> timelineOri;
+	std::vector<rgb> timelineRgb;
+	cgv::render::box_render_style bs;
+	bool render_a_timelineBox_configured = false;
+	vec3 timelineBoxOff = vec3(0, 0.05, -0.02);
+	///
+	void render_a_timelineBox(cgv::render::context& ctx) {
+		if (!render_a_timelineBox_configured) {
+			timelineBoxBase.push_back(box3(vec3(-0.005), vec3(0.005)));
+			timelinePosi.push_back(vec3(0));
+			timelineOri.push_back(quat());
+			timelineRgb.push_back(rgb(0.4));
+			render_a_timelineBox_configured = true;
+		}
+		if (data_ptr->lefthand_object_positions.size() == 0)
+			return;
+		if (timelineBoxBase.size() == 0)
+			return;
+
+		// update to renderable structure 
+		if (!data_ptr->is_replay) {
+			vec3 updatedOffset = timelineBoxOff + data_ptr->realtimeOffset;
+			timelinePosi[0] = data_ptr->get_global_from_local_lefthand(timelineBoxOff);
+		}
+		else {
+			timelinePosi[0] = data_ptr->realtimeOffset;
+		}
+
+		timelineOri[0] = data_ptr->cur_left_hand_rot_quat;
+
+		// apply to renderer 
+		cgv::render::box_renderer& renderer = cgv::render::ref_box_renderer(ctx);
+		renderer.set_render_style(bs);
+		renderer.set_box_array(ctx, timelineBoxBase);
+		renderer.set_color_array(ctx, timelineRgb);
+		renderer.set_translation_array(ctx, timelinePosi);
+		renderer.set_rotation_array(ctx, timelineOri);
+		renderer.render(ctx, 0, timelineBoxBase.size());
 	}
 	///
 	void render_a_handhold_box(cgv::render::context& ctx) {
