@@ -174,12 +174,12 @@ void visual_processing::parallel_timer_event() {
 visual_processing::visual_processing() 
 {
 	//draw_kit = new vr_kit_draw();
-	mesh_kit = new vis_kit_meshes();
+	mesh_kit = new vis_kit_meshes(); //mesh_kit->load_mesh();
 	mesh_kit_2 = new vis_kit_meshes();
 	selection_kit = new vis_kit_selection(); // for 2d->3d selection, and 3d selection, point cloud selection included 
 
 	//imagebox_kit = new vr_kit_imagebox();
-	motioncap_kit = new vr_kit_motioncap();
+	motioncap_kit = new vr_kit_motioncap(); //read_tj_file();
 	//data_ptr->initialize_trackable_list();
 	manipulation_kit = new vr_kit_manipulation();
 	//imagebox_kit = new vr_kit_imagebox();
@@ -253,6 +253,10 @@ bool visual_processing::init(cgv::render::context& ctx)
 	cgv::render::ref_box_renderer(ctx, 1);
 	cgv::render::ref_sphere_renderer(ctx, 1);
 	cgv::render::ref_rounded_cone_renderer(ctx, 1);
+
+	mesh_kit->show_wireframe = false;
+	mesh_kit->use_texture = true;
+	mesh_kit->cull_mode = CM_OFF;
 
 	// config data_ptr->point_cloud_kit
 	data_ptr->point_cloud_kit->surfel_style.point_size = 0.1f;
@@ -398,7 +402,10 @@ bool visual_processing::handle(cgv::gui::event& e)
 					if (data_ptr->check_roulette_selection(data_ptr->get_id_with_name("PCCleaning\nAddition\nQuad"))) {
 						quad_addition_menu_btn_press();
 					}
-					//
+					if (data_ptr->check_roulette_selection(data_ptr->get_id_with_name("PCCleaning\nCopyPoints"))) {
+						
+
+					}
 				}
 			}
 			if (vrke.get_action() == cgv::gui::KA_RELEASE) { //
@@ -411,6 +418,10 @@ bool visual_processing::handle(cgv::gui::event& e)
 					}
 					if (data_ptr->check_roulette_selection(data_ptr->get_id_with_name("PCCleaning\nAddition\nQuad"))) {
 						quad_addition_menu_btn_release();
+					}
+					if (data_ptr->check_roulette_selection(data_ptr->get_id_with_name("PCCleaning\nCopyPoints"))) {
+						// update the copied point cloud once, then use mvp to update position 
+						// disable handhold pc rendering, clean it 
 					}
 				}
 			}
@@ -660,7 +671,7 @@ void visual_processing::draw(cgv::render::context& ctx)
 	if (handhold_near_kit!=nullptr) handhold_near_kit->draw(ctx);
 	if (tmpfixed_gui_kit != nullptr) tmpfixed_gui_kit->draw(ctx);
 	if (render_pc) data_ptr->point_cloud_kit->draw(ctx);
-	if (data_ptr->render_handhold_pc) data_ptr->point_cloud_in_hand->draw(ctx);
+	data_ptr->point_cloud_in_hand->draw(ctx);
 	if (roller_coaster_kit_1) roller_coaster_kit_1->draw(ctx);
 	if (draw_kit!=nullptr) draw_kit->render_trajectory(ctx);
 	if (motioncap_kit!=nullptr) motioncap_kit->draw(ctx);
@@ -1031,9 +1042,27 @@ void visual_processing::step_back_selection() {
 void visual_processing::step_forward_selection() {
 	data_ptr->point_cloud_kit->step_forward_selection();
 }
-
 void visual_processing::enlarge_tube_length() { data_ptr->enlarge_tube_length(); }
 void visual_processing::schrink_tube_length() { data_ptr->schrink_tube_length(); }
+
+void visual_processing::point_copy_btn_pressed() {
+	// compute "fixed" relative model matrix, multiply to additional model matrix automatically 
+	data_ptr->point_cloud_in_hand->relative_model_matrix_controller_to_pc = 
+			inv(data_ptr->point_cloud_in_hand->current_model_matrix) * data_ptr->point_cloud_in_hand->last_model_matrix;
+	data_ptr->point_cloud_in_hand->use_current_matrix = true;
+	// copy points to tmp handhold cloud 
+}
+
+void visual_processing::point_copy_btn_release() {
+
+}
+
+void visual_processing::release_controller_pc_binding() {
+	// update and render recorded with last mvp 
+	data_ptr->point_cloud_in_hand->relative_model_matrix_controller_to_pc.identity();
+	data_ptr->point_cloud_in_hand->last_model_matrix = data_ptr->point_cloud_in_hand->current_model_matrix;
+	data_ptr->point_cloud_in_hand->use_current_matrix = false;
+}
 
 ////////////////////////////////////////////////////////////////////////
 //// gui
@@ -1071,6 +1100,16 @@ void visual_processing::create_gui() {
 	add_member_control(this, "renderScan4", data_ptr->point_cloud_kit->renderScan4, "check");
 	add_member_control(this, "renderScan5", data_ptr->point_cloud_kit->renderScan5, "check");
 
+	// point copy 
+	connect_copy(add_button("point_copy_btn_pressed")->click, rebind(this,
+		&visual_processing::point_copy_btn_pressed));
+	connect_copy(add_button("point_copy_btn_release")->click, rebind(this,
+		&visual_processing::point_copy_btn_release));
+	connect_copy(add_button("release_controller_pc_binding")->click, rebind(this,
+		&visual_processing::release_controller_pc_binding));
+	add_member_control(this, "use_current_matrix", data_ptr->point_cloud_in_hand->use_current_matrix, "check");
+	//
+
 	// 
 	add_member_control(this, "render_an_animating_tube", data_ptr->render_an_animating_tube, "check");
 	connect_copy(add_button("enlarge_tube_length")->click, rebind(this,
@@ -1079,7 +1118,6 @@ void visual_processing::create_gui() {
 		&visual_processing::schrink_tube_length));
 
 	//point addition 
-	add_member_control(this, "render_handhold_pc", data_ptr->render_handhold_pc, "check");
 	connect_copy(add_button("quad_addition_menu_btn_press")->click, rebind(this,
 		&visual_processing::quad_addition_menu_btn_press));
 	connect_copy(add_button("quad_addition_menu_btn_release")->click, rebind(this,

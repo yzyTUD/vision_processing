@@ -374,7 +374,8 @@ public:
 					box3(-0.5f * extent, 0.5f * extent))));
 			data_ptr->trackable_box_list.back().set_position_orientation_write(
 				data_ptr->movable_box_translations[i], data_ptr->movable_box_rotations[i]);
-			data_ptr->trackable_box_list.back().set_color(data_ptr->movable_box_colors[i]);
+			data_ptr->trackable_box_list.back().set_color(
+				data_ptr->motion_storage_read.find(data_ptr->names_tj_rendering.at(i))->second.color);
 		}
 	}
 

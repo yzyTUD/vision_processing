@@ -13,7 +13,7 @@ name(vr interactor):controller_scale=1.0;controller_mesh_file_name="vr_controlle
 persistent
 name(vr interactor):tracking_rotation=-180
 name(vr interactor):tracking_origin_x=0;
-name(vr interactor):tracking_origin_y=0;
+name(vr interactor):tracking_origin_y=-1.2;
 name(vr interactor):tracking_origin_z=0;
 name(vr interactor):tracking_rotation_origin_x=0;
 name(vr interactor):tracking_rotation_origin_y=0;

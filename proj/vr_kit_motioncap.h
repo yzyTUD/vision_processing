@@ -187,24 +187,33 @@ public:
 			
 		}
 	}
+	///
+	bool renderer_initialized = false;
 	/// setting the view transform yourself
 	/// call this
 	void draw(context& ctx)
 	{
 		if (data_ptr) {
 			if (!data_ptr->rec_pose) {
-				render_a_handhold_box(ctx);
+				//render_a_handhold_box(ctx);
 			}
 			if (data_ptr->is_replay) {
-				render_a_timeline(ctx);
-				render_a_timelineBox(ctx);
+				if (!renderer_initialized) {
+					data_ptr->download_from_motion_storage_read_once();
+					renderer_initialized = true;
+				}
+				if (!data_ptr->disable_gui) {
+					render_a_timeline(ctx);
+					render_a_timelineBox(ctx);
+				}
+				for (auto& t : data_ptr->trackable_list) {
+					//trackable* tt = &t;
+					//trackable_mesh* tt = static_cast<trackable_mesh*>(&t);
+					t.draw(ctx);
+				}
+				//
+				renderer_initialized = true;
 			}
-			for (auto& t : data_ptr->trackable_list) {
-				//trackable* tt = &t;
-				//trackable_mesh* tt = static_cast<trackable_mesh*>(&t);
-				t.draw(ctx);
-			}
-			// add here
 		}
 	}
 
@@ -245,7 +254,7 @@ public:
 	///
 	void render_a_timelineBox(cgv::render::context& ctx) {
 		if (!render_a_timelineBox_configured) {
-			timelineBoxBase.push_back(box3(vec3(-0.005), vec3(0.005)));
+			timelineBoxBase.push_back(box3(vec3(-0.01), vec3(0.01)));
 			timelinePosi.push_back(vec3(0));
 			timelineOri.push_back(quat());
 			timelineRgb.push_back(rgb(0.4));
@@ -333,10 +342,17 @@ public:
 		return true;
 	}
 	///
-	bool read_tj_file() {
+	bool read_tj_file(std::string fn) {
 		if (data_ptr==nullptr)
 			return false;
-		std::string f = cgv::gui::file_open_dialog("Open", "trajectory files:*");
+		std::string f;
+		if (fn.compare("") == 0) {
+			f = cgv::gui::file_open_dialog("Open", "trajectory files:*");
+		}
+		else {
+			f = fn;
+		}
+
 		std::ifstream is(f);
 		if (is.fail())
 			return false;
@@ -410,7 +426,7 @@ public:
 				))
 					extent = vec3(0.02);
 				else {
-					extent = vec3(0.08);
+					extent = vec3(0.1);
 				}
 				data_ptr->motion_storage_read.find(current_device_name)->second.b =
 					box3(-0.5f * extent, 0.5f * extent);
@@ -418,14 +434,27 @@ public:
 			if (no_color) {
 				if (read_until_next_d)
 					continue;
+
+				rgb random_col = rgb(d(g), d(g), d(g));
+
+				// grey for hand boxes 
+				if (!(current_device_name._Equal("Cube") ||
+					current_device_name._Equal("Cube_(1)") ||
+					current_device_name._Equal("Cube_(2)") ||
+					current_device_name._Equal("Cube_(3)")
+					))
+					random_col = rgb(0.6, 0.6, 0.6);
+
 				data_ptr->motion_storage_read.find(current_device_name)->second.color
-					= rgb(d(g), d(g), d(g));
+					= random_col;
 			}
 			if (c._Equal("c")) {
 				if (read_until_next_d)
 					continue;
 				vec3 tmp_col;
 				ss >> tmp_col;
+
+				//
 				data_ptr->motion_storage_read.find(current_device_name)->second.color = rgb(tmp_col.x(), tmp_col.y(), tmp_col.z());
 			}
 			if (c._Equal("p")) {
@@ -433,6 +462,14 @@ public:
 					continue;
 				vec3 tmp_vec3;
 				ss >> tmp_vec3;
+
+				// some offsets
+				tmp_vec3.x() = -tmp_vec3.x();
+				quat quat_offset = quat(vec3(0, 1, 0), M_PI / 2.0);
+				quat_offset.rotate(tmp_vec3);
+				tmp_vec3.x() -= 1.1;
+
+				//
 				data_ptr->motion_storage_read.find(current_device_name)->second.device_posi.push_back(tmp_vec3);
 			}
 			if (c._Equal("o")) {
@@ -440,6 +477,12 @@ public:
 					continue;
 				quat tmp_ori;
 				ss >> tmp_ori;
+
+				// some offsets
+				/*quat quat_offset = quat(vec3(0,1,0),M_PI / 2.0);
+				tmp_ori = quat_offset * tmp_ori;*/
+
+				//
 				data_ptr->motion_storage_read.find(current_device_name)->second.device_orie.push_back(tmp_ori);
 			}
 		}
@@ -485,7 +528,8 @@ public:
 					box3(-0.5f * extent, 0.5f * extent))));
 			data_ptr->trackable_box_list.back().set_position_orientation_write(
 				data_ptr->movable_box_translations[i], data_ptr->movable_box_rotations[i]);
-			data_ptr->trackable_box_list.back().set_color(data_ptr->movable_box_colors[i]);
+			data_ptr->trackable_box_list.back().set_color(
+				data_ptr->motion_storage_read.find(data_ptr->names_tj_rendering.at(i))->second.color);
 		}
 	}
 

@@ -148,6 +148,7 @@ public:
 	void set_vr_view_ptr(vr_view_interactor* p) {
 		vr_view_ptr = p;
 	}
+	///
 	bool handle(event& e)
 	{
 		// check if vr event flag is not set and don't process events in this case
@@ -334,13 +335,66 @@ public:
 				data_ptr->cur_left_hand_dir = direction;
 			}
 			if (ci == data_ptr->right_rgbd_controller_index) {
-				/*typedef cgv::math::fmat<float, 3, 4> mat3x4;
-				mat4 righthand_pose_modelMatrix;
-				mat3x4 poseMat = vrpe.get_pose_matrix();*/
+				// fill the mat and pass to shader as uniform 
+				// from_global_to_controller 
+				mat4 poseMat;
 
+				// define offsets
+				//vec3 trans_offset = vec3(0, 0, -0.2); 
+				//vec3 local_axis = vec3(1, 0, 0);
+				//float local_angle_radian = -M_PI / 2.0;
+
+				// compute correct offsets globally oriented 
+				//data_ptr->cur_right_hand_rot_quat.rotate(trans_offset);
+				//data_ptr->cur_right_hand_rot_quat.rotate(local_axis); // oriented axis 
+				quat rotational_offset = quat();
+					//quat(local_axis, local_angle_radian);
+
+				// get current controller information 
+				mat3 handRotMat; vrpe.get_pose_matrix_as_mat3(handRotMat);
+				vec3 handTransVec = vrpe.get_position();
+
+				// apply offsets 
+				mat3 tmpMat;
+				rotational_offset.put_matrix(tmpMat);
+				handRotMat = tmpMat * handRotMat;
+				//handTransVec = handTransVec + trans_offset;
+
+				// package to mat4 
+				mat4 rotMat4;
+				for (int i = 0; i < 4; i++) {
+					for (int j = 0; j < 4; j++) {
+						if (i < 3 && j < 3)
+							rotMat4(i, j) = handRotMat(i, j);
+						else
+							rotMat4(i, j) = 0;
+					}
+				}
+				rotMat4(3, 3) = 1;
+				mat4 transMat4 = translate4<float>(handTransVec);
+
+				//
+				poseMat = transMat4 * rotMat4;
+				
+				//  from_global_to_controller * from_controller_to_pc 
+				//poseMat = 
+
+				// quick test 
+				//poseMat = inv(poseMat) * poseMat;
+
+				// setup varible and pass to gpu in render pass 
+				// current matrix will be updated continusly 
+				data_ptr->point_cloud_in_hand->current_model_matrix = poseMat * data_ptr->point_cloud_in_hand->relative_model_matrix_controller_to_pc;
+				/*if (data_ptr->render_handhold_pc)
+					data_ptr->point_cloud_in_hand->use_current_matrix = true;*/
+					// this results using an other uniform matrix: current_model_matrix  
+
+				// update right hand position and orientation, used globally 
 				data_ptr->cur_right_hand_posi = vrpe.get_position();
 				data_ptr->cur_right_hand_rot_quat = vrpe.get_quaternion();
 				has_ctrl_posi = true;
+
+				//
 				//if (mode == interaction_mode::CLIMB && hand_touching) {
 				//	if (accept_event) {
 				//		vec3 from_origin_to_current = vrpe.get_position() - touching_origin;

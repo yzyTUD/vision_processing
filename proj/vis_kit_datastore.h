@@ -191,6 +191,8 @@ public:
 // the storage of the whole scene data 
 class vis_kit_data_store_shared :public cgv::render::render_types{
 public:
+	bool disable_gui = false;
+
 	std::string data_dir = std::string(getenv("CGV_DATA"));
 	std::string get_timestemp_for_filenames() {
 		auto microsecondsUTC = std::chrono::duration_cast<std::chrono::microseconds>(
@@ -328,6 +330,11 @@ public:
 	float speed = 3;
 	vec3 tube_left_end = vec3(-0.1, 0.05, -0.02);
 	vec3 tube_right_end = vec3(0.1, 0.05, -0.02);
+
+	//
+	std::string default_tj_file = "C:/Users/yzhon/Desktop/DATA_LOCAL/MRTK_YS_copy.tj";
+	std::string default_mesh_file = "C:/Users/yzhon/Desktop/DATA_LOCAL/Mesh_IMLD/textured_output.obj";
+
 	// external api 
 	void enlarge_tube_length() {
 		tube_left_end.x() -= 0.05;
@@ -389,13 +396,17 @@ public:
 		// press btn to confirm
 		//////////////////////////////////////////////////////////////////
 		// deletion 
+		// seletion 
 		gp_btn_tmp.push_back("PCCleaning\nFake\nDel");
 		gp_btn_tmp.push_back("PCCleaning\nFake\nSeleciton");
 		gp_btn_tmp.push_back("PCCleaning\nSelective\nSubSampling");
 		// addition 
-		gp_btn_tmp.push_back("PCCleaning\nAddition\nQuad");  // maybe enough 
+		gp_btn_tmp.push_back("PCCleaning\nAddition\nQuad"); 
 		gp_btn_tmp.push_back("PCCleaning\nAddition\nSphere");
-		//
+		gp_btn_tmp.push_back("PCCleaning\nCopyPoints");
+		// modification 
+
+		// toolset 
 		gp_btn_tmp.push_back("PCCleaning\nStepBackWard");
 		gp_btn_tmp.push_back("PCCleaning\nStepForward");
 		gps.push_back(gp_btn_tmp);
@@ -602,19 +613,19 @@ public:
 		point_cloud_in_hand->pc.create_colors();
 		point_cloud_in_hand->RENDERING_STRATEGY = 1; // quad rendering 
 		point_cloud_in_hand->continus_redraw = true;
-		//point_cloud_in_hand->generate_pc_cube();
+		point_cloud_in_hand->generate_pc_cube();
 		//point_cloud_in_hand->compute_normals();
 		//point_cloud_in_hand->orient_normals(); // Orientation with MST
 
 	}
-
+	/// functions used to get oriented global position, not direction 
 	vec3 get_global_from_local_lefthand(vec3 localoffset) {
 		vec3 p = cur_left_hand_posi;
 		cur_left_hand_rot_quat.rotate(localoffset);
 		p = p + localoffset;
 		return p;
 	}
-
+	/// functions used to get oriented global position, not direction 
 	vec3 get_global_from_local_righthand(vec3 localoffset) {
 		vec3 p = cur_right_hand_posi;
 		cur_right_hand_rot_quat.rotate(localoffset);
@@ -757,6 +768,11 @@ public:
 		for (auto& t : trackable_imagebox_list) {
 			t.set_color(motion_storage_read.find(t.get_name())->second.color);
 			t.set_box(motion_storage_read.find(t.get_name())->second.b);
+		}
+
+		//special case 
+		for (int i = 0; i < trackable_box_list.size(); i++) {
+			movable_box_colors.at(i) = motion_storage_read.find(trackable_box_list.at(i).get_name())->second.color;
 		}
 		// add here 
 	}

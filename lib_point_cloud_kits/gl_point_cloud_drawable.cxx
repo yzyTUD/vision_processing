@@ -43,6 +43,8 @@ gl_point_cloud_drawable::gl_point_cloud_drawable()
 	use_component_colors = false;
 	use_component_transformations = false;
 
+	relative_model_matrix_controller_to_pc.identity();
+	last_model_matrix.identity();
 
 }
 
@@ -376,7 +378,10 @@ void gl_point_cloud_drawable::draw_points_quad(context& ctx) {
 			VertexAttributeBinding p;
 			p.position = pc.P[i];
 			p.color = pc.C[i];
-			p.normal = pc.N[i];
+			if (pc.has_normals())
+				p.normal = pc.N[i];
+			else
+				p.normal = vec3(0, 1, 0);
 			if (pc.has_selection)
 				// from uint8 -> int 
 				p.index = (int)pc.point_selection[i]; 
@@ -470,6 +475,17 @@ void gl_point_cloud_drawable::draw_points_quad(context& ctx) {
 	raw_prog.set_uniform(ctx, "renderScan3", renderScan3);
 	raw_prog.set_uniform(ctx, "renderScan4", renderScan4);
 	raw_prog.set_uniform(ctx, "renderScan5", renderScan5);
+
+	/*additional model matrix*/
+	//additional_model_matrix.identity();
+	// todo: modi. the shader. always use 
+	raw_prog.set_uniform(ctx, "use_additional_model_matrix", true);
+	//
+	if(use_current_matrix)
+		raw_prog.set_uniform(ctx, "additional_model_matrix", current_model_matrix);
+	else
+		raw_prog.set_uniform(ctx, "additional_model_matrix", last_model_matrix);
+		
 
 	glDrawArrays(GL_POINTS, 0, input_buffer_data.size());
 	glBindVertexArray(0);

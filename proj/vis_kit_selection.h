@@ -587,7 +587,8 @@ public:
 			render_a_quad_on_righthand_vertical(ctx);
 		}
 		// animating 
-		render_an_animating_tube_impl(ctx);
+		if(data_ptr->render_an_animating_tube)
+			render_an_animating_tube_impl(ctx);
 		// quick test 
 		//render_a_quad_on_righthand_vertical(ctx);
 	}

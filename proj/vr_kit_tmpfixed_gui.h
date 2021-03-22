@@ -281,8 +281,11 @@ public:
 		//	}
 		//}
 
-		render_menu_bar_quads(ctx, 0.1, 0.06, 28);
-		render_an_arrow_on_left_hand(ctx, rgb(0,0.4,0),0.1);
+		if (!data_ptr->disable_gui) {
+			render_menu_bar_quads(ctx, 0.1, 0.06, 28);
+			render_an_arrow_on_left_hand(ctx, rgb(0,0.4,0),0.1);
+		}
+
 		
 		// TEST
 		//data_ptr->active_off_rotation = data_ptr->paratone_1;

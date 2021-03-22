@@ -448,6 +448,11 @@ public:
 	void enlarge_tube_length();
 	void schrink_tube_length();
 
+	void point_copy_btn_pressed();
+	void point_copy_btn_release();
+
+	void release_controller_pc_binding();
+
 	void create_gui();
 
 	/// wrappers 
@@ -458,7 +463,10 @@ public:
 	void start_replay_all() { motioncap_kit->start_replay_all(); }
 	void save_to_tj_file() { motioncap_kit->save_to_tj_file(); }
 	void stop_and_clear_mocap_data() { motioncap_kit->stop_and_clear_mocap_data(); }
-	void read_tj_file() { motioncap_kit->read_tj_file(); post_recreate_gui(); }
+	void read_tj_file() { 
+		motioncap_kit->read_tj_file(data_ptr->default_tj_file);
+		post_recreate_gui(); 
+	}
 	void compute_coordinates_with_rot_correction() { 
 		quat rotq;
 		mat3 rotation_mat;

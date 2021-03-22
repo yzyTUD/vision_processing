@@ -105,10 +105,17 @@ public:
 	bool renderScan5 = true;
 
 	/*point addition */
+	// they are used for realtime rendering
 	// this mat is not changing pc at runtime, but sill can be used when we need the transform
-	mat4 handhold_pc_modelMat; 
-	// those will be passed to shader as uniforms
-	bool use_additional_modelMat;
+	mat4 current_model_matrix;
+	// those will be passed to shader as uniforms, otherwise, use last_model_matrix
+	bool use_current_matrix = false;
+	// relates controllers and point cloud, recorded when copy key press. used to "keep" the current relation 
+	mat4 relative_model_matrix_controller_to_pc; 
+	// 
+	mat4 last_model_matrix;
+	//
+	bool binded_to_controller;
 
 	/*palette rendering, render with color palletes*/
 	std::vector<Clr>* use_these_point_colors;

@@ -518,7 +518,11 @@ public:
 	/// simple mesh related operations 
 	void load_mesh() {
 		M.clear();
-		std::string f = cgv::gui::file_open_dialog("Open", "Meshes:*");
+		std::string f;
+		if (data_ptr->default_mesh_file.compare(""))
+			f = cgv::gui::file_open_dialog("Open", "Meshes:*");
+		else
+			f = data_ptr->default_mesh_file;
 		M.read(f);
 		have_new_mesh = true;
 		show_face = true;
