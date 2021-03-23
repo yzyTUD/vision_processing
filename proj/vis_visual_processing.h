@@ -372,6 +372,11 @@ public:
 	///
 	void read_pc();
 
+	void read_pc_parallel();
+
+	void start_reading_pc_parallel();
+	thread* parallel_reading_thread;
+
 	void read_pc_queue();
 
 	void read_pc_append();

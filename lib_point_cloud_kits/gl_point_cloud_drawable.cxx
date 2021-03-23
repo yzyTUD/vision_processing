@@ -394,6 +394,7 @@ void gl_point_cloud_drawable::draw_points_quad(context& ctx) {
 				p.scanindex = 0;
 			input_buffer_data.push_back(p);
 		}
+
 		// bind vao 
 		glBindVertexArray(raw_vao);
 		// upload all data chunk 

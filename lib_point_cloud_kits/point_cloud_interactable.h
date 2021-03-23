@@ -146,7 +146,9 @@ public:
 	///
 	void prepare_marking(std::vector<rgba>* psc);
 	///
-	void mark_points_with_conroller(Pnt p, float r, bool confirmed, int objctive);
+	//void mark_points_with_conroller(Pnt p, float r, bool confirmed, int objctive);
+	///
+	void mark_points_with_conroller(Pnt p, float r, bool confirmed, int objctive, int ignore_id = -1);
 	///
 	void new_history_recording();
 	///
@@ -164,6 +166,13 @@ public:
 	void step_back_last_selection();
 	///
 	void step_forward_selection();
+
+	///
+	point_cloud to_be_copied_pointcloud;
+	///
+	void mark_all_points_and_push_to_tmp_pointcloud_test(Pnt p, float r, int ignore_id);
+	///
+	void mark_points_and_push_to_tmp_pointcloud(Pnt p, float r, int ignore_id);
 
 	/*other operations after marked*/
 	// selective subsampling within given point type, with a global adjustable ratio 
@@ -219,7 +228,7 @@ public:
 	int steps_per_event_as_speed = 1000;
 	bool can_sleep = false;
 	bool add_to_seed = true;
-	bool can_parallel_grow = false;
+	bool can_parallel_grow = true;
 	//@}
 
 	/**@name rendering speedup techniques */

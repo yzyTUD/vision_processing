@@ -403,8 +403,8 @@ bool visual_processing::handle(cgv::gui::event& e)
 						quad_addition_menu_btn_press();
 					}
 					if (data_ptr->check_roulette_selection(data_ptr->get_id_with_name("PCCleaning\nCopyPoints"))) {
-						
-
+						// the copied points will fillow the movemnt of users right hand 
+						point_copy_btn_pressed();
 					}
 				}
 			}
@@ -422,6 +422,8 @@ bool visual_processing::handle(cgv::gui::event& e)
 					if (data_ptr->check_roulette_selection(data_ptr->get_id_with_name("PCCleaning\nCopyPoints"))) {
 						// update the copied point cloud once, then use mvp to update position 
 						// disable handhold pc rendering, clean it 
+						// after release, points will be added back to the original point cloud kit 
+						point_copy_btn_release();
 					}
 				}
 			}
@@ -671,7 +673,7 @@ void visual_processing::draw(cgv::render::context& ctx)
 	if (handhold_near_kit!=nullptr) handhold_near_kit->draw(ctx);
 	if (tmpfixed_gui_kit != nullptr) tmpfixed_gui_kit->draw(ctx);
 	if (render_pc) data_ptr->point_cloud_kit->draw(ctx);
-	data_ptr->point_cloud_in_hand->draw(ctx);
+	if (data_ptr->render_handhold_pc) data_ptr->point_cloud_in_hand->draw(ctx);
 	if (roller_coaster_kit_1) roller_coaster_kit_1->draw(ctx);
 	if (draw_kit!=nullptr) draw_kit->render_trajectory(ctx);
 	if (motioncap_kit!=nullptr) motioncap_kit->draw(ctx);
@@ -772,14 +774,36 @@ void visual_processing::apply_further_transformation() {
 ////////////////////////////////////////////////////////////////////////
 ///  read the whole pc to data_ptr->point_cloud_kit
 void visual_processing::read_pc() {
+	// the original pc will be automatically stored 
 	data_ptr->point_cloud_kit->read_pc_with_dialog(false);
 	data_ptr->point_cloud_kit->on_rendering_settings_changed();
 	data_ptr->point_cloud_kit->prepare_grow(true,
 		&data_ptr->point_selection_colors,
 		data_ptr->point_cloud_kit->pc.max_num_of_selections);
 	post_redraw();
-	// the original pc will be automatically stored 
 }
+
+///  read the whole pc to data_ptr->point_cloud_kit
+void visual_processing::read_pc_parallel() {
+	// wait until flag avaliable
+	while (data_ptr->point_cloud_kit->can_parallel_grow == false) {}
+	// can perform operations to the cloud 
+	// lock if you want to change ds, rebuild tree 
+	data_ptr->point_cloud_kit->can_parallel_grow = false;
+	// the original pc will be automatically stored 
+	data_ptr->point_cloud_kit->read_pc_with_dialog(false);
+	data_ptr->point_cloud_kit->on_rendering_settings_changed();
+	data_ptr->point_cloud_kit->prepare_grow(true,
+		&data_ptr->point_selection_colors,
+		data_ptr->point_cloud_kit->pc.max_num_of_selections);
+	post_redraw();
+	data_ptr->point_cloud_kit->can_parallel_grow = true;
+}
+
+void visual_processing::start_reading_pc_parallel() {
+	parallel_reading_thread = new thread(&visual_processing::read_pc_parallel,this);
+}
+
 ///
 void visual_processing::read_pc_queue() {
 	data_ptr->point_cloud_kit->read_pc_with_dialog_queue(false);
@@ -992,11 +1016,12 @@ void visual_processing::del_menu_btn_release() {
 }
 
 void visual_processing::selective_downsampling_menu_btn_press() {
-	// mark -> TO_BE_SUBSAMPLED
+	// mark -> TO_BE_SUBSAMPLED, to test, ignore points marked as deleted
 	data_ptr->point_cloud_kit->mark_points_with_conroller(
 		data_ptr->cur_right_hand_posi + data_ptr->cur_off_right,
 			data_ptr->point_cloud_kit->controller_effect_range, true,
-				point_cloud::PointSelectiveAttribute::TO_BE_SUBSAMPLED);
+				point_cloud::PointSelectiveAttribute::TO_BE_SUBSAMPLED, 
+					point_cloud::PointSelectiveAttribute::DEL);
 	// TO_BE_SUBSAMPLED -> DEL
 	data_ptr->point_cloud_kit->selective_subsampling_cpu();
 	// reset unused marks (some time needs)
@@ -1046,15 +1071,45 @@ void visual_processing::enlarge_tube_length() { data_ptr->enlarge_tube_length();
 void visual_processing::schrink_tube_length() { data_ptr->schrink_tube_length(); }
 
 void visual_processing::point_copy_btn_pressed() {
-	// compute "fixed" relative model matrix, multiply to additional model matrix automatically 
+	// copy points to tmp handhold cloud 
+	data_ptr->point_cloud_kit->mark_points_and_push_to_tmp_pointcloud(
+		data_ptr->cur_right_hand_posi + data_ptr->cur_off_right, data_ptr->point_cloud_kit->controller_effect_range,-1);
+	data_ptr->point_cloud_in_hand->pc = data_ptr->point_cloud_kit->to_be_copied_pointcloud;
+
+	// enable controller binding 
+	// compute for point movement: compute "fixed" relative model matrix, multiply to additional model matrix automatically 
 	data_ptr->point_cloud_in_hand->relative_model_matrix_controller_to_pc = 
 			inv(data_ptr->point_cloud_in_hand->current_model_matrix) * data_ptr->point_cloud_in_hand->last_model_matrix;
 	data_ptr->point_cloud_in_hand->use_current_matrix = true;
-	// copy points to tmp handhold cloud 
+
+	// enable render point in hand 
+	data_ptr->render_handhold_pc = true;
+	// take effect directly
+	data_ptr->point_cloud_in_hand->on_rendering_settings_changed();
+	post_redraw();
 }
 
 void visual_processing::point_copy_btn_release() {
+	// wait until flag avaliable
+	while (data_ptr->point_cloud_kit->can_parallel_grow == false) {}
+	// can perform operations to the cloud 
+	// lock if you want to change ds, rebuild tree 
+	data_ptr->point_cloud_kit->can_parallel_grow = false;
 
+	// disable controller binding 
+	release_controller_pc_binding();
+
+	// copy points to point_cloud_kit 
+	data_ptr->point_cloud_kit->pc.append_with_mat4(data_ptr->point_cloud_in_hand->pc, data_ptr->point_cloud_in_hand->last_model_matrix);
+	data_ptr->point_cloud_kit->on_point_cloud_change_callback(PCC_POINTS_RESIZE);
+
+	// disable render point in hand 
+	data_ptr->render_handhold_pc = false;
+	data_ptr->point_cloud_kit->on_rendering_settings_changed();
+	post_redraw();
+
+	//
+	data_ptr->point_cloud_kit->can_parallel_grow = true;
 }
 
 void visual_processing::release_controller_pc_binding() {
@@ -1069,8 +1124,6 @@ void visual_processing::release_controller_pc_binding() {
 ////////////////////////////////////////////////////////////////////////
 void visual_processing::create_gui() {
 	add_decorator("visual_processing_main", "heading", "level=2");
-	//paratone_1
-	//
 	connect_copy(add_button("rotate_right")->click,
 		rebind(this, &visual_processing::rotate_right));
 	connect_copy(add_button("rotate_left")->click,
@@ -1081,7 +1134,7 @@ void visual_processing::create_gui() {
 	add_member_control(this, "paratone_4", data_ptr->paratone_4, "value_slider", "min=-1;max=1;log=false;ticks=true;");
 	add_member_control(this, "paratone_5", data_ptr->paratone_5, "value_slider", "min=-1;max=1;log=false;ticks=true;");
 
-	connect_copy(add_button("read_pc")->click, rebind(this, &visual_processing::read_pc));
+	connect_copy(add_button("read_pc")->click, rebind(this, &visual_processing::start_reading_pc_parallel));
 	add_member_control(this, "hmd_culling", data_ptr->point_cloud_kit->enable_headset_culling, "check");
 	add_member_control(this, "from_CC_txt", data_ptr->point_cloud_kit->pc.from_CC, "check");
 	connect_copy(add_control("render_pc", render_pc, "check")->value_change, rebind(static_cast<drawable*>(this), &visual_processing::post_redraw));
@@ -1101,6 +1154,7 @@ void visual_processing::create_gui() {
 	add_member_control(this, "renderScan5", data_ptr->point_cloud_kit->renderScan5, "check");
 
 	// point copy 
+	add_member_control(this, "render_handhold_pc", data_ptr->render_handhold_pc, "check");
 	connect_copy(add_button("point_copy_btn_pressed")->click, rebind(this,
 		&visual_processing::point_copy_btn_pressed));
 	connect_copy(add_button("point_copy_btn_release")->click, rebind(this,
@@ -1108,9 +1162,8 @@ void visual_processing::create_gui() {
 	connect_copy(add_button("release_controller_pc_binding")->click, rebind(this,
 		&visual_processing::release_controller_pc_binding));
 	add_member_control(this, "use_current_matrix", data_ptr->point_cloud_in_hand->use_current_matrix, "check");
-	//
 
-	// 
+	// tube 
 	add_member_control(this, "render_an_animating_tube", data_ptr->render_an_animating_tube, "check");
 	connect_copy(add_button("enlarge_tube_length")->click, rebind(this,
 		&visual_processing::enlarge_tube_length));
@@ -1118,6 +1171,7 @@ void visual_processing::create_gui() {
 		&visual_processing::schrink_tube_length));
 
 	//point addition 
+	add_member_control(this, "render_the_quad", data_ptr->render_a_quad_on_righthand, "check");
 	connect_copy(add_button("quad_addition_menu_btn_press")->click, rebind(this,
 		&visual_processing::quad_addition_menu_btn_press));
 	connect_copy(add_button("quad_addition_menu_btn_release")->click, rebind(this,

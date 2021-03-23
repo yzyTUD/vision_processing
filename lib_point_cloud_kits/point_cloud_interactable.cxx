@@ -423,8 +423,60 @@ void point_cloud_interactable::step_forward_selection() {
 	history_indexer--;
 }
 
+///
+void point_cloud_interactable::mark_all_points_and_push_to_tmp_pointcloud_test(Pnt p, float r, int ignore_id = -1) {
+	bool some_points_copied = false;
+	float scan_index = 0;
+	for (Idx i = 0; i < (Idx)pc.get_nr_points(); ++i) {
+		//if ((pc.pnt(i) - p).length() < r) {
+			if (pc.point_selection.at(i) != ignore_id) {
+				if (pc.point_scan_index.size() > 0)
+					scan_index = pc.point_scan_index.at(i);
+				else
+					scan_index = 0;
+				to_be_copied_pointcloud.add_point(pc.pnt(i), pc.clr(i), pc.nml(i), scan_index, pc.point_selection.at(i));
+				some_points_copied = true;
+			}
+		//}
+	}
+	if (some_points_copied) {
+		// require properties 
+		to_be_copied_pointcloud.create_colors();
+		to_be_copied_pointcloud.create_normals();
+		to_be_copied_pointcloud.has_scan_index = true;
+		to_be_copied_pointcloud.has_selection = true;
+		to_be_copied_pointcloud.box_out_of_date = true;
+	}
+}
+
+///
+void point_cloud_interactable::mark_points_and_push_to_tmp_pointcloud(Pnt p, float r, int ignore_id = -1) {
+	bool some_points_copied = false;
+	float scan_index = 0;
+	for (Idx i = 0; i < (Idx)pc.get_nr_points(); ++i) {
+		if ((pc.pnt(i) - p).length() < r) {
+			if (pc.point_selection.at(i) != ignore_id) {
+				if (pc.point_scan_index.size() > 0)
+					scan_index = pc.point_scan_index.at(i);
+				else
+					scan_index = 0;
+				to_be_copied_pointcloud.add_point(pc.pnt(i), pc.clr(i), pc.nml(i), scan_index, pc.point_selection.at(i));
+				some_points_copied = true;
+			}
+		}
+	}
+	if (some_points_copied) {
+		// require properties 
+		to_be_copied_pointcloud.create_colors();
+		to_be_copied_pointcloud.create_normals();
+		to_be_copied_pointcloud.has_scan_index = true;
+		to_be_copied_pointcloud.has_selection = true;
+		to_be_copied_pointcloud.box_out_of_date = true;
+	}
+}
+
 /// currently, we set confirmed to true. The visual feedback is better to be impl. in shaders.
-void point_cloud_interactable::mark_points_with_conroller(Pnt p, float r, bool confirmed, int objctive) {
+void point_cloud_interactable::mark_points_with_conroller(Pnt p, float r, bool confirmed, int objctive,int ignore_id) {
 	new_history_recording();
 	if (pc.get_nr_points()) {
 		ensure_tree_ds();
@@ -454,21 +506,24 @@ void point_cloud_interactable::mark_points_with_conroller(Pnt p, float r, bool c
 				for (int i = 0; i < knn.size(); i++) {
 					// check if is smaller than r 
 					if (dist_list.at(i) < r) {
-						if (confirmed) {
-							// record tracing information
-							pointHistoryEntry phe;
-							phe.point_index = knn.at(i);
-							phe.from_selection = pc.point_selection.at(knn.at(i));
-							phe.to_selection = objctive;
-							point_marking_history.back().push_back(phe);
-							// perfrom 
-							pc.point_selection.at(knn.at(i)) = objctive;
+						if (pc.point_selection.at(knn.at(i)) != ignore_id) {
+							if (confirmed) {
+									// record tracing information
+									pointHistoryEntry phe;
+									phe.point_index = knn.at(i);
+									phe.from_selection = pc.point_selection.at(knn.at(i));
+									phe.to_selection = objctive;
+									point_marking_history.back().push_back(phe);
+
+									// perfrom 
+									pc.point_selection.at(knn.at(i)) = objctive;
+							}
+							else {
+								pc.point_selection.at(knn.at(i)) = point_cloud::PointSelectiveAttribute::VISUAL_MARK;
+								marked = true;
+							}
+							pc.has_selection = true;
 						}
-						else {
-							pc.point_selection.at(knn.at(i)) = point_cloud::PointSelectiveAttribute::VISUAL_MARK;
-							marked = true;
-						}
-						pc.has_selection = true;
 					}
 				}
 			}
@@ -476,21 +531,23 @@ void point_cloud_interactable::mark_points_with_conroller(Pnt p, float r, bool c
 				// too few points are estimated, iter the entire cloud 
 				for (Idx i = 0; i < (Idx)pc.get_nr_points(); ++i) {
 					if ((pc.pnt(i) - p).length() < r) {
-						if (confirmed) {
-							// record tracing information
-							pointHistoryEntry phe;
-							phe.point_index = i;
-							phe.from_selection = pc.point_selection.at(i);
-							phe.to_selection = objctive;
-							point_marking_history.back().push_back(phe);
-							// perform real operations 
-							pc.point_selection.at(i) = objctive;
+						if (pc.point_selection.at(i) != ignore_id) {
+							if (confirmed) {
+								// record tracing information
+								pointHistoryEntry phe;
+								phe.point_index = i;
+								phe.from_selection = pc.point_selection.at(i);
+								phe.to_selection = objctive;
+								point_marking_history.back().push_back(phe);
+								// perform real operations 
+								pc.point_selection.at(i) = objctive;
+							}
+							else {
+								pc.point_selection.at(i) = point_cloud::PointSelectiveAttribute::VISUAL_MARK;
+								marked = true;
+							}
+							pc.has_selection = true;
 						}
-						else {
-							pc.point_selection.at(i) = point_cloud::PointSelectiveAttribute::VISUAL_MARK;
-							marked = true;
-						}
-						pc.has_selection = true;
 					}
 				}
 			}
@@ -537,9 +594,9 @@ void point_cloud_interactable::selective_subsampling_cpu() {
 /*point addition */
 void point_cloud_interactable::spawn_points_in_the_handhold_quad(quat controllerq, vec3 controllert, vec3 quadextent) {
 	std::default_random_engine g;
-	std::uniform_real_distribution<float> d_x(-quadextent.x(), quadextent.x());
-	std::uniform_real_distribution<float> d_y(-quadextent.y(), quadextent.y());
-	std::uniform_real_distribution<float> d_z(-quadextent.z(), quadextent.z());
+	std::uniform_real_distribution<float> d_x(-quadextent.x() * 0.5, quadextent.x() * 0.5);
+	std::uniform_real_distribution<float> d_y(-quadextent.y() * 0.5, quadextent.y() * 0.5);
+	std::uniform_real_distribution<float> d_z(-quadextent.z() * 0.5, quadextent.z() * 0.5);
 	//point_cloud tmppc;
 	// todo: regular/ random switch 
 	for (int i = 0; i < num_of_points_to_be_added; i++) {
@@ -550,7 +607,7 @@ void point_cloud_interactable::spawn_points_in_the_handhold_quad(quat controller
 		newP = newP + controllert;
 
 		/*new color attached*/
-		rgba newC = rgba(0.1, 0.6, 0.1, 1);
+		rgba newC = rgba(0.6, 0.6, 0.6, 1);
 
 		/*new normal*/
 		Nml newN = Nml(0,0,1);
@@ -565,7 +622,14 @@ void point_cloud_interactable::spawn_points_in_the_handhold_quad(quat controller
 		// add to pc 
 		pc.add_point(newP, newC, newN, newScanIndex, newSelectionIndex);
 	}
+
+	// require properties 
+	pc.create_colors();
+	pc.create_normals();
+	pc.has_scan_index = true;
+	pc.has_selection = true;
 	pc.box_out_of_date = true;
+
 	// rebuild ann tree, managing rendering range..., crutial task when point cloud changes
 	on_point_cloud_change_callback(PCC_POINTS_RESIZE);
 }

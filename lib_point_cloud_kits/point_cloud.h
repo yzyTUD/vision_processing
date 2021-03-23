@@ -110,6 +110,9 @@ public:
 class CGV_API point_cloud : public point_cloud_types
 {
 	typedef cgv::media::axis_aligned_box<float, 3> box3;
+	typedef cgv::math::fmat<float, 4, 4> mat4;
+	typedef cgv::math::fvec<float, 3> vec3;
+	typedef cgv::math::fvec<float, 4> vec4;
 public:
 	/// container for point positions
 	std::vector<Pnt> P;
@@ -308,6 +311,8 @@ public:
 	void clear_campose();
 	/// delete marked points 
 	void remove_deleted_points_impl();
+	/// transform the input pc with a given mvp and push to current pc
+	void append_with_mat4(point_cloud& pc, mat4 mvp);
 	/// append another point cloud
 	void append(const point_cloud& pc);
 	///
@@ -384,6 +389,10 @@ public:
 
 	/// return whether the point cloud has normals
 	bool has_normals() const;
+	
+	bool has_selections();
+	///
+	bool has_scan_indices();
 	/// allocate normals if not already allocated
 	void create_normals();
 	/// deallocate normals

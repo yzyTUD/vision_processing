@@ -470,37 +470,75 @@ void point_cloud::remove_deleted_points_impl() {
 }
 
 /// append another point cloud
+void point_cloud::append_with_mat4(point_cloud& pc, mat4 mvp)
+{
+	if (pc.get_nr_points() == 0)
+		return;
+
+	// transfer to desired position/ orientation 
+	for (int i = 0; i < pc.get_nr_points(); i++) {
+		vec4 tmp_posi = mvp * vec4(pc.pnt(i),1);
+		vec4 tmp_nml = mvp * vec4(pc.nml(i), 1);
+
+		pc.pnt(i) = Pnt(tmp_posi.x(), tmp_posi.y(), tmp_posi.z());
+		pc.nml(i) = Nml(tmp_nml.x(), tmp_nml.y(), tmp_nml.z());
+	}
+
+	for (int i = 0; i < pc.get_nr_points(); i++) {
+		P.push_back(pc.pnt(i));
+		if (has_colors() && pc.has_colors())
+			C.push_back(pc.clr(i));
+		if (has_normals() && pc.has_normals())
+			N.push_back(pc.nml(i));
+		if ((has_selections() && pc.has_selections()))
+			point_selection.push_back(pc.point_selection.at(i));
+		if (has_scan_indices() && pc.has_scan_indices())
+			point_scan_index.push_back(pc.point_scan_index.at(i));
+		if (has_texture_coordinates() && pc.has_texture_coordinates())
+			T.push_back(pc.T.at(i));
+	}
+	box_out_of_date = true;
+}
+
+/// append another point cloud
 void point_cloud::append(const point_cloud& pc)
 {
 	if (pc.get_nr_points() == 0)
 		return;
-	has_selection = pc.has_selection;
-	has_nmls = pc.has_normals();
 	has_clrs = pc.has_colors();
+	has_nmls = pc.has_normals();
+	has_selection = pc.has_selection;
+	has_scan_index = pc.has_scan_index;
 	has_texcrds = pc.has_texture_coordinates();
-	//...
 
 	Cnt old_n = (Cnt)P.size();
 	Cnt n = (Cnt)P.size() + pc.get_nr_points();
-	if (has_selection)
-		point_selection.resize(n);
-	if (has_normals())
-		N.resize(n);
 	if (has_colors())
 		C.resize(n);
+	if (has_normals())
+		N.resize(n);
+	if (has_selection)
+		point_selection.resize(n);
+	if (has_scan_index)
+		point_scan_index.resize(n);
+	//
 	if (has_texture_coordinates())
 		T.resize(n);
 	if (has_pixel_coordinates())
 		I.resize(n);
 	if (has_components())
 		component_indices.resize(n);
-	P.resize(n);
-	if (has_selection)
-		std::copy(pc.point_selection.begin(), pc.point_selection.end(), point_selection.begin() + old_n);
-	if (has_normals() && pc.has_normals())
-		std::copy(pc.N.begin(), pc.N.end(), N.begin()+old_n);
+
+	P.resize(n); // end is pointing to the end after resize 
 	if (has_colors() && pc.has_colors())
 		std::copy(pc.C.begin(), pc.C.end(), C.begin() + old_n);
+	if (has_normals() && pc.has_normals())
+		std::copy(pc.N.begin(), pc.N.end(), N.begin() + old_n);
+	if (has_selection)
+		std::copy(pc.point_selection.begin(), pc.point_selection.end(), point_selection.begin() + old_n);
+	if (has_scan_index)
+		std::copy(pc.point_scan_index.begin(), pc.point_scan_index.end(), point_scan_index.begin() + old_n);
+	//
 	if (has_texture_coordinates() && pc.has_texture_coordinates())
 		std::copy(pc.T.begin(), pc.T.end(), T.begin() + old_n);
 	if (has_pixel_coordinates() && pc.has_pixel_coordinates()) {
@@ -2256,7 +2294,7 @@ bool point_cloud::write_obj(const std::string& file_name) const
 
 bool point_cloud::has_colors() const
 {
-	return has_clrs;
+	return (has_clrs || C.size() > 0);
 }
 
 ///
@@ -2276,7 +2314,7 @@ void point_cloud::destruct_colors()
 /// return whether the point cloud has texture coordinates
 bool point_cloud::has_texture_coordinates() const
 {
-	return has_texcrds;
+	return (has_texcrds || T.size() > 0);
 }
 /// allocate texture coordinates if not already allocated
 void point_cloud::create_texture_coordinates()
@@ -2328,7 +2366,15 @@ void point_cloud::destruct_pixel_coordinates()
 
 bool point_cloud::has_normals() const 
 {
-	return has_nmls; 
+	return (has_nmls || N.size()>0);
+}
+
+bool point_cloud::has_selections() {
+	return (has_selection || point_selection.size() > 0);
+}
+
+bool point_cloud::has_scan_indices() {
+	return (has_scan_index || point_scan_index.size() > 0);
 }
 
 ///

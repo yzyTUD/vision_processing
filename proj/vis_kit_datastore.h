@@ -203,6 +203,7 @@ public:
 	point_cloud_interactable* point_cloud_kit = new point_cloud_interactable();
 	point_cloud_interactable* point_cloud_in_hand = new point_cloud_interactable();
 	bool render_handhold_pc = false;
+	bool render_a_quad_on_righthand = false;
 
 	/// main storage for motion data 
 	std::map<std::string, motion_storage_per_device> motion_storage;
@@ -612,7 +613,7 @@ public:
 		point_cloud_in_hand->do_auto_view = false;
 		point_cloud_in_hand->pc.create_colors();
 		point_cloud_in_hand->RENDERING_STRATEGY = 1; // quad rendering 
-		point_cloud_in_hand->continus_redraw = true;
+		point_cloud_in_hand->continus_redraw = false;
 		point_cloud_in_hand->generate_pc_cube();
 		//point_cloud_in_hand->compute_normals();
 		//point_cloud_in_hand->orient_normals(); // Orientation with MST

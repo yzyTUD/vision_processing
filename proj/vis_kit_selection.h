@@ -534,9 +534,6 @@ public:
 	{
 		if (data_ptr == nullptr)
 			return;
-		//if (data_ptr != nullptr) {
-		//	render_a_bbox(ctx, data_ptr->supersampling_bbox);
-		//}
 		for (int i = 0; i < data_ptr->righthand_posi_list.size(); i++) {
 			//render_a_box_given_posi_and_size(ctx, data_ptr->righthand_posi_list.at(i),0.02);
 			render_an_arrow_with_starting_point_and_ending(ctx, data_ptr->righthand_posi_list.at(i)
@@ -569,6 +566,7 @@ public:
 			render_palette_on_left_hand(ctx);
 			render_palette_sphere_on_righthand(ctx);
 		}
+
 		// shading effects 
 		if (data_ptr->check_roulette_selection(data_ptr->get_id_with_name("PCCleaning\nFake\nSeleciton"))) {
 			render_a_sphere_on_righthand_shading_effect(ctx);
@@ -576,6 +574,7 @@ public:
 		if (data_ptr->check_roulette_selection(data_ptr->get_id_with_name("PCShading\nLinearMelting"))) {
 			render_a_sphere_on_righthand_shading_effect(ctx);
 		}
+
 		// point cloud cleaning 
 		if (data_ptr->check_roulette_selection(data_ptr->get_id_with_name("PCCleaning\nFake\nDel"))) {
 			render_a_sphere_on_righthand_shading_effect(ctx);
@@ -586,11 +585,18 @@ public:
 		if (data_ptr->check_roulette_selection(data_ptr->get_id_with_name("PCCleaning\nAddition\nQuad"))) {
 			render_a_quad_on_righthand_vertical(ctx);
 		}
+		if (data_ptr->check_roulette_selection(data_ptr->get_id_with_name("PCCleaning\nCopyPoints"))) {
+			render_a_sphere_on_righthand_shading_effect(ctx);
+		}
+
 		// animating 
 		if(data_ptr->render_an_animating_tube)
 			render_an_animating_tube_impl(ctx);
+
 		// quick test 
-		//render_a_quad_on_righthand_vertical(ctx);
+		if(data_ptr->render_a_quad_on_righthand)
+			render_a_quad_on_righthand_vertical(ctx);
+
 	}
 	/// call me 
 	void finish_draw(context& ctx) {
