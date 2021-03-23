@@ -98,6 +98,35 @@ bool point_cloud_interactable::generate_pc_hemisphere() {
 	on_point_cloud_change_callback(PCC_NEW_POINT_CLOUD);
 	return true;
 }
+
+/// uniform sampling in a plane 
+void point_cloud_interactable::generate_testing_plane() {
+	pc.clear_all();
+	float nr_rows = 400;
+	float nr_cols = 400;
+	float extend = 1;
+	for (int li = 0; li < nr_rows; ++li) {
+		for (int lj = 0; lj < nr_cols; ++lj) {
+			vec3 p = vec3(li / nr_rows, 0, lj / nr_cols);
+			rgb c = rgb(0.4);
+			vec3 nml = vec3(0, 1, 0);
+			int scan_index = 0;
+			int selection_index = 1;
+			pc.add_point(p,c,nml,scan_index,selection_index);
+		}
+	}
+
+	//
+	pc.create_colors();
+	pc.create_normals();
+	pc.has_scan_index = true;
+	pc.has_selection = true;
+
+	//
+	pc.box_out_of_date = true;
+	on_point_cloud_change_callback(PCC_NEW_POINT_CLOUD);
+	finished_loading_points = true;
+}
 /// procedure point cloud generation, a cube 
 bool point_cloud_interactable::generate_pc_cube() {
 	pc.clear_all();
@@ -264,6 +293,7 @@ bool point_cloud_interactable::read_pc_with_dialog(bool append) {
 	if (!append) 
 		clear_all();
 	open(f);
+	finished_loading_points = true;
 	return true;
 }
 ///
@@ -493,15 +523,23 @@ void point_cloud_interactable::mark_points_with_conroller(Pnt p, float r, bool c
 		}
 		else {
 			//std::cout << "some points inside the sphere!" << std::endl;
+			// point estimation, todo 
 			Box pc_bbox = pc.box();
 			float vol_pc = pc_bbox.get_extent().x() * pc_bbox.get_extent().y() * pc_bbox.get_extent().z();
-			int max_points_estimated = pc.get_nr_points() * pow((2 * r), 3) / vol_pc;
+			int max_points_estimated;
+			if (vol_pc > 0)
+				max_points_estimated = pc.get_nr_points() * pow((2 * r), 3) / vol_pc;
+			else
+				max_points_estimated = 100;
 			std::vector<int> knn;
 			std::vector<float> dist_list;
 			tree_ds->find_closest_points(p, max_points_estimated, knn, dist_list);
 			// if the last point is in outside of the ball on hand, 
 			// all wanted points are included
-			if (dist_list.at(dist_list.size() - 1) > r) {
+			// if knn is not present, quit, todo  
+			if (dist_list.size() == 0)
+				return;
+			if (dist_list.back() > r) {
 				// start at minimal dist 
 				for (int i = 0; i < knn.size(); i++) {
 					// check if is smaller than r 
@@ -526,8 +564,7 @@ void point_cloud_interactable::mark_points_with_conroller(Pnt p, float r, bool c
 						}
 					}
 				}
-			}
-			else {
+			}else {
 				// too few points are estimated, iter the entire cloud 
 				for (Idx i = 0; i < (Idx)pc.get_nr_points(); ++i) {
 					if ((pc.pnt(i) - p).length() < r) {
@@ -591,8 +628,13 @@ void point_cloud_interactable::selective_subsampling_cpu() {
 	}
 }
 
-/*point addition */
+/*point addition, requiures the scan index present */
 void point_cloud_interactable::spawn_points_in_the_handhold_quad(quat controllerq, vec3 controllert, vec3 quadextent) {
+
+	if (!pc.has_normals() || !pc.has_scan_index) {
+		std::cout << "does not have normal or scan index! quit" << std::endl;
+	}
+
 	std::default_random_engine g;
 	std::uniform_real_distribution<float> d_x(-quadextent.x() * 0.5, quadextent.x() * 0.5);
 	std::uniform_real_distribution<float> d_y(-quadextent.y() * 0.5, quadextent.y() * 0.5);
@@ -628,9 +670,9 @@ void point_cloud_interactable::spawn_points_in_the_handhold_quad(quat controller
 	pc.create_normals();
 	pc.has_scan_index = true;
 	pc.has_selection = true;
-	pc.box_out_of_date = true;
 
 	// rebuild ann tree, managing rendering range..., crutial task when point cloud changes
+	pc.box_out_of_date = true;
 	on_point_cloud_change_callback(PCC_POINTS_RESIZE);
 }
 

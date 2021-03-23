@@ -100,6 +100,8 @@ public:
 
 	bool generate_pc_hemisphere();
 
+	void generate_testing_plane();
+
 	void store_original_pc();
 	
 	bool generate_pc_cube();

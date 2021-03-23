@@ -6,11 +6,11 @@
 #include <cgv/utils/scan.h>
 #include <cgv_gl/gl/wgl.h>
 #include <cgv_gl/gl/gl_tools.h>
-
+///
 using namespace std;
 using namespace cgv::render;
 using namespace cgv::utils::file;
-
+///
 gl_point_cloud_drawable::gl_point_cloud_drawable() 
 {
 	view_ptr = 0;
@@ -47,7 +47,7 @@ gl_point_cloud_drawable::gl_point_cloud_drawable()
 	last_model_matrix.identity();
 
 }
-
+///
 bool gl_point_cloud_drawable::read(const std::string& _file_name)
 {
 	std::string fn = cgv::base::find_data_file(_file_name, "cpD");
@@ -66,7 +66,7 @@ bool gl_point_cloud_drawable::read(const std::string& _file_name)
 	post_redraw();
 	return true;
 }
-
+///
 bool gl_point_cloud_drawable::append(const std::string& _file_name, bool add_component)
 {
 	std::string fn = cgv::base::find_data_file(_file_name, "cpD");
@@ -97,7 +97,7 @@ bool gl_point_cloud_drawable::append(const std::string& _file_name, bool add_com
 	show_point_end = pc.get_nr_points();
 	return true;
 }
-
+///
 bool gl_point_cloud_drawable::write(const std::string& fn)
 {
 	if (!pc.write(fn)) {
@@ -106,7 +106,7 @@ bool gl_point_cloud_drawable::write(const std::string& fn)
 	}
 	return true;
 }
-
+///
 void gl_point_cloud_drawable::render_boxes(context& ctx, group_renderer& R, cgv::render::group_render_style& RS)
 {
 	R.set_position_array(ctx, &pc.box(0).get_min_pnt(), pc.get_nr_components(), sizeof(Box));
@@ -114,7 +114,7 @@ void gl_point_cloud_drawable::render_boxes(context& ctx, group_renderer& R, cgv:
 		R.set_color_array(ctx, &pc.component_color(0), pc.get_nr_components());
 	R.render(ctx, 0, pc.get_nr_components());
 }
-
+///
 void gl_point_cloud_drawable::draw_box(cgv::render::context& ctx, const Box& box, const rgba& clr)
 {
 	bool tmp_use_color = box_style.use_group_color;
@@ -140,7 +140,7 @@ void gl_point_cloud_drawable::draw_box(cgv::render::context& ctx, const Box& box
 	box_wire_style.use_group_color = tmp_use_color;
 	box_wire_style.use_group_transformation = tmp_use_transformation;
 }
-
+///
 void gl_point_cloud_drawable::draw_boxes(context& ctx)
 {
 
@@ -173,7 +173,7 @@ void gl_point_cloud_drawable::draw_boxes(context& ctx)
 		render_boxes(ctx, bw_renderer, box_wire_style);
 	}
 }
-
+///
 void gl_point_cloud_drawable::set_arrays(context& ctx, size_t offset, size_t count)
 {
 	if (count == -1)
@@ -192,8 +192,7 @@ void gl_point_cloud_drawable::set_arrays(context& ctx, size_t offset, size_t cou
 		s_renderer.set_normal_array(ctx, &pc.nml(unsigned(offset)), count, unsigned(sizeof(Nml))*show_point_step);
 
 }
-
-// render with surfel 
+/// render with surfel 
 void gl_point_cloud_drawable::draw_points_surfel(context& ctx)
 {
 	if (raw_prog.is_linked())
@@ -302,15 +301,14 @@ void gl_point_cloud_drawable::draw_points_surfel(context& ctx)
 	}
 	s_renderer.disable(ctx);
 }
-// destruct other vaos 
+/// destruct other vaos 
 void gl_point_cloud_drawable::destruct_prog_and_buffers_when_switching(context& ctx) {
 	raw_prog.destruct(ctx);
 	raw_renderer_out_of_date = true;
 	glDeleteVertexArrays(1, &raw_vao);
 	glDeleteBuffers(1, &raw_vbo_position);
 }
-
-// render test 
+/// render test 
 void gl_point_cloud_drawable::draw_raw(context& ctx) { // quick test 
 	if (pc.get_nr_points() == 0)
 		return;
@@ -347,8 +345,7 @@ void gl_point_cloud_drawable::draw_raw(context& ctx) { // quick test
 	glBindVertexArray(0);
 	raw_prog.disable(ctx);
 }
-
-// render with quads 
+/// render with quads 
 void gl_point_cloud_drawable::draw_points_quad(context& ctx) {
 	if (pc.get_nr_points() == 0)
 		return;
@@ -492,14 +489,13 @@ void gl_point_cloud_drawable::draw_points_quad(context& ctx) {
 	glBindVertexArray(0);
 	raw_prog.disable(ctx);
 }
-// 
+/// 
 void gl_point_cloud_drawable::switch_to_quad_rendering() {
 	RENDERING_STRATEGY = 1;
 	on_rendering_settings_changed();
 	is_switching = true;
 }
-
-// render with gl points 
+/// render with gl points 
 void gl_point_cloud_drawable::draw_points_point_rendering(context& ctx) {
 	if (pc.get_nr_points() == 0)
 		return;
@@ -594,8 +590,7 @@ void gl_point_cloud_drawable::draw_points_point_rendering(context& ctx) {
 	glBindVertexArray(0);
 	raw_prog.disable(ctx);
 }
-
-// render with clod rendering 
+/// render with clod rendering 
 void gl_point_cloud_drawable::draw_points_clod(context& ctx) {
 	if (pc.get_nr_points() == 0)
 		return;
@@ -611,12 +606,13 @@ void gl_point_cloud_drawable::draw_points_clod(context& ctx) {
 	if (cp_renderer.enable(ctx))
 		cp_renderer.draw(ctx, 0, (size_t)pc.get_nr_points());
 }
-
+///
 void gl_point_cloud_drawable::on_rendering_settings_changed() {
 	renderer_out_of_date = true;
 	raw_renderer_out_of_date = true;
+	finished_loading_points = true; // prepared to upload data to gpu 
 }
-
+///
 void gl_point_cloud_drawable::draw_normals(context& ctx)
 {
 	if (!show_nmls || !pc.has_normals())
@@ -631,7 +627,7 @@ void gl_point_cloud_drawable::draw_normals(context& ctx)
 	GLint offset = GLint(show_point_begin / show_point_step);
 	n_renderer.render(ctx, offset,n);
 }
-
+///
 bool gl_point_cloud_drawable::init(cgv::render::context& ctx)
 {
 	if (!cp_renderer.init(ctx))
@@ -658,7 +654,7 @@ bool gl_point_cloud_drawable::init(cgv::render::context& ctx)
 	bw_renderer.set_position_is_center(false);
 	return true;
 }
-
+///
 void gl_point_cloud_drawable::clear(cgv::render::context& ctx)
 {
 	s_renderer.clear(ctx);
@@ -667,46 +663,34 @@ void gl_point_cloud_drawable::clear(cgv::render::context& ctx)
 	b_renderer.clear(ctx);
 	bw_renderer.clear(ctx);
 }
-
+///
 void gl_point_cloud_drawable::draw(context& ctx)
 {
+	// a quick check 
 	if (pc.get_nr_points() == 0)
 		return;
+	// perhaps the size of the points is already not 0 but not finished loading points 
+	if (!finished_loading_points)
+		return;
 
+	// 
 	draw_boxes(ctx);
 	draw_normals(ctx);
 
-	/*
-		1 - raw rendering
-		2 - point rendering
-		3 - surfel rendering
-		4 - clod rendering
-	*/
-
-	if (RENDERING_STRATEGY == 1) {
+	// diff rendering strategies
+	if (RENDERING_STRATEGY == 1)
 		draw_points_quad(ctx);
-	}
-
-	if (RENDERING_STRATEGY == 2) {
+	if (RENDERING_STRATEGY == 2) 
 		draw_points_point_rendering(ctx);
-	}
-
-	if (RENDERING_STRATEGY == 3) { // *
+	if (RENDERING_STRATEGY == 3) 
 		draw_points_surfel(ctx);
-	}
-
-	if (RENDERING_STRATEGY == 4) {
+	if (RENDERING_STRATEGY == 4) 
 		draw_points_clod(ctx);
-	}
-
-	//draw_raw(ctx);
 }
-
-
-
+///
 #include <cgv/base/find_action.h>
 #include <cgv/render/view.h>
-
+///
 bool gl_point_cloud_drawable::ensure_view_pointer()
 {
 	cgv::base::base_ptr bp(dynamic_cast<cgv::base::base*>(this));
@@ -720,7 +704,7 @@ bool gl_point_cloud_drawable::ensure_view_pointer()
 	}
 	return false;
 }
-
+///
 #ifdef REGISTER_SHADER_FILES
 #include <cgv/base/register.h>
 //#include <point_cloud_shader_inc.h>

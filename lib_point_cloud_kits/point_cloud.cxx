@@ -289,6 +289,7 @@ void point_cloud::clear_all() {
 	I.clear();
 	F.clear();
 
+	point_scan_index.clear();
 	point_selection.clear();
 	point_selection_visited.clear();
 
@@ -309,6 +310,7 @@ void point_cloud::clear_all() {
 	has_comp_trans = false;
 	has_comp_clrs = false;
 	has_features = false;
+	has_scan_index = false;
 
 	comp_box_out_of_date.clear();
 	comp_pixrng_out_of_date.clear();

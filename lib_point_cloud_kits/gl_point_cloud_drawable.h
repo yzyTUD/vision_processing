@@ -138,7 +138,8 @@ public:
 	bool sort_points;
 	bool use_component_colors;
 	bool use_component_transformations;
-	rgba box_color;
+	rgba box_color; 
+	bool finished_loading_points = false; // for parallel loading or procedural generation  
 	
 	/*drawables */
 	void render_boxes(cgv::render::context& ctx, cgv::render::group_renderer& R, cgv::render::group_render_style& RS);

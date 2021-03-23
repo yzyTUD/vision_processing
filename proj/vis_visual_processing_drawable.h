@@ -509,6 +509,10 @@ bool visual_processing::handle(cgv::gui::event& e)
 					generate_pc_cube(); // well prepared to be used 
 					send_updated_point_cloud_to_gpu();
 				}
+				if (data_ptr->check_roulette_selection(data_ptr->get_id_with_name("PointCloud\nGenPlane"))) {
+					data_ptr->point_cloud_kit->generate_testing_plane();
+					send_updated_point_cloud_to_gpu();
+				}
 			}
 		}
 		if (vrse.get_action() == cgv::gui::SA_MOVE) { // event 
@@ -1090,25 +1094,34 @@ void visual_processing::point_copy_btn_pressed() {
 }
 
 void visual_processing::point_copy_btn_release() {
+	// lock parallel safty flag 
 	// wait until flag avaliable
 	while (data_ptr->point_cloud_kit->can_parallel_grow == false) {}
 	// can perform operations to the cloud 
 	// lock if you want to change ds, rebuild tree 
 	data_ptr->point_cloud_kit->can_parallel_grow = false;
 
-	// disable controller binding 
-	release_controller_pc_binding();
+	// append points to point_cloud_kit and clean all tmp points 
+	data_ptr->point_cloud_kit->pc.append_with_mat4(data_ptr->point_cloud_in_hand->pc, 
+		data_ptr->point_cloud_in_hand->current_model_matrix);
 
-	// copy points to point_cloud_kit 
-	data_ptr->point_cloud_kit->pc.append_with_mat4(data_ptr->point_cloud_in_hand->pc, data_ptr->point_cloud_in_hand->last_model_matrix);
-	data_ptr->point_cloud_kit->on_point_cloud_change_callback(PCC_POINTS_RESIZE);
+	// clean tmp pcs x2 
+	data_ptr->point_cloud_kit->to_be_copied_pointcloud.clear_all();
+	data_ptr->point_cloud_in_hand->pc.clear_all(); // clean point in hand 
+
+	// reset matrices 
+	data_ptr->point_cloud_in_hand->relative_model_matrix_controller_to_pc.identity();
+	data_ptr->point_cloud_in_hand->last_model_matrix.identity();
 
 	// disable render point in hand 
 	data_ptr->render_handhold_pc = false;
+
+	// update point cloud kit pc 
+	data_ptr->point_cloud_kit->on_point_cloud_change_callback(PCC_POINTS_RESIZE);
 	data_ptr->point_cloud_kit->on_rendering_settings_changed();
 	post_redraw();
 
-	//
+	// reset safty flag for parallel tasks 
 	data_ptr->point_cloud_kit->can_parallel_grow = true;
 }
 
