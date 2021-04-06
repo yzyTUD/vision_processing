@@ -160,7 +160,7 @@ void visual_processing::parallel_timer_event() {
 				for (int gi = data_ptr->point_cloud_kit->pc.num_of_functional_selections;
 					gi < data_ptr->point_cloud_kit->pc.max_num_of_selections; gi++)
 				{
-					data_ptr->point_cloud_kit->grow_one_step_bfs(true, gi);
+					data_ptr->point_cloud_kit->grow_one_step_bfs(true, gi, point_cloud::PointSelectiveAttribute::DEL);
 					post_redraw();
 				}
 				i++;
@@ -395,6 +395,9 @@ bool visual_processing::handle(cgv::gui::event& e)
 					}
 					if (data_ptr->check_roulette_selection(data_ptr->get_id_with_name("PCCleaning\nFake\nDel"))) {
 						del_menu_btn_press();
+					}
+					if (data_ptr->check_roulette_selection(data_ptr->get_id_with_name("PCCleaning\nClipping"))) {
+						del_clipping_btn_press();
 					}
 					if (data_ptr->check_roulette_selection(data_ptr->get_id_with_name("PCCleaning\nSelective\nSubSampling"))) {
 						selective_downsampling_menu_btn_press();
@@ -773,9 +776,7 @@ void visual_processing::show_camposes() {
 void visual_processing::apply_further_transformation() {
 	data_ptr->point_cloud_kit->apply_further_transformation(0, quat(), vec3(1));
 }
-////////////////////////////////////////////////////////////////////////
-//// pc reading and data_ptr->point_cloud_kit processing tool
-////////////////////////////////////////////////////////////////////////
+/*pc reading and data_ptr->point_cloud_kit processing tool */
 ///  read the whole pc to data_ptr->point_cloud_kit
 void visual_processing::read_pc() {
 	// the original pc will be automatically stored 
@@ -786,7 +787,6 @@ void visual_processing::read_pc() {
 		data_ptr->point_cloud_kit->pc.max_num_of_selections);
 	post_redraw();
 }
-
 ///  read the whole pc to data_ptr->point_cloud_kit
 void visual_processing::read_pc_parallel() {
 	// wait until flag avaliable
@@ -803,11 +803,10 @@ void visual_processing::read_pc_parallel() {
 	post_redraw();
 	data_ptr->point_cloud_kit->can_parallel_grow = true;
 }
-
+///
 void visual_processing::start_reading_pc_parallel() {
 	parallel_reading_thread = new thread(&visual_processing::read_pc_parallel,this);
 }
-
 ///
 void visual_processing::read_pc_queue() {
 	data_ptr->point_cloud_kit->read_pc_with_dialog_queue(false);
@@ -843,9 +842,6 @@ void  visual_processing::rotate_z() {
 	data_ptr->point_cloud_kit->pc.rotate(quat(vec3(0, 0, 1), 5 * M_PI / 180));
 	std::cout << "rotate 5 degree around z!" << std::endl;
 }
-////////////////////////////////////////////////////////////////////////
-// 
-////////////////////////////////////////////////////////////////////////
 /// load one shot from data_ptr->point_cloud_kit according to .campose file  
 bool visual_processing::load_next_shot() {
 	one_shot_360pc->pc.clear_all_for_get_next_shot();
@@ -956,9 +952,7 @@ void visual_processing::load_image_from_bin_files() {
 	//render_img = true;
 	//post_redraw();
 }
-////////////////////////////////////////////////////////////////////////
-//// rendering mode switching
-////////////////////////////////////////////////////////////////////////
+/*switch rendering modes */
 ///
 void visual_processing::switch_rendering_mode_quad_based() {
 	data_ptr->point_cloud_kit->RENDERING_STRATEGY = 1;
@@ -987,12 +981,12 @@ void visual_processing::switch_rendering_mode_clod_based() {
 	data_ptr->point_cloud_kit->on_rendering_settings_changed();
 	post_redraw();
 }
-
+///
 void visual_processing::mark_all_points_as_tobedownsampled() {
 	data_ptr->point_cloud_kit->marking_test_mark_all_points_as_given_group(
 		(int)point_cloud::PointSelectiveAttribute::TO_BE_SUBSAMPLED);
 }
-
+///
 void visual_processing::mark_all_active_points_as_tobedownsampled() {
 	data_ptr->point_cloud_kit->new_history_recording();
 	//
@@ -1002,9 +996,21 @@ void visual_processing::mark_all_active_points_as_tobedownsampled() {
 				point_cloud::PointSelectiveAttribute::TO_BE_SUBSAMPLED;
 	}
 }
-
 /*quick test and then, integrate*/
-
+///
+void visual_processing::del_clipping_btn_press() {
+	data_ptr->point_cloud_kit->mark_points_with_clipping_plane(
+		data_ptr->cur_right_hand_posi,
+		data_ptr->normal_clipping_plane_RHand,
+		point_cloud::PointSelectiveAttribute::DEL
+	);
+	// do not have to upload to gpu since we must use the surfel renderer for now 
+	// it will continuesly update 
+	// just do this for consistant 
+	data_ptr->point_cloud_in_hand->on_rendering_settings_changed();
+	post_redraw();
+}
+///
 void visual_processing::del_menu_btn_press() {
 	// marking on cpu side, mark as deleted 
 	data_ptr->point_cloud_kit->mark_points_with_conroller(
@@ -1012,13 +1018,13 @@ void visual_processing::del_menu_btn_press() {
 		data_ptr->point_cloud_kit->controller_effect_range, true,
 		point_cloud::PointSelectiveAttribute::DEL);
 }
-
+///
 void visual_processing::del_menu_btn_release() {
 	// update to gpu 
 	data_ptr->point_cloud_kit->on_rendering_settings_changed();
 	post_redraw();
 }
-
+///
 void visual_processing::selective_downsampling_menu_btn_press() {
 	// mark -> TO_BE_SUBSAMPLED, to test, ignore points marked as deleted
 	data_ptr->point_cloud_kit->mark_points_with_conroller(
@@ -1033,13 +1039,13 @@ void visual_processing::selective_downsampling_menu_btn_press() {
 	data_ptr->point_cloud_kit->reset_last_marking_non_processed_part(
 		point_cloud::PointSelectiveAttribute::TO_BE_SUBSAMPLED);
 }
-
+///
 void visual_processing::selective_downsampling_menu_btn_release() {
 	// update to gpu 
 	data_ptr->point_cloud_kit->on_rendering_settings_changed();
 	post_redraw();
 }
-
+///
 void visual_processing::quad_addition_menu_btn_press() {
 	// wait until flag avaliable
 	while(data_ptr->point_cloud_kit->can_parallel_grow == false){}
@@ -1052,28 +1058,31 @@ void visual_processing::quad_addition_menu_btn_press() {
 				data_ptr->quad_addition_ext);
 	data_ptr->point_cloud_kit->can_parallel_grow = true;
 }
-
+///
 void visual_processing::quad_addition_menu_btn_release() {
 	// update to gpu 
 	data_ptr->point_cloud_kit->on_rendering_settings_changed();
 	post_redraw();
 }
-
+///
 void visual_processing::send_updated_point_cloud_to_gpu() {
 	// update to gpu 
 	data_ptr->point_cloud_kit->on_rendering_settings_changed();
 	post_redraw();
 }
-
+///
 void visual_processing::step_back_selection() {
 	data_ptr->point_cloud_kit->reset_last_marked_points();
 }
+///
 void visual_processing::step_forward_selection() {
 	data_ptr->point_cloud_kit->step_forward_selection();
 }
+///
 void visual_processing::enlarge_tube_length() { data_ptr->enlarge_tube_length(); }
+///
 void visual_processing::schrink_tube_length() { data_ptr->schrink_tube_length(); }
-
+///
 void visual_processing::point_copy_btn_pressed() {
 	// copy points to tmp handhold cloud 
 	data_ptr->point_cloud_kit->mark_points_and_push_to_tmp_pointcloud(
@@ -1092,7 +1101,7 @@ void visual_processing::point_copy_btn_pressed() {
 	data_ptr->point_cloud_in_hand->on_rendering_settings_changed();
 	post_redraw();
 }
-
+///
 void visual_processing::point_copy_btn_release() {
 	// lock parallel safty flag 
 	// wait until flag avaliable
@@ -1124,17 +1133,15 @@ void visual_processing::point_copy_btn_release() {
 	// reset safty flag for parallel tasks 
 	data_ptr->point_cloud_kit->can_parallel_grow = true;
 }
-
+///
 void visual_processing::release_controller_pc_binding() {
 	// update and render recorded with last mvp 
 	data_ptr->point_cloud_in_hand->relative_model_matrix_controller_to_pc.identity();
 	data_ptr->point_cloud_in_hand->last_model_matrix = data_ptr->point_cloud_in_hand->current_model_matrix;
 	data_ptr->point_cloud_in_hand->use_current_matrix = false;
 }
-
-////////////////////////////////////////////////////////////////////////
-//// gui
-////////////////////////////////////////////////////////////////////////
+/*gui */
+///
 void visual_processing::create_gui() {
 	add_decorator("visual_processing_main", "heading", "level=2");
 	connect_copy(add_button("rotate_right")->click,
@@ -1348,6 +1355,6 @@ void visual_processing::create_gui() {
 		add_member_control(this, "pick_point_index", pick_point_index, "value_slider", "min=0;max=5;log=false;ticks=true;");
 	}
 }
-
+///
 #include <cgv/base/register.h>
 cgv::base::object_registration<visual_processing> vr_pc_processing_reg("visual_processing");

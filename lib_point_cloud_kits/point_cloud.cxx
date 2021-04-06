@@ -652,7 +652,7 @@ void point_cloud::del_with_clip_plane(Dir cur_plane_normal, Pnt a_point_on_the_p
 	box_out_of_date = true;
 }
 
-///
+/// non-lazy style 
 void point_cloud::clip_plane(Dir cur_plane_normal, Pnt a_point_on_the_plane) {
 	// or, use the pop swap trick:
 	//auto it = P.begin() + i;

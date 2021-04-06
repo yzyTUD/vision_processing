@@ -137,10 +137,11 @@ public:
 	/// 20 reserved
 	/// copy to shader file 
 	enum PointSelectiveAttribute {
-		VISUAL_MARK,
+		VISUAL_MARK, // reserved 
 		ORI = 1,
-		DEL,
+		DEL = 2,
 		BOUNDARIES,
+		CORNER,
 		ICP_SOURCE,
 		ICP_TARGET,
 		ICP_SOURCE_HIGHLIGHT,
@@ -148,8 +149,7 @@ public:
 		TO_BE_SUBSAMPLED,
 		NEWLY_GENERATED,
 		// add new functional idx above
-		EndOfFunctionalIndices
-		// then, region id start from the end of this struct 
+		EndOfFunctionalIndices // region id start from the end of this struct 
 	};
 	int num_of_functional_selections = 20;
 	int num_of_regions = 25;

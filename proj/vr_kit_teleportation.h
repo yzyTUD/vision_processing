@@ -430,6 +430,11 @@ public:
 				data_ptr->headset_direction.y() = -vrpe.get_state().hmd.pose[7];
 				data_ptr->headset_direction.z() = -vrpe.get_state().hmd.pose[8];
 
+				//update normal directions 
+				off = data_ptr->normal_clipping_plane_RHand_global;
+				data_ptr->cur_right_hand_rot_quat.rotate(off);
+				data_ptr->normal_clipping_plane_RHand = off;
+
 				// update handhold gui position for right hand 
 				off = data_ptr->offset_right_global;
 				data_ptr->cur_right_hand_rot_quat.rotate(off);

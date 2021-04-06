@@ -492,8 +492,8 @@ void gl_point_cloud_drawable::draw_points_quad(context& ctx) {
 /// 
 void gl_point_cloud_drawable::switch_to_quad_rendering() {
 	RENDERING_STRATEGY = 1;
-	on_rendering_settings_changed();
 	is_switching = true;
+	on_rendering_settings_changed();
 }
 /// render with gl points 
 void gl_point_cloud_drawable::draw_points_point_rendering(context& ctx) {

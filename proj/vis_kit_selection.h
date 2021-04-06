@@ -575,7 +575,10 @@ public:
 			render_a_sphere_on_righthand_shading_effect(ctx);
 		}
 
-		// point cloud cleaning 
+		// point cloud cleaning
+		if (data_ptr->check_roulette_selection(data_ptr->get_id_with_name("PCCleaning\nClipping"))) {
+			render_a_handhold_plane_for_clipping(ctx);
+		}
 		if (data_ptr->check_roulette_selection(data_ptr->get_id_with_name("PCCleaning\nFake\nDel"))) {
 			render_a_sphere_on_righthand_shading_effect(ctx);
 		}
@@ -601,6 +604,60 @@ public:
 	/// call me 
 	void finish_draw(context& ctx) {
 
+	}
+	///
+	void render_a_handhold_plane_for_clipping(cgv::render::context& ctx) {
+		vec3 ext = vec3(0, 2, 4);
+		// surface renderer with texture 
+		if (true) {
+			// points for a label
+			vec3 p1(0, 0.5 * ext.y(), 0.5 * ext.z());
+			vec3 p2(0, -0.5 * ext.y(), 0.5 * ext.z());
+			vec3 p3(0, 0.5 * ext.y(), -0.5 * ext.z());
+			vec3 p4(0, -0.5 * ext.y(), -0.5 * ext.z());
+
+			vec3 addi_offset = vec3(0, 0, -ext.z() / 2);
+
+			p1 = p1 + addi_offset;
+			p2 = p2 + addi_offset;
+			p3 = p3 + addi_offset;
+			p4 = p4 + addi_offset;
+
+			/*quat tmp(vec3(0, 1, 0), var1);
+			tmp.rotate(p1);
+			tmp.rotate(p2);
+			tmp.rotate(p3);
+			tmp.rotate(p4);*/
+
+			// rotate and translate according to the gui boxes
+			data_ptr->cur_right_hand_rot_quat.rotate(p1);
+			data_ptr->cur_right_hand_rot_quat.rotate(p2);
+			data_ptr->cur_right_hand_rot_quat.rotate(p3);
+			data_ptr->cur_right_hand_rot_quat.rotate(p4);
+
+			p1 = p1 + data_ptr->cur_right_hand_posi;
+			p2 = p2 + data_ptr->cur_right_hand_posi;
+			p3 = p3 + data_ptr->cur_right_hand_posi;
+			p4 = p4 + data_ptr->cur_right_hand_posi;
+
+			cgv::render::shader_program& prog = ctx.ref_default_shader_program(false);
+			int pi = prog.get_position_index();
+			//int ti = prog.get_texcoord_index();
+			std::vector<vec3> P;
+
+			P.push_back(p1);
+			P.push_back(p2);
+			P.push_back(p3);
+			P.push_back(p4);
+
+			cgv::render::attribute_array_binding::set_global_attribute_array(ctx, pi, P);
+			cgv::render::attribute_array_binding::enable_global_array(ctx, pi);
+			prog.enable(ctx);
+			ctx.set_color(rgb(0.5));
+			glDrawArrays(GL_TRIANGLE_STRIP, 0, (GLsizei)P.size());
+			prog.disable(ctx);
+			cgv::render::attribute_array_binding::disable_global_array(ctx, pi);
+		}
 	}
 	///
 	void render_an_animating_tube_impl(cgv::render::context& ctx){

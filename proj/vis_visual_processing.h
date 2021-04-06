@@ -415,49 +415,33 @@ public:
 	void print_cloud_info();
 	///
 	void auto_conduct_nml_estimation_leica();
-
 	void add_to_file_list();
-
 	void clean_file_list();
-
 	bool batch_compute_nmls_given_file_list();
-
 	bool batch_read_pc_queue_and_downsampling();
-
 	void clean_all_pcs();
-
 	void load_image_from_bin_files();
-
 	void switch_rendering_mode_quad_based();
 	void switch_rendering_mode_point_based();
 	void switch_rendering_mode_surfel_based();
 	void switch_rendering_mode_clod_based();
-
 	void mark_all_points_as_tobedownsampled();
 	void mark_all_active_points_as_tobedownsampled();
-
+	void del_clipping_btn_press();
 	void del_menu_btn_press();
 	void del_menu_btn_release();
-
 	void selective_downsampling_menu_btn_press();
 	void selective_downsampling_menu_btn_release();
-
 	void quad_addition_menu_btn_press();
 	void quad_addition_menu_btn_release();
-
 	void send_updated_point_cloud_to_gpu();
-
 	void step_back_selection();
 	void step_forward_selection();
-
 	void enlarge_tube_length();
 	void schrink_tube_length();
-
 	void point_copy_btn_pressed();
 	void point_copy_btn_release();
-
 	void release_controller_pc_binding();
-
 	void create_gui();
 
 	/// wrappers 

@@ -160,6 +160,8 @@ public:
 	int history_indexer = 0;
 	///
 	void marking_test_mark_all_points_as_given_group(int objective);
+	/// quick point deletion: with a clipping plane 
+	void mark_points_with_clipping_plane(Pnt p, Nml plane_normal, int objctive);
 	///
 	void reset_last_marking_non_processed_part(int which_is_marked_and_not_used);
 	///
@@ -199,7 +201,7 @@ public:
 	///
 	void init_region_growing_by_setting_group_and_seeds(int growing_group, std::queue<int> picked_id_list);
 	///
-	bool grow_one_step_bfs(bool check_nml, int which_group);
+	//bool grow_one_step_bfs(bool check_nml, int which_group);
 	///
 	bool all_points_growed();
 	///
@@ -224,6 +226,7 @@ public:
 	void subsampling_target(Pnt& posi, float& radii, bool confirmed);
 	///
 	void do_region_growing_timer_event(double t, double dt);
+	bool grow_one_step_bfs(bool check_nml, int which_group, cgv::type::uint8_type ignore_group);
 	/// varibles that used for region growing
 	bool marked = false;
 	bool do_region_growing_directly = true;

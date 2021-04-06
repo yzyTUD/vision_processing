@@ -394,13 +394,11 @@ void point_cloud_interactable::prepare_marking(std::vector<rgba>* psc) {
 	use_these_point_color_indices = &pc.point_selection;
 
 }
-
 ///
 void point_cloud_interactable::new_history_recording() {
 	std::vector<pointHistoryEntry> current_selection;
 	point_marking_history.push_back(current_selection);
 }
-
 ///
 void point_cloud_interactable::reset_last_marking_non_processed_part(int which_is_marked_and_not_used) {
 	// iterate all point indices recorded last time 
@@ -414,7 +412,6 @@ void point_cloud_interactable::reset_last_marking_non_processed_part(int which_i
 		}
 	}
 }
-
 /// not finished -> to be tested
 void point_cloud_interactable::reset_last_marked_points() {
 	// a list of current changing: point_marking_history.back()
@@ -431,12 +428,10 @@ void point_cloud_interactable::reset_last_marked_points() {
 	// step back virtually
 	history_indexer++;
 }
-
 // errors may occour when step too much 
 void point_cloud_interactable::step_back_last_selection() {
 	reset_last_marked_points();
 }
-
 // not finished -> to be tested
 // errors may occour when step too much 
 void point_cloud_interactable::step_forward_selection() {
@@ -452,7 +447,6 @@ void point_cloud_interactable::step_forward_selection() {
 	// step next 
 	history_indexer--;
 }
-
 ///
 void point_cloud_interactable::mark_all_points_and_push_to_tmp_pointcloud_test(Pnt p, float r, int ignore_id = -1) {
 	bool some_points_copied = false;
@@ -478,7 +472,6 @@ void point_cloud_interactable::mark_all_points_and_push_to_tmp_pointcloud_test(P
 		to_be_copied_pointcloud.box_out_of_date = true;
 	}
 }
-
 ///
 void point_cloud_interactable::mark_points_and_push_to_tmp_pointcloud(Pnt p, float r, int ignore_id = -1) {
 	bool some_points_copied = false;
@@ -504,8 +497,8 @@ void point_cloud_interactable::mark_points_and_push_to_tmp_pointcloud(Pnt p, flo
 		to_be_copied_pointcloud.box_out_of_date = true;
 	}
 }
-
 /// currently, we set confirmed to true. The visual feedback is better to be impl. in shaders.
+/// ignore deleted points 
 void point_cloud_interactable::mark_points_with_conroller(Pnt p, float r, bool confirmed, int objctive,int ignore_id) {
 	new_history_recording();
 	if (pc.get_nr_points()) {
@@ -590,23 +583,22 @@ void point_cloud_interactable::mark_points_with_conroller(Pnt p, float r, bool c
 			}
 		}
 		on_point_cloud_change_callback(PCC_COLORS);
-		//post_redraw();
 	}
-
-	// only one point will be marked as seed 
-	//for (Idx i = 0; i < (Idx)pc.get_nr_points(); ++i) {
-	//	if ((pc.pnt(i) - p).length() < r) {
-	//		pc.point_selection.at(i) = objctive;
-	//		return;
-	//	}
-	//}
-	//on_point_cloud_change_callback(PCC_COLORS);
 }
 /// mark_all_points_as_given_group, still, you have to prepare first, typically done in reading process
 void point_cloud_interactable::marking_test_mark_all_points_as_given_group(int objective) {
 	for (int i = 0; i < pc.get_nr_points(); i++) {
 		// int -> uint8
 		pc.point_selection[i] = (cgv::type::uint8_type)objective;
+	}
+}
+/// TODO history support 
+void point_cloud_interactable::mark_points_with_clipping_plane(Pnt p,Nml plane_normal,int objective) {
+	new_history_recording();
+	for (Idx i = 0; i < (Idx)pc.get_nr_points(); ++i) {
+		if (dot(pc.pnt(i) - p, plane_normal) < 0) {
+			pc.point_selection[i] = (cgv::type::uint8_type)objective;
+		}
 	}
 }
 
@@ -627,7 +619,6 @@ void point_cloud_interactable::selective_subsampling_cpu() {
 		}
 	}
 }
-
 /*point addition, requiures the scan index present */
 void point_cloud_interactable::spawn_points_in_the_handhold_quad(quat controllerq, vec3 controllert, vec3 quadextent) {
 
@@ -675,7 +666,6 @@ void point_cloud_interactable::spawn_points_in_the_handhold_quad(quat controller
 	pc.box_out_of_date = true;
 	on_point_cloud_change_callback(PCC_POINTS_RESIZE);
 }
-
 /*region growing after marked*/
 /// max_num_regions is not used 
 void point_cloud_interactable::prepare_grow(bool read_from_file, std::vector<rgba>* psc, int max_num_regions) {
@@ -773,7 +763,7 @@ void point_cloud_interactable::do_region_growing_timer_event(double t, double dt
 	//on_point_cloud_change_callback(PCC_COLORS);
 }
 /// one step growing with bfs 
-bool point_cloud_interactable::grow_one_step_bfs(bool check_nml, int which_group) {
+bool point_cloud_interactable::grow_one_step_bfs(bool check_nml, int which_group, cgv::type::uint8_type ignore_group) {
 	// bfs, simple approach, do not update normal currently 
 	if (pc.get_nr_points() == 0)
 		return false;
@@ -791,7 +781,7 @@ bool point_cloud_interactable::grow_one_step_bfs(bool check_nml, int which_group
 		if (to_be_visit > 0 && to_be_visit < pc.get_nr_points()) {
 			tree_ds->find_closest_points(pc.pnt(to_be_visit), 8, knn);
 			for (auto k : knn) {
-				if (!pc.point_selection_visited.at(k)) {
+				if (!pc.point_selection_visited.at(k) && pc.point_selection.at(k) != ignore_group) {
 					// compare nml
 					vec3 cur_k_nml = pc.nml(k);
 					//std::cout << "dot of nmls: " << dot(cur_nml, cur_k_nml) << std::endl;

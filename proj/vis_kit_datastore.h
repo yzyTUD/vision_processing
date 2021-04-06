@@ -23,7 +23,7 @@ using namespace std;
 #include <vr_render_helpers.h>
 #include <cg_vr/vr_events.h>
 #include "vis_kit_trackable.h"
-
+///
 class motion_storage_per_device :public cgv::render::render_types {
 public:
 	int num_of_posi_rec = 0;
@@ -35,7 +35,7 @@ public:
 	bool has_box = false;
 	bool has_color = false;
 };
-
+///
 class imagebox :cgv::render::render_types {
 protected:
 public:
@@ -136,7 +136,7 @@ public:
 
 	}
 };
-
+///
 class imagebox_array :cgv::render::render_types {
 public:
 	std::vector<imagebox> imagebox_list;
@@ -187,50 +187,29 @@ public:
 		}
 	}
 };
-
-// the storage of the whole scene data 
+/// integrated storage 
 class vis_kit_data_store_shared :public cgv::render::render_types{
 public:
-	bool disable_gui = false;
-
-	std::string data_dir = std::string(getenv("CGV_DATA"));
-	std::string get_timestemp_for_filenames() {
-		auto microsecondsUTC = std::chrono::duration_cast<std::chrono::microseconds>(
-			std::chrono::system_clock::now().time_since_epoch()).count();
-		return std::to_string(microsecondsUTC);
-	}
-	
-	point_cloud_interactable* point_cloud_kit = new point_cloud_interactable();
+	point_cloud_interactable* point_cloud_kit = new point_cloud_interactable(); // storage for point clouds
 	point_cloud_interactable* point_cloud_in_hand = new point_cloud_interactable();
 	bool render_handhold_pc = false;
 	bool render_a_quad_on_righthand = false;
-
-	/// main storage for motion data 
-	std::map<std::string, motion_storage_per_device> motion_storage;
+	std::map<std::string, motion_storage_per_device> motion_storage;// main storage for motion data 
 	std::map<std::string, motion_storage_per_device> motion_storage_read;
 	bool is_replay = false;
 	bool rec_pose = false;
-
-	/// can be seen as an abstract data wrapper 
-	std::vector<trackable_mesh> trackable_list;	
+	std::vector<trackable_mesh> trackable_list;	// abstract data wrapper 
 	std::vector<trackable_box> trackable_box_list;
 	std::vector<trackable_box> trackable_imagebox_list;
-
-	/// real interactables are stored here 
-	// store the movable boxes
-	std::vector<box3> movable_boxes;
+	std::vector<box3> movable_boxes;// store the movable boxes
 	std::vector<rgb> movable_box_colors;
 	std::vector<vec3> movable_box_translations;
 	std::vector<quat> movable_box_rotations;
 	cgv::render::box_render_style movable_style;	
-
-	// intersection points
-	std::vector<vec3> intersection_points;
+	std::vector<vec3> intersection_points;// intersection points
 	std::vector<rgb>  intersection_colors;
 	std::vector<int>  intersection_box_indices;
 	std::vector<int>  intersection_controller_indices;
-
-	// intersection points
 	std::vector<vec3> ipimg;
 	std::vector<rgb>  icimg;
 	std::vector<int>  ibidximg;
@@ -238,9 +217,7 @@ public:
 	imagebox_array* iba = nullptr;
 	std::vector<vec3> pick_points;
 	std::vector<rgb> pick_colors;
-
-	// hand tracking
-	int left_rgbd_controller_index = 0;
+	int left_rgbd_controller_index = 0;// vr tracking
 	int right_rgbd_controller_index = 1;
 	vec3 cur_left_hand_posi;
 	vec3 cur_left_hand_dir;
@@ -249,29 +226,49 @@ public:
 	quat cur_right_hand_rot_quat = quat();
 	vec3 cur_off_left;
 	vec3 cur_off_right;
-	//mat3 cur_left_hand_rot;
-	//mat3 cur_left_hand_rot_mat;
-	//mat3 cur_right_hand_rot_as_mat;
-
+	vec3 normal_clipping_plane_RHand;
 	vec3 cur_headset_position;
-
-	// for point selection
-	// superbox and interaction modes, righthand instead of boxgui for now 
-	// decrate case, a little complicated when update tracking origin at each pose event 
 	box3 supersampling_bbox;	
-	//enum interaction_mode {
-	//	None = 0,
-	//	TELEPORT,
-	//	DIRECTIONAL,
-	//	CLIMB = 3, 
-	//	SUPERSAMPLING_BOX = 4,
-	//	SUPERSAMPLING_DRAW
-	//}mode;
 	int max_idx_num = 5;
 	std::vector<vec3> righthand_posi_list;
 	std::vector<vec3> righthand_dir_list;
-
-	float paratone_1 = 0.1;
+	int menu_theta = 28;// handhold gui parapmeters 
+	int active_group = 1; // unlimited  
+	int active_btnidx = 0; // from 0-12 
+	float active_off_rotation = 0; // roulette
+	int max_group_num = 10;
+	bool disable_gui = false;
+	std::vector<std::vector<std::string>> gps; 
+	std::vector<std::string> gp0_btns;
+	std::vector<std::string> gp1_btns;
+	std::vector<std::string> gp2_btns;
+	std::vector<std::string> gp3_btns;
+	std::vector<rgba> point_selection_colors; 
+	std::vector<vec3> headset_object_positions; // dynamic 
+	vec3 headset_direction;
+	std::vector<vec3> righthand_object_positions; // dynamic, only one position, can be used globally
+	std::vector<vec3> lefthand_object_positions;
+	std::vector<rgb> righthand_object_colors; // 
+	std::vector<vec3> palette_lefthand_object_positions; // dynamic positions used for rendering 
+	std::vector<rgb> palette_lefthand_object_colors;
+	std::vector<rgb> palette_righthand_object_colors;
+	std::vector<vec3> palette_lefthand_palette_initialpose_positions;
+	std::vector<std::string> names_tj_rendering;
+	vec3 normal_clipping_plane_RHand_global = vec3(1, 0, 0);
+	vec3 offset_right_global = vec3(0, 0, -0.2);
+	vec3 offset_left_global = vec3(0, 0, -0.2);
+	vec3 offset_headset_global = vec3(0, 0, -0.2);
+	vec3 quad_addition_ext = vec3(0.2);
+	vec3 realtimeOffset = vec3(0);
+	vec3 tube_left_end = vec3(-0.1, 0.05, -0.02);
+	vec3 tube_right_end = vec3(0.1, 0.05, -0.02);
+	bool render_an_animating_tube = false;
+	float speed = 3;
+	int frame_factor = 1;
+	std::string default_tj_file = "C:/Users/yzhon/Desktop/DATA_LOCAL/MRTK_YS_copy.tj";
+	std::string default_mesh_file = "C:/Users/yzhon/Desktop/DATA_LOCAL/Mesh_IMLD/textured_output.obj";
+	std::string data_dir = std::string(getenv("CGV_DATA"));
+	float paratone_1 = 0.1; // tonable parameters 
 	float paratone_2 = 0.2;
 	float paratone_3 = 2;
 	float paratone_4 = 1;
@@ -279,73 +276,23 @@ public:
 	float paratone_6;
 	float paratone_7;
 
-	int menu_theta = 28;
-
-	int active_group = 1; // unlimited  
-	int active_btnidx = 0; // from 0-12 
-	float active_off_rotation = 0; // roulette
-	int max_group_num = 10;
-
-	// menu table: unified management: hard to iterate 
-	//std::map<std::string, ivec2> menu_table;
-	// control the orders easily! 
-	std::vector<std::vector<std::string>> gps;
-	std::vector<std::string> gp0_btns;
-	std::vector<std::string> gp1_btns;
-	std::vector<std::string> gp2_btns;
-	std::vector<std::string> gp3_btns;
-
-	// point cloud marking colors, the same in shaders 
-	std::vector<rgba> point_selection_colors; 
-
-	// 
-	std::vector<vec3> headset_object_positions; // dynamic 
-	vec3 headset_direction;
-
-	//
-	std::vector<vec3> righthand_object_positions; // dynamic, only one position, can be used globally
-	std::vector<vec3> lefthand_object_positions;
-	std::vector<rgb> righthand_object_colors; // 
-	vec3 offset_right_global = vec3(0, 0, -0.2);
-	vec3 offset_left_global = vec3(0, 0, -0.2);
-	vec3 offset_headset_global = vec3(0, 0, -0.2);
-
-	std::vector<vec3> palette_lefthand_object_positions; // dynamic positions used for rendering 
-	std::vector<rgb> palette_lefthand_object_colors;
-	std::vector<rgb> palette_righthand_object_colors;
-	std::vector<vec3> palette_lefthand_palette_initialpose_positions;
-
-	vec3 quad_addition_ext = vec3(0.2);
-
-	// give/ read a name list, render their 
-	std::vector<std::string> names_tj_rendering;
-
-	//
-	int frame_factor = 1;
-
-	// for anim replay 
-	vec3 realtimeOffset = vec3(0);
-
-	//
-	bool render_an_animating_tube = false;
-	float speed = 3;
-	vec3 tube_left_end = vec3(-0.1, 0.05, -0.02);
-	vec3 tube_right_end = vec3(0.1, 0.05, -0.02);
-
-	//
-	std::string default_tj_file = "C:/Users/yzhon/Desktop/DATA_LOCAL/MRTK_YS_copy.tj";
-	std::string default_mesh_file = "C:/Users/yzhon/Desktop/DATA_LOCAL/Mesh_IMLD/textured_output.obj";
-
-	// external api 
+	/// @external api 
+	std::string get_timestemp_for_filenames() {
+		auto microsecondsUTC = std::chrono::duration_cast<std::chrono::microseconds>(
+			std::chrono::system_clock::now().time_since_epoch()).count();
+		return std::to_string(microsecondsUTC);
+	}
+	/// @external api 
 	void enlarge_tube_length() {
 		tube_left_end.x() -= 0.05;
 		tube_right_end.x() += 0.05;
 	}
+	///
 	void schrink_tube_length() {
 		tube_left_end.x() += 0.05;
 		tube_right_end.x() -= 0.05;
 	}
-
+	///
 	vis_kit_data_store_shared() {
 
 		//initialize_trackable_list();
@@ -392,16 +339,18 @@ public:
 		gp_btn_tmp.push_back("PointCloud\nGenPlane");
 		gps.push_back(gp_btn_tmp);
 
-		//////////////////////////////////////////////////////////////////
-		// point cloud cleaning 
-		// adjuest range with move event
-		// press btn to confirm
-		//////////////////////////////////////////////////////////////////
+		/*
+			point cloud cleaning 
+			adjuest range with move event
+			press btn to confirm
+		*/
+		gp_btn_tmp.clear();
 		// deletion 
-		// seletion 
+		gp_btn_tmp.push_back("PCCleaning\nClipping");
 		gp_btn_tmp.push_back("PCCleaning\nFake\nDel");
-		gp_btn_tmp.push_back("PCCleaning\nFake\nSeleciton");
 		gp_btn_tmp.push_back("PCCleaning\nSelective\nSubSampling");
+		// seletion 
+		gp_btn_tmp.push_back("PCCleaning\nFake\nSeleciton");
 		// addition 
 		gp_btn_tmp.push_back("PCCleaning\nAddition\nQuad"); 
 		gp_btn_tmp.push_back("PCCleaning\nAddition\nSphere");
@@ -634,7 +583,7 @@ public:
 		p = p + localoffset;
 		return p;
 	}
-
+	///
 	vec2 get_id_with_name(string btn_name) {
 		for (int i = 0; i < gps.size();i++) 
 			for (int j = 0; j < gps.at(i).size(); j++) 
@@ -642,7 +591,7 @@ public:
 					return vec2(i,j);
 		return vec2(-1,-1);
 	}
-
+	///
 	bool check_roulette_selection(vec2 idxs) {
 		int gpidx = idxs.x();
 		int btnidx = idxs.y();
@@ -656,7 +605,7 @@ public:
 			&& (projected_angle < menu_theta / 2.0f + 30 * btnidx);
 		return check_group && check_btn;
 	}
-
+	///
 	bool check_btn_active_givenrot(float btn_off_angle) {
 		float inv_active_off_rotation = -active_off_rotation;
 		if (inv_active_off_rotation < 0)
@@ -665,7 +614,7 @@ public:
 		bool check = (projected_angle > btn_off_angle - 14) && (projected_angle < btn_off_angle + 14);
 		return check;
 	}
-
+	///
 	void supersampling_bounded_points_with_drawn_data() {
 		//// at least 2 points 
 		//if (righthand_posi_list.size() < 1)
@@ -674,14 +623,13 @@ public:
 		//	return;
 		//point_cloud_kit->supersampling_within_clips(righthand_posi_list, righthand_dir_list);
 	}
-
+	///
 	void initialize_trackable_list() {
 		trackable_list.push_back(*(new trackable_mesh("hmd", data_dir + "/generic_hmd.obj")));
 		trackable_list.push_back(*(new trackable_mesh("left_hand" , data_dir + "/vr_controller_vive_1_5.obj")));
 		trackable_list.push_back(*(new trackable_mesh("right_hand", data_dir + "/vr_controller_vive_1_5.obj")));
 	}
-	/// 
-	// this is updated partially ori. 
+	/// this is updated partially ori. 
 	void imageboxes_init_to_trackable_list() {
 		if (!iba)
 			return;
@@ -694,7 +642,7 @@ public:
 		}
 		// add here 
 	}
-	// for a quick test 
+	/// for a quick test 
 	void test_upload_to_trackable_list_ori() {
 		for (int i = 0; i < trackable_box_list.size(); i++) {
 			auto& tt = trackable_box_list.at(i);
@@ -778,6 +726,7 @@ public:
 		}
 		// add here 
 	}
+	///
 	void download_from_motion_storage_read_per_frame(int cur_frame) {
 		for (auto& t : trackable_list) {
 			std::map<std::string, motion_storage_per_device>::iterator mt = motion_storage_read.find(t.get_name());
@@ -849,9 +798,11 @@ public:
 	void gen_random_movable_boxes(std::string name) {
 		//trackable_box_list.push_back(*(new trackable_box(name)));
 	}
+	///
 	void gen_random_movable_spheres(std::string name) {
 		//trackable_box_list.push_back(*(new trackable_box(name)));
 	}
+	///
 	void construct_scene() {
 
 	}

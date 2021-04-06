@@ -38,7 +38,7 @@ public:
 		3 - surfel rendering 
 		4 - clod rendering 
 	*/
-	int RENDERING_STRATEGY = 1;
+	int RENDERING_STRATEGY = 3;
 	bool is_switching = false;
 	// for small point clouds 
 	bool continus_redraw = false; 

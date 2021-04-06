@@ -493,88 +493,88 @@ public:
 				cgv::render::attribute_array_binding::disable_global_array(ctx, pi);
 				cgv::render::attribute_array_binding::disable_global_array(ctx, ti);
 			}
-			// render pre disk, diff. offset, fix the rot for inactive disks, disable pressing effect 
-			if (data_ptr->active_group > 0)
-				if (btn.use_label && btn.group == data_ptr->active_group - 1) {
-				quat rot;
-				rot = quat(vec3(0, 1, 0), 2 * M_PI * (btn.off_angle / 360.0f));
-				quat off_rot = quat(vec3(0, 1, 0), M_PI);
-				quat global_rot = quat(vec3(0, 1, 0), 2 * M_PI * (0 / 360.0f)); //fix the rot for inactive disks 
-				adjest_PNT_fan_at_runtime(btn.level, r, s, theta_as_angle, rot * off_rot * global_rot, &quad_P, &quad_N, &quad_T);
+			//// render pre disk, diff. offset, fix the rot for inactive disks, disable pressing effect 
+			//if (data_ptr->active_group > 0)
+			//	if (btn.use_label && btn.group == data_ptr->active_group - 1) {
+			//	quat rot;
+			//	rot = quat(vec3(0, 1, 0), 2 * M_PI * (btn.off_angle / 360.0f));
+			//	quat off_rot = quat(vec3(0, 1, 0), M_PI);
+			//	quat global_rot = quat(vec3(0, 1, 0), 2 * M_PI * (0 / 360.0f)); //fix the rot for inactive disks 
+			//	adjest_PNT_fan_at_runtime(btn.level, r, s, theta_as_angle, rot * off_rot * global_rot, &quad_P, &quad_N, &quad_T);
 
-				// local offset 
-				vec3 offset = offset_pre_disk;
-				// disable pressing effect for inactive gps
-				/*if (data_ptr->check_btn_active_givenrot(btn.off_angle))
-					offset.y() = 0;*/
-				// local to global 
-				data_ptr->cur_left_hand_rot_quat.rotate(offset);
-				for (auto& p : quad_P) {
-					data_ptr->cur_left_hand_rot_quat.rotate(p);
-					p += data_ptr->cur_left_hand_posi + offset;
-				}
+			//	// local offset 
+			//	vec3 offset = offset_pre_disk;
+			//	// disable pressing effect for inactive gps
+			//	/*if (data_ptr->check_btn_active_givenrot(btn.off_angle))
+			//		offset.y() = 0;*/
+			//	// local to global 
+			//	data_ptr->cur_left_hand_rot_quat.rotate(offset);
+			//	for (auto& p : quad_P) {
+			//		data_ptr->cur_left_hand_rot_quat.rotate(p);
+			//		p += data_ptr->cur_left_hand_posi + offset;
+			//	}
 
-				// enable texture 
-				cgv::render::shader_program& prog = ctx.ref_default_shader_program(true);
-				int pi = prog.get_position_index();
-				int ti = prog.get_texcoord_index();
+			//	// enable texture 
+			//	cgv::render::shader_program& prog = ctx.ref_default_shader_program(true);
+			//	int pi = prog.get_position_index();
+			//	int ti = prog.get_texcoord_index();
 
-				cgv::render::attribute_array_binding::set_global_attribute_array(ctx, pi, quad_P);
-				cgv::render::attribute_array_binding::enable_global_array(ctx, pi);
-				cgv::render::attribute_array_binding::set_global_attribute_array(ctx, ti, quad_T);
-				cgv::render::attribute_array_binding::enable_global_array(ctx, ti);
-				glDisable(GL_CULL_FACE);
-				prog.enable(ctx);
-				btn.labeltex->label_tex.enable(ctx);
-				ctx.set_color(rgb(1, 1, 1));
-				glDrawArrays(GL_TRIANGLES, 0, (GLsizei)quad_P.size());
-				btn.labeltex->label_tex.disable(ctx);
-				prog.disable(ctx);
-				glEnable(GL_CULL_FACE);
-				cgv::render::attribute_array_binding::disable_global_array(ctx, pi);
-				cgv::render::attribute_array_binding::disable_global_array(ctx, ti);
-			}
-			// render next disk, diff. offset, fix the rot for inactive disks
-			if (true) // limit to maximal number of disk 
-				if (btn.use_label && btn.group == data_ptr->active_group + 1) {
-				quat rot;
-				rot = quat(vec3(0, 1, 0), 2 * M_PI * (btn.off_angle / 360.0f));
-				quat off_rot = quat(vec3(0, 1, 0), M_PI);
-				quat global_rot = quat(vec3(0, 1, 0), 2 * M_PI * (0 / 360.0f)); // fix the rot for inactive disks 
-				adjest_PNT_fan_at_runtime(btn.level, r, s, theta_as_angle, rot * off_rot * global_rot, &quad_P, &quad_N, &quad_T);
+			//	cgv::render::attribute_array_binding::set_global_attribute_array(ctx, pi, quad_P);
+			//	cgv::render::attribute_array_binding::enable_global_array(ctx, pi);
+			//	cgv::render::attribute_array_binding::set_global_attribute_array(ctx, ti, quad_T);
+			//	cgv::render::attribute_array_binding::enable_global_array(ctx, ti);
+			//	glDisable(GL_CULL_FACE);
+			//	prog.enable(ctx);
+			//	btn.labeltex->label_tex.enable(ctx);
+			//	ctx.set_color(rgb(1, 1, 1));
+			//	glDrawArrays(GL_TRIANGLES, 0, (GLsizei)quad_P.size());
+			//	btn.labeltex->label_tex.disable(ctx);
+			//	prog.disable(ctx);
+			//	glEnable(GL_CULL_FACE);
+			//	cgv::render::attribute_array_binding::disable_global_array(ctx, pi);
+			//	cgv::render::attribute_array_binding::disable_global_array(ctx, ti);
+			//}
+			//// render next disk, diff. offset, fix the rot for inactive disks
+			//if (true) // limit to maximal number of disk 
+			//	if (btn.use_label && btn.group == data_ptr->active_group + 1) {
+			//	quat rot;
+			//	rot = quat(vec3(0, 1, 0), 2 * M_PI * (btn.off_angle / 360.0f));
+			//	quat off_rot = quat(vec3(0, 1, 0), M_PI);
+			//	quat global_rot = quat(vec3(0, 1, 0), 2 * M_PI * (0 / 360.0f)); // fix the rot for inactive disks 
+			//	adjest_PNT_fan_at_runtime(btn.level, r, s, theta_as_angle, rot * off_rot * global_rot, &quad_P, &quad_N, &quad_T);
 
-				// local offset 
-				vec3 offset = offset_next_disk;
-				// pressing effect 
-				/*if (data_ptr->check_btn_active_givenrot(btn.off_angle))
-					offset.y() = 0;*/
-				// local to global 
-				data_ptr->cur_left_hand_rot_quat.rotate(offset);
-				for (auto& p : quad_P) {
-					data_ptr->cur_left_hand_rot_quat.rotate(p);
-					p += data_ptr->cur_left_hand_posi + offset;
-				}
+			//	// local offset 
+			//	vec3 offset = offset_next_disk;
+			//	// pressing effect 
+			//	/*if (data_ptr->check_btn_active_givenrot(btn.off_angle))
+			//		offset.y() = 0;*/
+			//	// local to global 
+			//	data_ptr->cur_left_hand_rot_quat.rotate(offset);
+			//	for (auto& p : quad_P) {
+			//		data_ptr->cur_left_hand_rot_quat.rotate(p);
+			//		p += data_ptr->cur_left_hand_posi + offset;
+			//	}
 
-				// enable texture 
-				cgv::render::shader_program& prog = ctx.ref_default_shader_program(true);
-				int pi = prog.get_position_index();
-				int ti = prog.get_texcoord_index();
+			//	// enable texture 
+			//	cgv::render::shader_program& prog = ctx.ref_default_shader_program(true);
+			//	int pi = prog.get_position_index();
+			//	int ti = prog.get_texcoord_index();
 
-				cgv::render::attribute_array_binding::set_global_attribute_array(ctx, pi, quad_P);
-				cgv::render::attribute_array_binding::enable_global_array(ctx, pi);
-				cgv::render::attribute_array_binding::set_global_attribute_array(ctx, ti, quad_T);
-				cgv::render::attribute_array_binding::enable_global_array(ctx, ti);
-				glDisable(GL_CULL_FACE);
-				prog.enable(ctx);
-				btn.labeltex->label_tex.enable(ctx);
-				ctx.set_color(rgb(1, 1, 1));
-				glDrawArrays(GL_TRIANGLES, 0, (GLsizei)quad_P.size());
-				btn.labeltex->label_tex.disable(ctx);
-				prog.disable(ctx);
-				glEnable(GL_CULL_FACE);
-				cgv::render::attribute_array_binding::disable_global_array(ctx, pi);
-				cgv::render::attribute_array_binding::disable_global_array(ctx, ti);
-			}
+			//	cgv::render::attribute_array_binding::set_global_attribute_array(ctx, pi, quad_P);
+			//	cgv::render::attribute_array_binding::enable_global_array(ctx, pi);
+			//	cgv::render::attribute_array_binding::set_global_attribute_array(ctx, ti, quad_T);
+			//	cgv::render::attribute_array_binding::enable_global_array(ctx, ti);
+			//	glDisable(GL_CULL_FACE);
+			//	prog.enable(ctx);
+			//	btn.labeltex->label_tex.enable(ctx);
+			//	ctx.set_color(rgb(1, 1, 1));
+			//	glDrawArrays(GL_TRIANGLES, 0, (GLsizei)quad_P.size());
+			//	btn.labeltex->label_tex.disable(ctx);
+			//	prog.disable(ctx);
+			//	glEnable(GL_CULL_FACE);
+			//	cgv::render::attribute_array_binding::disable_global_array(ctx, pi);
+			//	cgv::render::attribute_array_binding::disable_global_array(ctx, ti);
+			//}
 		}
 	}
 	///
