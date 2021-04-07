@@ -376,6 +376,7 @@ public:
 
 	void start_reading_pc_parallel();
 	thread* parallel_reading_thread;
+	thread* parallel_writting_thread;
 
 	void read_pc_queue();
 
@@ -386,7 +387,8 @@ public:
 
 	void add_reflectance();
 
-	void write_read_pc_to_file();
+	void write_pc_parallel();
+	void start_writting_pc_parallel();
 
 	void read_campose();
 

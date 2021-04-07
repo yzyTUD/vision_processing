@@ -816,6 +816,8 @@ void visual_processing::read_pc_queue() {
 ///
 void visual_processing::read_pc_append() {
 	data_ptr->point_cloud_kit->read_pc_with_dialog(true);
+	data_ptr->point_cloud_kit->pc.currentIdx++; // increase current scan index after reading points  
+	on_set(&data_ptr->point_cloud_kit->pc.currentIdx);
 }
 /// 
 void visual_processing::downsampling() {
@@ -826,8 +828,12 @@ void visual_processing::add_reflectance() {
 	// = true;
 }
 ///
-void visual_processing::write_read_pc_to_file() {
+void visual_processing::write_pc_parallel() {
 	data_ptr->point_cloud_kit->write_pc_to_file();
+}
+///
+void visual_processing::start_writting_pc_parallel() {
+	parallel_reading_thread = new thread(&visual_processing::write_pc_parallel, this);
 }
 ///
 void  visual_processing::align_leica_scans_with_cgv() {
@@ -1155,80 +1161,94 @@ void visual_processing::create_gui() {
 	add_member_control(this, "paratone_3", data_ptr->paratone_3, "value_slider", "min=-1;max=1;log=false;ticks=true;");
 	add_member_control(this, "paratone_4", data_ptr->paratone_4, "value_slider", "min=-1;max=1;log=false;ticks=true;");
 	add_member_control(this, "paratone_5", data_ptr->paratone_5, "value_slider", "min=-1;max=1;log=false;ticks=true;");
+	add_member_control(this, "render skybox", render_skybox, "check");
+	add_member_control(this, "render_nmls", data_ptr->point_cloud_kit->show_nmls, "check");
+	add_member_control(this, "hmd_culling", data_ptr->point_cloud_kit->enable_headset_culling, "check");
+	add_member_control(this, "from_CC_txt", data_ptr->point_cloud_kit->pc.from_CC, "check");
+	connect_copy(add_control("render_pc", render_pc, "check")->value_change, rebind(
+		static_cast<drawable*>(this), &visual_processing::post_redraw));
 	connect_copy(add_button("read_pc")->click, rebind(this, &visual_processing::start_reading_pc_parallel));
 	connect_copy(add_button("read_pc_append")->click, rebind(this, &visual_processing::read_pc_append));
 	connect_copy(add_button("print_pc_information")->click, rebind(this, &visual_processing::print_pc_information));
+	connect_copy(add_button("save")->click,rebind(this, &visual_processing::start_writting_pc_parallel));
+	add_member_control(this, "Ignore Deleted Points", data_ptr->point_cloud_kit->pc.ignore_deleted_points, "check");
 
 	//
-	add_member_control(this, "hmd_culling", data_ptr->point_cloud_kit->enable_headset_culling, "check");
-	add_member_control(this, "from_CC_txt", data_ptr->point_cloud_kit->pc.from_CC, "check");
-	connect_copy(add_control("render_pc", render_pc, "check")->value_change, rebind(static_cast<drawable*>(this), &visual_processing::post_redraw));
-	add_member_control(this, "point size", data_ptr->point_cloud_kit->point_size, 
-		"value_slider", "min=0.05;max=5;log=false;ticks=false;");
-	add_member_control(this, "percentual_halo_width", data_ptr->point_cloud_kit->percentual_halo_width,
-		"value_slider", "min=0.05;max=5;log=false;ticks=false;");
-	add_member_control(this, "render skybox", render_skybox, "check");
-	add_member_control(this, "render_nmls", data_ptr->point_cloud_kit->show_nmls, "check");
-	add_member_control(this, "colorize_with_scan_index", data_ptr->point_cloud_kit->colorize_with_scan_index, "check");
-
-	add_member_control(this, "renderScan0", data_ptr->point_cloud_kit->renderScan0, "check");
-	add_member_control(this, "renderScan1", data_ptr->point_cloud_kit->renderScan1, "check");
-	add_member_control(this, "renderScan2", data_ptr->point_cloud_kit->renderScan2, "check");
-	add_member_control(this, "renderScan3", data_ptr->point_cloud_kit->renderScan3, "check");
-	add_member_control(this, "renderScan4", data_ptr->point_cloud_kit->renderScan4, "check");
-	add_member_control(this, "renderScan5", data_ptr->point_cloud_kit->renderScan5, "check");
+	if (begin_tree_node("Scan Index", data_ptr->point_cloud_kit->show_nmls, true, "level=3")) {
+		add_member_control(this, "scan_index", data_ptr->point_cloud_kit->pc.currentIdx, "value_slider", "min=0;max=10;log=false;ticks=true;");
+		add_member_control(this, "point size", data_ptr->point_cloud_kit->point_size,
+			"value_slider", "min=0.05;max=5;log=false;ticks=false;");
+		add_member_control(this, "percentual_halo_width", data_ptr->point_cloud_kit->percentual_halo_width,
+			"value_slider", "min=0.05;max=5;log=false;ticks=false;");
+		add_member_control(this, "colorize_with_scan_index", data_ptr->point_cloud_kit->colorize_with_scan_index, "check");
+		add_member_control(this, "renderScan0", data_ptr->point_cloud_kit->renderScan0, "check");
+		add_member_control(this, "renderScan1", data_ptr->point_cloud_kit->renderScan1, "check");
+		add_member_control(this, "renderScan2", data_ptr->point_cloud_kit->renderScan2, "check");
+		add_member_control(this, "renderScan3", data_ptr->point_cloud_kit->renderScan3, "check");
+		add_member_control(this, "renderScan4", data_ptr->point_cloud_kit->renderScan4, "check");
+		add_member_control(this, "renderScan5", data_ptr->point_cloud_kit->renderScan5, "check");
+	}
 
 	// point copy 
-	add_member_control(this, "render_handhold_pc", data_ptr->render_handhold_pc, "check");
-	connect_copy(add_button("point_copy_btn_pressed")->click, rebind(this,
-		&visual_processing::point_copy_btn_pressed));
-	connect_copy(add_button("point_copy_btn_release")->click, rebind(this,
-		&visual_processing::point_copy_btn_release));
-	connect_copy(add_button("release_controller_pc_binding")->click, rebind(this,
-		&visual_processing::release_controller_pc_binding));
-	add_member_control(this, "use_current_matrix", data_ptr->point_cloud_in_hand->use_current_matrix, "check");
+	if (begin_tree_node("Copy Points", direct_write, true, "level=3")) {
+		add_member_control(this, "render_handhold_pc", data_ptr->render_handhold_pc, "check");
+		connect_copy(add_button("point_copy_btn_pressed")->click, rebind(this,
+			&visual_processing::point_copy_btn_pressed));
+		connect_copy(add_button("point_copy_btn_release")->click, rebind(this,
+			&visual_processing::point_copy_btn_release));
+		connect_copy(add_button("release_controller_pc_binding")->click, rebind(this,
+			&visual_processing::release_controller_pc_binding));
+		add_member_control(this, "use_current_matrix", data_ptr->point_cloud_in_hand->use_current_matrix, "check");
+	}
 
 	// tube 
-	add_member_control(this, "render_an_animating_tube", data_ptr->render_an_animating_tube, "check");
-	connect_copy(add_button("enlarge_tube_length")->click, rebind(this,
-		&visual_processing::enlarge_tube_length));
-	connect_copy(add_button("schrink_tube_length")->click, rebind(this,
-		&visual_processing::schrink_tube_length));
+	if (begin_tree_node("Tube Rendering", direct_write, true, "level=3")) {
+		add_member_control(this, "render_an_animating_tube", data_ptr->render_an_animating_tube, "check");
+		connect_copy(add_button("enlarge_tube_length")->click, rebind(this,
+			&visual_processing::enlarge_tube_length));
+		connect_copy(add_button("schrink_tube_length")->click, rebind(this,
+			&visual_processing::schrink_tube_length));
+	}
 
-	//point addition 
-	add_member_control(this, "render_the_quad", data_ptr->render_a_quad_on_righthand, "check");
-	connect_copy(add_button("quad_addition_menu_btn_press")->click, rebind(this,
-		&visual_processing::quad_addition_menu_btn_press));
-	connect_copy(add_button("quad_addition_menu_btn_release")->click, rebind(this,
-		&visual_processing::quad_addition_menu_btn_release));
-	
+	// 
+	if (begin_tree_node("point addition", direct_write, true, "level=3")) {
+		add_member_control(this, "render_the_quad", data_ptr->render_a_quad_on_righthand, "check");
+		connect_copy(add_button("quad_addition_menu_btn_press")->click, rebind(this,
+			&visual_processing::quad_addition_menu_btn_press));
+		connect_copy(add_button("quad_addition_menu_btn_release")->click, rebind(this,
+			&visual_processing::quad_addition_menu_btn_release));
+
+		//
+		connect_copy(add_button("step_back_selection")->click, rebind(this,
+			&visual_processing::step_back_selection));
+		connect_copy(add_button("step_forward_selection")->click, rebind(this,
+			&visual_processing::step_forward_selection));
+
+		//
+		connect_copy(add_button("mark_all_active_points_as_tobedownsampled")->click, rebind(this,
+			&visual_processing::mark_all_active_points_as_tobedownsampled));
+		connect_copy(add_button("selective_downsampling_menu_btn_press")->click, rebind(this,
+			&visual_processing::selective_downsampling_menu_btn_press));
+		connect_copy(add_button("selective_downsampling_menu_btn_release")->click, rebind(this,
+			&visual_processing::selective_downsampling_menu_btn_release));
+	}
+
 	//
-	connect_copy(add_button("step_back_selection")->click, rebind(this,
-		&visual_processing::step_back_selection));
-	connect_copy(add_button("step_forward_selection")->click, rebind(this,
-		&visual_processing::step_forward_selection));
+	if (begin_tree_node("Point Cloud Rendering Style", direct_write, true, "level=3")) {
+		/*add_member_control(this, "RENDERING_STRATEGY", data_ptr->point_cloud_kit->RENDERING_STRATEGY,
+			"value_slider", "min=0;max=4;log=false;ticks=true;");*/
+			//stich_rendering_mode_point_based 
+		connect_copy(add_button("render_with_points")->click, rebind(this,
+			&visual_processing::switch_rendering_mode_point_based));
+		connect_copy(add_button("render_with_quads")->click, rebind(this,
+			&visual_processing::switch_rendering_mode_quad_based));
+		connect_copy(add_button("render_with_surfel")->click, rebind(this,
+			&visual_processing::switch_rendering_mode_surfel_based));
+		connect_copy(add_button("render_with_clod")->click, rebind(this,
+			&visual_processing::switch_rendering_mode_clod_based));
+	}
 
 	//
-	connect_copy(add_button("mark_all_active_points_as_tobedownsampled")->click, rebind(this,
-		&visual_processing::mark_all_active_points_as_tobedownsampled));
-	connect_copy(add_button("selective_downsampling_menu_btn_press")->click, rebind(this,
-		&visual_processing::selective_downsampling_menu_btn_press));
-	connect_copy(add_button("selective_downsampling_menu_btn_release")->click, rebind(this,
-		&visual_processing::selective_downsampling_menu_btn_release));
-
-	/*add_member_control(this, "RENDERING_STRATEGY", data_ptr->point_cloud_kit->RENDERING_STRATEGY, 
-		"value_slider", "min=0;max=4;log=false;ticks=true;");*/
-	//stich_rendering_mode_point_based 
-	connect_copy(add_button("render_with_points")->click, rebind(this, 
-		&visual_processing::switch_rendering_mode_point_based));
-	connect_copy(add_button("render_with_quads")->click, rebind(this, 
-		&visual_processing::switch_rendering_mode_quad_based));
-	connect_copy(add_button("render_with_surfel")->click, rebind(this,
-		&visual_processing::switch_rendering_mode_surfel_based));
-	connect_copy(add_button("render_with_clod")->click, rebind(this,
-		&visual_processing::switch_rendering_mode_clod_based));
-
-
 	if (begin_tree_node("Point Cloud Generation", render_skybox, true, "level=3")) {
 		connect_copy(add_button("generate_pc_hemisphere")->click, 
 			rebind(this, &visual_processing::generate_pc_hemisphere));
@@ -1245,9 +1265,10 @@ void visual_processing::create_gui() {
 		connect_copy(add_button("flip normals")->click,
 			rebind(this, &visual_processing::toggle_normal_orientations));
 		connect_copy(add_button("save")->click,
-			rebind(this, &visual_processing::write_read_pc_to_file));
+			rebind(this, &visual_processing::start_writting_pc_parallel));
 	}
 
+	//
 	if (begin_tree_node("Point Cloud ControlLOD", step, true, "level=3")) {
 		connect_copy(add_button("render_with_fullpc")->click, rebind(this, &visual_processing::render_with_fullpc));
 		connect_copy(add_button("auto_downsampling")->click, rebind(this, &visual_processing::auto_downsampling));
@@ -1257,6 +1278,7 @@ void visual_processing::create_gui() {
 
 	}
 
+	//
 	if (begin_tree_node("Point Cloud Merging Tool", strategy, true, "level=3")) {
 		connect_copy(add_button("read_pc_append")->click, rebind(this, &visual_processing::read_pc_append));
 		add_member_control(this, "[0]step", step, "value_slider","min=1;max=1000;log=false;ticks=true;");
@@ -1264,9 +1286,11 @@ void visual_processing::create_gui() {
 		add_member_control(this, "which_strategy", strategy, "value_slider", "min=0;max=1;log=false;ticks=true;");
 		connect_copy(add_button("downsampling")->click, rebind(this, &visual_processing::downsampling));
 		add_member_control(this, "write_reflectance", data_ptr->point_cloud_kit->pc.write_reflectance, "check");
-		connect_copy(add_button("write_read_pc_to_file")->click, rebind(this, &visual_processing::write_read_pc_to_file));
+		connect_copy(add_button("save")->click,
+			rebind(this, &visual_processing::start_writting_pc_parallel));
 	}
 	
+	//
 	if (begin_tree_node("Point Cloud Nml Computing", direct_write, true, "level=3")) {
 		//connect_copy(add_button("add_to_file_list")->click, rebind(this, &visual_processing::add_to_file_list));
 		//connect_copy(add_button("clean_file_list")->click, rebind(this, &visual_processing::clean_file_list));
@@ -1287,6 +1311,7 @@ void visual_processing::create_gui() {
 		connect_copy(add_control("direct_write", direct_write, "check")->value_change, rebind(static_cast<drawable*>(this), &visual_processing::post_redraw));
 	}
 
+	//
 	if (begin_tree_node("Point Cloud Semantic Tool", force_correct_num_pcs, true, "level=3")) {
 		connect_copy(add_button("read_pc")->click, rebind(this, &visual_processing::read_pc));
 		connect_copy(add_button("read_pc_queue")->click, rebind(this, &visual_processing::read_pc_queue));
@@ -1294,16 +1319,20 @@ void visual_processing::create_gui() {
 
 	}
 
+	//
 	if (begin_tree_node("Mesh Tool (partial)", render_img, true, "level=3")) {
 		//compute_coordinates_with_rot_correction
 		connect_copy(add_button("compute_coordinates_with_rot_correction")->click, rebind(this, &visual_processing::compute_coordinates_with_rot_correction));
 	}
+
+	//
 	if(teleportation_kit!=nullptr)
 	if (begin_tree_node("Teleportation tool", teleportation_kit->is_lifting, true, "level=3")) {
 		add_member_control(this, "is_lifting", teleportation_kit->is_lifting, "check");
 		add_member_control(this, "enable_gravity", teleportation_kit->enable_gravity, "check");
 	}
 
+	//
 	if(roller_coaster_kit_1!=nullptr)
 	if (begin_tree_node("Roller Coaster 1", roller_coaster_kit_1->para_y, true, "level=3")) {
 		add_member_control(roller_coaster_kit_1, "para_x_0", roller_coaster_kit_1->para_x_0, "value_slider", "min=1;max=100;log=false;ticks=false;");
@@ -1315,6 +1344,7 @@ void visual_processing::create_gui() {
 		add_member_control(roller_coaster_kit_1, "resolution", roller_coaster_kit_1->resolution, "value_slider", "min=800;max=2000;log=false;ticks=false;");
 	}
 
+	//
 	if (draw_kit != nullptr)
 	if (begin_tree_node("Draw kit", draw_kit->nr_edges, true, "level=3")) {
 		connect_copy(add_button("write_trajectory")->click, rebind(this, &visual_processing::write_trajectory));
@@ -1324,6 +1354,7 @@ void visual_processing::create_gui() {
 		add_member_control(this, "render_enable_drawing", draw_kit->render_enable_drawing, "check");
 	}
 
+	//
 	bool show_motioncap_kit = motioncap_kit != nullptr;
 	if(show_motioncap_kit)
 	if (begin_tree_node("Mocap kit", show_motioncap_kit, true, "level=3")) {
@@ -1362,6 +1393,7 @@ void visual_processing::create_gui() {
 
 	}
 
+	//
 	if (begin_tree_node("Selection kit", pick_point_index, true, "level=3")) {
 		add_member_control(this, "pick_point_index", pick_point_index, "value_slider", "min=0;max=5;log=false;ticks=true;");
 	}

@@ -31,6 +31,7 @@ public:
 	bool has_cam = false;
 	bool has_v_s = false;
 	bool has_v_si = false;
+	int points_read_this_time = 0;
 	///
 	point_cloud_obj_loader(std::vector<Pnt>& _P, std::vector<Nml>& _N, std::vector<Clr>& _C, 
 		std::vector<cgv::type::uint8_type>& _P_C) 
@@ -57,6 +58,7 @@ public:
 
 	/// overwrite read_obj function to support more reading options, yzy
 	bool read_obj(const std::string& file_name){
+		points_read_this_time = 0;
 		std::string content;
 		if (!cgv::base::read_data_file(file_name, content, true))
 			return false;
@@ -95,6 +97,7 @@ public:
 					parse_and_process_vertex(tokens);
 					if (tokens.size() >= 7)
 						process_color(parse_color(tokens, 3));
+					points_read_this_time++;
 				}
 				else {
 					if (tokens[0][1] == '_' && tokens[0][2] == 's') { // selection index 
@@ -2100,7 +2103,13 @@ bool point_cloud::read_obj(const string& _file_name)
 		return false;
 	cam_posi = pc_obj.cam_posi;
 	has_cam_posi = pc_obj.has_cam;
-	has_selection = pc_obj.has_v_s;
+	// if no scan index present, we give it a scan index, 0 by default, increase with reading pc append 
+	if (!pc_obj.has_v_si) {
+		for (int i = 0; i < pc_obj.points_read_this_time; i++) {
+			point_scan_index.push_back(currentIdx);
+		}
+	}
+	has_selection = true;
 
 	return true;
 }
@@ -2482,20 +2491,31 @@ bool point_cloud::write_cgvmodel(const std::string& file_name) const
 		os << "cam " << cam_posi << endl;
 	// save points and colors
 	for (i = 0; i < P.size(); ++i) {
-		if (has_colors())
-			os << "v " << P[i][0] << " " << P[i][1] << " " << P[i][2] << " " << color_component_to_float(C[i][0])
-			<< " " << color_component_to_float(C[i][1]) << " " << color_component_to_float(C[i][2]) << endl;
-		else
-			os << "v " << P[i][0] << " " << P[i][1] << " " << P[i][2] << endl;
+		if (ignore_deleted_points) {
+			if ((int)point_selection.at(i)!=2) {
+				if (has_colors())
+					os << "v " << P[i][0] << " " << P[i][1] << " " << P[i][2] << " " << color_component_to_float(C[i][0])
+					<< " " << color_component_to_float(C[i][1]) << " " << color_component_to_float(C[i][2]) << endl;
+				else
+					os << "v " << P[i][0] << " " << P[i][1] << " " << P[i][2] << endl;
+				os << "vn " << N[i][0] << " " << N[i][1] << " " << N[i][2] << endl;
+				os << "v_s " << (int)point_selection.at(i) << endl; // present if prepared for region growing 
+				os << "v_si " << point_scan_index.at(i) << endl; // present if: 1. read point cloud from ply 2. read manually form objs 
+			}
+		}
+		else {
+			if (has_colors())
+				os << "v " << P[i][0] << " " << P[i][1] << " " << P[i][2] << " " << color_component_to_float(C[i][0])
+				<< " " << color_component_to_float(C[i][1]) << " " << color_component_to_float(C[i][2]) << endl;
+			else
+				os << "v " << P[i][0] << " " << P[i][1] << " " << P[i][2] << endl;
+			os << "vn " << N[i][0] << " " << N[i][1] << " " << N[i][2] << endl;
+			os << "v_s " << (int)point_selection.at(i) << endl; // present if prepared for region growing 
+			os << "v_si " << point_scan_index.at(i) << endl; // present if: 1. read point cloud from ply 2. read manually form objs 
+		}
+
+
 	}
-	// save normals 
-	for (i = 0; i < N.size(); ++i)
-		os << "vn " << N[i][0] << " " << N[i][1] << " " << N[i][2] << endl;
-	// store additional vertex attributes
-	for (i = 0; i < point_selection.size(); ++i) // present if prepared for region growing 
-		os << "v_s " << (int)point_selection.at(i) << endl;
-	for (i = 0; i < point_scan_index.size(); ++i) // present if: 1. read point cloud from ply 2. read manually form objs 
-		os << "v_si " << point_scan_index.at(i) << endl;
 	if (point_scan_index.size() == 0) { // force scan index: if not present, we set them to 0 
 		for (i = 0; i < P.size(); ++i) {
 			os << "v_si " << 0 << endl;

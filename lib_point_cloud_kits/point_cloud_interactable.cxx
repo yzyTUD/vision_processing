@@ -336,11 +336,12 @@ bool point_cloud_interactable::read_pc_subsampled_with_dialog() {
 ///
 void point_cloud_interactable::write_pc_to_file() {
 	/*auto microsecondsUTC = std::chrono::duration_cast<std::chrono::microseconds>(
-		std::chrono::system_clock::now().time_since_epoch()).count();
+	std::chrono::system_clock::now().time_since_epoch()).count();
 	std::string filename_base = cgv::base::ref_data_path_list()[0] + "\\object_scanns\\pointcloud_all_" + std::to_string(microsecondsUTC);
 	std::string filename = filename_base + ".obj";*/
 	std::string f = cgv::gui::file_save_dialog("Open", "Save Point Cloud:*");
 	pc.write(f);
+	std::cout << "saved!" << std::endl;
 }
 /// read camera positions with a dialog, .campose files are accepted
 bool point_cloud_interactable::read_pc_campose(cgv::render::context& ctx, quat initialcamq) {

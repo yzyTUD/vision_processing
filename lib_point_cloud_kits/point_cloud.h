@@ -154,6 +154,7 @@ public:
 	int num_of_functional_selections = 20;
 	int num_of_regions = 25;
 	int max_num_of_selections = num_of_functional_selections + num_of_regions;
+	float currentIdx = 0;
 
 protected:
 	/// container to store  one component index per point
@@ -255,6 +256,8 @@ protected:
 	bool write_ptsn(const std::string& file_name) const;
 
 public:
+	///
+	bool ignore_deleted_points = false;
 	///
 	bool from_CC = false;
 	/// downsampling according to a rate from 0 to 1 
