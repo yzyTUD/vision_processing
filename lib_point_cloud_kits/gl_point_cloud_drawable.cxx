@@ -183,6 +183,7 @@ void gl_point_cloud_drawable::set_arrays(context& ctx, size_t offset, size_t cou
 		if (use_these_point_colors)
 			s_renderer.set_color_array(ctx, &use_these_point_colors->at(offset), count, unsigned(sizeof(Clr))*show_point_step);
 		else if (use_these_point_color_indices && use_these_point_palette) {
+			// only this part 
 			s_renderer.set_color_array(ctx, &pc.clr(unsigned(offset)), count, unsigned(sizeof(Clr)) * show_point_step);
 			s_renderer.set_indexed_color_array(ctx, &use_these_point_color_indices->at(offset), count, *use_these_point_palette, show_point_step);
 		}else
@@ -190,6 +191,17 @@ void gl_point_cloud_drawable::set_arrays(context& ctx, size_t offset, size_t cou
 	}
 	if (pc.has_normals())
 		s_renderer.set_normal_array(ctx, &pc.nml(unsigned(offset)), count, unsigned(sizeof(Nml))*show_point_step);
+
+	// this part has been uploaded before ... 
+	// selection_index -> color_index in shader 
+	/*if (pc.has_selections())
+		s_renderer.set_attribute_array_renderer(ctx, 
+			"selection_index", &pc.point_selection.at(unsigned(offset)), 
+			count, unsigned(sizeof(cgv::type::uint8_type)) * show_point_step);*/
+	if (pc.has_scan_indices())
+		s_renderer.set_attribute_array_renderer(ctx,
+			"scan_index", &pc.point_scan_index.at(unsigned(offset)),
+				count, unsigned(sizeof(float)) * show_point_step);
 
 }
 /// render with surfel 
@@ -243,6 +255,14 @@ void gl_point_cloud_drawable::draw_points_surfel(context& ctx)
 
 	s_renderer.ref_prog().set_uniform(ctx, "visual_delete", visual_delete);
 	s_renderer.ref_prog().set_uniform(ctx, "render_with_original_color", render_with_original_color);
+	s_renderer.ref_prog().set_uniform(ctx, "colorize_with_scan_index", colorize_with_scan_index);
+
+	s_renderer.ref_prog().set_uniform(ctx, "renderScan0", renderScan0);
+	s_renderer.ref_prog().set_uniform(ctx, "renderScan1", renderScan1);
+	s_renderer.ref_prog().set_uniform(ctx, "renderScan2", renderScan2);
+	s_renderer.ref_prog().set_uniform(ctx, "renderScan3", renderScan3);
+	s_renderer.ref_prog().set_uniform(ctx, "renderScan4", renderScan4);
+	s_renderer.ref_prog().set_uniform(ctx, "renderScan5", renderScan5);
 	
 	std::size_t n = (show_point_end - show_point_begin) / show_point_step;
 	GLint offset = GLint(show_point_begin / show_point_step);
@@ -375,20 +395,24 @@ void gl_point_cloud_drawable::draw_points_quad(context& ctx) {
 			VertexAttributeBinding p;
 			p.position = pc.P[i];
 			p.color = pc.C[i];
+
 			if (pc.has_normals())
 				p.normal = pc.N[i];
 			else
 				p.normal = vec3(0, 1, 0);
+
 			if (pc.has_selection)
 				// from uint8 -> int 
 				p.index = (int)pc.point_selection[i]; 
 			else
 				p.index = 1;
+
 			if (pc.has_scan_index)
 				// from 0 -> inf // from float -> int 
 				p.scanindex = (int)pc.point_scan_index[i]; 
 			else
 				p.scanindex = 0;
+
 			input_buffer_data.push_back(p);
 		}
 

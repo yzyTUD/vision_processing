@@ -92,8 +92,8 @@ public:
 	int which_effect_headset = -1;
 
 	/*visual effects, shader control*/
-	bool visual_delete = false;
-	bool render_with_original_color = true;
+	bool visual_delete = true;
+	bool render_with_original_color = false;
 	float collapse_tantheta = 0.577;
 	bool colorize_with_scan_index = false;
 	// uniforms used to toggle point cloud rendering from different scans (scan index)

@@ -126,12 +126,12 @@ public:
 	std::vector<PixCrd> I;
 	/// container for local features 
 	std::vector<Dir> F;
-	/// container for per vertex scan indices, which scan it belones to 
-	std::vector<float> point_scan_index; bool has_scan_index = false;
 	/// per-vertex attribute: which group the point belones to 
 	std::vector<cgv::type::uint8_type> point_selection;
 	/// per-vertex attribute: used for region growing 
 	std::vector<bool> point_selection_visited;
+	/// container for per vertex scan indices, which scan it belones to 
+	std::vector<float> point_scan_index; bool has_scan_index = false;
 public:
 	/// per vertex marked index, PointSelectiveAttribute
 	/// 20 reserved
@@ -213,6 +213,8 @@ protected:
 	bool has_comp_clrs;
 	/// read obj-file. Ignores all except of v, vn and vc lines. v lines can be extended by 3 rgb color components
 	bool read_obj(const std::string& file_name);
+	///
+	bool read_cgvmodel(const std::string& file_name);
 	/// read ascii file with lines of the form x y z r g b I colors and intensity values, where intensity values are ignored
 	bool read_xyz(const std::string& file_name);
 	/// read ascii file with lines of the form i j x y z I, where ij are pixel coordinates, xyz coordinates and I the intensity
@@ -245,6 +247,8 @@ protected:
 	bool write_bin(const std::string& file_name) const;
 	/// write obj format, see read_obj for format description
 	bool write_obj(const std::string& file_name) const;
+	///
+	bool write_cgvmodel(const std::string& file_name) const;
 	/// write ply format, see read_ply for format description
 	bool write_ply(const std::string& file_name) const;
 	///
@@ -350,6 +354,9 @@ public:
 	size_t add_point(const Pnt& p);
 	/// add a point and allocate normal and color if necessary, return index of new point
 	size_t add_point(const Pnt& p, const RGBA& c);
+	///
+	size_t add_point(const Pnt& p, const RGBA& c,
+		const float& point_scan_index, const cgv::type::uint8_type& point_selection);
 	///
 	size_t add_point(const Pnt& p, const RGBA& c,
 		const Nml& nml, const float& point_scan_index, const cgv::type::uint8_type& point_selection);

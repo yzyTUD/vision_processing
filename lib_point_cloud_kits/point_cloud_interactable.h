@@ -91,6 +91,8 @@ public:
 	bool do_append;
 	/// whether to automatically set the view after reading new points
 	bool do_auto_view;
+	///
+	void print_pc_information();
 	/// update data_path and file_name members from full file name
 	void update_file_name(const std::string& ffn, bool append = false);
 	/// save current point cloud to file with name fn

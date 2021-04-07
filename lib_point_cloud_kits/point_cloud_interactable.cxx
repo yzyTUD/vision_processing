@@ -24,6 +24,19 @@
 
 #define FILE_SAVE_TITLE "Save Point Cloud"
 #define FILE_SAVE_FILTER "Point Clouds (apc,bpc):*.apc;*.bpc|Mesh Files (obj,ply):*.obj;*.ply|All Files:*.*"
+///
+void point_cloud_interactable::print_pc_information() {
+	std::cout << "### begin: point cloud info: ###" << std::endl;
+	std::cout << "pc.P.size: " << pc.P.size() << std::endl;
+	std::cout << "pc.N.size: " << pc.N.size() << std::endl;
+	std::cout << "pc.C.size: " << pc.C.size() << std::endl;
+	std::cout << "pc.T.size: " << pc.T.size() << std::endl;
+	std::cout << "pc.I.size: " << pc.I.size() << std::endl;
+	std::cout << "pc.F.size: " << pc.F.size() << std::endl;
+	std::cout << "pc.point_selection.size: " << pc.point_selection.size() << std::endl;
+	std::cout << "pc.point_scan_index.size: " << pc.point_scan_index.size() << std::endl;
+	std::cout << "### end: point cloud info: ###" << std::endl;
+}
 
 void point_cloud_interactable::update_file_name(const std::string& ffn, bool append)
 {
@@ -61,7 +74,7 @@ bool point_cloud_interactable::open(const std::string& fn)
 	// manage vars after change of the point cloud 
 	on_point_cloud_change_callback(PCC_NEW_POINT_CLOUD);
 	//update_file_name(fn);
-	store_original_pc();
+	//store_original_pc();
 	//auto_downsampling();
 	return true;
 }
@@ -71,10 +84,9 @@ bool point_cloud_interactable::generate_pc_hemisphere() {
 	int samples_per_row = 200;
 	int nr_rows = 400;
 	Pnt extent = Pnt(1, 1, 1);
-	Rgba c = Rgba(0.5, 0.5, 0.5, 1);
+	rgba c = rgba(0.5, 0.5, 0.5, 1);
 	float R = 1.0f;
 	Pnt offset = Pnt(0, 1, 0);
-	pc.clear();
 	for (Idx li = 0; li < nr_rows; ++li) {
 		float y = (float)li / (nr_rows - 1) - 0.5f;
 		for (Idx ci = 0; ci < samples_per_row; ++ci) {
@@ -91,10 +103,14 @@ bool point_cloud_interactable::generate_pc_hemisphere() {
 				p = Pnt(x, f, y) + offset;
 				//n = vec3(x / g, y / g, 1);
 			}
-			Idx pi = pc.add_point(extent * p, c);
+			pc.add_point(extent * p, c, 0, 1u);
 			//pc.nml(pi) = normalize(n/extent);
 		}
 	}
+	pc.create_colors();
+	pc.has_selection = true;
+	pc.has_scan_index = true;
+	pc.box_out_of_date = true;
 	on_point_cloud_change_callback(PCC_NEW_POINT_CLOUD);
 	return true;
 }
@@ -134,8 +150,6 @@ bool point_cloud_interactable::generate_pc_cube() {
 	int nr_rows = 400;
 	vec3 extent = vec3(1, 1, 1);
 	rgba c = rgba(0.5, 0.5, 0.5, 1);
-	pc.clear();
-	pc.create_colors();
 	for (int li = 0; li < nr_rows; ++li) {
 		float y = (float)li / (nr_rows - 1) - 0.5f;
 		for (int ci = 0; ci < samples_per_row; ++ci) {
@@ -147,20 +161,23 @@ bool point_cloud_interactable::generate_pc_cube() {
 					for (int zi = 0; zi < 50; ++zi) {
 						float z = ((float)zi / (50 - 1)) * 0.25f;
 						p = vec3(x, z, y);
-						pc.add_point(extent * p, c);
+						pc.add_point(extent * p, c, 0, 1u);
 					}
 				}
 				else {
 					p = vec3(x, 0.25f, y);
-					pc.add_point(extent * p, c);
+					pc.add_point(extent * p, c, 0, 1u);
 				}
 			}
 			else {
 				p = vec3(x, 0, y);
-				pc.add_point(extent * p, c);
+				pc.add_point(extent * p, c, 0, 1u);
 			}
 		}
 	}
+	pc.create_colors();
+	pc.has_selection = true;
+	pc.has_scan_index = true;
 	pc.box_out_of_date = true;
 	on_point_cloud_change_callback(PCC_NEW_POINT_CLOUD);
 	return true;
@@ -292,7 +309,8 @@ bool point_cloud_interactable::read_pc_with_dialog(bool append) {
 	std::string f = cgv::gui::file_open_dialog("Open", "Point Cloud:*");
 	if (!append) 
 		clear_all();
-	open(f);
+	if (!open(f))
+		return false;
 	finished_loading_points = true;
 	return true;
 }
@@ -588,7 +606,14 @@ void point_cloud_interactable::mark_points_with_conroller(Pnt p, float r, bool c
 /// mark_all_points_as_given_group, still, you have to prepare first, typically done in reading process
 void point_cloud_interactable::marking_test_mark_all_points_as_given_group(int objective) {
 	for (int i = 0; i < pc.get_nr_points(); i++) {
+		// record tracing information
+		pointHistoryEntry phe;
+		phe.point_index = i;
+		phe.from_selection = pc.point_selection.at(i);
+		phe.to_selection = objective;
+		point_marking_history.back().push_back(phe);
 		// int -> uint8
+		// perform real operations 
 		pc.point_selection[i] = (cgv::type::uint8_type)objective;
 	}
 }
@@ -596,7 +621,7 @@ void point_cloud_interactable::marking_test_mark_all_points_as_given_group(int o
 void point_cloud_interactable::mark_points_with_clipping_plane(Pnt p,Nml plane_normal,int objective) {
 	new_history_recording();
 	for (Idx i = 0; i < (Idx)pc.get_nr_points(); ++i) {
-		if (dot(pc.pnt(i) - p, plane_normal) < 0) {
+		if (dot(p - pc.pnt(i), plane_normal) < 0) {
 			pc.point_selection[i] = (cgv::type::uint8_type)objective;
 		}
 	}

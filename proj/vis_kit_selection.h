@@ -316,7 +316,7 @@ public:
 				//}
 				if (data_ptr->check_roulette_selection(data_ptr->get_id_with_name("PointCloud\nGroupPicker"))) { // hold throttle to mark
 					if (v > 0 && current_selecting_idx != -1) {
-						if (data_ptr->point_cloud_kit->can_parallel_grow == true) { // totest 
+						if (data_ptr->point_cloud_kit->can_parallel_grow == true) { 
 							data_ptr->point_cloud_kit->can_parallel_grow = false;
 							data_ptr->point_cloud_kit->mark_points_with_conroller(
 								data_ptr->cur_right_hand_posi + data_ptr->cur_off_right,
@@ -332,16 +332,24 @@ public:
 				}
 				if (data_ptr->check_roulette_selection(data_ptr->get_id_with_name("PointCloud\nDelPoints\nTouchTo\nActivate"))) { // hold throttle to mark
 					if (v > 0 && current_selecting_idx != -1) {
-						data_ptr->point_cloud_kit->mark_points_with_conroller(
-							data_ptr->cur_right_hand_posi + data_ptr->cur_off_right,
+						if (data_ptr->point_cloud_kit->can_parallel_grow == true) {
+							data_ptr->point_cloud_kit->can_parallel_grow = false;
+							data_ptr->point_cloud_kit->mark_points_with_conroller(
+								data_ptr->cur_right_hand_posi + data_ptr->cur_off_right,
 								marking_style.radius, true, current_selecting_idx);
+							data_ptr->point_cloud_kit->can_parallel_grow = true;
+						}
 					}
 				}
 				if (data_ptr->check_roulette_selection(data_ptr->get_id_with_name("PointCloud\nMarkAs\nOrig"))) { // hold throttle to mark
 					if (v > 0 && current_selecting_idx != -1) {
-						data_ptr->point_cloud_kit->mark_points_with_conroller(
-							data_ptr->cur_right_hand_posi + data_ptr->cur_off_right,
+						if (data_ptr->point_cloud_kit->can_parallel_grow == true) {
+							data_ptr->point_cloud_kit->can_parallel_grow = false;
+							data_ptr->point_cloud_kit->mark_points_with_conroller(
+								data_ptr->cur_right_hand_posi + data_ptr->cur_off_right,
 								marking_style.radius, true, current_selecting_idx);
+							data_ptr->point_cloud_kit->can_parallel_grow = true;
+						}
 					}
 				}
 				// allow more btns to paint here 

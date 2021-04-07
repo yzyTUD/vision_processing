@@ -24,13 +24,21 @@ protected:
 	std::vector<Nml>& N;
 	std::vector<Clr>& C;
 
-	std::vector<cgv::type::uint8_type>& P_C; // point class 
+	std::vector<cgv::type::uint8_type>& P_S; // point selection 
+	std::vector<float>* P_ScanIndex = 0;
 public:
 	cgv::math::fvec<float, 3> cam_posi;
 	bool has_cam = false;
-	bool has_v_c = false;
+	bool has_v_s = false;
+	bool has_v_si = false;
 	///
-	point_cloud_obj_loader(std::vector<Pnt>& _P, std::vector<Nml>& _N, std::vector<Clr>& _C, std::vector<cgv::type::uint8_type>& _P_C) : P(_P), N(_N), C(_C), P_C(_P_C){}
+	point_cloud_obj_loader(std::vector<Pnt>& _P, std::vector<Nml>& _N, std::vector<Clr>& _C, 
+		std::vector<cgv::type::uint8_type>& _P_C) 
+		: P(_P), N(_N), C(_C), P_S(_P_C){}
+	/// split from initial function, set saparatly, keep obj reading unchanged 
+	void set_P_ScanIndex_vector_address_to_be_written(std::vector<float>* _P_ScanIndex) {
+		P_ScanIndex = _P_ScanIndex;
+	}
 	/// overide this function to process a vertex
 	void process_vertex(const v3d_type& p)
 	{
@@ -47,7 +55,7 @@ public:
 		C.push_back(c);
 	}
 
-	/// @yzy, overwrite read_obj function to support more reading options 
+	/// overwrite read_obj function to support more reading options, yzy
 	bool read_obj(const std::string& file_name){
 		std::string content;
 		if (!cgv::base::read_data_file(file_name, content, true))
@@ -89,15 +97,22 @@ public:
 						process_color(parse_color(tokens, 3));
 				}
 				else {
-					if (tokens[0][1] == '_' && tokens[0][2] == 'c') {
-						int v_c;
-						unsigned char v_c_char;
-						is_integer(tokens[1].begin, tokens[1].end, v_c);
-						v_c_char = v_c;
-						P_C.push_back(v_c_char);
-						has_v_c = true;
+					if (tokens[0][1] == '_' && tokens[0][2] == 's') { // selection index 
+						int v_s;
+						unsigned char v_s_char;
+						is_integer(tokens[1].begin, tokens[1].end, v_s);
+						v_s_char = v_s;
+						P_S.push_back(v_s_char);
+						has_v_s = true;
 						break;
 					}
+					//if (tokens[0][1] == '_' && tokens[0][2] == 'si') { //  scan index 
+					//	double v_si;
+					//	is_double(tokens[1].begin, tokens[1].end, v_si);
+					//	P_ScanIndex->push_back(v_si);
+					//	has_v_si = true;
+					//	break;
+					//}
 					switch (tokens[0][1]) {
 					case 'n':
 						parse_and_process_normal(tokens);
@@ -155,6 +170,131 @@ public:
 				if (to_string(tokens[0]) == "usemtl")
 					parse_material(tokens);
 				else if (to_string(tokens[0]) == "mtllib") { 
+					if (tokens.size() > 1)
+						read_mtl(to_string(tokens[1]));
+				}
+			}
+			tokens.clear();
+		}
+		printf("\n");
+		return true;
+	}
+
+	/// support more reading options, yzy
+	bool read_cgvmodel(const std::string& file_name) {
+		std::string content;
+		if (!cgv::base::read_data_file(file_name, content, true))
+			return false;
+
+		path_name = file::get_path(file_name);
+		if (!path_name.empty())
+			path_name += "/";
+
+		std::vector<line> lines;
+		split_to_lines(content, lines);
+
+		minus = 1;
+		material_index = -1;
+		group_index = -1;
+		nr_groups = 0;
+		nr_normals = nr_texcoords = 0;
+		std::map<std::string, unsigned> group_index_lut;
+		std::vector<token> tokens;
+		for (unsigned li = 0; li < lines.size(); ++li) {
+			if (li % 1000 == 0)
+				printf("%d Percent done.\r", (int)(100.0 * li / (lines.size() - 1)));
+
+			tokenizer(lines[li]).bite_all(tokens);
+			if (tokens.size() == 0)
+				continue;
+
+			switch (tokens[0][0]) {
+			case 'c':
+				if (tokens[0][1] == 'a' && tokens[0][2] == 'm') {
+					cam_posi = parse_v3d(tokens);
+					has_cam = true;
+				}
+				break;
+			case 'v':
+				if (tokens[0].size() == 1) {
+					parse_and_process_vertex(tokens);
+					if (tokens.size() >= 7)
+						process_color(parse_color(tokens, 3));
+				}
+				else {
+					if (tokens[0][1] == '_' && tokens[0][2] == 's' && tokens[0][3] != 'i') { // selection index 
+						int v_s;
+						unsigned char v_s_char;
+						is_integer(tokens[1].begin, tokens[1].end, v_s);
+						v_s_char = v_s;
+						P_S.push_back(v_s_char);
+						has_v_s = true;
+						break;
+					}
+					if (tokens[0][1] == '_' && tokens[0][2] == 's' && tokens[0][3] == 'i') { //  scan index 
+						double v_si;
+						is_double(tokens[1].begin, tokens[1].end, v_si);
+						P_ScanIndex->push_back(v_si);
+						has_v_si = true;
+						break;
+					}
+					switch (tokens[0][1]) {
+					case 'n':
+						parse_and_process_normal(tokens);
+						++nr_normals;
+						break;
+					case 't':
+						parse_and_process_texcoord(tokens);
+						++nr_texcoords;
+						break;
+					case 'c':
+						process_color(parse_color(tokens));
+						break;
+					}
+				}
+				break;
+				/*case 'f':
+					if (group_index == -1) {
+						group_index = 0;
+						nr_groups = 1;
+						process_group("main", "");
+						group_index_lut["main"] = group_index;
+					}
+					if (material_index == -1) {
+						cgv::media::illum::obj_material m;
+						m.set_name("default");
+						material_index = 0;
+						nr_materials = 1;
+						process_material(m, 0);
+						material_index_lut[m.get_name()] = material_index;
+						have_default_material = true;
+					}
+					parse_face(tokens);
+					break;*/
+			case 'g':
+				if (tokens.size() > 1) {
+					std::string name = to_string(tokens[1]);
+					std::string parameters;
+					if (tokens.size() > 2)
+						parameters.assign(tokens[2].begin, tokens.back().end - tokens[2].begin);
+
+					std::map<std::string, unsigned>::iterator it =
+						group_index_lut.find(name);
+
+					if (it != group_index_lut.end())
+						group_index = it->second;
+					else {
+						group_index = nr_groups;
+						++nr_groups;
+						process_group(name, parameters);
+						group_index_lut[name] = group_index;
+					}
+				}
+				break;
+			default:
+				if (to_string(tokens[0]) == "usemtl")
+					parse_material(tokens);
+				else if (to_string(tokens[0]) == "mtllib") {
 					if (tokens.size() > 1)
 						read_mtl(to_string(tokens[1]));
 				}
@@ -859,7 +999,21 @@ size_t point_cloud::add_point(const Pnt& p)
 	box_out_of_date = true;
 	return idx;
 }
+/// add points without normals 
+size_t point_cloud::add_point(const Pnt& p, const RGBA& c,
+	const float& scan_index, const cgv::type::uint8_type& sel) {
 
+	// check before this 
+
+	P.push_back(p);
+	C.push_back(c);
+	point_scan_index.push_back(scan_index);
+	point_selection.push_back(sel);
+
+	size_t idx = P.size();
+	return idx;
+}
+/// add points with full vertex attributes 
 size_t point_cloud::add_point(const Pnt& p, const RGBA& c,
 	const Nml& nml, const float& scan_index, const cgv::type::uint8_type& sel) {
 
@@ -944,6 +1098,8 @@ bool point_cloud::read(const string& _file_name)
 		success = read_ascii(_file_name);
 	if (ext == "obj" || ext == "pobj")
 		success = read_obj(_file_name);
+	if (ext == "cgvmodel")
+		success = read_cgvmodel(_file_name);
 	if (ext == "ply")
 		success = read_ply(_file_name);
 	if (ext == "pts") 
@@ -1108,6 +1264,8 @@ bool point_cloud::write(const string& _file_name)
 		return write_ply(_file_name);
 	if (ext == "txt") // pts with normal
 		return write_ptsn(_file_name);
+	if (ext == "cgvmodel")
+		return write_cgvmodel(_file_name);
 	cerr << "unknown extension <." << ext << ">." << endl;
 	return false;
 }
@@ -1931,7 +2089,6 @@ bool point_cloud::read_campose(const std::string& file_name) {
 	return true;
 }
 
-
 bool point_cloud::read_obj(const string& _file_name) 
 {
 	// read point infos to P,N,C,point_selection
@@ -1943,7 +2100,7 @@ bool point_cloud::read_obj(const string& _file_name)
 		return false;
 	cam_posi = pc_obj.cam_posi;
 	has_cam_posi = pc_obj.has_cam;
-	has_selection = pc_obj.has_v_c;
+	has_selection = pc_obj.has_v_s;
 
 	return true;
 }
@@ -2285,12 +2442,66 @@ bool point_cloud::write_obj(const std::string& file_name) const
 			<< " " << color_component_to_float(C[i][1]) << " " << color_component_to_float(C[i][2]) << endl;
 		else
 			os << "v " << P[i][0] << " " << P[i][1] << " " << P[i][2] << endl;
-		if (has_selection) {
-			os << "v_c " << (int)point_selection.at(i) << endl;
-		}
+		/*if (has_selection) {
+			os << "v_s " << (int)point_selection.at(i) << endl;
+		}*/
 	}
 	for (i=0; i<N.size(); ++i)
 		os << "vn " << N[i][0] << " " << N[i][1] << " " << N[i][2] << endl;
+	return !os.fail();
+}
+///
+bool point_cloud::read_cgvmodel(const string& _file_name)
+{
+	// read point infos to P,N,C,point_selection
+	point_cloud_obj_loader pc_obj(P, N, C, point_selection);
+	// reuse the obj reader, init with additional vertex attributes
+	pc_obj.set_P_ScanIndex_vector_address_to_be_written(&point_scan_index);
+	// exit when file does not exist 
+	if (!exists(_file_name))
+		return false;
+	//clear();
+	if (!pc_obj.read_cgvmodel(_file_name))
+		return false;
+	cam_posi = pc_obj.cam_posi;
+	has_cam_posi = pc_obj.has_cam;
+	has_selection = pc_obj.has_v_s;
+	has_scan_index = pc_obj.has_v_si;
+
+	return true;
+}
+///
+bool point_cloud::write_cgvmodel(const std::string& file_name) const
+{
+	ofstream os(file_name.c_str());
+	if (os.fail())
+		return false;
+	unsigned int i;
+	// camera position, if present 
+	if (has_cam_posi)
+		os << "cam " << cam_posi << endl;
+	// save points and colors
+	for (i = 0; i < P.size(); ++i) {
+		if (has_colors())
+			os << "v " << P[i][0] << " " << P[i][1] << " " << P[i][2] << " " << color_component_to_float(C[i][0])
+			<< " " << color_component_to_float(C[i][1]) << " " << color_component_to_float(C[i][2]) << endl;
+		else
+			os << "v " << P[i][0] << " " << P[i][1] << " " << P[i][2] << endl;
+	}
+	// save normals 
+	for (i = 0; i < N.size(); ++i)
+		os << "vn " << N[i][0] << " " << N[i][1] << " " << N[i][2] << endl;
+	// store additional vertex attributes
+	for (i = 0; i < point_selection.size(); ++i) // present if prepared for region growing 
+		os << "v_s " << (int)point_selection.at(i) << endl;
+	for (i = 0; i < point_scan_index.size(); ++i) // present if: 1. read point cloud from ply 2. read manually form objs 
+		os << "v_si " << point_scan_index.at(i) << endl;
+	if (point_scan_index.size() == 0) { // force scan index: if not present, we set them to 0 
+		for (i = 0; i < P.size(); ++i) {
+			os << "v_si " << 0 << endl;
+		}
+	}
+	//... 
 	return !os.fail();
 }
 

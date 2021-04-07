@@ -540,10 +540,29 @@ public:
 	}
 
 	// point cloud generation 
-	void generate_pc_hemisphere() { data_ptr->point_cloud_kit->generate_pc_hemisphere();post_redraw();}
-	void generate_pc_cube() { data_ptr->point_cloud_kit->generate_pc_cube(); 
-		force_nml_computing(); prepare_marking(); post_redraw(); }
-
+	void generate_pc_hemisphere() { 
+		data_ptr->point_cloud_kit->generate_pc_hemisphere();
+		force_nml_computing();
+		prepare_marking();
+		post_redraw();
+	}
+	void generate_pc_cube() { 
+		data_ptr->point_cloud_kit->generate_pc_cube(); 
+		force_nml_computing(); 
+		prepare_marking(); 
+		post_redraw(); 
+	}
+	void generate_testing_plane() {
+		data_ptr->point_cloud_kit->generate_testing_plane();
+		post_redraw();
+	}
+	void toggle_normal_orientations() {
+		data_ptr->point_cloud_kit->toggle_normal_orientations();
+		post_redraw();
+	}
+	void print_pc_information() {
+		data_ptr->point_cloud_kit->print_pc_information();
+	}
 	void rotate_right(){ data_ptr->active_off_rotation -= 30; }
 	void rotate_left() { data_ptr->active_off_rotation += 30; }
 };

@@ -795,12 +795,14 @@ void visual_processing::read_pc_parallel() {
 	// lock if you want to change ds, rebuild tree 
 	data_ptr->point_cloud_kit->can_parallel_grow = false;
 	// the original pc will be automatically stored 
-	data_ptr->point_cloud_kit->read_pc_with_dialog(false);
+	if (!data_ptr->point_cloud_kit->read_pc_with_dialog(false)) {
+		data_ptr->point_cloud_kit->can_parallel_grow = true;
+		return;
+	}
 	data_ptr->point_cloud_kit->on_rendering_settings_changed();
 	data_ptr->point_cloud_kit->prepare_grow(true,
 		&data_ptr->point_selection_colors,
 		data_ptr->point_cloud_kit->pc.max_num_of_selections);
-	post_redraw();
 	data_ptr->point_cloud_kit->can_parallel_grow = true;
 }
 ///
@@ -1153,8 +1155,11 @@ void visual_processing::create_gui() {
 	add_member_control(this, "paratone_3", data_ptr->paratone_3, "value_slider", "min=-1;max=1;log=false;ticks=true;");
 	add_member_control(this, "paratone_4", data_ptr->paratone_4, "value_slider", "min=-1;max=1;log=false;ticks=true;");
 	add_member_control(this, "paratone_5", data_ptr->paratone_5, "value_slider", "min=-1;max=1;log=false;ticks=true;");
-
 	connect_copy(add_button("read_pc")->click, rebind(this, &visual_processing::start_reading_pc_parallel));
+	connect_copy(add_button("read_pc_append")->click, rebind(this, &visual_processing::read_pc_append));
+	connect_copy(add_button("print_pc_information")->click, rebind(this, &visual_processing::print_pc_information));
+
+	//
 	add_member_control(this, "hmd_culling", data_ptr->point_cloud_kit->enable_headset_culling, "check");
 	add_member_control(this, "from_CC_txt", data_ptr->point_cloud_kit->pc.from_CC, "check");
 	connect_copy(add_control("render_pc", render_pc, "check")->value_change, rebind(static_cast<drawable*>(this), &visual_processing::post_redraw));
@@ -1229,10 +1234,16 @@ void visual_processing::create_gui() {
 			rebind(this, &visual_processing::generate_pc_hemisphere));
 		connect_copy(add_button("generate_pc_cube")->click,
 			rebind(this, &visual_processing::generate_pc_cube));
-
+		connect_copy(add_button("generate_testing_plane")->click,
+			rebind(this, &visual_processing::generate_testing_plane));
+		//
+		connect_copy(add_button("send_updated_point_cloud_to_gpu")->click,
+			rebind(this, &visual_processing::send_updated_point_cloud_to_gpu));
 		// 
 		connect_copy(add_button("force_nml_computing")->click, 
 			rebind(this, &visual_processing::force_nml_computing));
+		connect_copy(add_button("flip normals")->click,
+			rebind(this, &visual_processing::toggle_normal_orientations));
 		connect_copy(add_button("save")->click,
 			rebind(this, &visual_processing::write_read_pc_to_file));
 	}
