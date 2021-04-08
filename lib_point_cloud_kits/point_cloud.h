@@ -131,8 +131,13 @@ public:
 	/// per-vertex attribute: used for region growing 
 	std::vector<bool> point_selection_visited;
 	/// container for per vertex scan indices, which scan it belones to 
-	std::vector<float> point_scan_index; bool has_scan_index = false;
+	std::vector<float> point_scan_index; 
+	///
+	bool has_scan_index = false;
 public:
+
+	///
+	std::vector<cgv::math::fvec<float, 3>> cam_posi_list;
 	/// per vertex marked index, PointSelectiveAttribute
 	/// 20 reserved
 	/// copy to shader file 
@@ -241,6 +246,20 @@ protected:
 	///
 	bool read_txt(const std::string& file_name);
 
+	/*high lev modeling support */
+	///
+	bool read_cgvscan(const std::string& file_name);
+	///
+	bool write_cgvscan(const std::string& file_name);
+	///
+	bool read_cgvcgvconnectivity(const std::string& file_name);
+	///
+	bool write_cgvcgvconnectivity(const std::string& file_name);
+	///
+	bool read_cgvfitting(const std::string& file_name);
+	///
+	bool write_cgvfitting(const std::string& file_name);
+
 	bool read_txt_dev(const std::string& file_name);
 	/// write ascii format, see read_ascii for format description
 	bool write_ascii(const std::string& file_name, bool write_nmls = true) const;
@@ -275,7 +294,6 @@ public:
 	///
 	bool has_selection = false;
 	///
-	cgv::math::fvec<float, 3> cam_posi;
 
 	/// read from .campose file, 10.01.2021
 	int num_of_shots; 

@@ -482,7 +482,8 @@ void point_cloud::clear_campose() {
 	list_cam_rotation.clear();
 	list_cam_translation.clear();
 	has_cam_posi = false;
-	cam_posi = cgv::math::fvec<float, 3>(-1000);
+	//cam_posi = cgv::math::fvec<float, 3>(-1000);
+	cam_posi_list.clear();
 }
 void point_cloud::clear()
 {
@@ -535,7 +536,7 @@ bool point_cloud::get_next_shot(const point_cloud& pc) {
 		return false;
 	}
 	has_cam_posi = true;
-	cam_posi = pc.list_cam_translation.at(cur_shot);
+	cam_posi_list.push_back(pc.list_cam_translation.at(cur_shot));
 	cur_shot++;
 	num_points += n;
 
@@ -1103,6 +1104,12 @@ bool point_cloud::read(const string& _file_name)
 		success = read_obj(_file_name);
 	if (ext == "cgvmodel")
 		success = read_cgvmodel(_file_name);
+	if (ext == "cgvscan")
+		success = read_cgvscan(_file_name);
+	if (ext == "cgvcgvconnectivity")
+		success = read_cgvcgvconnectivity(_file_name);
+	if (ext == "cgvfitting")
+		success = read_cgvfitting(_file_name);
 	if (ext == "ply")
 		success = read_ply(_file_name);
 	if (ext == "pts") 
@@ -1269,6 +1276,8 @@ bool point_cloud::write(const string& _file_name)
 		return write_ptsn(_file_name);
 	if (ext == "cgvmodel")
 		return write_cgvmodel(_file_name);
+	if (ext == "cgvscan")
+		return write_cgvscan(_file_name);
 	cerr << "unknown extension <." << ext << ">." << endl;
 	return false;
 }
@@ -1758,6 +1767,145 @@ bool point_cloud::read_txt(const std::string& file_name)
 	return true;
 }
 
+bool point_cloud::read_cgvscan(const std::string& file_name)
+{
+	string content;
+	cgv::utils::stopwatch watch;
+	if (!cgv::utils::file::read(file_name, content, true))
+		return false;
+	std::cout << "read data from disk "; 
+	watch.add_time();
+	vector<line> lines;
+	split_to_lines(content, lines);
+	std::cout << "split data into " << lines.size() << " lines. ";	
+	watch.add_time();
+
+	for (int i = 0; i < lines.size(); ++i) {
+		// ignore empty lines 
+		if (lines[i].empty())
+			continue;
+		// preprocessing, split into values 
+		vector<token> tokens;
+		tokenizer(lines[i]).bite_all(tokens);
+		// format: 
+		// x y z nx ny nz r g b scan_index  + selection_index i j (point_index)
+		if (tokens[0][0] == 'v') {
+			const int double_value_wanted_per_line_exact = 11;
+			double values[double_value_wanted_per_line_exact];
+			unsigned n = min(double_value_wanted_per_line_exact, (int)tokens.size());
+			unsigned j;
+			for (j = 0; j < n; ++j) {
+				if (!is_double(tokens[j + 1].begin, tokens[j + 1].end, values[j]))
+					continue;
+			}
+			// start matching 
+			// x y z nx ny nz r g b scan_index  + selection_index i j (point_index)
+			if (j >= 3)
+				P.push_back(Pnt((Crd)values[0], (Crd)values[1], (Crd)values[2]));
+			if (j >= 6) {
+				N.push_back(Nml((Crd)values[3], (Crd)values[4], (Crd)values[5]));
+				has_nmls = true;
+			}
+			if (j >= 9) {
+				C.push_back(Clr(
+					float_to_color_component(values[6]),
+					float_to_color_component(values[7]),
+					float_to_color_component(values[8])));
+				has_clrs = true;
+			}
+			if (j >= 10) {
+				point_scan_index.push_back((float)values[9]);
+				has_scan_index = true;
+			}
+			if (j >= 11) {
+				point_selection.push_back((cgv::type::uint8_type)values[10]);
+				has_selection = true;
+			}
+		}
+		if (tokens[0][0] == 'c' && tokens[0][1] == 'a' && tokens[0][2] == 'm') {
+			const int double_value_wanted_per_line_exact = 3;
+			double values[double_value_wanted_per_line_exact];
+			unsigned n = min(double_value_wanted_per_line_exact, (int)tokens.size());
+			unsigned j;
+			for (j = 0; j < n; ++j) {
+				if (!is_double(tokens[j + 1].begin, tokens[j + 1].end, values[j])) // the first token is "cam"
+					continue;
+			}
+			// start matching 
+			// x y z nx ny nz r g b scan_index  + selection_index i j (point_index)
+			if (j >= 3)
+				cam_posi_list.push_back(Pnt((Crd)values[0], (Crd)values[1], (Crd)values[2]));
+		}
+
+		// progress bar 
+		if ((P.size() % 100000) == 0)
+			cout << "read " << P.size() << " points" << endl;
+	}
+
+	std::cout << "points: " << std::endl;
+	std::cout << "has_clrs: " << has_clrs << std::endl;
+	std::cout << "has_nmls: " << has_nmls << std::endl;
+	std::cout << "has_clrs: " << has_clrs << std::endl;
+
+	watch.add_time();
+	return true;
+}
+
+bool point_cloud::write_cgvscan(const std::string& file_name)
+{
+	ofstream os(file_name.c_str());
+	if (os.fail())
+		return false;
+	unsigned int i;
+	/*if (has_cam_posi)
+		os << "cam " << cam_posi << endl;*/
+	// format: 
+	// x y z nx ny nz r g b scan_index  + selection_index i j (point_index)
+	// 
+	if (cam_posi_list.size() > 0)
+		for(auto c: cam_posi_list)
+			os << "cam " << c << std::endl;
+	// iterate all points 
+	for (i = 0; i < P.size(); ++i) {
+		os << "v " << P[i][0] << " " << P[i][1] << " " << P[i][2] << " ";
+		if (has_normals());
+			os << N[i][0] << " " << N[i][1] << " " << N[i][2] << " ";
+		if (has_colors())
+			os << color_component_to_float(C[i][0]) << " " << color_component_to_float(C[i][1])
+				<< " " << color_component_to_float(C[i][2]) << " ";
+		if (point_scan_index.size() > 0)
+			os << point_scan_index.at(i) << " ";
+		else
+			std::cout << "do not have scan index..." << std::endl;
+		if (point_selection.size() > 0)
+			os << (int)point_selection.at(i) << " ";
+		else
+			std::cout << "do not have point selection! check your points " << std::endl;
+		os << std::endl; // end of the line 
+	}
+		
+	return !os.fail();
+}
+
+bool point_cloud::read_cgvcgvconnectivity(const std::string& file_name) {
+	return true;
+}
+
+///
+bool point_cloud::write_cgvcgvconnectivity(const std::string& file_name) {
+	return true;
+}
+
+
+bool point_cloud::read_cgvfitting(const std::string& file_name) {
+	return true;
+}
+
+///
+bool point_cloud::write_cgvfitting(const std::string& file_name) {
+	return true;
+}
+
 /// read ascii file with lines of the form x y z I r g b intensity and color values, where intensity values are ignored
 bool point_cloud::read_txt_dev(const std::string& file_name)
 {
@@ -2081,7 +2229,7 @@ bool point_cloud::read_campose(const std::string& file_name) {
 	// for normal computing 
 	if (list_cam_translation.size() > 0) {
 		has_cam_posi = true;
-		cam_posi = list_cam_translation.at(0);
+		cam_posi_list.push_back(list_cam_translation.at(0));
 	}
 	// for rendering 
 	for (int i = 0; i < num_of_shots; i++) 
@@ -2101,7 +2249,8 @@ bool point_cloud::read_obj(const string& _file_name)
 	//clear();
 	if (!pc_obj.read_obj(_file_name))
 		return false;
-	cam_posi = pc_obj.cam_posi;
+	if(pc_obj.has_cam)
+		cam_posi_list.push_back(pc_obj.cam_posi); // push back new read camera position  
 	has_cam_posi = pc_obj.has_cam;
 	// if no scan index present, we give it a scan index, 0 by default, increase with reading pc append 
 	if (!pc_obj.has_v_si) {
@@ -2444,7 +2593,7 @@ bool point_cloud::write_obj(const std::string& file_name) const
 		return false;
 	unsigned int i;
 	if(has_cam_posi)
-		os << "cam " << cam_posi << endl;
+		os << "cam " << cam_posi_list.at(0) << endl; // limited support 
 	for (i=0; i<P.size(); ++i) {
 		if (has_colors())
 			os << "v " << P[i][0] << " " << P[i][1] << " " << P[i][2] << " " << color_component_to_float(C[i][0]) 
@@ -2469,10 +2618,10 @@ bool point_cloud::read_cgvmodel(const string& _file_name)
 	// exit when file does not exist 
 	if (!exists(_file_name))
 		return false;
-	//clear();
 	if (!pc_obj.read_cgvmodel(_file_name))
 		return false;
-	cam_posi = pc_obj.cam_posi;
+	if(pc_obj.has_cam)
+		cam_posi_list.push_back(pc_obj.cam_posi); // push back the newly read camera position from cgv model files 
 	has_cam_posi = pc_obj.has_cam;
 	has_selection = pc_obj.has_v_s;
 	has_scan_index = pc_obj.has_v_si;
@@ -2488,7 +2637,8 @@ bool point_cloud::write_cgvmodel(const std::string& file_name) const
 	unsigned int i;
 	// camera position, if present 
 	if (has_cam_posi)
-		os << "cam " << cam_posi << endl;
+		for (auto c: cam_posi_list) 
+			os << "cam " << c << endl;
 	// save points and colors
 	for (i = 0; i < P.size(); ++i) {
 		if (ignore_deleted_points) {

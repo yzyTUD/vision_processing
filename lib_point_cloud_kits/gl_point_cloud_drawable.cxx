@@ -216,6 +216,7 @@ void gl_point_cloud_drawable::draw_points_surfel(context& ctx)
 	if (!show_points)
 		return;
 
+	use_these_point_color_indices = &pc.point_selection; // 
 	set_arrays(ctx);
 
 	//if (pc.has_components()) {

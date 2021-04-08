@@ -367,14 +367,14 @@ bool point_cloud_interactable::read_pc_campose(cgv::render::context& ctx, quat i
 ///
 bool point_cloud_interactable::check_valid_pc_and_campose()
 {
-	bool succ = pc.cam_posi.x() != -1000
-				&& pc.cam_posi.y() != -1000
-				&& pc.cam_posi.z() != -1000
+	bool succ = pc.cam_posi_list.front().x() != -1000
+				&& pc.cam_posi_list.front().y() != -1000
+				&& pc.cam_posi_list.front().z() != -1000
 				&& pc.get_nr_points() == pc.num_of_points_in_campose
 				&& pc.has_cam_posi;
 	if (!succ) {
 		std::cout << "invalid! check following vars:" << std::endl;
-		std::cout << "pc.cam_posi: " << pc.cam_posi << std::endl;
+		std::cout << "pc.cam_posi_list front: " << pc.cam_posi_list.front() << std::endl;
 		std::cout << "pc.get_nr_points(): " << pc.get_nr_points() << std::endl;
 		std::cout << "pc.num_of_points_in_campose: " << pc.num_of_points_in_campose << std::endl;
 		std::cout << "pc.has_cam_posi: " << pc.has_cam_posi << std::endl;
@@ -1243,14 +1243,14 @@ void point_cloud_interactable::append_frame(point_cloud& _pc, bool registered) {
 	if (registered) {
 		pc.append(pc_to_be_append);
 		if (pc_to_be_append.has_cam_posi)
-			frame_cam_posi.push_back(pc_to_be_append.cam_posi);
+			frame_cam_posi.push_back(pc_to_be_append.cam_posi_list.front()); // may prob.
 		pc_last = pc_to_be_append;
 		tree_ds_target_pc_last_frame = tree_ds_source_pc;
 	}
 	else {
 		pc.append(_pc);
 		if (_pc.has_cam_posi)
-			frame_cam_posi.push_back(_pc.cam_posi);
+			frame_cam_posi.push_back(_pc.cam_posi_list.front()); // may prob.
 		pc_last = _pc;
 	}
 	num_of_pcs++;
@@ -1439,7 +1439,7 @@ void point_cloud_interactable::compute_normals()
 	ne.compute_weighted_normals(reorient_normals && pc.has_normals());
 	// orient to camera position if cam position present 
 	if (pc.has_cam_posi)
-		orient_normals_to_view_point_vr(pc.cam_posi);
+		orient_normals_to_view_point_vr(pc.cam_posi_list.back()); // orient to just updated camera position 
 	on_point_cloud_change_callback(PCC_NORMALS);
 	post_redraw();
 }

@@ -1169,6 +1169,7 @@ void visual_processing::create_gui() {
 		static_cast<drawable*>(this), &visual_processing::post_redraw));
 	connect_copy(add_button("read_pc")->click, rebind(this, &visual_processing::start_reading_pc_parallel));
 	connect_copy(add_button("read_pc_append")->click, rebind(this, &visual_processing::read_pc_append));
+	connect_copy(add_button("prepare_marking")->click, rebind(this, &visual_processing::prepare_marking));
 	connect_copy(add_button("print_pc_information")->click, rebind(this, &visual_processing::print_pc_information));
 	connect_copy(add_button("save")->click,rebind(this, &visual_processing::start_writting_pc_parallel));
 	add_member_control(this, "Ignore Deleted Points", data_ptr->point_cloud_kit->pc.ignore_deleted_points, "check");
