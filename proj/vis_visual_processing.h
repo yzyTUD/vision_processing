@@ -388,6 +388,7 @@ public:
 	void add_reflectance();
 
 	void write_pc_parallel();
+
 	void start_writting_pc_parallel();
 
 	void read_campose();
@@ -564,6 +565,19 @@ public:
 	}
 	void print_pc_information() {
 		data_ptr->point_cloud_kit->print_pc_information();
+	}
+	void boundary_extraction() {
+		data_ptr->point_cloud_kit->boundary_extraction();
+	}
+	void extract_connectivity_graph() {
+		data_ptr->point_cloud_kit->extract_connectivity_graph();
+	}
+	void triangulation_of_the_points() {
+		data_ptr->point_cloud_kit->pc.triangulation_of_the_points();
+	}
+	void export_to_an_obj_file() {
+		std::string f = cgv::gui::file_save_dialog("Save", "OBJ Mesh:*");
+		data_ptr->point_cloud_kit->pc.export_to_an_obj_file(f);
 	}
 	void rotate_right(){ data_ptr->active_off_rotation -= 30; }
 	void rotate_left() { data_ptr->active_off_rotation += 30; }

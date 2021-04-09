@@ -35,6 +35,10 @@ void point_cloud_interactable::print_pc_information() {
 	std::cout << "pc.F.size: " << pc.F.size() << std::endl;
 	std::cout << "pc.point_selection.size: " << pc.point_selection.size() << std::endl;
 	std::cout << "pc.point_scan_index.size: " << pc.point_scan_index.size() << std::endl;
+	std::cout << "pc.F_conn.size(): " << pc.F_conn.size() << std::endl;
+	for (auto f : pc.F_conn) {
+		std::cout << "current f.size(): " << f.size() << std::endl;
+	}
 	std::cout << "### end: point cloud info: ###" << std::endl;
 }
 
@@ -629,6 +633,52 @@ void point_cloud_interactable::mark_points_with_clipping_plane(Pnt p,Nml plane_n
 }
 
 /*operations after marked */
+/// result will be stored and visualized with PointSelectiveAttribute
+#include <set>
+void point_cloud_interactable::boundary_extraction() {
+	std::vector<int> will_be_marked_as_boundary;
+	std::vector<int> will_be_marked_as_corner;
+	for (Idx i = 0; i < (Idx)pc.get_nr_points(); ++i) {
+		// ignore deleted points 
+		if (pc.point_selection.at(i) == point_cloud::PointSelectiveAttribute::DEL)
+			continue;
+		// find knn points 
+		std::vector<int> knn;
+		tree_ds->find_closest_points(pc.pnt(i), 8, knn);
+		std::set<int> incident_faces;
+		for (auto k: knn) { // k is the index 
+			incident_faces.insert(pc.point_selection.at(k));
+		}
+		if (incident_faces.size() == 1) { // interior, keep the current selection (face id )
+		}
+		if (incident_faces.size() == 2)  // boundary 
+			will_be_marked_as_boundary.push_back(i);
+		if (incident_faces.size() >= 3)  // corner 
+			will_be_marked_as_corner.push_back(i);
+	}
+	for (auto b: will_be_marked_as_boundary)
+		pc.point_selection.at(b) = point_cloud::PointSelectiveAttribute::BOUNDARIES;
+	for (auto c : will_be_marked_as_corner)
+		pc.point_selection.at(c) = point_cloud::PointSelectiveAttribute::CORNER;
+	on_point_cloud_change_callback(PCC_COLORS);
+}
+
+///
+void point_cloud_interactable::extract_connectivity_graph() {
+	pc.F_conn.resize(25);
+	for (Idx i = 0; i < (Idx)pc.get_nr_points(); ++i) {
+		// deal with faces 
+		// fi is face index, for each point, find and push back to correct vector, faces consists of points are stored in globally
+		for (int fi = 20; fi < 44; fi++) {
+			if ((int)pc.point_selection.at(i) == fi) {
+				pc.F_conn.at(fi - 20).push_back(i);
+			}
+		}
+
+		// region grow to find neighbor points, push them to the global list 
+		// an other grow to find and push to edges E_conn
+	}
+}
 /// 
 void point_cloud_interactable::selective_subsampling_cpu() {
 	std::default_random_engine g;

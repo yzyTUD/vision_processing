@@ -180,7 +180,17 @@ public:
 	///
 	void mark_points_and_push_to_tmp_pointcloud(Pnt p, float r, int ignore_id);
 
+
 	/*other operations after marked*/
+	/*
+		connectivity graph extraction 
+	*/
+	/// thw quality of the boundaries depends on region growing steps, how good faces are marked 
+	void boundary_extraction(); 
+	/// do some region growing and extract to the data structure above, quality depends on the prev. steps 
+	void extract_connectivity_graph();
+
+
 	// selective subsampling within given point type, with a global adjustable ratio 
 	void selective_subsampling_cpu();
 	// 

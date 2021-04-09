@@ -1175,6 +1175,18 @@ void visual_processing::create_gui() {
 	add_member_control(this, "Ignore Deleted Points", data_ptr->point_cloud_kit->pc.ignore_deleted_points, "check");
 
 	//
+	if (begin_tree_node("Triangulation of The Points", data_ptr->point_cloud_kit->show_nmls, true, "level=3")) {
+		connect_copy(add_button("triangulation_of_the_points")->click, rebind(this, &visual_processing::triangulation_of_the_points));
+		connect_copy(add_button("export_to_an_obj_file")->click, rebind(this, &visual_processing::export_to_an_obj_file));
+	}
+
+	//  
+	if (begin_tree_node("Connectivity Graph", data_ptr->point_cloud_kit->show_nmls, true, "level=3")) {
+		connect_copy(add_button("boundary_extraction")->click, rebind(this, &visual_processing::boundary_extraction));
+		connect_copy(add_button("extract_connectivity_graph")->click, rebind(this, &visual_processing::extract_connectivity_graph));
+	}
+
+	//
 	if (begin_tree_node("Scan Index", data_ptr->point_cloud_kit->show_nmls, true, "level=3")) {
 		add_member_control(this, "scan_index", data_ptr->point_cloud_kit->pc.currentIdx, "value_slider", "min=0;max=10;log=false;ticks=true;");
 		add_member_control(this, "point size", data_ptr->point_cloud_kit->point_size,

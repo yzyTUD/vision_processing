@@ -2594,7 +2594,7 @@ bool point_cloud::write_obj(const std::string& file_name) const
 	unsigned int i;
 	if(has_cam_posi)
 		os << "cam " << cam_posi_list.at(0) << endl; // limited support 
-	for (i=0; i<P.size(); ++i) {
+	for (i = 0; i < P.size(); ++i) {
 		if (has_colors())
 			os << "v " << P[i][0] << " " << P[i][1] << " " << P[i][2] << " " << color_component_to_float(C[i][0]) 
 			<< " " << color_component_to_float(C[i][1]) << " " << color_component_to_float(C[i][2]) << endl;
@@ -2608,6 +2608,57 @@ bool point_cloud::write_obj(const std::string& file_name) const
 		os << "vn " << N[i][0] << " " << N[i][1] << " " << N[i][2] << endl;
 	return !os.fail();
 }
+
+/// TODO: ball pivoting ... integration (do not support possion ) 
+void point_cloud::triangulation_of_the_points() {
+	// a quick test 
+	for (int i = 0; i < P.size() - 2; i++) {
+		std::vector<faceTriple> f_line;
+		faceTriple v1;
+		faceTriple v2;
+		faceTriple v3;
+
+		v1.gi = i;
+		v1.ni = i;
+		v2.gi = i + 1;
+		v2.ni = i + 1;
+		v3.gi = i + 2;
+		v3.ni = i + 2;
+
+		f_line.push_back(v1);
+		f_line.push_back(v2);
+		f_line.push_back(v3);
+
+		faces.push_back(f_line);
+	}
+}
+
+///
+bool point_cloud::export_to_an_obj_file(const std::string& file_name) {
+	ofstream os(file_name.c_str());
+	if (os.fail())
+		return false;
+	unsigned int i;
+	for (i = 0; i < P.size(); ++i) {
+		os << "v " << P[i][0] << " " << P[i][1] << " " << P[i][2] << endl;
+		if (has_colors())
+			os<< "vc "<< color_component_to_float(C[i][0]) << " " 
+				<< color_component_to_float(C[i][1]) << " " 
+				<< color_component_to_float(C[i][2]) << endl;
+		os << "vn " << N[i][0] << " " << N[i][1] << " " << N[i][2] << endl;
+	}
+	for (auto f_triple_line : faces) {
+		os << "f ";
+		for (auto f_triple : f_triple_line) {
+			os << f_triple.gi << "/";
+			if (has_texture_coordinates())
+				os << f_triple.ti;
+			os << "/" << f_triple.ni << " ";
+		}
+		os << std::endl;
+	}
+}
+
 ///
 bool point_cloud::read_cgvmodel(const string& _file_name)
 {

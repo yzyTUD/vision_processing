@@ -114,6 +114,9 @@ class CGV_API point_cloud : public point_cloud_types
 	typedef cgv::math::fvec<float, 3> vec3;
 	typedef cgv::math::fvec<float, 4> vec4;
 public:
+	/*
+		per vertex info, can be stored externally in a .cgvscan file 
+	*/
 	/// container for point positions
 	std::vector<Pnt> P;
 	/// container for point normals
@@ -127,16 +130,71 @@ public:
 	/// container for local features 
 	std::vector<Dir> F;
 	/// per-vertex attribute: which group the point belones to 
-	std::vector<cgv::type::uint8_type> point_selection;
+	std::vector<cgv::type::uint8_type> point_selection; // will be used as face index 
 	/// per-vertex attribute: used for region growing 
 	std::vector<bool> point_selection_visited;
 	/// container for per vertex scan indices, which scan it belones to 
 	std::vector<float> point_scan_index; 
 	///
 	bool has_scan_index = false;
-public:
 
+public: 
+	/*
+		point based connectivity model, per point cloud varible
+		can be stored externally in a .cgv
+		build upon the .cgvscan file, ref the original data structure  
+	*/
+	/// vertices in connectivity graph, one vertex V consists of a list of points 
+	std::vector<std::vector<int>> V_conn; 
+	/// edges in connectivity graph
+	std::vector<std::vector<int>> E_conn;
+	/// faces in connectivity graph
+	std::vector<std::vector<int>> F_conn;
+	/// do some region growing and extract to the data structure above, quality depends on the prev. steps 
+	//void extract_connectivity_graph(); -> interactable 
+	/// assign per vertex attributes after extraction 
+	void colorize_the_connectivity_graph();
 	///
+	bool read_cgvcgvconnectivity(const std::string& file_name);
+	///
+	bool write_cgvcgvconnectivity(const std::string& file_name);
+
+	/*
+		can be stored externally in a .cgvfitting file, per point cloud varible
+	*/
+	/// V_fit.size() will be the same as the V_conn.size(), at least 3 floats representing 3 coordinates 
+	std::vector<std::vector<float>> V_fit;
+	/// fitted curve, at least 4 float parameters 
+	std::vector<std::vector<float>> E_fit;
+	/// fitted surface, at least 16 float parameters 
+	std::vector<std::vector<float>> F_fit;
+	///
+	bool read_cgvfitting(const std::string& file_name);
+	///
+	bool write_cgvfitting(const std::string& file_name);
+
+	/*
+	*	optional:
+		triangulation of the points 
+		f geometric vertex/ texture vertex/ vertex normal
+		we can direct define/ compute them simply if no rendering requirements (as a processor )
+	*/
+	struct faceTriple
+	{
+		int gi;
+		int ti;
+		int ni; // normal index 
+	};
+	std::vector<std::vector<faceTriple>> faces; 
+	/// result of this function will be written to faces structure 
+	void triangulation_of_the_points();
+	/// save as obj file with per vertex 
+	bool export_to_an_obj_file(const std::string& file_name);
+
+	
+	/*
+		point selection definition, per point cloud varible
+	*/
 	std::vector<cgv::math::fvec<float, 3>> cam_posi_list;
 	/// per vertex marked index, PointSelectiveAttribute
 	/// 20 reserved
@@ -145,8 +203,8 @@ public:
 		VISUAL_MARK, // reserved 
 		ORI = 1,
 		DEL = 2,
-		BOUNDARIES,
-		CORNER,
+		BOUNDARIES = 3,
+		CORNER = 4,
 		ICP_SOURCE,
 		ICP_TARGET,
 		ICP_SOURCE_HIGHLIGHT,
@@ -156,10 +214,11 @@ public:
 		// add new functional idx above
 		EndOfFunctionalIndices // region id start from the end of this struct 
 	};
-	int num_of_functional_selections = 20;
-	int num_of_regions = 25;
+	int num_of_functional_selections = 20; // from 0 - 19 
+	int num_of_regions = 25; // from 20 - 44
 	int max_num_of_selections = num_of_functional_selections + num_of_regions;
 	float currentIdx = 0;
+
 
 protected:
 	/// container to store  one component index per point
@@ -251,14 +310,6 @@ protected:
 	bool read_cgvscan(const std::string& file_name);
 	///
 	bool write_cgvscan(const std::string& file_name);
-	///
-	bool read_cgvcgvconnectivity(const std::string& file_name);
-	///
-	bool write_cgvcgvconnectivity(const std::string& file_name);
-	///
-	bool read_cgvfitting(const std::string& file_name);
-	///
-	bool write_cgvfitting(const std::string& file_name);
 
 	bool read_txt_dev(const std::string& file_name);
 	/// write ascii format, see read_ascii for format description
