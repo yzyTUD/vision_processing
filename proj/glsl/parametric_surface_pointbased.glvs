@@ -1,0 +1,17 @@
+#version 150
+
+in vec4 position;
+in vec4 color;
+
+out int instanceIn;
+out vec4 colorIn;
+out vec2 texcoord_gs;
+
+uniform int nr_quads_per_row;
+
+void main()
+{
+	instanceIn  = gl_InstanceID;
+	colorIn     = color;
+	gl_Position = position; 
+}

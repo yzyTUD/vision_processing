@@ -177,6 +177,7 @@ visual_processing::visual_processing()
 	mesh_kit = new vis_kit_meshes(); //mesh_kit->load_mesh();
 	mesh_kit_2 = new vis_kit_meshes();
 	selection_kit = new vis_kit_selection(); // for 2d->3d selection, and 3d selection, point cloud selection included 
+	parametric_surface_kit = new parametric_surface(); // parametric surface rendering 
 
 	//imagebox_kit = new vr_kit_imagebox();
 	motioncap_kit = new vr_kit_motioncap(); //read_tj_file();
@@ -304,6 +305,7 @@ bool visual_processing::init(cgv::render::context& ctx)
 	if (handhold_near_kit != nullptr) handhold_near_kit->set_data_ptr(data_ptr);
 	if (tmpfixed_gui_kit != nullptr) tmpfixed_gui_kit->set_data_ptr(data_ptr);
 	if (mesh_kit != nullptr) mesh_kit->set_data_ptr(data_ptr);
+	if (parametric_surface_kit!=nullptr) parametric_surface_kit->set_data_ptr(data_ptr);
 
 	// set the context ptrs 
 	if (selection_kit != nullptr) selection_kit->set_context_str(get_context());
@@ -338,6 +340,7 @@ bool visual_processing::handle(cgv::gui::event& e)
 	if (motioncap_kit != nullptr) motioncap_kit->handle(e);
 	if (manipulation_kit != nullptr) manipulation_kit->handle(e); 
 	if (selection_kit != nullptr)selection_kit->handle(e);
+	if (parametric_surface_kit != nullptr) parametric_surface_kit->handle(e);
 
 	// main handler for gui 
 	// adding a new function: key function -> render -> adjustment
@@ -678,7 +681,8 @@ void visual_processing::draw(cgv::render::context& ctx)
 		if (skybox_kit != nullptr)skybox_kit->draw(ctx);
 	if (b_interactable != nullptr) b_interactable->draw(ctx);
 	if (handhold_near_kit!=nullptr) handhold_near_kit->draw(ctx);
-	if (tmpfixed_gui_kit != nullptr) tmpfixed_gui_kit->draw(ctx);
+	if(render_handhold_gui)
+		if (tmpfixed_gui_kit != nullptr) tmpfixed_gui_kit->draw(ctx);
 	if (render_pc) data_ptr->point_cloud_kit->draw(ctx);
 	if (data_ptr->render_handhold_pc) data_ptr->point_cloud_in_hand->draw(ctx);
 	if (roller_coaster_kit_1) roller_coaster_kit_1->draw(ctx);
@@ -687,6 +691,8 @@ void visual_processing::draw(cgv::render::context& ctx)
 	if (manipulation_kit!=nullptr) manipulation_kit->draw(ctx);
 	if (imagebox_kit != nullptr)imagebox_kit->draw(ctx);
 	if (selection_kit != nullptr)selection_kit->draw(ctx);
+	if (render_parametric_surface)
+		if (parametric_surface_kit != nullptr) parametric_surface_kit->draw(ctx);
 
 	if (motioncap_kit != nullptr)
 		if (motioncap_kit->instanced_redraw)
@@ -1162,6 +1168,7 @@ void visual_processing::create_gui() {
 	add_member_control(this, "paratone_4", data_ptr->paratone_4, "value_slider", "min=-1;max=1;log=false;ticks=true;");
 	add_member_control(this, "paratone_5", data_ptr->paratone_5, "value_slider", "min=-1;max=1;log=false;ticks=true;");
 	add_member_control(this, "render skybox", render_skybox, "check");
+	add_member_control(this, "render_handhold_gui", render_handhold_gui, "check");
 	add_member_control(this, "render_nmls", data_ptr->point_cloud_kit->show_nmls, "check");
 	add_member_control(this, "hmd_culling", data_ptr->point_cloud_kit->enable_headset_culling, "check");
 	add_member_control(this, "from_CC_txt", data_ptr->point_cloud_kit->pc.from_CC, "check");

@@ -1,0 +1,139 @@
+#version 150
+
+//***** begin interface of view.glsl ***********************************
+mat4 get_modelview_matrix();
+mat4 get_projection_matrix();
+mat4 get_modelview_projection_matrix();
+mat4 get_inverse_modelview_matrix();
+mat4 get_inverse_modelview_projection_matrix();
+mat3 get_normal_matrix();
+mat3 get_inverse_normal_matrix();
+//***** end interface of view.glsl ***********************************
+
+
+uniform int nr_quads_per_row;
+uniform sampler2D depth_base_tex;
+uniform sampler2D depth_tex;
+
+uniform float texel_extent;
+uniform float quad_extent;
+uniform vec4 transform;
+
+in int instanceIn[];
+in vec4 colorIn[];
+in vec2 texcoord_gs[];
+
+out vec3 position_eye;
+out vec3 normal_eye;
+out vec4 color;
+out vec2 texcoord_fs;
+
+vec2 min_tcd;
+vec2 max_tcd;
+
+
+//source: https://gist.github.com/patriciogonzalezvivo/670c22f3966e662d2f83
+float rand(vec2 c)
+{
+	return 2 * fract(sin(dot(c.xy ,vec2(12.9898,78.233))) * 43758.5453) - 1;
+}
+
+float perlinNoise(vec2 p )
+{
+	vec2 ij = floor(p);
+	vec2 xy = p - ij;
+	//xy = 3.*xy*xy-2.*xy*xy*xy;
+	xy = .5*(1.-cos(3.1415926 * xy));
+	float a = rand((ij+vec2(0.,0.)));
+	float b = rand((ij+vec2(1.,0.)));
+	float c = rand((ij+vec2(0.,1.)));
+	float d = rand((ij+vec2(1.,1.)));
+	float x1 = mix(a, b, xy.x);
+	float x2 = mix(c, d, xy.x);
+	return mix(x1, x2, xy.y);
+}
+
+//based on https://www.seedofandromeda.com/blogs/58-procedural-heightmap-terrain-generation
+float getTerrainHeight(vec2 p)
+{
+	float total = 0.0;
+	float maxAmplitude = 0.0;
+	float amplitude = 1.0;
+	float frequency = 0.02;
+	for (int i = 0; i < 11; i++) 
+	{
+		total +=  ((1.0 - abs(perlinNoise(p * frequency))) * 2.0 - 1.0) * amplitude;
+		frequency *= 2.0;
+		maxAmplitude += amplitude;
+		amplitude *= 0.45;
+	}
+	return 1 * total / maxAmplitude;
+}
+
+float get_z(in vec2 tcd)
+{
+	//if(tcd.x<texel_extent * (float(10) + 0.5))
+		//return 2.0 * ( texture(depth_base_tex, tcd).r ) - 1.0;
+		// texture(depth_base_tex, tcd).r + texture(depth_tex, tcd).r;
+
+	return tcd.x * tcd.x - tcd.y * tcd.y;
+		//(tcd.x - 0.5) * (tcd.x - 0.5) + (tcd.y - 0.5) * (tcd.y - 0.5);
+		//1 - (tcd.x - 0.5) * (tcd.x - 0.5) - (tcd.y - 0.5) * (tcd.y - 0.5);
+		//tcd.x * tcd.x + tcd.y * tcd.y;
+		//
+}
+
+vec3 compute_normal(in vec2 tcd)
+{
+	/* task 1.5c begin */
+	vec2 xminus_y = vec2(tcd.x-texel_extent,tcd.y);
+	vec2 xplus_y = vec2(tcd.x+texel_extent,tcd.y);
+	vec2 x_yminus = vec2(tcd.x,tcd.y-texel_extent);
+	vec2 x_yplus = vec2(tcd.x,tcd.y+texel_extent);
+
+	float dzdx = getTerrainHeight(xminus_y) - getTerrainHeight(xplus_y);
+	float dzdy = getTerrainHeight(x_yminus) - getTerrainHeight(x_yplus);
+
+	return normalize(get_normal_matrix() * vec3(dzdx,2.0f*quad_extent,dzdy));
+	/* task 1.5c end */
+}
+
+void generate_vertex(in vec2 p2d, in vec2 tcd)
+{
+	vec4  vertex = vec4(p2d.x, getTerrainHeight(tcd), p2d.y, 1.0) + transform;
+	vec4  hposition_eye = get_modelview_matrix()*vertex;
+	position_eye = hposition_eye.xyz / hposition_eye.w;
+	normal_eye   = compute_normal(tcd);
+	gl_Position  = get_modelview_projection_matrix()*vertex; 
+	EmitVertex();
+}
+
+void main()
+{
+	int i = instanceIn[0] % nr_quads_per_row;
+	int j = instanceIn[0] / nr_quads_per_row;
+	//colorIn[0];
+	texcoord_fs = min_tcd;
+
+	// compute quad corners in texture space
+	min_tcd = texel_extent * vec2(float(i), float(j)) - vec2(0.5);
+	max_tcd = min_tcd + vec2(texel_extent);
+
+	// compute quad corners in xy-plane
+	vec2 ctr_p2D = quad_extent * vec2(float(i), float(j)) - vec2(0.5);
+	vec2 min_p2D = ctr_p2D;
+	vec2 max_p2D = ctr_p2D + vec2(quad_extent);
+
+	color = vec4(
+				float(i)/nr_quads_per_row,
+				float(j)/nr_quads_per_row,
+				1-float(i)/nr_quads_per_row,
+			1);
+
+	// generate quad
+	generate_vertex(min_p2D, min_tcd);
+	generate_vertex(vec2(max_p2D.x,min_p2D.y), vec2(max_tcd.x, min_tcd.y));
+	generate_vertex(vec2(min_p2D.x,max_p2D.y), vec2(min_tcd.x, max_tcd.y));
+	generate_vertex(max_p2D, max_tcd);
+	EndPrimitive(); 
+}

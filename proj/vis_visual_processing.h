@@ -43,6 +43,7 @@
 #include "vr_kit_handhold_near_gui.h"
 #include <vr_kit_tmpfixed_gui.h>
 #include <vis_kit_meshes.h>
+#include "vis_parametric_surface_kit.h"
 
 class visual_processing :
 	public cgv::base::node,
@@ -170,6 +171,8 @@ protected:
 	point_cloud_interactable* stored_cloud = new point_cloud_interactable();
 	bool render_pc = true;
 	bool render_skybox = true;
+	bool render_parametric_surface = true;
+	bool render_handhold_gui = true;
 	bool force_correct_num_pcs = true;
 	bool direct_write = false;
 	bool render_img = false;
@@ -202,6 +205,7 @@ protected:
 	vr_kit_manipulation* manipulation_kit = nullptr;
 	vr_kit_imagebox* imagebox_kit = nullptr;
 	vis_kit_selection* selection_kit = nullptr;
+	parametric_surface* parametric_surface_kit = nullptr;
 
 public:
 
