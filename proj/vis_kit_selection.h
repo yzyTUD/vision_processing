@@ -475,8 +475,7 @@ public:
 							data_ptr->palette_lefthand_object_colors[smallestpalleteIdx];
 						// ok-todo: update picking group information 
 						// current, we can only select regions, build on top of functional indices 
-						current_selecting_idx = data_ptr->point_cloud_kit->pc.num_of_functional_selections 
-							+ smallestpalleteIdx;
+						current_selecting_idx = smallestpalleteIdx; //data_ptr->point_cloud_kit->pc.num_of_functional_selections 
 					}
 
 					data_ptr->point_cloud_kit->headset_direction = data_ptr->headset_direction;

@@ -328,6 +328,7 @@ public:
 		gp_btn_tmp.push_back("RegionGrowing\nAutoRegion\nGrowing");
 		gp_btn_tmp.push_back("RegionGrowing\nToggle\nCheckNmls");
 		gp_btn_tmp.push_back("RegionGrowing\nHighlightUnmarked");
+		gp_btn_tmp.push_back("RegionGrowing\nSaveToFile"); // write to a .cgvscan file 
 		gps.push_back(gp_btn_tmp);
 
 		//////////////////////////////////////////////////////////////////
@@ -337,9 +338,9 @@ public:
 		gp_btn_tmp.push_back("TopologyExtraction\nBoundary\nExtraction");
 		gp_btn_tmp.push_back("TopologyExtraction\nStepBack"); 
 		gp_btn_tmp.push_back("TopologyExtraction\nToggle\nOnlyRender\nFunctionIdx"); // finalize viewing of the points 
-		gp_btn_tmp.push_back("TopologyExtraction\nTopology\nExtraction"); // write to file, .cgvconnectivity  
+		gp_btn_tmp.push_back("TopologyExtraction\nTopology\nExtraction"); 
+		gp_btn_tmp.push_back("TopologyExtraction\nSaveToFile"); // write to a .cgvconnectivity file 
 		gps.push_back(gp_btn_tmp);
-
 
 		//////////////////////////////////////////////////////////////////
 		// point cloud: parametric surface fitting 
@@ -349,6 +350,7 @@ public:
 		gp_btn_tmp.push_back("ModelFitting\nFitEdgeCurves");
 		gp_btn_tmp.push_back("ModelFitting\nFitFaceSurface");
 		gp_btn_tmp.push_back("ModelFitting\nToggleControl\nPointsRendering");
+		gp_btn_tmp.push_back("ModelFitting\nSaveToFile"); // write to a .cgvfitting file 
 		gps.push_back(gp_btn_tmp);
 
 		//////////////////////////////////////////////////////////////////
@@ -466,19 +468,26 @@ public:
 		//}
 
 		/*colors for functional selection */
-		point_selection_colors.push_back(rgba(1.0f, 1.0f, 0.5f, 1.0f)); 
-		point_selection_colors.push_back(rgba(0.5f, 0.5f, 0.5f, 1.0f)); // ori, may not visible
-		point_selection_colors.push_back(rgba(0.0f, 0.0f, 0.0f, 1.0f)); // del, may not visible, the same as ori? 
-		point_selection_colors.push_back(rgba(1.0f, 0.0f, 0.0f, 1.0f));
-		point_selection_colors.push_back(rgba(0.996815, 0.961756, 0.993593, 1));
+		/*
+			vec4(0,1,1,1), // reserved 
+			vec4(0.5,0.5,0.5,1), // not used, original 
+			vec4(1,0,0,1), // deleted 
+			vec4(0,1,0,1), // boundary
+			vec4(1,1,1,1), // corner 
+		*/
+		point_selection_colors.push_back(rgba(1.0f, 1.0f, 0.5f, 1.0f)); // reserved
+		point_selection_colors.push_back(rgba(0.5f, 0.5f, 0.5f, 1.0f)); // ori, not visible
+		point_selection_colors.push_back(rgba(1.0f, 0.0f, 0.0f, 1.0f)); // deletion
+		point_selection_colors.push_back(rgba(0.0f, 1.0f, 0.0f, 1.0f)); // boundary 
+		point_selection_colors.push_back(rgba(1.0, 1.0, 1.0, 1)); //corner 
 
-		point_selection_colors.push_back(rgba(0.241852, 0.970925, 0.9684, 1));
-		point_selection_colors.push_back(rgba(0.982999, 0.973534, 0.753255, 1));
-		point_selection_colors.push_back(rgba(0.536838, 0.198876, 0.96145, 1));
-		point_selection_colors.push_back(rgba(0.367326, 0.820252, 0.818295, 1));
-		point_selection_colors.push_back(rgba(0.479585, 0.104305, 0.227698, 1));
+		point_selection_colors.push_back(rgba(0.241852, 0.970925, 0.9684, 1)); // ICP_SOURCE
+		point_selection_colors.push_back(rgba(0.982999, 0.973534, 0.753255, 1));// ICP_TARGET
+		point_selection_colors.push_back(rgba(0.536838, 0.198876, 0.96145, 1)); // ICP_SOURCE_SAMPLED
+		point_selection_colors.push_back(rgba(0.367326, 0.820252, 0.818295, 1));// ICP_TARGET_SAMPLED
+		point_selection_colors.push_back(rgba(0.479585, 0.104305, 0.227698, 1));// TO_BE_SUBSAMPLED
 
-		point_selection_colors.push_back(rgba(0.675787, 0.924162, 0.201218, 1));
+		point_selection_colors.push_back(rgba(0.675787, 0.924162, 0.201218, 1));// NEWLY_GENERATED
 		point_selection_colors.push_back(rgba(0.963543, 0.890588, 0.812987, 1));
 		point_selection_colors.push_back(rgba(0.818136, 0.690167, 0.553296, 1));
 		point_selection_colors.push_back(rgba(0.864216, 0.425165, 0.132141, 1));
@@ -564,18 +573,34 @@ public:
 		vec3 offset_right_global = vec3(0, 0, -0.2);
 
 		// pallete rendering: positions 
-		for (int ix = -2; ix < 3; ix++) {
-			for (int iz = 1; iz < 6; iz++) {
+		// add 10 points 
+		for (int iz = 8; iz > 6; iz--) {
+			for (int ix = -2; ix < 3; ix++) {
+				palette_lefthand_object_positions.push_back(vec3(ix * 0.05, 0.1, -iz * 0.05));
+				palette_lefthand_palette_initialpose_positions.push_back(vec3(ix * 0.05, 0.1, -iz * 0.05));
+			}
+		}
+		for (int iz = 5; iz > 0; iz--) {
+			for (int ix = -2; ix < 3; ix++) {
 				palette_lefthand_object_positions.push_back(vec3(ix * 0.05, 0.1, -iz * 0.05));
 				palette_lefthand_palette_initialpose_positions.push_back(vec3(ix * 0.05, 0.1, -iz * 0.05));
 			}
 		}
 
 		// pallete rendering: colors  
-		//init the colors rendering on left and right hand  
+		// init the colors rendering on left and right hand  
+		// this should have the same index as the positions 
+		// colors for limited functional selections (limits to 10, not all of them rendered )
+		int limited_functional_selections = 10;
+		for (int i = 0; i < limited_functional_selections; i++)
+			palette_lefthand_object_colors.push_back(
+				point_selection_colors[i]); //  without any offset 
+		// colors for marking regions 
 		for (int i = 0; i < point_cloud_kit->pc.num_of_regions; i++)
 			palette_lefthand_object_colors.push_back(
-				point_selection_colors[point_cloud_kit->pc.num_of_functional_selections + i]);
+				point_selection_colors[point_cloud_kit->pc.num_of_functional_selections + i]);  // with an offset of the functional ones 
+
+		//
 		palette_righthand_object_colors.push_back(
 			point_selection_colors[point_cloud_kit->pc.num_of_functional_selections]);
 

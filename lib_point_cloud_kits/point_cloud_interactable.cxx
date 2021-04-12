@@ -1239,19 +1239,19 @@ void point_cloud_interactable::collect_to_subsampled_pcs() {
 }
 ///
 void point_cloud_interactable::highlight_last_pc() {
-	if (num_of_pcs > 0) {
-		tmppc = pc;
-		pc = pc_last;
-		ensure_point_selection();
-		for (auto& v : pc_last.point_selection) {
-			v = point_cloud::PointSelectiveAttribute::ICP_TARGET_HIGHLIGHT;
-		}
-		use_these_point_color_indices = &pc_last.point_selection;
-		is_highlighting = true;
-	}
-	for (auto& v : pc_to_be_append.point_selection) {
-		v = point_cloud::PointSelectiveAttribute::ICP_SOURCE_HIGHLIGHT;
-	}
+	//if (num_of_pcs > 0) {
+	//	tmppc = pc;
+	//	pc = pc_last;
+	//	ensure_point_selection();
+	//	for (auto& v : pc_last.point_selection) {
+	//		v = point_cloud::PointSelectiveAttribute::ICP_TARGET_HIGHLIGHT;
+	//	}
+	//	use_these_point_color_indices = &pc_last.point_selection;
+	//	is_highlighting = true;
+	//}
+	//for (auto& v : pc_to_be_append.point_selection) {
+	//	v = point_cloud::PointSelectiveAttribute::ICP_SOURCE_HIGHLIGHT;
+	//}
 }
 ///
 void point_cloud_interactable::reset_highlighted_last_pc() {
