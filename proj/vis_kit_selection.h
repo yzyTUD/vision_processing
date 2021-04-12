@@ -215,7 +215,7 @@ public:
 			cgv::gui::vr_stick_event& vrse = static_cast<cgv::gui::vr_stick_event&>(e);
 			if (vrse.get_action() == cgv::gui::SA_MOVE) { // event 
 				if (vrse.get_controller_index() == data_ptr->right_rgbd_controller_index) { // controller 
-					if (data_ptr->check_roulette_selection(data_ptr->get_id_with_name("PointCloud\nMarking"))) { // selection 
+					if (data_ptr->check_roulette_selection(data_ptr->get_id_with_name("RegionGrowing\nGroupPicker"))) { // selection 
 						if (vrse.get_y() > 0) {
 							marking_style.radius += 0.001f;
 						}
@@ -257,7 +257,7 @@ public:
 			if (vrke.get_key() == vr::VR_MENU) { //
 				if (vrke.get_action() == cgv::gui::KA_PRESS) { //
 					if (vrke.get_controller_index() == data_ptr->right_rgbd_controller_index) { //
-						if (data_ptr->check_roulette_selection(data_ptr->get_id_with_name("PointCloud\nPrepare\nMarking"))) { //
+						if (data_ptr->check_roulette_selection(data_ptr->get_id_with_name("RegionGrowing\nPrepare\nMarking"))) { //
 							// this will overwrite face segmentations 
 							data_ptr->point_cloud_kit->prepare_grow(false,
 								&data_ptr->point_selection_colors, 
@@ -314,16 +314,18 @@ public:
 				//				marking_style.radius, true, current_selecting_idx);
 				//	}
 				//}
-				if (data_ptr->check_roulette_selection(data_ptr->get_id_with_name("PointCloud\nGroupPicker"))) { // hold throttle to mark
+				if (data_ptr->check_roulette_selection(data_ptr->get_id_with_name("RegionGrowing\nGroupPicker"))) { // hold throttle to mark
 					if (v > 0 && current_selecting_idx != -1) {
 						if (data_ptr->point_cloud_kit->can_parallel_grow == true) { 
 							data_ptr->point_cloud_kit->can_parallel_grow = false;
 							data_ptr->point_cloud_kit->mark_points_with_conroller(
 								data_ptr->cur_right_hand_posi + data_ptr->cur_off_right,
-									marking_style.radius, true, current_selecting_idx);
+									marking_style.radius, 
+										(cgv::type::uint8_type)current_selecting_idx);
 							if (data_ptr->point_cloud_kit->add_to_seed) {
 								// collect seeds
-								data_ptr->point_cloud_kit->init_region_growing_by_collecting_group_and_seeds_vr(current_selecting_idx);
+								data_ptr->point_cloud_kit->init_region_growing_by_collecting_group_and_seeds_vr(
+									(cgv::type::uint8_type)current_selecting_idx);
 								// then, grow on timer event, sleep optionally 
 							}
 							data_ptr->point_cloud_kit->can_parallel_grow = true;
@@ -336,7 +338,8 @@ public:
 							data_ptr->point_cloud_kit->can_parallel_grow = false;
 							data_ptr->point_cloud_kit->mark_points_with_conroller(
 								data_ptr->cur_right_hand_posi + data_ptr->cur_off_right,
-								marking_style.radius, true, current_selecting_idx);
+									marking_style.radius,
+										(cgv::type::uint8_type)current_selecting_idx);
 							data_ptr->point_cloud_kit->can_parallel_grow = true;
 						}
 					}
@@ -347,7 +350,8 @@ public:
 							data_ptr->point_cloud_kit->can_parallel_grow = false;
 							data_ptr->point_cloud_kit->mark_points_with_conroller(
 								data_ptr->cur_right_hand_posi + data_ptr->cur_off_right,
-								marking_style.radius, true, current_selecting_idx);
+									marking_style.radius, 
+										(cgv::type::uint8_type)current_selecting_idx);
 							data_ptr->point_cloud_kit->can_parallel_grow = true;
 						}
 					}
@@ -463,6 +467,8 @@ public:
 						}
 					}
 					// update color with the one has minimal dist to the RC 
+					// check the position on rigth hand, if it is close enough to palette balls, we change the current index 
+					// the ball's size on right hand doesnt matter 
 					if (dist < palette_style.radius) {
 						hasOverlaping = true;
 						data_ptr->palette_righthand_object_colors[0] = 
@@ -570,7 +576,7 @@ public:
 			render_a_sphere_on_righthand(ctx);
 			data_ptr->righthand_object_colors[0] = data_ptr->point_selection_colors[2];
 		}
-		if (data_ptr->check_roulette_selection(data_ptr->get_id_with_name("PointCloud\nGroupPicker"))) {
+		if (data_ptr->check_roulette_selection(data_ptr->get_id_with_name("RegionGrowing\nGroupPicker"))) {
 			render_palette_on_left_hand(ctx);
 			render_palette_sphere_on_righthand(ctx);
 		}

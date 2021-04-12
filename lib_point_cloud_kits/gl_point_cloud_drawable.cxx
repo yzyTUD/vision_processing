@@ -264,6 +264,9 @@ void gl_point_cloud_drawable::draw_points_surfel(context& ctx)
 	s_renderer.ref_prog().set_uniform(ctx, "renderScan3", renderScan3);
 	s_renderer.ref_prog().set_uniform(ctx, "renderScan4", renderScan4);
 	s_renderer.ref_prog().set_uniform(ctx, "renderScan5", renderScan5);
+
+	s_renderer.ref_prog().set_uniform(ctx, "render_with_functional_ids_only", render_with_functional_ids_only);
+	s_renderer.ref_prog().set_uniform(ctx, "highlight_unmarked_points", highlight_unmarked_points);
 	
 	std::size_t n = (show_point_end - show_point_begin) / show_point_step;
 	GLint offset = GLint(show_point_begin / show_point_step);

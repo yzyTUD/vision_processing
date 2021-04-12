@@ -156,11 +156,11 @@ void visual_processing::parallel_timer_event() {
 			// atomic
 			data_ptr->point_cloud_kit->can_parallel_grow = false;
 			int i = 0;
-			while (i<100) {
+			while (i < data_ptr->point_cloud_kit->steps_per_event_as_speed) {
 				for (int gi = data_ptr->point_cloud_kit->pc.num_of_functional_selections;
 					gi < data_ptr->point_cloud_kit->pc.max_num_of_selections; gi++)
 				{
-					data_ptr->point_cloud_kit->grow_one_step_bfs(true, gi, point_cloud::PointSelectiveAttribute::DEL);
+					data_ptr->point_cloud_kit->grow_one_step_bfs(data_ptr->point_cloud_kit->region_grow_check_normals, gi);
 					post_redraw();
 				}
 				i++;
@@ -456,10 +456,6 @@ bool visual_processing::handle(cgv::gui::event& e)
 				if (data_ptr->check_roulette_selection(data_ptr->get_id_with_name("PointCloud\nShowNml"))) { 
 					data_ptr->point_cloud_kit->show_nmls = !data_ptr->point_cloud_kit->show_nmls;
 				}
-				// selection = PointCloud\nGroupPicker
-				if (data_ptr->check_roulette_selection(data_ptr->get_id_with_name("PointCloud\nGroupPick"))) { 
-					//data_ptr->point_cloud_kit->show_nmls = !data_ptr->point_cloud_kit->show_nmls;
-				}
 				// 
 				if (data_ptr->check_roulette_selection(data_ptr->get_id_with_name("PointCloud\nToggle\nACloud"))) {
 					data_ptr->point_cloud_kit->enable_acloud_effect = 
@@ -484,11 +480,37 @@ bool visual_processing::handle(cgv::gui::event& e)
 				if (data_ptr->check_roulette_selection(data_ptr->get_id_with_name("PointCloud\nToggle\npcColor"))) {
 					data_ptr->point_cloud_kit->render_with_original_color = !data_ptr->point_cloud_kit->render_with_original_color;
 				}
-				// touch to toggle 
-				if (data_ptr->check_roulette_selection(data_ptr->get_id_with_name("PointCloud\nAutoRegion\nGrowing"))) {
+				
+				/*region growing */
+				// selection = PointCloud\nGroupPicker
+				if (data_ptr->check_roulette_selection(data_ptr->get_id_with_name("RegionGrowing\nGroupPick"))) { 
+					//data_ptr->point_cloud_kit->show_nmls = !data_ptr->point_cloud_kit->show_nmls;
+				}
+				if (data_ptr->check_roulette_selection(data_ptr->get_id_with_name("RegionGrowing\nAutoRegion\nGrowing"))) {
 					data_ptr->point_cloud_kit->do_region_growing_directly = !data_ptr->point_cloud_kit->do_region_growing_directly;
 				}
-				
+				if (data_ptr->check_roulette_selection(data_ptr->get_id_with_name("RegionGrowing\nToggle\nCheckNmls"))) {
+					data_ptr->point_cloud_kit->region_grow_check_normals = !data_ptr->point_cloud_kit->region_grow_check_normals;
+				}
+				if (data_ptr->check_roulette_selection(data_ptr->get_id_with_name("RegionGrowing\nHighlightUnmarked"))) {
+					data_ptr->point_cloud_kit->highlight_unmarked_points = !data_ptr->point_cloud_kit->highlight_unmarked_points;
+				}
+
+				/*topology extraction */
+				if (data_ptr->check_roulette_selection(data_ptr->get_id_with_name("TopologyExtraction\nBoundary\nExtraction"))) {
+					data_ptr->point_cloud_kit->boundary_extraction();
+				}
+				if (data_ptr->check_roulette_selection(data_ptr->get_id_with_name("TopologyExtraction\nStepBack"))) {
+					data_ptr->point_cloud_kit->step_back_last_selection();
+				}
+				if (data_ptr->check_roulette_selection(data_ptr->get_id_with_name("TopologyExtraction\nToggle\nOnlyRender\nFunctionIdx"))) {
+					data_ptr->point_cloud_kit->render_with_functional_ids_only = !data_ptr->point_cloud_kit->render_with_functional_ids_only;
+				}
+				if (data_ptr->check_roulette_selection(data_ptr->get_id_with_name("TopologyExtraction\nTopology\nExtraction"))) {
+					data_ptr->point_cloud_kit->extract_connectivity_graph();
+				}
+				//
+
 				/*point cleaning */
 				if (data_ptr->check_roulette_selection(data_ptr->get_id_with_name("PCCleaning\nStepBackWard"))) {
 					data_ptr->point_cloud_kit->step_back_last_selection();
@@ -1029,8 +1051,7 @@ void visual_processing::del_menu_btn_press() {
 	// marking on cpu side, mark as deleted 
 	data_ptr->point_cloud_kit->mark_points_with_conroller(
 		data_ptr->cur_right_hand_posi + data_ptr->cur_off_right,
-		data_ptr->point_cloud_kit->controller_effect_range, true,
-		point_cloud::PointSelectiveAttribute::DEL);
+		data_ptr->point_cloud_kit->controller_effect_range, point_cloud::PointSelectiveAttribute::DEL);
 }
 ///
 void visual_processing::del_menu_btn_release() {
@@ -1043,9 +1064,8 @@ void visual_processing::selective_downsampling_menu_btn_press() {
 	// mark -> TO_BE_SUBSAMPLED, to test, ignore points marked as deleted
 	data_ptr->point_cloud_kit->mark_points_with_conroller(
 		data_ptr->cur_right_hand_posi + data_ptr->cur_off_right,
-			data_ptr->point_cloud_kit->controller_effect_range, true,
-				point_cloud::PointSelectiveAttribute::TO_BE_SUBSAMPLED, 
-					point_cloud::PointSelectiveAttribute::DEL);
+			data_ptr->point_cloud_kit->controller_effect_range, 
+				point_cloud::PointSelectiveAttribute::TO_BE_SUBSAMPLED);
 	// TO_BE_SUBSAMPLED -> DEL
 	data_ptr->point_cloud_kit->selective_subsampling_cpu();
 	// reset unused marks (some time needs)
@@ -1167,13 +1187,18 @@ void visual_processing::create_gui() {
 	add_member_control(this, "paratone_3", data_ptr->paratone_3, "value_slider", "min=-1;max=1;log=false;ticks=true;");
 	add_member_control(this, "paratone_4", data_ptr->paratone_4, "value_slider", "min=-1;max=1;log=false;ticks=true;");
 	add_member_control(this, "paratone_5", data_ptr->paratone_5, "value_slider", "min=-1;max=1;log=false;ticks=true;");
+
 	add_member_control(this, "render skybox", render_skybox, "check");
 	add_member_control(this, "render_handhold_gui", render_handhold_gui, "check");
+	add_member_control(this, "render_parametric_surface", render_parametric_surface, "check");
+	add_member_control(this, "render_with_functional_ids_only", data_ptr->point_cloud_kit->render_with_functional_ids_only, "check");
+	add_member_control(this, "highlight_unmarked_points", data_ptr->point_cloud_kit->highlight_unmarked_points, "check");
 	add_member_control(this, "render_nmls", data_ptr->point_cloud_kit->show_nmls, "check");
 	add_member_control(this, "hmd_culling", data_ptr->point_cloud_kit->enable_headset_culling, "check");
 	add_member_control(this, "from_CC_txt", data_ptr->point_cloud_kit->pc.from_CC, "check");
 	connect_copy(add_control("render_pc", render_pc, "check")->value_change, rebind(
 		static_cast<drawable*>(this), &visual_processing::post_redraw));
+
 	connect_copy(add_button("read_pc")->click, rebind(this, &visual_processing::start_reading_pc_parallel));
 	connect_copy(add_button("read_pc_append")->click, rebind(this, &visual_processing::read_pc_append));
 	connect_copy(add_button("prepare_marking")->click, rebind(this, &visual_processing::prepare_marking));
@@ -1190,7 +1215,7 @@ void visual_processing::create_gui() {
 	//  
 	if (begin_tree_node("Connectivity Graph", data_ptr->point_cloud_kit->show_nmls, true, "level=3")) {
 		connect_copy(add_button("boundary_extraction")->click, rebind(this, &visual_processing::boundary_extraction));
-		connect_copy(add_button("extract_connectivity_graph")->click, rebind(this, &visual_processing::extract_connectivity_graph));
+		connect_copy(add_button("topology_extraction")->click, rebind(this, &visual_processing::extract_connectivity_graph));
 	}
 
 	//

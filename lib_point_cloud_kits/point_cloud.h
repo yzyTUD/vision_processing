@@ -144,6 +144,8 @@ public:
 		can be stored externally in a .cgv
 		build upon the .cgvscan file, ref the original data structure  
 	*/
+	/// internal storage 
+	std::vector<cgv::type::uint8_type> per_vertex_topology;
 	/// vertices in connectivity graph, one vertex V consists of a list of points 
 	std::vector<std::vector<int>> V_conn; 
 	/// edges in connectivity graph

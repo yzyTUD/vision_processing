@@ -239,10 +239,10 @@ public:
 	int max_group_num = 10;
 	bool disable_gui = false;
 	std::vector<std::vector<std::string>> gps; 
-	std::vector<std::string> gp0_btns;
-	std::vector<std::string> gp1_btns;
-	std::vector<std::string> gp2_btns;
-	std::vector<std::string> gp3_btns;
+	//std::vector<std::string> gp0_btns;
+	//std::vector<std::string> gp_btn_tmp;
+	//std::vector<std::string> gp_btn_tmp;
+	//std::vector<std::string> gp3_btns;
 	std::vector<rgba> point_selection_colors; 
 	std::vector<vec3> headset_object_positions; // dynamic 
 	vec3 headset_direction;
@@ -298,45 +298,76 @@ public:
 		//initialize_trackable_list();
 		//supersampling_bbox = box3(vec3(-2,0,0),vec3(2,1,1));
 		//mode = interaction_mode::SUPERSAMPLING_DRAW;
-
-		//////////////////////////////////////////////////////////////////
-		//
-		//////////////////////////////////////////////////////////////////
-		gp0_btns.push_back("Teleport\nRotate");
-		gp0_btns.push_back("Teleport\nDirectional");
-		gp0_btns.push_back("Teleport\nLifting");
-		gp0_btns.push_back("Teleport\nFineGrain");
-		gp0_btns.push_back("Teleport\nTeleport");
-		gps.push_back(gp0_btns);
-
-		//////////////////////////////////////////////////////////////////
-		// basic pc opereations, surfel, cpu side 
-		//////////////////////////////////////////////////////////////////
-		gp1_btns.push_back("PointCloud\nPointSize");
-		gp1_btns.push_back("PointCloud\nGroupPicker");
-		gp1_btns.push_back("PointCloud\nDelPoints\nTouchTo\nActivate");
-		gp1_btns.push_back("PointCloud\nMarkAs\nOrig");
-		gp1_btns.push_back("PointCloud\nPrepare\nMarking");
-		gp1_btns.push_back("PointCloud\nToggle\npcColor");
-		//gp1_btns.push_back("PointCloud\nFoldingPoints");
-		//gp1_btns.push_back("PointCloud\nSuperSampling");
-		gp1_btns.push_back("PointCloud\nAutoRegion\nGrowing");
-		gp1_btns.push_back("PointCloud\nShowNml");
-		gp1_btns.push_back("PointCloud\nToggle\nACloud");
-		gp1_btns.push_back("PointCloud\nACloud\nCtrl\nRange");
-		gp1_btns.push_back("PointCloud\nToggle\nCamera\nCulling");
-		gp1_btns.push_back("PointCloud\nCulling\nRange");
-		gps.push_back(gp1_btns);
-
-		//
 		std::vector<std::string> gp_btn_tmp;
 
 		//////////////////////////////////////////////////////////////////
-		// point cloud demo generator  
+		//
 		//////////////////////////////////////////////////////////////////
 		gp_btn_tmp.clear();
-		gp_btn_tmp.push_back("PointCloud\nGenCube");
-		gp_btn_tmp.push_back("PointCloud\nGenPlane");
+		gp_btn_tmp.push_back("Teleport\nRotate");
+		gp_btn_tmp.push_back("Teleport\nDirectional");
+		gp_btn_tmp.push_back("Teleport\nLifting");
+		gp_btn_tmp.push_back("Teleport\nFineGrain");
+		gp_btn_tmp.push_back("Teleport\nTeleport");
+		gps.push_back(gp_btn_tmp);
+
+		//bkp: gp_btn_tmp.push_back("PointCloud\nDelPoints\nTouchTo\nActivate");
+		//bkp: gp_btn_tmp.push_back("PointCloud\nMarkAs\nOrig");
+		//bkp: gp_btn_tmp.push_back("PointCloud\nToggle\npcColor");
+		//bkp: gp_btn_tmp.push_back("PointCloud\nFoldingPoints");
+		//bkp: gp_btn_tmp.push_back("PointCloud\nSuperSampling");
+		//bkp: gp_btn_tmp.push_back("PointCloud\nToggle\nACloud");
+		//bkp: gp_btn_tmp.push_back("PointCloud\nACloud\nCtrl\nRange");
+
+		//////////////////////////////////////////////////////////////////
+		// point cloud: region growing 
+		//////////////////////////////////////////////////////////////////
+		gp_btn_tmp.clear();
+		gp_btn_tmp.push_back("RegionGrowing\nPrepare\nMarking");
+		gp_btn_tmp.push_back("RegionGrowing\nGroupPicker");
+		gp_btn_tmp.push_back("RegionGrowing\nAutoRegion\nGrowing");
+		gp_btn_tmp.push_back("RegionGrowing\nToggle\nCheckNmls");
+		gp_btn_tmp.push_back("RegionGrowing\nHighlightUnmarked");
+		gps.push_back(gp_btn_tmp);
+
+		//////////////////////////////////////////////////////////////////
+		// point cloud: topology extraction 
+		//////////////////////////////////////////////////////////////////
+		gp_btn_tmp.clear();
+		gp_btn_tmp.push_back("TopologyExtraction\nBoundary\nExtraction");
+		gp_btn_tmp.push_back("TopologyExtraction\nStepBack"); 
+		gp_btn_tmp.push_back("TopologyExtraction\nToggle\nOnlyRender\nFunctionIdx"); // finalize viewing of the points 
+		gp_btn_tmp.push_back("TopologyExtraction\nTopology\nExtraction"); // write to file, .cgvconnectivity  
+		gps.push_back(gp_btn_tmp);
+
+
+		//////////////////////////////////////////////////////////////////
+		// point cloud: parametric surface fitting 
+		//////////////////////////////////////////////////////////////////
+		gp_btn_tmp.clear();
+		gp_btn_tmp.push_back("ModelFitting\nFitVertices");
+		gp_btn_tmp.push_back("ModelFitting\nFitEdgeCurves");
+		gp_btn_tmp.push_back("ModelFitting\nFitFaceSurface");
+		gp_btn_tmp.push_back("ModelFitting\nToggleControl\nPointsRendering");
+		gps.push_back(gp_btn_tmp);
+
+		//////////////////////////////////////////////////////////////////
+		// poitn cloud: procedure generation 
+		//////////////////////////////////////////////////////////////////
+		gp_btn_tmp.clear();
+		gp_btn_tmp.push_back("PCGen\nCube");
+		gp_btn_tmp.push_back("PCGen\nPlane");
+		gp_btn_tmp.push_back("PCGen\nBezierSurface\nWithControlPoints");
+		gps.push_back(gp_btn_tmp);
+
+		//////////////////////////////////////////////////////////////////
+		// poitn cloud: rendering adjustments 
+		//////////////////////////////////////////////////////////////////
+		gp_btn_tmp.clear();
+		gp_btn_tmp.push_back("PointCloud\nPointSize");
+		gp_btn_tmp.push_back("PointCloud\nShowNml");
+		gp_btn_tmp.push_back("PointCloud\nToggle\nCamera\nCulling");
+		gp_btn_tmp.push_back("PointCloud\nCulling\nRange");
 		gps.push_back(gp_btn_tmp);
 
 		/*
@@ -356,7 +387,6 @@ public:
 		gp_btn_tmp.push_back("PCCleaning\nAddition\nSphere");
 		gp_btn_tmp.push_back("PCCleaning\nCopyPoints");
 		// modification 
-
 		// toolset 
 		gp_btn_tmp.push_back("PCCleaning\nStepBackWard");
 		gp_btn_tmp.push_back("PCCleaning\nStepForward");
@@ -372,13 +402,14 @@ public:
 		gps.push_back(gp_btn_tmp);
 
 		//////////////////////////////////////////////////////////////////
-		// point cloud shading effect 
+		// point cloud direct mesh 
 		//////////////////////////////////////////////////////////////////
-		gp2_btns.push_back("Meshing\nPickingPoints");
-		gp2_btns.push_back("Meshing\nAdjestPointSize");
-		gp2_btns.push_back("Meshing\nFaceCreation");
-		gp2_btns.push_back("Meshing\nSaveMesh");
-		gps.push_back(gp2_btns);
+		gp_btn_tmp.clear();
+		gp_btn_tmp.push_back("Meshing\nPickingPoints");
+		gp_btn_tmp.push_back("Meshing\nAdjestPointSize");
+		gp_btn_tmp.push_back("Meshing\nFaceCreation");
+		gp_btn_tmp.push_back("Meshing\nSaveMesh");
+		gps.push_back(gp_btn_tmp);
 
 		//////////////////////////////////////////////////////////////////
 		// animating 

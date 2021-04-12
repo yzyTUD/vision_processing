@@ -464,8 +464,16 @@ public:
 				// local offset 
 				vec3 offset = vec3(0,0.008,-0.2);
 				// pressing effect 
-				if (data_ptr->check_btn_active_givenrot(btn.off_angle))
-					offset.y() = 0;
+				/*if (data_ptr->check_btn_active_givenrot(btn.off_angle))
+					offset.y() = 0;*/
+				// pressing effect for individual btns 
+				// todo: support additional visual feedbacks
+				if (btn.labeltex->label_text.compare("RegionGrowing\nAutoRegion\nGrowing") == 0) {
+					if (data_ptr->point_cloud_kit->do_region_growing_directly) {
+						offset.y() = 0;
+					}
+				}
+				// ...
 				// local to global 
 				data_ptr->cur_left_hand_rot_quat.rotate(offset);
 				for (auto& p : quad_P) {

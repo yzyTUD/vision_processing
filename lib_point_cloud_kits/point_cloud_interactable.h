@@ -59,8 +59,8 @@ enum PointCloudChangeEvent
 class pointHistoryEntry {
 public:
 	int point_index;
-	int from_selection;
-	int to_selection;
+	cgv::type::uint8_type from_selection;
+	cgv::type::uint8_type to_selection;
 	int timestamp;
 	//
 };
@@ -151,12 +151,12 @@ public:
 	void prepare_marking(std::vector<rgba>* psc);
 	///
 	//void mark_points_with_conroller(Pnt p, float r, bool confirmed, int objctive);
-	///
-	void mark_points_with_conroller(Pnt p, float r, bool confirmed, int objctive, int ignore_id = -1);
+	/// 
+	void mark_points_with_conroller(Pnt p, float r, cgv::type::uint8_type objctive);
 	///
 	void new_history_recording();
 	///
-	std::vector< std::vector<pointHistoryEntry>> point_marking_history;
+	std::stack<std::vector<pointHistoryEntry>> point_marking_history;
 	/// how many steps are you going back, offset in the 
 	/// make sure to check it no larger than the size of the history 
 	int history_indexer = 0;
@@ -209,7 +209,7 @@ public:
 	///
 	void reset_region_growing_seeds();
 	///
-	void init_region_growing_by_collecting_group_and_seeds_vr(int current_selecting_idx);
+	void init_region_growing_by_collecting_group_and_seeds_vr(cgv::type::uint8_type current_selecting_idx);
 	///
 	void init_region_growing_by_setting_group_and_seeds(int growing_group, std::queue<int> picked_id_list);
 	///
@@ -238,11 +238,13 @@ public:
 	void subsampling_target(Pnt& posi, float& radii, bool confirmed);
 	///
 	void do_region_growing_timer_event(double t, double dt);
-	bool grow_one_step_bfs(bool check_nml, int which_group, cgv::type::uint8_type ignore_group);
+	///
+	bool grow_one_step_bfs(bool check_nml, int which_group);
 	/// varibles that used for region growing
 	bool marked = false;
-	bool do_region_growing_directly = true;
-	int steps_per_event_as_speed = 1000;
+	bool do_region_growing_directly = false;
+	bool region_grow_check_normals = true;
+	int steps_per_event_as_speed = 200;
 	bool can_sleep = false;
 	bool add_to_seed = true;
 	bool can_parallel_grow = true;

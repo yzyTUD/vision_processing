@@ -89,7 +89,7 @@ protected:
 
 private:
 	bool label_outofdate; // whether label texture is out of date
-
+	bool region_grow_check_normals = true;
 protected:
 	unsigned label_resolution; // resolution of label texture
 	cgv::render::texture label_tex; // texture used for offline rendering of label
@@ -171,7 +171,7 @@ protected:
 	point_cloud_interactable* stored_cloud = new point_cloud_interactable();
 	bool render_pc = true;
 	bool render_skybox = true;
-	bool render_parametric_surface = true;
+	bool render_parametric_surface = false;
 	bool render_handhold_gui = true;
 	bool force_correct_num_pcs = true;
 	bool direct_write = false;
