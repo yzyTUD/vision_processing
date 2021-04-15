@@ -498,7 +498,7 @@ bool visual_processing::handle(cgv::gui::event& e)
 
 				/*topology extraction */
 				if (data_ptr->check_roulette_selection(data_ptr->get_id_with_name("TopologyExtraction\nBoundary\nExtraction"))) {
-					data_ptr->point_cloud_kit->boundary_extraction();
+					data_ptr->point_cloud_kit->point_classification();
 				}
 				if (data_ptr->check_roulette_selection(data_ptr->get_id_with_name("TopologyExtraction\nStepBack"))) {
 					data_ptr->point_cloud_kit->step_back_last_selection();
@@ -507,7 +507,7 @@ bool visual_processing::handle(cgv::gui::event& e)
 					data_ptr->point_cloud_kit->render_with_functional_ids_only = !data_ptr->point_cloud_kit->render_with_functional_ids_only;
 				}
 				if (data_ptr->check_roulette_selection(data_ptr->get_id_with_name("TopologyExtraction\nTopology\nExtraction"))) {
-					data_ptr->point_cloud_kit->extract_connectivity_graph();
+					//data_ptr->point_cloud_kit->extract_connectivity_graph();
 				}
 				//
 

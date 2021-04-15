@@ -356,6 +356,96 @@ point_cloud::Idx point_cloud::end_index(Idx component_index) const
 		return Idx(component_point_range(component_index).index_of_first_point + component_point_range(component_index).nr_points);
 }
 
+/// collect point_indices/ compute he 
+void point_cloud::make_explicit() {
+	// collect faces 
+	for (int i = 0; i < num_face_ids; i++) {
+		mFace tmp_mFace;
+		tmp_mFace.face_id = i;
+		for (auto fc : F_conn) {
+			if (fc.face_id == i) {
+				tmp_mFace.point_indices.push_back(fc.point_id);
+			}
+		}
+		modelFace.push_back(tmp_mFace);
+	}
+	// collect corners 
+	for (int i = 0; i < num_corner_ids; i++) {
+		mV tmp_mV;
+		tmp_mV.corner_id = i;
+		// hint: elements in V_conn should have the same incodents, just take the first one 
+		for (auto fi : V_conn.at(0).incident_ids) {
+			tmp_mV.incident_faces.push_back((int)fi - 20); // convert to face index 
+		}
+		for (auto vc : V_conn) {
+			if (vc.corner_id == i) {
+				tmp_mV.point_indices.push_back(vc.point_id);
+				tmp_mV.valence = vc.valence;
+			}
+		}
+		modelV.push_back(tmp_mV);
+	}
+	// collect edges  
+	for (int i = 0; i < num_edge_ids; i++) {
+		mHE tmp_mHE;
+		tmp_mHE.edge_id = i;
+		// hint: elements in E_conn should have the same incodents, just take the first one 
+		for (auto fi : E_conn.at(0).incident_ids) {
+			tmp_mHE.incident_faces.push_back((int)fi - 20); // convert to face index 
+		}
+		for (auto ec : E_conn) {
+			if (ec.edge_id == i) {
+				tmp_mHE.point_indices.push_back(ec.point_id);
+				tmp_mHE.valence = ec.valence;
+			}
+		}
+		modelHE.push_back(tmp_mHE);
+	}
+}
+
+/// fit one vertex for each corner
+void point_cloud::vertex_fitting() {
+	// goal: fit one vertex for each corner
+	for (int i = 0; i < num_corner_ids; i++) {
+		Pnt fitted_center_point; // for corner i 
+		int num_of_points_curr_corner;
+		// goal: collect points belones to this corner and compute 
+		for (auto vc : V_conn) { 
+			if (vc.corner_id == i) {
+				fitted_center_point += pnt(vc.point_id);
+				num_of_points_curr_corner++;
+			}
+		}
+		fitted_center_point = fitted_center_point / num_of_points_curr_corner;
+		// state: 
+		// update global storage 
+		control_points.push_back(fitted_center_point);
+		mV tmp_mV;
+		tmp_mV.control_point_index = control_points.size() - 1; // we have just pushed
+		tmp_mV.corner_id = i;
+		modelV.push_back(tmp_mV);
+	}
+	// todo: check visually 
+}
+
+/// find 4 control points for each edge
+void point_cloud::edge_fitting() {
+	// for each edge
+	for (int i = 0; i < num_edge_ids; i++) {
+	
+	}
+}
+
+void point_cloud::surface_fitting() {
+
+}
+
+void point_cloud::fit_all() {
+	vertex_fitting();
+	edge_fitting();
+	surface_fitting();
+}
+
 point_cloud::point_cloud()
 { 
 	has_clrs = false;
@@ -387,6 +477,7 @@ point_cloud::point_cloud(const string& file_name)
 
 	read(file_name);
 }
+
 void point_cloud::clear_all_for_get_next_shot() {
 	P.clear();
 	N.clear();
@@ -485,6 +576,7 @@ void point_cloud::clear_campose() {
 	//cam_posi = cgv::math::fvec<float, 3>(-1000);
 	cam_posi_list.clear();
 }
+
 void point_cloud::clear()
 {
 	P.clear();

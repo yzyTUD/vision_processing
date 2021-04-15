@@ -13,6 +13,106 @@
 
 #define BYTE_COLORS
 
+// implicit connectivity 
+/*
+	this will be saved to file as:
+	vc point_id valence incident_ids corner_id
+*/
+struct V_conn_info {
+	int point_id; // this index can be used to retrieve points in point list
+	int valence;
+	std::set<cgv::type::uint8_type> incident_ids; // incident to surrounding points, their ids 
+	int corner_id; // to which corner it belones to 
+	bool visited;
+};
+/*
+	this will be saved to file as:
+	ec point_id valence incident_ids edge_id
+*/
+// this is stored per point 
+struct E_conn_info {
+	int point_id; // this index can be used to retrieve points in point list
+	int valence;
+	std::set<cgv::type::uint8_type> incident_ids; // incident to surrounding points, their ids 
+	int edge_id; // to which edge it belones to 
+	bool visited;
+};
+/*
+	this will be saved to file as: 
+	fc point_id face_id angle_in_neighbor_graph
+*/
+struct F_conn_info {
+	int point_id; // this index can be used to retrieve points in point list
+	// surrounded by points with the same id 
+	float angle_in_neighbor_graph; // used to extract boundaries
+	int face_id; // to which face it belones to, globally
+};
+// -> 
+// explicit connectivity, more info than he 
+// model has a list of pbHEs, do not mix up with E_conn_info, which has larger size, per point info
+/*
+*	storage:
+*
+	number of control points
+	list of control points
+	...
+	number of faces
+	control point indices
+	...
+
+	or, inverse. Similar to the storage of surfaces in visualization library.
+*/
+struct mV { // "model vertex "
+	typedef cgv::math::fvec<float, 3> Pnt;
+
+	int corner_id; // to which corner it belones to 
+
+	// point based representation 
+	std::vector<int> point_indices; // ok
+	int valence; // ok
+
+	// he 
+	std::vector<int> incident_edges;
+	std::vector<int> incident_faces; // ok
+
+	// fitting
+	int control_point_index; // implicit fitted position 
+
+};
+struct mHE { // "model half edge "
+	int edge_id; // to which edge it belones to 
+
+	// point based representation 
+	std::vector<int> point_indices;
+	int valence;
+
+	// he 
+	mV* orig;
+	mV* dist; // or, he.next.orig
+	mHE* next;
+	mHE* inv;
+	mHE* prev;
+	std::vector<int> incident_faces; // ok 
+	bool is_boundary = false;
+
+	// fitting
+	std::vector<int> control_point_indices; // typically 4 elements 
+
+};
+struct mFace { // 
+	int face_id; // to which face it belones to, globally
+
+	// point based representation 
+	std::vector<int> point_indices;
+
+	// he 
+	std::vector<int> incident_edges;
+
+	// fitting
+	std::vector<int> control_point_indices; // typically 16 elements 
+
+};
+
 /** define all point cloud relevant types in this helper class */
 struct point_cloud_types
 {
@@ -144,16 +244,31 @@ public:
 		can be stored externally in a .cgv
 		build upon the .cgvscan file, ref the original data structure  
 	*/
-	/// internal storage 
-	std::vector<cgv::type::uint8_type> per_vertex_topology;
-	/// vertices in connectivity graph, one vertex V consists of a list of points 
-	std::vector<std::vector<int>> V_conn; 
-	/// edges in connectivity graph
-	std::vector<std::vector<int>> E_conn;
+	/// conniectivity graph storage 
 	/// faces in connectivity graph
-	std::vector<std::vector<int>> F_conn;
-	/// do some region growing and extract to the data structure above, quality depends on the prev. steps 
-	//void extract_connectivity_graph(); -> interactable 
+	std::vector<F_conn_info> F_conn; int num_face_ids;
+	/// edges in connectivity graph
+	std::vector<E_conn_info> E_conn; int num_edge_ids;
+	/// vertices in connectivity graph, one vertex V consists of a list of points 
+	std::vector<V_conn_info> V_conn;  int num_corner_ids;
+	/// convenient structures for fast retrivel 
+	std::map<int, V_conn_info> pid_to_V_conn_info_map; // from point_id, find V_conn_info
+	std::map<int, E_conn_info> pid_to_E_conn_info_map; // from point_id, find E_conn_info
+	/* 
+	*	impl. in pc_interactable to enable knn usage 
+	* 
+	*	///
+		void point_classification();
+		///  quality depends on the prev. steps 
+		void face_extraction();
+		/// do some region growing and extract to global ds 
+		void corner_extraction();
+		/// do some region growing and extract to global ds 
+		void edge_extraction();
+		///
+		void extract_all();
+	*/
+	void make_explicit();
 	/// assign per vertex attributes after extraction 
 	void colorize_the_connectivity_graph();
 	///
@@ -163,13 +278,25 @@ public:
 
 	/*
 		can be stored externally in a .cgvfitting file, per point cloud varible
+		or, .cgvmodel build upon connectivity and fitting informaiton 
+		explicit storage 
 	*/
 	/// V_fit.size() will be the same as the V_conn.size(), at least 3 floats representing 3 coordinates 
-	std::vector<std::vector<float>> V_fit;
+	std::vector<mV> modelV;
 	/// fitted curve, at least 4 float parameters 
-	std::vector<std::vector<float>> E_fit;
+	std::vector<mHE> modelHE;
 	/// fitted surface, at least 16 float parameters 
-	std::vector<std::vector<float>> F_fit;
+	std::vector<mFace> modelFace;
+	/// global storage of the control points 
+	std::vector<Pnt> control_points;
+	/// find control points for vertices  
+	void vertex_fitting();
+	/// find control points for edges 
+	void edge_fitting();
+	/// find control points for faces 
+	void surface_fitting();
+	///
+	void fit_all();
 	///
 	bool read_cgvfitting(const std::string& file_name);
 	///

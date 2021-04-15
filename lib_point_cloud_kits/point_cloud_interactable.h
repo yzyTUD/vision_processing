@@ -186,10 +186,15 @@ public:
 		connectivity graph extraction 
 	*/
 	/// thw quality of the boundaries depends on region growing steps, how good faces are marked 
-	void boundary_extraction(); 
-	/// do some region growing and extract to the data structure above, quality depends on the prev. steps 
-	void extract_connectivity_graph();
-
+	void point_classification();
+	///  quality depends on the prev. steps 
+	void face_extraction();
+	/// do some region growing and extract to global ds 
+	void corner_extraction();
+	/// do some region growing and extract to global ds 
+	void edge_extraction();
+	///
+	void extract_all();
 
 	// selective subsampling within given point type, with a global adjustable ratio 
 	void selective_subsampling_cpu();
