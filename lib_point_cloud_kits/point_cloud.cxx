@@ -421,8 +421,9 @@ void point_cloud::make_explicit() {
 			// goal: check if included 
 			bool included_by_vf_incidents = true;
 			for (int k :curr_ef_incident_ids) {
-				if (curr_vf_incident_ids.find(k) == curr_vf_incident_ids.end()) {
-					included_by_vf_incidents == false;
+				auto it = curr_vf_incident_ids.find(k);
+				if (it == curr_vf_incident_ids.end()) {
+					included_by_vf_incidents = false;
 				}
 			}
 			if (included_by_vf_incidents) {
@@ -482,11 +483,19 @@ void point_cloud::edge_fitting() {
 		int pidx1 = control_points.size();
 		me.control_point_indices.push_back(pidx1);
 		control_points.push_back(p1);
-		control_point_colors.push_back(rgb(0, 1.0f, 0));
+		control_point_colors.push_back(rgb(
+			(float)me.edge_id / num_edge_ids, 
+			1.0f - (float)me.edge_id / num_edge_ids, 
+			(float)me.edge_id / num_edge_ids)
+		);
 		int pidx2 = control_points.size();
 		me.control_point_indices.push_back(pidx2);
 		control_points.push_back(p2);
-		control_point_colors.push_back(rgb(0, 1.0f, 0));
+		control_point_colors.push_back(rgb(
+			(float)me.edge_id / num_edge_ids,
+			1.0f - (float)me.edge_id / num_edge_ids,
+			(float)me.edge_id / num_edge_ids)
+		);
 	}
 }
 
@@ -496,7 +505,7 @@ void point_cloud::surface_fitting() {
 
 void point_cloud::fit_all() {
 	vertex_fitting();
-	//edge_fitting();
+	edge_fitting();
 	surface_fitting();
 }
 

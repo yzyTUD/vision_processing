@@ -204,12 +204,13 @@ public:
 		pc.fit_all();
 	}
 	void fitting_render_control_points_test() {
-		pc.control_points.push_back(Pnt(0, 0, 0));
-		pc.control_point_colors.push_back(rgb(0, 1, 0));
-		pc.control_points.push_back(Pnt(0, 1, 0));
-		pc.control_point_colors.push_back(rgb(0, 1, 0));
-		pc.control_points.push_back(Pnt(0, 2, 0));
-		pc.control_point_colors.push_back(rgb(0, 1, 0));
+		/*pc.control_points.push_back(pc.pnt(78673));
+		pc.control_point_colors.push_back(rgb(1, 1, 0));
+		pc.control_points.push_back(pc.pnt(17268));
+		pc.control_point_colors.push_back(rgb(0, 1, 0));*/
+
+		pc.point_selection.at(78673) = 2u;
+		pc.point_selection.at(17268) = 2u;
 	}
 
 	// selective subsampling within given point type, with a global adjustable ratio 

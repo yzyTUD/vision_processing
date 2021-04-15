@@ -658,7 +658,7 @@ void point_cloud_interactable::point_classification() {
 			continue;
 		// find knn points 
 		std::vector<int> knn;
-		tree_ds->find_closest_points(pc.pnt(i), 8, knn);
+		tree_ds->find_closest_points(pc.pnt(i), 30, knn);
 		std::set<cgv::type::uint8_type> incident_point_ids;
 		for (auto k: knn) { // k is the index 
 			incident_point_ids.insert(pc.point_selection.at(k));
@@ -783,7 +783,7 @@ void point_cloud_interactable::corner_extraction() {
 				}
 			}
 			// find neighbour points 
-			tree_ds->find_closest_points(pc.pnt(cur_seed_pnt_id), 8, knn); // find knn points 
+			tree_ds->find_closest_points(pc.pnt(cur_seed_pnt_id), 30, knn); // find knn points 
 			for (auto k : knn) { // loop over knn points
 				bool will_be_pushed = true;
 				for (auto& vc : pc.V_conn) {
@@ -862,7 +862,7 @@ void point_cloud_interactable::edge_extraction() {
 				}
 			}
 			// find neighbour points 
-			tree_ds->find_closest_points(pc.pnt(cur_seed_pnt_id), 8, knn); // find knn points 
+			tree_ds->find_closest_points(pc.pnt(cur_seed_pnt_id), 30, knn); // find knn points 
 			for (auto k : knn) { // loop over knn points
 				bool will_be_pushed = true;
 				for (auto& ec : pc.E_conn) {
@@ -1073,6 +1073,7 @@ void point_cloud_interactable::do_region_growing_timer_event(double t, double dt
 	//on_point_cloud_change_callback(PCC_COLORS);
 }
 /// one step growing with bfs 
+/// reduandency removed, totest 
 bool point_cloud_interactable::grow_one_step_bfs(bool check_nml, int which_group) {
 	// bfs, simple approach, do not update normal currently 
 	if (pc.get_nr_points() == 0)
@@ -1102,6 +1103,7 @@ bool point_cloud_interactable::grow_one_step_bfs(bool check_nml, int which_group
 				// compare curvature
 				if (check_nml) {
 					bool pass_nml_check = false;
+					bool add_to_queue = true;
 					// iterate over the queue to check 
 					// match to any of the normals 
 					std::queue<vec3> tmp_q = region_id_and_nmls[which_group];
@@ -1121,7 +1123,13 @@ bool point_cloud_interactable::grow_one_step_bfs(bool check_nml, int which_group
 						pc.point_selection.at(k) = (cgv::type::uint8_type)which_group;
 						pc.point_selection_visited.at(k) = true;
 						// check redudancy 
-						region_id_and_seeds[which_group].push(k); //emplace
+						auto& c = get_container(region_id_and_seeds[which_group]);
+						const auto it = std::find(c.cbegin(), c.cend(), k);
+						const auto position = std::distance(c.cbegin(), it);
+						if (position < region_id_and_seeds[which_group].size()) // if already exists, totest 
+							add_to_queue = false;
+						if(add_to_queue)
+							region_id_and_seeds[which_group].push(k); //emplace
 					}
 				}
 				else {

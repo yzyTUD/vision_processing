@@ -123,7 +123,7 @@ public:
 		// render spheres for control points 
 		if (data_ptr->render_control_points && data_ptr->point_cloud_kit->pc.control_points.size()>0) {
 			if (!control_point_rendering_prepared) {
-				ctrlpoint_rendering_style.radius = 0.05;
+				ctrlpoint_rendering_style.radius = 0.01;
 				control_point_rendering_prepared = true;
 			}
 			auto& sr = cgv::render::ref_sphere_renderer(ctx);
