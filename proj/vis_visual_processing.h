@@ -171,7 +171,6 @@ protected:
 	point_cloud_interactable* stored_cloud = new point_cloud_interactable();
 	bool render_pc = true;
 	bool render_skybox = true;
-	bool render_parametric_surface = false;
 	bool render_handhold_gui = true;
 	bool force_correct_num_pcs = true;
 	bool direct_write = false;
@@ -571,10 +570,18 @@ public:
 		data_ptr->point_cloud_kit->print_pc_information();
 	}
 	void boundary_extraction() {
-		data_ptr->point_cloud_kit->boundary_extraction();
+		//data_ptr->point_cloud_kit->boundary_extraction();
 	}
 	void extract_connectivity_graph() {
-		data_ptr->point_cloud_kit->extract_connectivity_graph();
+		//data_ptr->point_cloud_kit->extract_connectivity_graph();
+	}
+	void fitting_render_control_points_test() {
+		data_ptr->point_cloud_kit->
+			fitting_render_control_points_test();
+	}
+	void build_connectivity_graph_fitting_and_render_control_points() {
+		data_ptr->point_cloud_kit->
+			build_connectivity_graph_fitting_and_render_control_points();
 	}
 	void triangulation_of_the_points() {
 		data_ptr->point_cloud_kit->pc.triangulation_of_the_points();

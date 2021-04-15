@@ -196,6 +196,22 @@ public:
 	///
 	void extract_all();
 
+	///
+	void build_connectivity_graph_fitting_and_render_control_points() {
+		point_classification();
+		extract_all();
+		pc.make_explicit();
+		pc.fit_all();
+	}
+	void fitting_render_control_points_test() {
+		pc.control_points.push_back(Pnt(0, 0, 0));
+		pc.control_point_colors.push_back(rgb(0, 1, 0));
+		pc.control_points.push_back(Pnt(0, 1, 0));
+		pc.control_point_colors.push_back(rgb(0, 1, 0));
+		pc.control_points.push_back(Pnt(0, 2, 0));
+		pc.control_point_colors.push_back(rgb(0, 1, 0));
+	}
+
 	// selective subsampling within given point type, with a global adjustable ratio 
 	void selective_subsampling_cpu();
 	// 

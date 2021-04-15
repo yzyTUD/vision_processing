@@ -72,14 +72,21 @@ struct mV { // "model vertex "
 	int valence; // ok
 
 	// he 
-	std::vector<int> incident_edges;
-	std::vector<int> incident_faces; // ok
+	std::set<int> incident_edges;
+	std::set<int> incident_faces; // ok
 
 	// fitting
-	int control_point_index; // implicit fitted position 
+	int control_point_index; // implicit fitted position // ok 
 
 };
-struct mHE { // "model half edge "
+struct mHEdge {
+	mV* orig;
+	mV* dist; // or, he.next.orig
+	mHEdge* next;
+	mHEdge* inv;
+	mHEdge* prev;
+};
+struct mEdge { // "model half edge "
 	int edge_id; // to which edge it belones to 
 
 	// point based representation 
@@ -87,12 +94,10 @@ struct mHE { // "model half edge "
 	int valence;
 
 	// he 
-	mV* orig;
-	mV* dist; // or, he.next.orig
-	mHE* next;
-	mHE* inv;
-	mHE* prev;
-	std::vector<int> incident_faces; // ok 
+	mHEdge* e0; // split to he
+	mHEdge* e1;
+	std::set<int> incident_corners; 
+	std::set<int> incident_faces; // ok 
 	bool is_boundary = false;
 
 	// fitting
@@ -106,7 +111,8 @@ struct mFace { //
 	std::vector<int> point_indices;
 
 	// he 
-	std::vector<int> incident_edges;
+	std::set<int> incident_corners;
+	std::set<int> incident_edges;
 
 	// fitting
 	std::vector<int> control_point_indices; // typically 16 elements 
@@ -213,6 +219,7 @@ class CGV_API point_cloud : public point_cloud_types
 	typedef cgv::math::fmat<float, 4, 4> mat4;
 	typedef cgv::math::fvec<float, 3> vec3;
 	typedef cgv::math::fvec<float, 4> vec4;
+	typedef cgv::media::color<float, cgv::media::RGB> rgb;
 public:
 	/*
 		per vertex info, can be stored externally in a .cgvscan file 
@@ -244,7 +251,7 @@ public:
 		can be stored externally in a .cgv
 		build upon the .cgvscan file, ref the original data structure  
 	*/
-	/// conniectivity graph storage 
+	/// connectivity graph storage 
 	/// faces in connectivity graph
 	std::vector<F_conn_info> F_conn; int num_face_ids;
 	/// edges in connectivity graph
@@ -284,11 +291,13 @@ public:
 	/// V_fit.size() will be the same as the V_conn.size(), at least 3 floats representing 3 coordinates 
 	std::vector<mV> modelV;
 	/// fitted curve, at least 4 float parameters 
-	std::vector<mHE> modelHE;
+	std::vector<mEdge> modelEdge;
 	/// fitted surface, at least 16 float parameters 
 	std::vector<mFace> modelFace;
-	/// global storage of the control points 
+	/// global storage of the control points, can be used to render directly 
 	std::vector<Pnt> control_points;
+	/// for rendering 
+	std::vector<rgb> control_point_colors;
 	/// find control points for vertices  
 	void vertex_fitting();
 	/// find control points for edges 
@@ -301,6 +310,11 @@ public:
 	bool read_cgvfitting(const std::string& file_name);
 	///
 	bool write_cgvfitting(const std::string& file_name);
+
+	/// all-in-one function: moved to upper level
+	//void build_connectivity_graph_fitting_and_render_control_points() {
+
+	//}
 
 	/*
 	*	optional:

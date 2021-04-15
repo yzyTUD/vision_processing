@@ -35,6 +35,9 @@ private:
 	vis_kit_data_store_shared* data_ptr = nullptr;
 	cgv::render::shader_program parametric_surface_prog;
 	int nr_quads_per_row = 100;
+	bool control_point_rendering_prepared = false;
+	std::vector<rgb> control_point_color_array;
+	sphere_render_style ctrlpoint_rendering_style;
 public:
 	/// initialize rotation angle
 	parametric_surface()
@@ -82,29 +85,31 @@ public:
 	/// external api 
 	void draw(context& ctx)
 	{
-		// check and build prog for the first enter 
-		if (!parametric_surface_prog.is_linked()) {
-			if (!parametric_surface_prog.build_program(ctx, "parametric_surface.glpr", true)) {
-				std::cerr << "could not build height_field shader program" << std::endl;
+		if (data_ptr->render_parametric_surface) {
+			// check and build prog for the first enter 
+			if (!parametric_surface_prog.is_linked()) {
+				if (!parametric_surface_prog.build_program(ctx, "parametric_surface.glpr", true)) {
+					std::cerr << "could not build height_field shader program" << std::endl;
+				}
 			}
-		}
 
-		// render one parametric surface patch with 16 control points 
-		// small quads are generated
-		// ranging from (-0.5,0.5) in xz plane for each, centered in origin 
-		glDisable(GL_CULL_FACE);
-		parametric_surface_prog.enable(ctx);// currently, quad = texel, transform
-		parametric_surface_prog.set_uniform(ctx, "nr_quads_per_row", nr_quads_per_row);
-		parametric_surface_prog.set_uniform(ctx, "transform", vec4(0,0,0,0));
-		parametric_surface_prog.set_uniform(ctx, "texel_extent", 1.0f / float(nr_quads_per_row));
-		parametric_surface_prog.set_uniform(ctx, "quad_extent", 1.0f / float(nr_quads_per_row));
-		glPolygonMode(GL_FRONT_AND_BACK, GL_LINE);
-		glEnableClientState(GL_VERTEX_ARRAY);
-		// send points to vertex shader/ geo shader, in uv space 
-		glDrawArraysInstanced(GL_POINTS, 0, 1, nr_quads_per_row * nr_quads_per_row);
-		glDisableClientState(GL_VERTEX_ARRAY);
-		glPolygonMode(GL_FRONT_AND_BACK, GL_FILL);
-		parametric_surface_prog.disable(ctx);
+			// render one parametric surface patch with 16 control points 
+			// small quads are generated
+			// ranging from (-0.5,0.5) in xz plane for each, centered in origin 
+			glDisable(GL_CULL_FACE);
+			parametric_surface_prog.enable(ctx);// currently, quad = texel, transform
+			parametric_surface_prog.set_uniform(ctx, "nr_quads_per_row", nr_quads_per_row);
+			parametric_surface_prog.set_uniform(ctx, "transform", vec4(0,0,0,0));
+			parametric_surface_prog.set_uniform(ctx, "texel_extent", 1.0f / float(nr_quads_per_row));
+			parametric_surface_prog.set_uniform(ctx, "quad_extent", 1.0f / float(nr_quads_per_row));
+			glPolygonMode(GL_FRONT_AND_BACK, GL_LINE);
+			glEnableClientState(GL_VERTEX_ARRAY);
+			// send points to vertex shader/ geo shader, in uv space 
+			glDrawArraysInstanced(GL_POINTS, 0, 1, nr_quads_per_row * nr_quads_per_row);
+			glDisableClientState(GL_VERTEX_ARRAY);
+			glPolygonMode(GL_FRONT_AND_BACK, GL_FILL);
+			parametric_surface_prog.disable(ctx);
+		}
 
 		// bbox quick test 
 		/*auto& prog = ctx.ref_surface_shader_program();
@@ -114,6 +119,19 @@ public:
 		ctx.tesselate_unit_cube();
 		ctx.pop_modelview_matrix();
 		prog.disable(ctx);*/
+
+		// render spheres for control points 
+		if (data_ptr->render_control_points && data_ptr->point_cloud_kit->pc.control_points.size()>0) {
+			if (!control_point_rendering_prepared) {
+				ctrlpoint_rendering_style.radius = 0.05;
+				control_point_rendering_prepared = true;
+			}
+			auto& sr = cgv::render::ref_sphere_renderer(ctx);
+			sr.set_render_style(ctrlpoint_rendering_style);
+			sr.set_position_array(ctx, data_ptr->point_cloud_kit->pc.control_points);
+			sr.set_color_array(ctx, data_ptr->point_cloud_kit->pc.control_point_colors);
+			sr.render(ctx, 0, data_ptr->point_cloud_kit->pc.control_points.size());
+		}
 	}
 	/// overload the create gui method
 	void create_gui()

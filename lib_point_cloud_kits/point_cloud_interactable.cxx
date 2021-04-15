@@ -640,6 +640,7 @@ void point_cloud_interactable::mark_points_with_clipping_plane(Pnt p,Nml plane_n
 }
 
 /*operations after marked */
+/// pre-requirement: rg is done, per point selection ready. after marked.
 /// result will be stored and visualized with PointSelectiveAttribute
 #include <set>
 void point_cloud_interactable::point_classification() {
@@ -728,11 +729,24 @@ void point_cloud_interactable::point_classification() {
 /// topology extraction: faces 
 void point_cloud_interactable::face_extraction() {
 	std::set<int> regions;
-	for (auto f : pc.F_conn) { // loop all, no matter which face 
-		f.face_id = (int)pc.point_selection.at(f.point_id) - 20; // make sure face id starts from 0 
+	for (auto& f : pc.F_conn) { // loop all, no matter which face 
+		f.face_id = (int)(pc.point_selection.at(f.point_id)) - 20; // make sure face id starts from 0 
 		regions.insert(f.face_id);
 	}
 	pc.num_face_ids = regions.size();
+}
+
+///
+template <class ADAPTER>
+const typename ADAPTER::container_type& get_container(ADAPTER& a)
+{
+	struct hack : private ADAPTER {
+		static typename ADAPTER::container_type& get(ADAPTER& a) {
+			return a.*(&hack::c);
+		}
+	};
+
+	return hack::get(a);
 }
 
 ///
@@ -745,45 +759,68 @@ void point_cloud_interactable::corner_extraction() {
 	int curr_corner_id = 0;
 	//
 	bool not_done = false;
-	V_conn_info seed_vc;
-	for (auto vc : pc.V_conn) { // check if all points classified 
+	int seed_pnt_id;
+	for (auto& vc : pc.V_conn) { // check if all points classified 
 		if (vc.visited == false) {
 			not_done = true;
-			seed_vc = vc; // found an unvisited point as seed
+			seed_pnt_id = vc.point_id; // found an unvisited point as seed
 		}
 	}
 	while (not_done) {
 		// goal: do rg to find all neighbour points
-		std::queue<V_conn_info> q; q.push(seed_vc);
+		std::queue<int> q; q.push(seed_pnt_id);
 		while (!q.empty()) { 
-			V_conn_info cur_seed = q.front(); q.pop(); // fetch the front point
+			int cur_seed_pnt_id = q.front(); q.pop(); // fetch the front point
 			// visit the current point 
-			cur_seed.corner_id = curr_corner_id;
-			tree_ds->find_closest_points(pc.pnt(cur_seed.point_id), 8, knn); // find knn points 
+			// match in pc.V_conn
+			int curr_point_id = -1;
+			std::set<cgv::type::uint8_type> curr_incident_ids;
+			for (auto& vc : pc.V_conn) {
+				if (vc.point_id == cur_seed_pnt_id) {
+					vc.corner_id = curr_corner_id;
+					vc.visited = true;
+					curr_incident_ids = vc.incident_ids;
+				}
+			}
+			// find neighbour points 
+			tree_ds->find_closest_points(pc.pnt(cur_seed_pnt_id), 8, knn); // find knn points 
 			for (auto k : knn) { // loop over knn points
-				V_conn_info tmp_knn_from_seed = pc.pid_to_V_conn_info_map[k];
-				if (tmp_knn_from_seed.visited)// if visited, ignore 
-					continue;
-				if (tmp_knn_from_seed.incident_ids != cur_seed.incident_ids)// if not belones to the same corner 
-					continue;
-				q.push(tmp_knn_from_seed);
+				bool will_be_pushed = true;
+				for (auto& vc : pc.V_conn) {
+					if (vc.point_id == k) {
+						if (vc.visited)// if visited, ignore 
+							will_be_pushed = false;
+						if (vc.incident_ids != curr_incident_ids)// if not belones to the same corner 
+							will_be_pushed = false;
+						if (vc.valence < 3)
+							will_be_pushed = false;
+						auto& c = get_container(q);
+						const auto it = std::find(c.cbegin(), c.cend(), k);
+						const auto position = std::distance(c.cbegin(), it);
+						if (position < q.size()) // if already exists 
+							will_be_pushed = false;
+						if(will_be_pushed)
+							q.push(vc.point_id);
+						break; // assume only one match 
+					}
+				}
 			}
 		}
 		// state: an other region is done 
 		curr_corner_id++;
 		// goal: check again if all points are classified 
 		not_done = false;
-		for (auto vc : pc.V_conn) { 
+		for (auto& vc : pc.V_conn) { 
 			if (vc.visited == false) {
 				not_done = true;
-				seed_vc = vc; // found an unvisited point as seed
+				seed_pnt_id = vc.point_id; // found an unvisited point as seed
 			}
 		}
 	}
 	// state: all corners should be extracted, they are built from points 
 	// goal: quick check, how many regions are here? / corners 
 	std::set<int> regions;
-	for (auto vc : pc.V_conn) {
+	for (auto& vc : pc.V_conn) {
 		regions.insert(vc.corner_id);
 	}
 	std::cout << "number of corners extracted: " << regions.size()
@@ -801,51 +838,73 @@ void point_cloud_interactable::edge_extraction() {
 	int curr_edge_id = 0;
 	//
 	bool not_done = false;
-	E_conn_info seed_ec;
-	for (auto ec : pc.E_conn) { // check if all edge points classified 
+	int seed_pnt_id;
+	for (auto& ec : pc.E_conn) { // check if all points classified 
 		if (ec.visited == false) {
 			not_done = true;
-			seed_ec = ec; // found an unvisited point as seed
+			seed_pnt_id = ec.point_id; // found an unvisited point as seed
 		}
 	}
 	while (not_done) {
 		// goal: do rg to find all neighbour points
-		std::queue<E_conn_info> q; q.push(seed_ec);
+		std::queue<int> q; q.push(seed_pnt_id);
 		while (!q.empty()) {
-			E_conn_info cur_seed = q.front(); q.pop(); // fetch the front point
+			int cur_seed_pnt_id = q.front(); q.pop(); // fetch the front point
 			// visit the current point 
-			cur_seed.edge_id = curr_edge_id;
-			tree_ds->find_closest_points(pc.pnt(cur_seed.point_id), 8, knn); // find knn points 
+			// match in pc.V_conn
+			int curr_point_id = -1;
+			std::set<cgv::type::uint8_type> curr_incident_ids;
+			for (auto& ec : pc.E_conn) {
+				if (ec.point_id == cur_seed_pnt_id) {
+					ec.edge_id = curr_edge_id;
+					ec.visited = true;
+					curr_incident_ids = ec.incident_ids;
+				}
+			}
+			// find neighbour points 
+			tree_ds->find_closest_points(pc.pnt(cur_seed_pnt_id), 8, knn); // find knn points 
 			for (auto k : knn) { // loop over knn points
-				E_conn_info tmp_knn_from_seed = pc.pid_to_E_conn_info_map[k];
-				if (tmp_knn_from_seed.visited)// if visited, ignore 
-					continue;
-				if (tmp_knn_from_seed.incident_ids != cur_seed.incident_ids)// if not belones to the same edge 
-					continue;
-				q.push(tmp_knn_from_seed);
+				bool will_be_pushed = true;
+				for (auto& ec : pc.E_conn) {
+					if (ec.point_id == k) {
+						if (ec.visited)// if visited, ignore 
+							will_be_pushed = false;
+						if (ec.incident_ids != curr_incident_ids)// if not belones to the same edge 
+							will_be_pushed = false;
+						auto& c = get_container(q);
+						const auto it = std::find(c.cbegin(), c.cend(), k);
+						const auto position = std::distance(c.cbegin(), it);
+						if (position < q.size()) // if already exists 
+							will_be_pushed = false;
+						if (will_be_pushed)
+							q.push(k);
+						break; // assume only one match 
+					}
+				}
 			}
 		}
 		// state: an other region is done 
 		curr_edge_id++;
 		// goal: check again if all points are classified 
 		not_done = false;
-		for (auto ec : pc.E_conn) {
+		for (auto& ec : pc.E_conn) {
 			if (ec.visited == false) {
 				not_done = true;
-				seed_ec = ec; // found an unvisited point as seed
+				seed_pnt_id = ec.point_id; // found an unvisited point as seed
 			}
 		}
 	}
 	// state: all point-based edges should be extracted
 	// goal: quick check, how many regions are here? / edges  
 	std::set<int> regions;
-	for (auto ec : pc.E_conn) {
+	for (auto& ec : pc.E_conn) {
 		regions.insert(ec.edge_id);
 	}
 	std::cout << "number of point-besed edges extracted: " << regions.size()  
 		<< " or, curr_edge_id = " << curr_edge_id  << std::endl;
 	pc.num_edge_ids = regions.size();
 }
+
 
 ///
 void point_cloud_interactable::extract_all() {
@@ -1061,6 +1120,7 @@ bool point_cloud_interactable::grow_one_step_bfs(bool check_nml, int which_group
 						// update 
 						pc.point_selection.at(k) = (cgv::type::uint8_type)which_group;
 						pc.point_selection_visited.at(k) = true;
+						// check redudancy 
 						region_id_and_seeds[which_group].push(k); //emplace
 					}
 				}

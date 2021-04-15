@@ -276,6 +276,10 @@ public:
 	float paratone_6;
 	float paratone_7;
 
+	// parametric surface rendering 
+	bool render_parametric_surface = false;
+	bool render_control_points = true;
+
 	/// @external api 
 	std::string get_timestemp_for_filenames() {
 		auto microsecondsUTC = std::chrono::duration_cast<std::chrono::microseconds>(

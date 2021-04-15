@@ -151,6 +151,7 @@ void visual_processing::timer_event(double t, double dt) {
 void visual_processing::parallel_timer_event() {
 	while (true) {
 		// control the speed here 
+		if (data_ptr!=nullptr)
 		if (data_ptr->point_cloud_kit->do_region_growing_directly)
 		if (data_ptr->point_cloud_kit->can_parallel_grow) {
 			// atomic
@@ -713,8 +714,7 @@ void visual_processing::draw(cgv::render::context& ctx)
 	if (manipulation_kit!=nullptr) manipulation_kit->draw(ctx);
 	if (imagebox_kit != nullptr)imagebox_kit->draw(ctx);
 	if (selection_kit != nullptr)selection_kit->draw(ctx);
-	if (render_parametric_surface)
-		if (parametric_surface_kit != nullptr) parametric_surface_kit->draw(ctx);
+	if (parametric_surface_kit != nullptr) parametric_surface_kit->draw(ctx);
 
 	if (motioncap_kit != nullptr)
 		if (motioncap_kit->instanced_redraw)
@@ -1190,7 +1190,7 @@ void visual_processing::create_gui() {
 
 	add_member_control(this, "render skybox", render_skybox, "check");
 	add_member_control(this, "render_handhold_gui", render_handhold_gui, "check");
-	add_member_control(this, "render_parametric_surface", render_parametric_surface, "check");
+	add_member_control(this, "render_parametric_surface", data_ptr->render_parametric_surface, "check");
 	add_member_control(this, "render_with_functional_ids_only", data_ptr->point_cloud_kit->render_with_functional_ids_only, "check");
 	add_member_control(this, "highlight_unmarked_points", data_ptr->point_cloud_kit->highlight_unmarked_points, "check");
 	add_member_control(this, "render_nmls", data_ptr->point_cloud_kit->show_nmls, "check");
@@ -1205,6 +1205,14 @@ void visual_processing::create_gui() {
 	connect_copy(add_button("print_pc_information")->click, rebind(this, &visual_processing::print_pc_information));
 	connect_copy(add_button("save")->click,rebind(this, &visual_processing::start_writting_pc_parallel));
 	add_member_control(this, "Ignore Deleted Points", data_ptr->point_cloud_kit->pc.ignore_deleted_points, "check");
+
+	// 
+	if (begin_tree_node("Model Fitting", data_ptr->point_cloud_kit->show_nmls, true, "level=3")) {
+		connect_copy(add_button("fitting_render_control_points_test")->click, 
+			rebind(this, &visual_processing::fitting_render_control_points_test));
+		connect_copy(add_button("build_connectivity_graph_fitting_and_render_control_points")->click, 
+			rebind(this, &visual_processing::build_connectivity_graph_fitting_and_render_control_points));
+	}
 
 	//
 	if (begin_tree_node("Triangulation of The Points", data_ptr->point_cloud_kit->show_nmls, true, "level=3")) {

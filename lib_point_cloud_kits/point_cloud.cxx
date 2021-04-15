@@ -362,7 +362,7 @@ void point_cloud::make_explicit() {
 	for (int i = 0; i < num_face_ids; i++) {
 		mFace tmp_mFace;
 		tmp_mFace.face_id = i;
-		for (auto fc : F_conn) {
+		for (auto& fc : F_conn) {
 			if (fc.face_id == i) {
 				tmp_mFace.point_indices.push_back(fc.point_id);
 			}
@@ -373,76 +373,130 @@ void point_cloud::make_explicit() {
 	for (int i = 0; i < num_corner_ids; i++) {
 		mV tmp_mV;
 		tmp_mV.corner_id = i;
-		// hint: elements in V_conn should have the same incodents, just take the first one 
-		for (auto fi : V_conn.at(0).incident_ids) {
-			tmp_mV.incident_faces.push_back((int)fi - 20); // convert to face index 
-		}
-		for (auto vc : V_conn) {
+		for (auto& vc : V_conn) {
 			if (vc.corner_id == i) {
 				tmp_mV.point_indices.push_back(vc.point_id);
 				tmp_mV.valence = vc.valence;
+				for (auto& fi : vc.incident_ids) {
+					tmp_mV.incident_faces.insert((int)fi - 20); // convert to face index 
+				}
 			}
 		}
 		modelV.push_back(tmp_mV);
 	}
 	// collect edges  
 	for (int i = 0; i < num_edge_ids; i++) {
-		mHE tmp_mHE;
+		mEdge tmp_mHE;
 		tmp_mHE.edge_id = i;
-		// hint: elements in E_conn should have the same incodents, just take the first one 
-		for (auto fi : E_conn.at(0).incident_ids) {
-			tmp_mHE.incident_faces.push_back((int)fi - 20); // convert to face index 
-		}
-		for (auto ec : E_conn) {
+		for (auto& ec : E_conn) {
 			if (ec.edge_id == i) {
 				tmp_mHE.point_indices.push_back(ec.point_id);
 				tmp_mHE.valence = ec.valence;
+				for (auto& fi : ec.incident_ids) {
+					tmp_mHE.incident_faces.insert((int)fi - 20); // convert to face index 
+				}
 			}
 		}
-		modelHE.push_back(tmp_mHE);
+		modelEdge.push_back(tmp_mHE);
 	}
+
+	// find incidents, build connectivity graph  
+	for (auto& mf: modelFace) { // loop faces 
+		int curr_face_id = mf.face_id;
+		// match incident edges 
+		for (auto& me: modelEdge) {
+			for (int fi : me.incident_faces) {
+				if (fi == curr_face_id) {
+					// face-edge inciednt found 
+					mf.incident_edges.insert(me.edge_id);
+				}
+			}
+		}
+	}
+
+	for (auto& me: modelEdge) {
+		std::set<int> curr_ef_incident_ids = me.incident_faces;
+		for (auto& mv: modelV) {
+			std::set<int> curr_vf_incident_ids = mv.incident_faces;
+			// goal: check if included 
+			bool included_by_vf_incidents = true;
+			for (int k :curr_ef_incident_ids) {
+				if (curr_vf_incident_ids.find(k) == curr_vf_incident_ids.end()) {
+					included_by_vf_incidents == false;
+				}
+			}
+			if (included_by_vf_incidents) {
+				// state: edge-vertex incident found! 
+				me.incident_corners.insert(mv.corner_id);
+			}
+		}
+	}
+
 }
 
 /// fit one vertex for each corner
 void point_cloud::vertex_fitting() {
 	// goal: fit one vertex for each corner
-	for (int i = 0; i < num_corner_ids; i++) {
-		Pnt fitted_center_point; // for corner i 
-		int num_of_points_curr_corner;
+	for (auto& mv : modelV) {
+		Pnt fitted_center_point = Pnt(0,0,0); // for corner i 
 		// goal: collect points belones to this corner and compute 
-		for (auto vc : V_conn) { 
-			if (vc.corner_id == i) {
-				fitted_center_point += pnt(vc.point_id);
-				num_of_points_curr_corner++;
-			}
-		}
-		fitted_center_point = fitted_center_point / num_of_points_curr_corner;
-		// state: 
+		for (int i: mv.point_indices)
+			fitted_center_point += pnt(i);
+		fitted_center_point = fitted_center_point / mv.point_indices.size();
+		// state: center point computed 
 		// update global storage 
 		control_points.push_back(fitted_center_point);
-		mV tmp_mV;
-		tmp_mV.control_point_index = control_points.size() - 1; // we have just pushed
-		tmp_mV.corner_id = i;
-		modelV.push_back(tmp_mV);
+		control_point_colors.push_back(rgb(0, 1.0f, 0));
+		mv.control_point_index = control_points.size() - 1; // we have just pushed
 	}
 	// todo: check visually 
+	//
 }
 
 /// find 4 control points for each edge
+/// just fit to lines currently 
+/// todo: cubic bezier curve fitting 
 void point_cloud::edge_fitting() {
-	// for each edge
-	for (int i = 0; i < num_edge_ids; i++) {
-	
+	// loop edges 
+	for (auto& me: modelEdge) {
+		// check error 
+		if (me.incident_corners.size() < 2) {
+			std::cout << "err incident corner numbers..." << std::endl;
+			continue;
+		}
+		// typically, we have two 
+		std::set<int>::iterator it = me.incident_corners.begin();
+		int v0 = *it;
+		int v3 = *(++it);
+
+		int pidx0 = modelV.at(v0).control_point_index;
+		int pidx3 = modelV.at(v3).control_point_index;
+		Pnt p0 = control_points.at(pidx0);
+		Pnt p3 = control_points.at(pidx3);
+
+		// interpolate the other two points, find two new points 
+		Pnt p1 = (1.0f / 3.0f) * p0 + (2.0f / 3.0f) * p3;
+		Pnt p2 = (2.0f / 3.0f) * p0 + (1.0f / 3.0f) * p3;
+
+		// update 
+		int pidx1 = control_points.size();
+		me.control_point_indices.push_back(pidx1);
+		control_points.push_back(p1);
+		control_point_colors.push_back(rgb(0, 1.0f, 0));
+		int pidx2 = control_points.size();
+		me.control_point_indices.push_back(pidx2);
+		control_points.push_back(p2);
+		control_point_colors.push_back(rgb(0, 1.0f, 0));
 	}
 }
 
 void point_cloud::surface_fitting() {
-
+	// manually currently 
 }
 
 void point_cloud::fit_all() {
 	vertex_fitting();
-	edge_fitting();
+	//edge_fitting();
 	surface_fitting();
 }
 
