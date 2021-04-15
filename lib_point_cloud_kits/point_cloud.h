@@ -116,7 +116,7 @@ struct mFace { //
 
 	// fitting
 	std::vector<int> control_point_indices; // typically 16 elements 
-
+	bool ready_for_rendering = false; // fitted 
 };
 
 /** define all point cloud relevant types in this helper class */
@@ -298,6 +298,8 @@ public:
 	std::vector<Pnt> control_points;
 	/// for rendering 
 	std::vector<rgb> control_point_colors;
+	/// demo surface: simplest representation: a list of point indicies 
+	std::vector<int> demo_surface;
 	/// find control points for vertices  
 	void vertex_fitting();
 	/// find control points for edges 

@@ -5,4 +5,4 @@ fragment_file:side.glsl
 fragment_file:brdf.glsl
 fragment_file:surface.glsl
 fragment_file:fragment.glfs
-geometry_shader_info:points;points;64
+geometry_shader_info:points;points;1

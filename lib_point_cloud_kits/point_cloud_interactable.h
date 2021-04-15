@@ -203,14 +203,51 @@ public:
 		pc.make_explicit();
 		pc.fit_all();
 	}
+	/// set points and indices for a demo surface 
 	void fitting_render_control_points_test() {
 		/*pc.control_points.push_back(pc.pnt(78673));
 		pc.control_point_colors.push_back(rgb(1, 1, 0));
 		pc.control_points.push_back(pc.pnt(17268));
 		pc.control_point_colors.push_back(rgb(0, 1, 0));*/
 
-		pc.point_selection.at(78673) = 2u;
-		pc.point_selection.at(17268) = 2u;
+		/*pc.point_selection.at(78673) = 2u;
+		pc.point_selection.at(17268) = 2u;*/
+
+		//pc.demo_surface.push_back();
+
+		pc.control_points.clear();
+		pc.control_point_colors.clear();
+		pc.demo_surface.clear();
+
+		pc.control_points.resize(16);
+		pc.control_point_colors.resize(16);
+		pc.demo_surface.resize(16);
+
+		pc.control_points.at(0) = vec3(0, 0, 0);
+		pc.control_points.at(1) = vec3(0, 1.01, 1);
+		pc.control_points.at(2) = vec3(0, 1.08, 2);
+		pc.control_points.at(3) = vec3(0, 0, 3);
+
+		pc.control_points.at(4) = vec3(1, 1.2, 0);
+		pc.control_points.at(5) = vec3(1, 1.3, 1);
+		pc.control_points.at(6) = vec3(1, 1.2, 2);
+		pc.control_points.at(7) = vec3(1, 1.1, 3);
+
+		pc.control_points.at(8) = vec3(2, 1.4, 0);
+		pc.control_points.at(9) = vec3(2, 1.6, 1);
+		pc.control_points.at(10) = vec3(2, 1.1, 2);
+		pc.control_points.at(11) = vec3(2, 1.2, 3);
+
+		pc.control_points.at(12) = vec3(3, 0, 0);
+		pc.control_points.at(13) = vec3(3, 1.3, 1);
+		pc.control_points.at(14) = vec3(3, 1.4, 2);
+		pc.control_points.at(15) = vec3(3, 0, 3);
+
+		for (int i = 0; i < 16; i++)
+			pc.control_point_colors.at(i) = rgb(0,1,0);
+
+		for (int i = 0; i < 16; i++)
+			pc.demo_surface.at(i) = i;
 	}
 
 	// selective subsampling within given point type, with a global adjustable ratio 

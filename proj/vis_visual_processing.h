@@ -578,6 +578,8 @@ public:
 	void fitting_render_control_points_test() {
 		data_ptr->point_cloud_kit->
 			fitting_render_control_points_test();
+		parametric_surface_kit->
+			fetch_from_point_cloud_kit_demo();
 	}
 	void build_connectivity_graph_fitting_and_render_control_points() {
 		data_ptr->point_cloud_kit->
