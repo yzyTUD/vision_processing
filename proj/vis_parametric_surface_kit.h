@@ -242,6 +242,9 @@ public:
 	/// external api 
 	void draw(context& ctx)
 	{
+		// update patches, to support real time modification
+		fetch_from_point_cloud_kit_demo();
+		//
 		if (data_ptr->render_parametric_surface) {
 			for (auto& sp : surface_patches) {
 				sp.render_surface_patch_instanced(ctx);
