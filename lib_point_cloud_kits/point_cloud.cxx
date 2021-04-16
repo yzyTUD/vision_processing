@@ -1265,6 +1265,8 @@ bool point_cloud::read(const string& _file_name)
 		success = read_cgvcgvconnectivity(_file_name);
 	if (ext == "cgvfitting")
 		success = read_cgvfitting(_file_name);
+	if (ext == "cgvcad")
+		success = read_cgvcad(_file_name);
 	if (ext == "ply")
 		success = read_ply(_file_name);
 	if (ext == "pts") 
@@ -2053,6 +2055,63 @@ bool point_cloud::write_cgvcgvconnectivity(const std::string& file_name) {
 
 
 bool point_cloud::read_cgvfitting(const std::string& file_name) {
+	return true;
+}
+
+bool point_cloud::read_cgvcad(const std::string& file_name) {
+	string content;
+	cgv::utils::stopwatch watch;
+	if (!cgv::utils::file::read(file_name, content, true))
+		return false;
+	std::cout << "read data from disk ";
+	watch.add_time();
+	vector<line> lines;
+	split_to_lines(content, lines);
+	std::cout << "split data into " << lines.size() << " lines. ";
+	watch.add_time();
+
+	for (int i = 0; i < lines.size(); ++i) {
+		// ignore empty lines 
+		if (lines[i].empty())
+			continue;
+		// preprocessing, split into values 
+		vector<token> tokens;
+		tokenizer(lines[i]).bite_all(tokens);
+		//
+		if (tokens[0][0] == 'v' && (tokens[0][1] != 'n')) {
+			const int double_value_wanted_per_line_exact = 3;
+			double values[double_value_wanted_per_line_exact];
+			unsigned n = min(double_value_wanted_per_line_exact, (int)tokens.size());
+			unsigned j;
+			for (j = 0; j < n; ++j) {
+				if (!is_double(tokens[j + 1].begin, tokens[j + 1].end, values[j]))
+					continue;
+			}
+			// start matching 
+			// x y z nx ny nz r g b scan_index  + selection_index i j (point_index)
+			if (j >= 3)
+				control_points.push_back(
+					Pnt((Crd)values[0], (Crd)values[1], (Crd)values[2]));
+		}
+		// one patch per line 
+		if (tokens[0][0] == 'p' && (tokens[0][1] != 'n')) {
+			std::vector<int> indices;
+			const int double_value_wanted_per_line_exact = 16;
+			double values[double_value_wanted_per_line_exact];
+			unsigned n = min(double_value_wanted_per_line_exact, (int)tokens.size());
+			unsigned j;
+			for (j = 0; j < n; ++j) {
+				if (!is_double(tokens[j + 1].begin, tokens[j + 1].end, values[j]))
+					continue;
+			}
+			for (int i = 0; i < 16; i++) {
+				indices.push_back((int)(values[i] - 1)); // index start from 1 as file format, but 0 in program 
+			}
+			demo_model.push_back(indices);
+		}
+	}
+
+	watch.add_time();
 	return true;
 }
 

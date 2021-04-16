@@ -300,6 +300,8 @@ public:
 	std::vector<rgb> control_point_colors;
 	/// demo surface: simplest representation: a list of point indicies 
 	std::vector<int> demo_surface;
+	/// a list of surfaces 
+	std::vector<std::vector<int>> demo_model;
 	/// find control points for vertices  
 	void vertex_fitting();
 	/// find control points for edges 
@@ -312,6 +314,8 @@ public:
 	bool read_cgvfitting(const std::string& file_name);
 	///
 	bool write_cgvfitting(const std::string& file_name);
+	/// 
+	bool read_cgvcad(const std::string& file_name);
 
 	/// all-in-one function: moved to upper level
 	//void build_connectivity_graph_fitting_and_render_control_points() {

@@ -172,6 +172,11 @@ void visual_processing::parallel_timer_event() {
 	}
 }
 ///
+visual_processing::~visual_processing() {
+	data_ptr = nullptr;
+	timer_thread = nullptr;
+}
+///
 visual_processing::visual_processing() 
 {
 	//draw_kit = new vr_kit_draw();
@@ -1206,6 +1211,11 @@ void visual_processing::create_gui() {
 	connect_copy(add_button("print_pc_information")->click, rebind(this, &visual_processing::print_pc_information));
 	connect_copy(add_button("save")->click,rebind(this, &visual_processing::start_writting_pc_parallel));
 	add_member_control(this, "Ignore Deleted Points", data_ptr->point_cloud_kit->pc.ignore_deleted_points, "check");
+	
+	//
+	connect_copy(add_button("read_cgvcad")->click,
+		rebind(this, &visual_processing::read_cgvcad_with_dialog));
+
 
 	// 
 	if (begin_tree_node("Model Fitting", data_ptr->point_cloud_kit->show_nmls, true, "level=3")) {

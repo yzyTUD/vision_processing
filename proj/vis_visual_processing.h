@@ -224,6 +224,7 @@ public:
 	void timer_event(double t, double dt);
 public:
 	visual_processing();
+	~visual_processing();
 
 	std::string get_type_name() { return "visual_processing"; }
 
@@ -584,6 +585,9 @@ public:
 	void build_connectivity_graph_fitting_and_render_control_points() {
 		data_ptr->point_cloud_kit->
 			build_connectivity_graph_fitting_and_render_control_points();
+	}
+	void read_cgvcad_with_dialog() {
+		data_ptr->point_cloud_kit->read_cgvcad_with_dialog();
 	}
 	void triangulation_of_the_points() {
 		data_ptr->point_cloud_kit->pc.triangulation_of_the_points();

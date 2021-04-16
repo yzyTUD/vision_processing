@@ -128,6 +128,8 @@ public:
 	///
 	bool read_pc_with_dialog(bool append);
 
+	bool read_cgvcad_with_dialog();
+
 	bool read_pc_with_dialog_queue(bool append);
 
 	bool read_pc_subsampled_with_dialog();

@@ -318,6 +318,12 @@ bool point_cloud_interactable::read_pc_with_dialog(bool append) {
 	finished_loading_points = true;
 	return true;
 }
+bool point_cloud_interactable::read_cgvcad_with_dialog() {
+	std::string f = cgv::gui::file_open_dialog("Open", "cgvcad:*");
+	if (!open(f))
+		return false;
+	return true;
+}
 ///
 bool point_cloud_interactable::read_pc_with_dialog_queue(bool append) {
 	if (!append)
