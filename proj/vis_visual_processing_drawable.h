@@ -1191,6 +1191,7 @@ void visual_processing::create_gui() {
 	add_member_control(this, "render skybox", render_skybox, "check");
 	add_member_control(this, "render_handhold_gui", render_handhold_gui, "check");
 	add_member_control(this, "render_parametric_surface", data_ptr->render_parametric_surface, "check");
+	add_member_control(this, "render_control_points", data_ptr->render_control_points, "check");
 	add_member_control(this, "render_with_functional_ids_only", data_ptr->point_cloud_kit->render_with_functional_ids_only, "check");
 	add_member_control(this, "highlight_unmarked_points", data_ptr->point_cloud_kit->highlight_unmarked_points, "check");
 	add_member_control(this, "render_nmls", data_ptr->point_cloud_kit->show_nmls, "check");

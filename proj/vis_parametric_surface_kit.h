@@ -31,15 +31,19 @@ class SurfacePatch {
 
 	//
 	cgv::render::shader_program parametric_surface_prog;
+	cgv::render::shader_program default_prog;
 	sphere_render_style ctrlpoint_rendering_style;
 	int nr_quads_per_row = 100; // not related to delay
 	bool prepared = false;
+	bool prepared_control_point_mesh = false;
 	std::vector<vec2> texcoord;
+	GLuint IBO;
 
 	//
 	vec3 control_point_array[16]; // easier uploading to gpu 
 	std::vector<vec3> control_points; // local, 16 elements
 	std::vector<rgb> control_point_colors; // local, 16 elements
+	std::vector<uint32_t> control_point_indices;
 public:
 	SurfacePatch() {
 		ctrlpoint_rendering_style.radius = 0.01;
@@ -114,32 +118,50 @@ public:
 		glPolygonMode(GL_FRONT_AND_BACK, GL_FILL);
 		parametric_surface_prog.disable(ctx);
 	}
-	void render_surface_patch_point_based(context& ctx) {
+	void render_control_point_mesh(context& ctx) {
 		// lazy check and build prog for the loop
-		if (!prepared) {
-			if (!parametric_surface_prog.build_program(ctx, "parametric_surface_pointbased.glpr", true)) {
-				std::cerr << "could not build height_field shader program" << std::endl;
-			}
-			for (int i = 0; i < nr_quads_per_row; i++) {
-				for (int j = 0; j < nr_quads_per_row; j++) {
-					texcoord.push_back(
-						vec2((float)i/ nr_quads_per_row,(float)j / nr_quads_per_row));
+		if (!prepared_control_point_mesh) {
+			/*if (!default_prog.build_program(ctx, "default.glpr", true)) {
+				std::cerr << "could not build default shader program" << std::endl;
+			}*/
+			default_prog = ctx.ref_default_shader_program(false);
+			//for (int i = 0; i < nr_quads_per_row; i++) {
+			//	for (int j = 0; j < nr_quads_per_row; j++) {
+			//		texcoord.push_back(
+			//			vec2((float)i/ nr_quads_per_row,(float)j / nr_quads_per_row));
+			//	}
+			//}
+			for (int x = 0; x < 3; x++)
+			{
+				for (int z = 0; z < 4; z++)
+				{
+					control_point_indices.push_back((x * 4) + z);
+					control_point_indices.push_back((x * 4) + z + 4);
 				}
+				control_point_indices.push_back(0xFFFFFFF);
 			}
+			glGenBuffers(1, &IBO);
+			glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, IBO);
+			glBufferData(GL_ELEMENT_ARRAY_BUFFER, 
+				control_point_indices.size() * sizeof(uint32_t),
+					control_point_indices.data(), GL_STATIC_DRAW);
 			
-			prepared = true;
+			prepared_control_point_mesh = true;
 		}
-		if (control_points.size() != 16)
-			return;
 		cgv::render::attribute_array_binding::set_global_attribute_array(
-				ctx, parametric_surface_prog.get_attribute_location(ctx, "inTexcoord"), texcoord);
-		// render one parametric surface patch with 16 control points 
-		// small quads are generated
-		// ranging from (-0.5,0.5) in xz plane for each, centered in origin 
-		parametric_surface_prog.enable(ctx);// currently, quad = texel, transform
-		parametric_surface_prog.set_uniform_array(ctx, "control_points", control_points); // not related
-		glDrawArrays(GL_POINTS,0, texcoord.size());
-		parametric_surface_prog.disable(ctx);
+				ctx, default_prog.get_attribute_location(ctx, "position"), control_points);
+		default_prog.enable(ctx);
+		glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, IBO);
+		glEnable(GL_PRIMITIVE_RESTART);
+		glPrimitiveRestartIndex(0xFFFFFFF);
+		ctx.set_color(rgb(1));
+		glPolygonMode(GL_FRONT_AND_BACK, GL_LINE);
+		//glLineWidth(3.0);
+		glDrawElements(GL_TRIANGLE_STRIP, 
+			(GLsizei)control_point_indices.size(), GL_UNSIGNED_INT, 0);
+		glPolygonMode(GL_FRONT_AND_BACK, GL_FILL);
+		//glDrawArrays(GL_TRIANGLES,0, (GLsizei)control_points.size());
+		default_prog.disable(ctx);
 	}
 	void render_control_points(context& ctx) {
 		if (control_points.size() > 0) {
@@ -264,6 +286,7 @@ public:
 		if (data_ptr->render_control_points) {
 			for (auto& sp : surface_patches) {
 				sp.render_control_points(ctx);
+				sp.render_control_point_mesh(ctx);
 			}
 		}
 	}
