@@ -83,11 +83,16 @@ public:
 	//}
 	void update(std::vector<vec3>* cpgptr,std::vector<rgb>* cpcptr, std::vector<int>* cpi) {
 		// write to control_points
-		for (int i = 0; i < cpi->size(); i++) 
-			control_points.at(i) = cpgptr->at(cpi->at(i));
+		for (int i = 0; i < cpi->size(); i++)
+			if (cpgptr->size() > 0)
+				control_points.at(i) = cpgptr->at(cpi->at(i));
 		// write to control_point_colors 
-		for (int i = 0; i < cpi->size(); i++) 
-			control_point_colors.at(i) = cpcptr->at(cpi->at(i));
+		for (int i = 0; i < cpi->size(); i++) {
+			if(cpcptr->size()>0)
+				control_point_colors.at(i) = cpcptr->at(cpi->at(i));
+			else
+				control_point_colors.at(i) = rgb(0, 0, 1);
+		}
 	}
 	void render_surface_patch_instanced(context& ctx) {
 		// lazy check and build prog for the loop
@@ -211,13 +216,18 @@ public:
 	}
 	/// download control points to local representation 
 	void fetch_from_point_cloud_kit_demo() {
-		surface_patches.resize(1);
+		int num_of_patches = data_ptr->point_cloud_kit->pc.demo_model.size();
+		surface_patches.resize(num_of_patches);
 		std::vector<vec3>* control_points_g_ptr = &data_ptr->point_cloud_kit->pc.control_points;
 		std::vector<rgb>* control_point_colors_ptr = &data_ptr->point_cloud_kit->pc.control_point_colors;
-		std::vector<int>* control_point_indices_ptr = &data_ptr->point_cloud_kit->pc.demo_surface;
-		surface_patches.at(0).update(control_points_g_ptr,
-			control_point_colors_ptr, control_point_indices_ptr);
+		for (int i = 0; i < num_of_patches; i++) {
+			std::vector<int>* control_point_indices_ptr = 
+				&data_ptr->point_cloud_kit->pc.demo_model.at(i);
+			surface_patches.at(i).update(control_points_g_ptr,
+				control_point_colors_ptr, control_point_indices_ptr);
+		}
 	}
+		
 	/// directly load 
 	void load_from_file() {
 
@@ -272,7 +282,13 @@ public:
 				sp.render_surface_patch_instanced(ctx);
 			}
 		}
-
+		// render spheres for control points 
+		if (data_ptr->render_control_points) {
+			for (auto& sp : surface_patches) {
+				sp.render_control_points(ctx);
+				sp.render_control_point_mesh(ctx);
+			}
+		}
 		// bbox quick test 
 		/*auto& prog = ctx.ref_surface_shader_program();
 		prog.enable(ctx);
@@ -281,14 +297,6 @@ public:
 		ctx.tesselate_unit_cube();
 		ctx.pop_modelview_matrix();
 		prog.disable(ctx);*/
-
-		// render spheres for control points 
-		if (data_ptr->render_control_points) {
-			for (auto& sp : surface_patches) {
-				sp.render_control_points(ctx);
-				sp.render_control_point_mesh(ctx);
-			}
-		}
 	}
 	/// overload the create gui method
 	void create_gui()
