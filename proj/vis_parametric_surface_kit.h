@@ -46,7 +46,7 @@ class SurfacePatch {
 	std::vector<uint32_t> control_point_indices;
 public:
 	SurfacePatch() {
-		ctrlpoint_rendering_style.radius = 0.01;
+		ctrlpoint_rendering_style.radius = 0.01; // todo: always the same as ctrlpoint_size in data_ptr
 		control_points.resize(16);
 		control_point_colors.resize(16);
 	}

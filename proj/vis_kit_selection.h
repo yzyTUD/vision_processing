@@ -252,14 +252,14 @@ public:
 							data_ptr->point_cloud_kit->controller_effect_range -= 0.001f;
 						}
 					}
-					
-					if (data_ptr->check_roulette_selection(data_ptr->get_id_with_name("ModelFitting\nMoveControlPoints"))) {
-						is_holding = true;
-					}
 				}
 			}
-			if (vrse.get_action() != cgv::gui::SA_MOVE){
-				is_holding = false;
+			if (vrse.get_action() == cgv::gui::SA_TOUCH) { // event 
+				if (vrse.get_controller_index() == data_ptr->right_rgbd_controller_index) { // controller 
+					if (data_ptr->check_roulette_selection(data_ptr->get_id_with_name("ModelFitting\nMoveControlPoints"))) {
+						is_holding = !is_holding;
+					}
+				}
 			}
 		}
 
@@ -371,19 +371,21 @@ public:
 			}
 		}
 
+		// control point interaction 
 		if (e.get_kind() == cgv::gui::EID_POSE) {
 			cgv::gui::vr_pose_event& vrpe = static_cast<cgv::gui::vr_pose_event&>(e);
 			int curr_selecting_control_point_index = -1;
 			if (vrpe.get_trackable_index() == data_ptr->right_rgbd_controller_index) {
 				std::vector<vec3>* c_points = &data_ptr->point_cloud_kit->pc.control_points;
-				// loop over all control points to check, dont check if is moving 
-				if(!is_moving)
+				// loop over all control points to check
+				//if(!is_moving) //dont check if is moving 
+				float curr_min_dist = std::numeric_limits<float>::max();
 					for (int i = 0; i < c_points->size();i++) {
-						float dist = (c_points->at(i) - data_ptr->righthand_object_positions[0]).length();
-						if (dist < data_ptr->point_cloud_kit->controller_effect_range) {
-							// a control point within range found 
-							curr_selecting_control_point_index = i;
-							break;
+						float tmpdist = (c_points->at(i) - data_ptr->righthand_object_positions[0]).length();
+						if (tmpdist < data_ptr->point_cloud_kit->controller_effect_range && (tmpdist < curr_min_dist)) {
+							// state: a control point within range found 
+							curr_selecting_control_point_index = i; // update min dist index 
+							curr_min_dist = tmpdist; // update min dist 
 						}
 					}
 				// if at least one ctrl point found and is holding, move the point 
@@ -603,7 +605,20 @@ public:
 			}
 			else
 				render_a_handhold_box(ctx);
-		}		
+		}	
+
+		// animating 
+		if(data_ptr->render_an_animating_tube)
+			render_an_animating_tube_impl(ctx);
+
+		// quick test 
+		if(data_ptr->render_a_quad_on_righthand)
+			render_a_quad_on_righthand_vertical(ctx);
+
+	}
+	/// call me 
+	void finish_draw(context& ctx) {
+		// region growing 
 		if (data_ptr->check_roulette_selection(data_ptr->get_id_with_name("PointCloud\nMarkAs\nOrig"))) {
 			render_a_sphere_on_righthand(ctx);
 			//data_ptr->righthand_object_colors[0] = rgb(1,0,0,1);
@@ -617,7 +632,6 @@ public:
 			render_palette_on_left_hand(ctx);
 			render_palette_sphere_on_righthand(ctx);
 		}
-
 		// shading effects 
 		if (data_ptr->check_roulette_selection(data_ptr->get_id_with_name("PCCleaning\nFake\nSeleciton"))) {
 			render_a_sphere_on_righthand_shading_effect(ctx);
@@ -625,7 +639,6 @@ public:
 		if (data_ptr->check_roulette_selection(data_ptr->get_id_with_name("PCShading\nLinearMelting"))) {
 			render_a_sphere_on_righthand_shading_effect(ctx);
 		}
-
 		// point cloud cleaning
 		if (data_ptr->check_roulette_selection(data_ptr->get_id_with_name("PCCleaning\nClipping"))) {
 			render_a_handhold_plane_for_clipping(ctx);
@@ -642,27 +655,15 @@ public:
 		if (data_ptr->check_roulette_selection(data_ptr->get_id_with_name("PCCleaning\nCopyPoints"))) {
 			render_a_sphere_on_righthand_shading_effect(ctx);
 		}
-
 		//
 		if (data_ptr->check_roulette_selection(data_ptr->get_id_with_name("ModelFitting\nMoveControlPoints"))) {
+			data_ptr->point_cloud_kit->controller_effect_range = 0.02; // make sure larger than ctrl point size 
 			render_a_sphere_on_righthand_shading_effect(ctx);
 		}
-
-		// animating 
-		if(data_ptr->render_an_animating_tube)
-			render_an_animating_tube_impl(ctx);
-
-		// quick test 
-		if(data_ptr->render_a_quad_on_righthand)
-			render_a_quad_on_righthand_vertical(ctx);
-
-	}
-	/// call me 
-	void finish_draw(context& ctx) {
-
 	}
 	///
 	void render_a_handhold_plane_for_clipping(cgv::render::context& ctx) {
+		glDisable(GL_CULL_FACE);
 		vec3 ext = vec3(0, 2, 4);
 		// surface renderer with texture 
 		if (true) {
@@ -757,16 +758,14 @@ public:
 	///
 	void render_palette_sphere_on_righthand(cgv::render::context& ctx) {
 		if (data_ptr->righthand_object_positions.size()) {
-			glDepthMask(GL_FALSE);
+			glDisable(GL_CULL_FACE);
 			glEnable(GL_BLEND);
 			glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
-			glDisable(GL_CULL_FACE);
 			auto& sr = cgv::render::ref_sphere_renderer(ctx);
 			sr.set_render_style(marking_style);
 			sr.set_position_array(ctx, data_ptr->righthand_object_positions);
 			sr.set_color_array(ctx, data_ptr->palette_righthand_object_colors);
 			sr.render(ctx, 0, data_ptr->righthand_object_positions.size());
-			glDepthMask(GL_TRUE);
 		}
 	}
 	
@@ -776,16 +775,15 @@ public:
 			shading_effect_style.radius = data_ptr->point_cloud_kit->controller_effect_range;
 			rgb oricol = data_ptr->righthand_object_colors[0];
 			data_ptr->righthand_object_colors[0] = rgb(0.6,0.6,0.6);
-			glDepthMask(GL_FALSE);
+			glDisable(GL_CULL_FACE);
 			glEnable(GL_BLEND);
 			glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
-			glDisable(GL_CULL_FACE);
 			auto& sr = cgv::render::ref_sphere_renderer(ctx);
 			sr.set_render_style(shading_effect_style);
 			sr.set_position_array(ctx, data_ptr->righthand_object_positions);
 			sr.set_color_array(ctx, data_ptr->righthand_object_colors);
 			sr.render(ctx, 0, data_ptr->righthand_object_positions.size());
-			glDepthMask(GL_TRUE);
+			glDisable(GL_BLEND);
 			data_ptr->righthand_object_colors[0] = oricol;
 		}
 	}

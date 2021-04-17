@@ -279,6 +279,7 @@ public:
 	// parametric surface rendering 
 	bool render_parametric_surface = false;
 	bool render_control_points = true;
+	float ctrlpoint_size = 0.01;
 
 	/// @external api 
 	std::string get_timestemp_for_filenames() {
