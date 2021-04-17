@@ -69,6 +69,10 @@ private:
 	vec3 updated_left_end = vec3(0);
 	vec3 updated_right_end = vec3(0);
 
+	//
+	bool is_holding = false;
+	bool is_moving = false;
+
 public:
 	/*public accessble varibles */
 	int current_selecting_idx = -1;
@@ -248,7 +252,14 @@ public:
 							data_ptr->point_cloud_kit->controller_effect_range -= 0.001f;
 						}
 					}
+					
+					if (data_ptr->check_roulette_selection(data_ptr->get_id_with_name("ModelFitting\nMoveControlPoints"))) {
+						is_holding = true;
+					}
 				}
+			}
+			if (vrse.get_action() != cgv::gui::SA_MOVE){
+				is_holding = false;
 			}
 		}
 
@@ -359,6 +370,32 @@ public:
 				// allow more btns to paint here 
 			}
 		}
+
+		if (e.get_kind() == cgv::gui::EID_POSE) {
+			cgv::gui::vr_pose_event& vrpe = static_cast<cgv::gui::vr_pose_event&>(e);
+			int curr_selecting_control_point_index = -1;
+			if (vrpe.get_trackable_index() == data_ptr->right_rgbd_controller_index) {
+				std::vector<vec3>* c_points = &data_ptr->point_cloud_kit->pc.control_points;
+				// loop over all control points to check, dont check if is moving 
+				if(!is_moving)
+					for (int i = 0; i < c_points->size();i++) {
+						float dist = (c_points->at(i) - data_ptr->righthand_object_positions[0]).length();
+						if (dist < data_ptr->point_cloud_kit->controller_effect_range) {
+							// a control point within range found 
+							curr_selecting_control_point_index = i;
+							break;
+						}
+					}
+				// if at least one ctrl point found and is holding, move the point 
+				if (is_holding && curr_selecting_control_point_index!=-1) {
+					c_points->at(curr_selecting_control_point_index) = data_ptr->righthand_object_positions[0];
+					is_moving = true;
+				}
+				if (!is_holding)
+					is_moving = false;
+			}
+		}
+
 		/// old version, old events. todo: rewrite this part with freq. test 
 		switch (e.get_kind()) {
 			case cgv::gui::EID_KEY:
@@ -490,6 +527,7 @@ public:
 			}
 		return false;
 	}
+
 	float angle = 0;
 	/// declare timer_event method to connect the shoot signal of the trigger
 	void timer_event(double, double dt)
@@ -602,6 +640,11 @@ public:
 			render_a_quad_on_righthand_vertical(ctx);
 		}
 		if (data_ptr->check_roulette_selection(data_ptr->get_id_with_name("PCCleaning\nCopyPoints"))) {
+			render_a_sphere_on_righthand_shading_effect(ctx);
+		}
+
+		//
+		if (data_ptr->check_roulette_selection(data_ptr->get_id_with_name("ModelFitting\nMoveControlPoints"))) {
 			render_a_sphere_on_righthand_shading_effect(ctx);
 		}
 

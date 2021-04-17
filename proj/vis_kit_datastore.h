@@ -350,6 +350,7 @@ public:
 		// point cloud: parametric surface fitting 
 		//////////////////////////////////////////////////////////////////
 		gp_btn_tmp.clear();
+		gp_btn_tmp.push_back("ModelFitting\nMoveControlPoints");
 		gp_btn_tmp.push_back("ModelFitting\nFitVertices");
 		gp_btn_tmp.push_back("ModelFitting\nFitEdgeCurves");
 		gp_btn_tmp.push_back("ModelFitting\nFitFaceSurface");

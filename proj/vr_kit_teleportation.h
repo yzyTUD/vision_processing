@@ -84,6 +84,7 @@ public:
 	void set_data_ptr(vis_kit_data_store_shared* d_ptr) {
 		data_ptr = d_ptr;
 	}
+
 	void timer_event(double t, double dt) {
 		if (vr_view_ptr && is_lifting) {
 			vec3 delta = vec3(0,5*dt,0);
