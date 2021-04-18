@@ -200,8 +200,10 @@ void gl_point_cloud_drawable::set_arrays(context& ctx, size_t offset, size_t cou
 			count, unsigned(sizeof(cgv::type::uint8_type)) * show_point_step);*/
 	if (pc.has_scan_indices())
 		s_renderer.set_attribute_array_renderer(ctx,
-			"scan_index", &pc.point_scan_index.at(unsigned(offset)),
-				count, unsigned(sizeof(float)) * show_point_step);
+			"scan_index", &pc.point_scan_index.at(unsigned(offset)), count, unsigned(sizeof(float)) * show_point_step);
+	if (pc.has_scan_indices())
+		s_renderer.set_attribute_array_renderer(ctx,
+			"point_visibility", &pc.point_visibility.at(unsigned(offset)), count, unsigned(sizeof(float)) * show_point_step);
 
 }
 /// render with surfel 

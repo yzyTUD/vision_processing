@@ -222,6 +222,32 @@ class CGV_API point_cloud : public point_cloud_types
 	typedef cgv::media::color<float, cgv::media::RGB> rgb;
 public:
 	/*
+		point selection definition, per point cloud varible
+	*/
+	std::vector<cgv::math::fvec<float, 3>> cam_posi_list;
+	/// per vertex marked index, PointSelectiveAttribute
+	/// 20 reserved
+	/// copy to shader file 
+	enum PointSelectiveAttribute {
+		VISUAL_MARK, // reserved 
+		ORI = 1,
+		DEL = 2,
+		BOUNDARIES = 3,
+		CORNER = 4,
+		ICP_SOURCE,
+		ICP_TARGET,
+		ICP_SOURCE_SAMPLED,
+		ICP_TARGET_SAMPLED,
+		TO_BE_SUBSAMPLED,
+		NEWLY_GENERATED,
+		// add new functional idx above
+		EndOfFunctionalIndices // region id start from the end of this struct 
+	};
+	int num_of_functional_selections = 20; // from 0 - 19 
+	int num_of_regions = 25; // from 20 - 44
+	int max_num_of_selections = num_of_functional_selections + num_of_regions;
+	float currentIdx = 0;
+	/*
 		per vertex info, can be stored externally in a .cgvscan file 
 	*/
 	/// container for point positions
@@ -236,16 +262,25 @@ public:
 	std::vector<PixCrd> I;
 	/// container for local features 
 	std::vector<Dir> F;
-	/// per-vertex attribute: which group the point belones to 
-	std::vector<cgv::type::uint8_type> point_selection; // will be used as face index 
-	/// per-vertex attribute: used for region growing 
+	/// per-vertex attribute: used for region growing, used internally, wont be passed to gpu 
 	std::vector<bool> point_selection_visited;
+	/// per-vertex attribute: which group the point belones to 
+	std::vector<cgv::type::uint8_type> point_selection; // will be used as face index
 	/// container for per vertex scan indices, which scan it belones to 
 	std::vector<float> point_scan_index; 
-	///
-	bool has_scan_index = false;
-
+	/// control the point visibility for vr-icp 
+	std::vector<float> point_visibility; 
 public: 
+	/*
+		vr-icp 
+	*/
+	/// for rendering with different scans 
+	int num_of_scan_indices = 0;
+	/// for visualize scan indices 
+	std::vector<bool> scan_index_visibility;
+	/// from scan_index_visibility to point_visibility
+	void update_scan_index_visibility();
+
 	/*
 		point based connectivity model, per point cloud varible
 		can be stored externally in a .cgv
@@ -340,36 +375,9 @@ public:
 	/// save as obj file with per vertex 
 	bool export_to_an_obj_file(const std::string& file_name);
 
-	
-	/*
-		point selection definition, per point cloud varible
-	*/
-	std::vector<cgv::math::fvec<float, 3>> cam_posi_list;
-	/// per vertex marked index, PointSelectiveAttribute
-	/// 20 reserved
-	/// copy to shader file 
-	enum PointSelectiveAttribute {
-		VISUAL_MARK, // reserved 
-		ORI = 1,
-		DEL = 2,
-		BOUNDARIES = 3,
-		CORNER = 4,
-		ICP_SOURCE,
-		ICP_TARGET,
-		ICP_SOURCE_SAMPLED,
-		ICP_TARGET_SAMPLED,
-		TO_BE_SUBSAMPLED,
-		NEWLY_GENERATED,
-		// add new functional idx above
-		EndOfFunctionalIndices // region id start from the end of this struct 
-	};
-	int num_of_functional_selections = 20; // from 0 - 19 
-	int num_of_regions = 25; // from 20 - 44
-	int max_num_of_selections = num_of_functional_selections + num_of_regions;
-	float currentIdx = 0;
-
-
 protected:
+	/// boolean flag  
+	bool has_scan_index = false;
 	/// container to store  one component index per point
 	std::vector<unsigned> component_indices;
 

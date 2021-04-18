@@ -919,6 +919,52 @@ void point_cloud_interactable::extract_all() {
 	edge_extraction();
 }
 
+void point_cloud_interactable::fitting_render_control_points_test() {
+	/*pc.control_points.push_back(pc.pnt(78673));
+	pc.control_point_colors.push_back(rgb(1, 1, 0));
+	pc.control_points.push_back(pc.pnt(17268));
+	pc.control_point_colors.push_back(rgb(0, 1, 0));*/
+
+	/*pc.point_selection.at(78673) = 2u;
+	pc.point_selection.at(17268) = 2u;*/
+
+	//pc.demo_surface.push_back();
+
+	pc.control_points.clear();
+	pc.control_point_colors.clear();
+	pc.demo_surface.clear();
+
+	pc.control_points.resize(16);
+	pc.control_point_colors.resize(16);
+	pc.demo_surface.resize(16);
+
+	pc.control_points.at(0) = vec3(0, 0, 0);
+	pc.control_points.at(1) = vec3(0, 1.01, 1);
+	pc.control_points.at(2) = vec3(0, 1.08, 2);
+	pc.control_points.at(3) = vec3(0, 0, 3);
+
+	pc.control_points.at(4) = vec3(1, 1.2, 0);
+	pc.control_points.at(5) = vec3(1, 1.3, 1);
+	pc.control_points.at(6) = vec3(1, 1.2, 2);
+	pc.control_points.at(7) = vec3(1, 1.1, 3);
+
+	pc.control_points.at(8) = vec3(2, 1.4, 0);
+	pc.control_points.at(9) = vec3(2, 1.6, 1);
+	pc.control_points.at(10) = vec3(2, 1.1, 2);
+	pc.control_points.at(11) = vec3(2, 1.2, 3);
+
+	pc.control_points.at(12) = vec3(3, 0, 0);
+	pc.control_points.at(13) = vec3(3, 1.3, 1);
+	pc.control_points.at(14) = vec3(3, 1.4, 2);
+	pc.control_points.at(15) = vec3(3, 0, 3);
+
+	for (int i = 0; i < 16; i++)
+		pc.control_point_colors.at(i) = rgb(0, 1, 0);
+
+	for (int i = 0; i < 16; i++)
+		pc.demo_surface.at(i) = i;
+}
+
 /// 
 void point_cloud_interactable::selective_subsampling_cpu() {
 	std::default_random_engine g;
@@ -1454,6 +1500,95 @@ void point_cloud_interactable::collect_to_subsampled_pcs() {
 	}
 	
 }
+
+///
+void point_cloud_interactable::update_scan_index_visibility_test() {
+	for (int i = 0; i < pc.scan_index_visibility.size(); i++) {
+		if (i == 0 || i == 1)
+			pc.scan_index_visibility.at(i) = true;
+		else
+			pc.scan_index_visibility.at(i) = false;
+	}
+	pc.update_scan_index_visibility();
+}
+
+/// extract to pc_src and pc_target
+void point_cloud_interactable::extract_point_clouds_for_icp(int src_scan_idx, int target_scan_idx) {
+	
+}
+
+/// register 
+void point_cloud_interactable::register_extract_point_clouds() {
+	// align pc_to_be_append to last_pc 
+	if (pc_target.get_nr_points() && pc_src.get_nr_points()) {
+		// set sources 
+		icp.set_source_cloud(pc_src);
+		icp.set_target_cloud(pc_target);
+		// init matrices 
+		rotation.identity();
+		translation.zeros();
+		// setup pdarameters 
+		icp.set_iterations(10);
+		icp.set_eps(1e-8);
+		icp.set_num_random(40);
+		icp.build_target_ann_tree();
+		// pc_to_be_append has been changed during the registration 
+		icp.reg_icp(rotation, translation, pc_src, pc_target, icp_filter_type, this->get_context());
+	}
+	else { std::cout << "icp: error point cloud size" << std::endl; }
+}
+
+/// register without subsampling 
+void point_cloud_interactable::register_cur_and_last_pc_if_present() {
+	// align pc_to_be_append to last_pc 
+	if (pc_last.get_nr_points() && pc_to_be_append.get_nr_points()) {
+		rotation.identity();
+		translation.zeros();
+		icp.set_iterations(10);
+		icp.set_eps(1e-8);
+		icp.set_num_random(40);
+
+		icp.set_source_cloud(pc_to_be_append);
+		icp.set_target_cloud(pc_last);
+		icp.build_target_ann_tree();
+
+		// pc_to_be_append has been changed during the registration 
+		icp.reg_icp(rotation, translation, crs_srs_pc, crs_tgt_pc, icp_filter_type, this->get_context());
+	}
+	else {
+		//err: empty pcs 
+	}
+}
+
+///
+void point_cloud_interactable::register_with_subsampled_pcs(point_cloud& _pc) {
+	if(!pc_last_subsampled.get_nr_points())
+		collect_to_subsampled_pcs();
+	if (pc_last_subsampled.get_nr_points() && pc_to_be_append_subsampled.get_nr_points()) {
+		// we just need the rotation and translation from this subsampled pcs 
+		rotation.identity();
+		translation.zeros();
+		icp.set_iterations(10);
+		icp.set_eps(1e-8);
+		icp.set_num_random(40);
+
+		icp.set_source_cloud(pc_to_be_append_subsampled);
+		icp.set_target_cloud(pc_last_subsampled);
+		icp.build_target_ann_tree();
+
+		// pc_to_be_append has been changed during the registration 
+		icp.reg_icp(rotation, translation, crs_srs_pc, crs_tgt_pc, icp_filter_type, this->get_context());
+	
+		// will be added to pc 
+		pc_to_be_append.rotate(cgv::math::quaternion<float>(rotation));
+		pc_to_be_append.translate(translation);
+
+		// as visual feedback 
+		_pc.rotate(cgv::math::quaternion<float>(rotation));
+		_pc.translate(translation);
+	}
+}
+
 ///
 void point_cloud_interactable::highlight_last_pc() {
 	//if (num_of_pcs > 0) {
@@ -1484,55 +1619,6 @@ void point_cloud_interactable::reset_highlighted_last_pc() {
 void point_cloud_interactable::fill_subsampled_pcs_with_cur_pc_as_a_test() {
 	pc_last_subsampled = pc_last;
 	pc_to_be_append_subsampled = pc_to_be_append;
-}
-///
-void point_cloud_interactable::register_with_subsampled_pcs(point_cloud& _pc) {
-	if(!pc_last_subsampled.get_nr_points())
-		collect_to_subsampled_pcs();
-	if (pc_last_subsampled.get_nr_points() && pc_to_be_append_subsampled.get_nr_points()) {
-		// we just need the rotation and translation from this subsampled pcs 
-		rotation.identity();
-		translation.zeros();
-		icp.set_iterations(10);
-		icp.set_eps(1e-8);
-		icp.set_num_random(40);
-
-		icp.set_source_cloud(pc_to_be_append_subsampled);
-		icp.set_target_cloud(pc_last_subsampled);
-		icp.build_ann_tree();
-
-		// pc_to_be_append has been changed during the registration 
-		icp.reg_icp(rotation, translation, crs_srs_pc, crs_tgt_pc, icp_filter_type, this->get_context());
-	
-		// will be added to pc 
-		pc_to_be_append.rotate(cgv::math::quaternion<float>(rotation));
-		pc_to_be_append.translate(translation);
-
-		// as visual feedback 
-		_pc.rotate(cgv::math::quaternion<float>(rotation));
-		_pc.translate(translation);
-	}
-}
-/// register without subsampling 
-void point_cloud_interactable::register_cur_and_last_pc_if_present() {
-	// align pc_to_be_append to last_pc 
-	if (pc_last.get_nr_points() && pc_to_be_append.get_nr_points()) {
-		rotation.identity();
-		translation.zeros();
-		icp.set_iterations(10);
-		icp.set_eps(1e-8);
-		icp.set_num_random(40);
-
-		icp.set_source_cloud(pc_to_be_append);
-		icp.set_target_cloud(pc_last);
-		icp.build_ann_tree();
-
-		// pc_to_be_append has been changed during the registration 
-		icp.reg_icp(rotation, translation, crs_srs_pc, crs_tgt_pc, icp_filter_type, this->get_context());
-	}
-	else {
-		//err: empty pcs 
-	}
 }
 ///
 void point_cloud_interactable::pc_changed() {
@@ -2281,6 +2367,12 @@ void point_cloud_interactable::on_point_cloud_change_callback(PointCloudChangeEv
 	}
 	if ((pcc_event & PCC_POINTS_MASK) == PCC_NEW_POINT_CLOUD && do_auto_view) {
 		auto_set_view();
+	}
+	if ((pcc_event & PCC_POINTS_MASK) == PCC_NEW_POINT_CLOUD) {
+		// prepare point cloud after read 
+		pc.scan_index_visibility.resize(pc.num_of_scan_indices);
+		for (auto& siv : pc.scan_index_visibility) {siv = true;}
+		pc.update_scan_index_visibility();
 	}
 	post_redraw();
 }

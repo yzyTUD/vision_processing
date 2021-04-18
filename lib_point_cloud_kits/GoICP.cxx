@@ -150,7 +150,7 @@ namespace cgv {
 				buildDistanceTransform();
 				icp_obj.set_target_cloud(*target_cloud);
 				// ICP only uses the more precise ann tree based distance computation
-				icp_obj.build_ann_tree();
+				icp_obj.build_target_ann_tree();
 				break;
 			case DCM_ANN_TREE:
 				buildKDTree();

@@ -151,7 +151,7 @@ void visual_processing::timer_event(double t, double dt) {
 void visual_processing::parallel_timer_event() {
 	while (true) {
 		// control the speed here 
-		if (data_ptr!=nullptr)
+		if (data_ptr != NULL)
 		if (data_ptr->point_cloud_kit->do_region_growing_directly)
 		if (data_ptr->point_cloud_kit->can_parallel_grow) {
 			// atomic
@@ -1211,6 +1211,12 @@ void visual_processing::create_gui() {
 	connect_copy(add_button("print_pc_information")->click, rebind(this, &visual_processing::print_pc_information));
 	connect_copy(add_button("save")->click,rebind(this, &visual_processing::start_writting_pc_parallel));
 	add_member_control(this, "Ignore Deleted Points", data_ptr->point_cloud_kit->pc.ignore_deleted_points, "check");
+	
+	//
+	connect_copy(add_button("update_scan_index_visibility_test")->click,
+		rebind(this, &visual_processing::update_scan_index_visibility_test));
+	connect_copy(add_button("point_visibility_vis_all_points")->click,
+		rebind(this, &visual_processing::point_visibility_vis_all_points));
 	
 	//
 	connect_copy(add_button("read_cgvcad")->click,

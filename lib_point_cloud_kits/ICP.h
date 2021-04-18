@@ -46,7 +46,7 @@ namespace cgv {
 			ICP();
 			~ICP();
 
-			void build_ann_tree();
+			void build_target_ann_tree();
 			void clear();
 			void set_source_cloud(point_cloud& inputCloud);
 			void set_target_cloud(point_cloud& inputCloud);

@@ -592,6 +592,16 @@ public:
 	void triangulation_of_the_points() {
 		data_ptr->point_cloud_kit->pc.triangulation_of_the_points();
 	}
+	void update_scan_index_visibility_test() {
+		data_ptr->point_cloud_kit->update_scan_index_visibility_test();
+	}
+	void point_visibility_vis_all_points() {
+		std:vector<bool>* visibility_array = &data_ptr->point_cloud_kit->pc.scan_index_visibility;
+		for (int i = 0; i < visibility_array->size(); i++) {
+			visibility_array->at(i) = true;
+		}
+		data_ptr->point_cloud_kit->pc.update_scan_index_visibility();
+	}
 	void export_to_an_obj_file() {
 		std::string f = cgv::gui::file_save_dialog("Save", "OBJ Mesh:*");
 		data_ptr->point_cloud_kit->pc.export_to_an_obj_file(f);

@@ -100,6 +100,11 @@ public:
 	/// open a new point cloud
 	bool open(const std::string& fn);
 
+	/// icp related 
+	void highlight_point_cloud_with_index_0_1();
+
+
+	///
 	bool generate_pc_hemisphere();
 
 	void generate_testing_plane();
@@ -148,24 +153,23 @@ public:
 	void write_pc_to_file();
 	///
 
-	/*direct marking on pc */
-	///
-	void prepare_marking(std::vector<rgba>* psc);
-	///
-	//void mark_points_with_conroller(Pnt p, float r, bool confirmed, int objctive);
-	/// 
-	void mark_points_with_conroller(Pnt p, float r, cgv::type::uint8_type objctive);
-	///
-	void new_history_recording();
-	///
+	/*
+		direct marking supprt 
+	*/
+	/// history recording 
 	std::stack<std::vector<pointHistoryEntry>> point_marking_history;
-	/// how many steps are you going back, offset in the 
-	/// make sure to check it no larger than the size of the history 
+	/// history recording 
 	int history_indexer = 0;
-	///
+	/// make sure vector size: point_selection, point_selection_visited
+	void prepare_marking(std::vector<rgba>* psc);
+	/// mark with controllers 
+	void mark_points_with_conroller(Pnt p, float r, cgv::type::uint8_type objctive);
+	/// marking test 
 	void marking_test_mark_all_points_as_given_group(int objective);
 	/// quick point deletion: with a clipping plane 
 	void mark_points_with_clipping_plane(Pnt p, Nml plane_normal, int objctive);
+	/// support step back 
+	void new_history_recording();
 	///
 	void reset_last_marking_non_processed_part(int which_is_marked_and_not_used);
 	///
@@ -175,6 +179,9 @@ public:
 	///
 	void step_forward_selection();
 
+	/*
+		support for point copying 
+	*/
 	///
 	point_cloud to_be_copied_pointcloud;
 	///
@@ -198,58 +205,17 @@ public:
 	///
 	void extract_all();
 
+	/*
+		points fitting 
+	*/
+	/// set points and indices for a demo surface 
+	void fitting_render_control_points_test();
 	///
 	void build_connectivity_graph_fitting_and_render_control_points() {
 		point_classification();
 		extract_all();
 		pc.make_explicit();
 		pc.fit_all();
-	}
-	/// set points and indices for a demo surface 
-	void fitting_render_control_points_test() {
-		/*pc.control_points.push_back(pc.pnt(78673));
-		pc.control_point_colors.push_back(rgb(1, 1, 0));
-		pc.control_points.push_back(pc.pnt(17268));
-		pc.control_point_colors.push_back(rgb(0, 1, 0));*/
-
-		/*pc.point_selection.at(78673) = 2u;
-		pc.point_selection.at(17268) = 2u;*/
-
-		//pc.demo_surface.push_back();
-
-		pc.control_points.clear();
-		pc.control_point_colors.clear();
-		pc.demo_surface.clear();
-
-		pc.control_points.resize(16);
-		pc.control_point_colors.resize(16);
-		pc.demo_surface.resize(16);
-
-		pc.control_points.at(0) = vec3(0, 0, 0);
-		pc.control_points.at(1) = vec3(0, 1.01, 1);
-		pc.control_points.at(2) = vec3(0, 1.08, 2);
-		pc.control_points.at(3) = vec3(0, 0, 3);
-
-		pc.control_points.at(4) = vec3(1, 1.2, 0);
-		pc.control_points.at(5) = vec3(1, 1.3, 1);
-		pc.control_points.at(6) = vec3(1, 1.2, 2);
-		pc.control_points.at(7) = vec3(1, 1.1, 3);
-
-		pc.control_points.at(8) = vec3(2, 1.4, 0);
-		pc.control_points.at(9) = vec3(2, 1.6, 1);
-		pc.control_points.at(10) = vec3(2, 1.1, 2);
-		pc.control_points.at(11) = vec3(2, 1.2, 3);
-
-		pc.control_points.at(12) = vec3(3, 0, 0);
-		pc.control_points.at(13) = vec3(3, 1.3, 1);
-		pc.control_points.at(14) = vec3(3, 1.4, 2);
-		pc.control_points.at(15) = vec3(3, 0, 3);
-
-		for (int i = 0; i < 16; i++)
-			pc.control_point_colors.at(i) = rgb(0,1,0);
-
-		for (int i = 0; i < 16; i++)
-			pc.demo_surface.at(i) = i;
 	}
 
 	// selective subsampling within given point type, with a global adjustable ratio 
@@ -263,8 +229,20 @@ public:
 	int num_of_points_to_be_added = 100;
 
 	/*region growing, give group information */
+	/// varibles that used for region growing
+	bool marked = false;
+	bool do_region_growing_directly = false;
+	bool region_grow_check_normals = true;
+	int steps_per_event_as_speed = 200;
+	bool can_sleep = false;
+	bool add_to_seed = true;
+	bool can_parallel_grow = true;
 	///
 	void prepare_grow(bool read_from_file, std::vector<rgba>* psc, int max_num_regions);
+	///
+	bool grow_one_step_bfs(bool check_nml, int which_group);
+	///
+	void do_region_growing_timer_event(double t, double dt);
 	///
 	void reset_all_grows();
 	///
@@ -277,7 +255,7 @@ public:
 	//bool grow_one_step_bfs(bool check_nml, int which_group);
 	///
 	bool all_points_growed();
-	///
+	/// ensure that all points are growed 
 	void grow_one_step_bfs_ensure();
 	///
 	void mark_points_inside_selection_tool(Pnt p, float r, bool confirmed, int objctive);
@@ -293,23 +271,44 @@ public:
 	void collect_to_subsampled_pcs();
 	///
 	void fill_subsampled_pcs_with_cur_pc_as_a_test();
-	/// perform ICP algo. with given source and target clouds 
-	void register_with_subsampled_pcs(point_cloud& _pc);
 	///
 	void subsampling_target(Pnt& posi, float& radii, bool confirmed);
+	std::vector<std::queue<int>> region_id_and_seeds; // idx means region id, queue stores seeds 
+	std::vector<std::queue<vec3>> region_id_and_nmls; // idx means region id, queue stores normals 
+	std::vector<vr_kit_image_renderer> image_renderer_list;
+
+	/*VR-ICP related */
+	/// deprecated 
+	void highlight_last_pc();
+	/// deprecated
+	void reset_highlighted_last_pc();
+	/// perform ICP algo. with given source and target clouds subsampled, deprecated
+	void register_with_subsampled_pcs(point_cloud& _pc);
+	/// perform ICP algo. with given source and target clouds  
+	void register_cur_and_last_pc_if_present();
+	/// a quick test 
+	void update_scan_index_visibility_test(); // typically, we update them directly with controller 
 	///
-	void do_region_growing_timer_event(double t, double dt);
+	void extract_point_clouds_for_icp(int src_scan_idx, int target_scan_idx);
 	///
-	bool grow_one_step_bfs(bool check_nml, int which_group);
-	/// varibles that used for region growing
-	bool marked = false;
-	bool do_region_growing_directly = false;
-	bool region_grow_check_normals = true;
-	int steps_per_event_as_speed = 200;
-	bool can_sleep = false;
-	bool add_to_seed = true;
-	bool can_parallel_grow = true;
-	//@}
+	void register_extract_point_clouds();
+	///
+	point_cloud pc_src;
+	point_cloud pc_target;
+	point_cloud crs_srs_pc; // tmp source and target pcs 
+	point_cloud crs_tgt_pc;
+	point_cloud oripc;
+	point_cloud pc_last;
+	point_cloud pc_to_be_append;
+	point_cloud tmppc;
+	bool is_highlighting = false;
+	cgv::pointcloud::ICP icp;
+	point_cloud pc_last_subsampled;
+	point_cloud pc_to_be_append_subsampled;
+	point_cloud_types::Mat rotation;
+	point_cloud_types::Dir translation;
+	cgv::pointcloud::ICP::Sampling_Type icp_filter_type = cgv::pointcloud::ICP::RANDOM_SAMPLING;
+
 
 	/**@name rendering speedup techniques */
 	//@{
@@ -393,35 +392,9 @@ public:
 	std::vector<int> frame_pointers;
 	std::vector<Pnt> frame_cam_posi;
 
-	/// ICP related vars 
-	point_cloud pc_last;
-	point_cloud pc_to_be_append;
-	point_cloud tmppc;
-	bool is_highlighting = false;
-	cgv::pointcloud::ICP icp;
-	point_cloud crs_srs_pc; // tmp source and target pcs 
-	point_cloud crs_tgt_pc;
-	point_cloud pc_last_subsampled;
-	point_cloud pc_to_be_append_subsampled;
-	point_cloud_types::Mat rotation;
-	point_cloud_types::Dir translation;
-	cgv::pointcloud::ICP::Sampling_Type icp_filter_type = cgv::pointcloud::ICP::RANDOM_SAMPLING;
-	std::vector<std::queue<int>> region_id_and_seeds; // idx means region id, queue stores seeds 
-	std::vector<std::queue<vec3>> region_id_and_nmls; // idx means region id, queue stores normals 
-	std::vector<vr_kit_image_renderer> image_renderer_list;
-
-	//
-	point_cloud oripc;
-
 public:
 	/// construct viewer with default configuration
 	point_cloud_interactable();
-	///
-	void highlight_last_pc();
-	/// 
-	void reset_highlighted_last_pc();
-	///
-	void register_cur_and_last_pc_if_present();
 	///
 	void pc_changed();
 	///

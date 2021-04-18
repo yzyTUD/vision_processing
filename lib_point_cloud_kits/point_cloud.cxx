@@ -356,6 +356,15 @@ point_cloud::Idx point_cloud::end_index(Idx component_index) const
 		return Idx(component_point_range(component_index).index_of_first_point + component_point_range(component_index).nr_points);
 }
 
+/// from boolean vector to per-point vector, call this if scan_index_visibility changed 
+void point_cloud::update_scan_index_visibility() {
+	point_visibility.resize(get_nr_points());
+	// loop all points, look up visibility boolean flag in scan_index_visibility, 
+	// pass to point_visibility, which will be used in shader 
+	for (int Idx = 0; Idx < point_visibility.size(); Idx++) 
+		point_visibility.at(Idx) = scan_index_visibility.at((int)point_scan_index.at(Idx))?1.0f:0.0f;
+}
+
 /// collect point_indices/ compute he 
 void point_cloud::make_explicit() {
 	// collect faces 
@@ -1921,6 +1930,7 @@ bool point_cloud::read_txt(const std::string& file_name)
 	std::cout << "has_clrs: " << has_clrs << std::endl;
 
 	watch.add_time();
+
 	return true;
 }
 
@@ -1971,7 +1981,10 @@ bool point_cloud::read_cgvscan(const std::string& file_name)
 				has_clrs = true;
 			}
 			if (j >= 10) {
-				point_scan_index.push_back((float)values[9]);
+				int tmp_scan_index = (float)values[9];
+				point_scan_index.push_back(tmp_scan_index);
+				if (tmp_scan_index > num_of_scan_indices)
+					num_of_scan_indices = tmp_scan_index;
 				has_scan_index = true;
 			}
 			if (j >= 11) {
@@ -1998,6 +2011,8 @@ bool point_cloud::read_cgvscan(const std::string& file_name)
 		if ((P.size() % 100000) == 0)
 			cout << "read " << P.size() << " points" << endl;
 	}
+
+	num_of_scan_indices++; // from index to number 
 
 	std::cout << "points: " << std::endl;
 	std::cout << "has_clrs: " << has_clrs << std::endl;

@@ -626,7 +626,7 @@ public:
 		point_cloud_in_hand->pc.create_colors();
 		point_cloud_in_hand->RENDERING_STRATEGY = 1; // quad rendering 
 		point_cloud_in_hand->continus_redraw = false;
-		point_cloud_in_hand->generate_pc_cube();
+		//point_cloud_in_hand->generate_pc_cube();
 		//point_cloud_in_hand->compute_normals();
 		//point_cloud_in_hand->orient_normals(); // Orientation with MST
 

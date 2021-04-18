@@ -21,10 +21,10 @@ namespace cgv {
 
 		}
 
-		void ICP::build_ann_tree()
+		void ICP::build_target_ann_tree()
 		{
 			if (!targetCloud) {
-				std::cerr << "ICP::build_ann_tree: target cloud missing, can't build ann tree\n";
+				std::cerr << "ICP::build_target_ann_tree: target cloud missing, can't build ann tree\n";
 				return;
 			}
 
@@ -155,7 +155,7 @@ namespace cgv {
 		void ICP::reg_icp(Mat& rotation_mat, Dir& translation_vec, point_cloud& S, point_cloud& Q, cgv::pointcloud::ICP::Sampling_Type icp_filter_type, cgv::render::context* ctx) {
 			if (!tree) {
 				/// create the ann tree
-				build_ann_tree();
+				build_target_ann_tree();
 				//std::cerr << "ICP::reg_icp: called reg_icp before initialization!\n";
 			}
 			if (!(sourceCloud && targetCloud)) {
