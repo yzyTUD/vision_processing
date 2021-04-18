@@ -77,6 +77,7 @@ namespace cgv {
 			float dis_pts(const Pnt& source_p, const Pnt& target_p);
 		private:
 			std::shared_ptr<ann_tree> tree;
+			std::shared_ptr<ann_tree> tree_inv;
 			normal_estimator ne_t;
 			bool QS_not_changed = false;
 		};

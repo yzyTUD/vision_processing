@@ -72,9 +72,11 @@ namespace cgv {
 
 			// the tree for source cloud has to be re-built each iteration
 			// the cloud should be transformed to updated position  
-			std::shared_ptr<ann_tree> tree_inv = std::make_shared<ann_tree>();
+			//std::shared_ptr<ann_tree> tree_inv = std::make_shared<ann_tree>();
+			// tree shoud be rebuilt each epoch for src point cloud and only once!
 			tree_inv->build(*sourceCloud);
 
+			// ensure num of different samples will be selected if num!=0
 			if (num == 0) {
 				for (int i = 0; i < numRandomSamples; i++) //sourceCloud->get_nr_points()
 				{
@@ -153,11 +155,114 @@ namespace cgv {
 
 		/// re write, a very quick test 
 		void ICP::reg_icp_get_matrices(point_cloud* pc_src, point_cloud* pc_target, Mat& rmat, Dir& tvec) {
+			// set once, use sourceCloud as global varible for sampling 
+			sourceCloud = pc_src;
+			targetCloud = pc_target;
+
+			// initialize tree ds 
+			tree = std::make_shared<ann_tree>();
+			tree->build(*targetCloud);
+			tree_inv = std::make_shared<ann_tree>();
+
 			// check 
 			if (pc_src == nullptr || pc_target == nullptr){ std::cout << "error, null pointer" << std::endl;}
+			std::cout << "current num of points, source = " << sourceCloud->get_nr_points() << std::endl;
+			std::cout << "current num of points, target = " << targetCloud->get_nr_points() << std::endl;
+			if (numRandomSamples > sourceCloud->get_nr_points())// make sure that sample points no more than nr of points in source cloud 
+				numRandomSamples = sourceCloud->get_nr_points();
 
-			// test 
-			tvec = Dir(0,1,0);
+			// init helpers
+			float mincost = std::numeric_limits<float>::infinity();// define min as Infinity
+			Mat fA(0.0f);	// initializes fA to matrix filled with zeros
+			cgv::math::mat<float> U, V;
+			cgv::math::diag_mat<float> Sigma;
+			U.zeros();
+			V.zeros();
+			Sigma.zeros();
+			point_cloud S, Q;// subset of the pcs, used for samples 
+			S.clear();
+			Q.clear();
+			Pnt source_center; source_center.zeros();
+			Pnt target_center; target_center.zeros();
+			float cost = 1.0;
+
+			// main iteration of the ICP algorithm 
+			int num_of_iters = 0;
+			for (int iter = 0; iter < maxIterations && abs(cost) > eps; iter++)
+			{
+				// init seed 
+				std::srand((unsigned)std::time(0) + iter);
+
+				// perform sampling 
+				S.clear();
+				Q.clear();
+				aquire_crspds_bilateral(S, Q, 0);
+				std::cout << "num of real samples used = " << S.get_nr_points() << std::endl;
+
+				// ignore if not enough point corresp. found 
+				if (S.get_nr_points() < 3)
+					continue;
+
+				// re-compute center of the sampled points  
+				get_center_point(S, source_center);
+				get_center_point(Q, target_center);
+
+				// compute cov matrix 
+				fA.zeros();
+				for (int i = 0; i < S.get_nr_points(); i++) {
+					fA += Mat(Q.pnt(i) - target_center, S.pnt(i) - source_center);
+				}
+
+				///cast fA to A
+				cgv::math::mat<float> A(3, 3, &fA(0, 0));
+				cgv::math::svd(A, U, Sigma, V);
+				Mat fU(3, 3, &U(0, 0)), fV(3, 3, &V(0, 0));
+
+				///get new R and t
+				rmat = fU * cgv::math::transpose(fV);
+				cgv::math::mat<float> R(3, 3, &rmat(0, 0));
+				if (cgv::math::det(R) < 0) {
+					// multiply the 1,1...-1 diag matrix 
+					Mat fS;
+					fS.zeros();
+					fS(0, 0) = 1;
+					fS(1, 1) = 1;
+					fS(2, 2) = -1;
+					rmat = fU * fS * cgv::math::transpose(fV);
+				}
+				tvec = target_center - rmat * source_center;
+
+				///calculate error function E(R,t)
+				cost = 0.0f;
+				for (int i = 0; i < S.get_nr_points(); i++) {
+					///the new rotation matrix: rotation_mat
+					cost += error(Q.pnt(i), S.pnt(i), rmat, tvec);
+				}
+				cost /= S.get_nr_points();
+
+				/// judge if cost is decreasing, 
+				/// and is larger than eps. If so, update the R and t, 
+				/// otherwise stop and output R and t
+				if (mincost >= abs(cost)) {
+					// perform multiple times can somehow avoids local minima!
+					// a long iter won't help, there should be some strategies to 
+					// jump out of this!
+					std::cout << "lower err found: " << cost << std::endl;
+
+					// re-compute the transform of the source cloud 
+					// update the source cloud for correct tree computation later 
+					sourceCloud->rotate(cgv::math::quaternion<float>(rmat));
+					sourceCloud->translate(tvec);
+
+					// update min cost 
+					mincost = abs(cost);
+				}
+				num_of_iters++;
+			}
+			std::cout << "--------------" << std::endl;
+			std::cout << "iter used: " << num_of_iters << std::endl;
+			std::cout << "cost = " << mincost << std::endl;
+			std::cout << "coverged = " << (num_of_iters < maxIterations) << std::endl;
 		}
 
 		///@deprecated, output the rotation matrix and translation vector 
@@ -273,7 +378,7 @@ namespace cgv {
 				// compute QS in pre-compute step
 
 
-				// 
+				// ignore if not enough point corresp. found 
 				if (S.get_nr_points() < 3)
 					continue;
 
@@ -291,6 +396,7 @@ namespace cgv {
 				cgv::math::mat<float> A(3, 3, &fA(0, 0));
 				cgv::math::svd(A, U, Sigma, V);
 				Mat fU(3, 3, &U(0, 0)), fV(3, 3, &V(0, 0));
+
 				///get new R and t
 				rotation_mat = fU * cgv::math::transpose(fV);
 				cgv::math::mat<float> R(3, 3, &rotation_mat(0, 0));
@@ -304,6 +410,7 @@ namespace cgv {
 					rotation_mat = fU * fS * cgv::math::transpose(fV);
 				}
 				translation_vec = target_center - rotation_mat * source_center;
+
 				///calculate error function E(R,t)
 				cost = 0.0f;
 				for (int i = 0; i < S.get_nr_points(); i++) {
@@ -311,6 +418,7 @@ namespace cgv {
 					cost += error(Q.pnt(i), S.pnt(i), rotation_mat, translation_vec);
 				}
 				cost /= S.get_nr_points();
+
 				/// judge if cost is decreasing, 
 				/// and is larger than eps. If so, update the R and t, 
 				/// otherwise stop and output R and t
