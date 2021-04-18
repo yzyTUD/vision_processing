@@ -361,8 +361,15 @@ void point_cloud::update_scan_index_visibility() {
 	point_visibility.resize(get_nr_points());
 	// loop all points, look up visibility boolean flag in scan_index_visibility, 
 	// pass to point_visibility, which will be used in shader 
-	for (int Idx = 0; Idx < point_visibility.size(); Idx++) 
-		point_visibility.at(Idx) = scan_index_visibility.at((int)point_scan_index.at(Idx))?1.0f:0.0f;
+	for (int Idx = 0; Idx < point_visibility.size(); Idx++) {
+		if (scan_index_visibility.size() > 0) {
+			point_visibility.at(Idx) = scan_index_visibility.at((int)point_scan_index.at(Idx))?1.0f:0.0f;
+		}
+		else {
+			point_visibility.at(Idx) = 1.0f;
+		}
+	}
+		
 }
 
 /// collect point_indices/ compute he 
@@ -587,17 +594,19 @@ void point_cloud::clear_all_for_get_next_shot() {
 	pixel_range_out_of_date = true;
 }
 
+/// todo: clear all newly added varibles 
 void point_cloud::clear_all() {
+	// per-point 
 	P.clear();
 	N.clear();
 	C.clear();
 	T.clear();
 	I.clear();
 	F.clear();
-
-	point_scan_index.clear();
 	point_selection.clear();
 	point_selection_visited.clear();
+	point_scan_index.clear();
+	point_visibility.clear();
 
 	/// container to store  one component index per point
 	component_indices.clear();
@@ -617,6 +626,8 @@ void point_cloud::clear_all() {
 	has_comp_clrs = false;
 	has_features = false;
 	has_scan_index = false;
+	has_selection = false;
+	has_cam_posi = false;
 
 	comp_box_out_of_date.clear();
 	comp_pixrng_out_of_date.clear();
@@ -626,8 +637,6 @@ void point_cloud::clear_all() {
 	pixel_range_out_of_date = true;
 
 	/// reset all vars 
-	has_cam_posi = false;
-	has_selection = false;
 	num_of_shots = 0;
 	list_point_idx.clear();
 	list_cam_rotation.clear();
@@ -636,6 +645,18 @@ void point_cloud::clear_all() {
 	list_clrs.clear();
 	cur_shot = 0;
 	num_points = 0;
+	currentScanIdx_Recon = 0;
+}
+
+void point_cloud::randomize_position() {
+	uniform_real_distribution<float> angle_distribution(0.f, 3.142f);
+	uniform_real_distribution<float> direction_distribution(0.f, 0.05f);
+	random_device rng; 
+	float rot_intensity = 0.2f;
+	float trans_intensity = 0.1;
+	float angle = rot_intensity * angle_distribution(rng);
+	rotate_scan_index0(cgv::math::quaternion<float>(normalize(vec3(direction_distribution(rng), direction_distribution(rng), direction_distribution(rng))), angle));
+	//translate(trans_intensity * vec3(direction_distribution(rng), direction_distribution(rng), direction_distribution(rng)));
 }
 
 void point_cloud::clear_campose() {
@@ -1111,6 +1132,19 @@ void point_cloud::rotate(const Qat& qat, Idx ci)
 	box_out_of_date = true;
 	if (ci != -1 && has_components())
 		comp_box_out_of_date[ci] = true;
+}
+
+void point_cloud::rotate_scan_index0(const Qat& qat)
+{
+	for (int i = 0; i < get_nr_points(); i++)
+		if(point_scan_index.at(i) == 0)
+			pnt(i) = qat.apply(pnt(i));
+	if (has_normals()) {  // rotate nmls if present 
+		for (int i = 0; i < get_nr_points(); i++)
+			if (point_scan_index.at(i) == 0)
+				nml(i) = qat.apply(nml(i));
+	}
+	box_out_of_date = true;
 }
 
 /// transform with linear transform 
@@ -2488,13 +2522,8 @@ bool point_cloud::read_obj(const string& _file_name)
 	if(pc_obj.has_cam)
 		cam_posi_list.push_back(pc_obj.cam_posi); // push back new read camera position  
 	has_cam_posi = pc_obj.has_cam;
-	// if no scan index present, we give it a scan index, 0 by default, increase with reading pc append 
-	if (!pc_obj.has_v_si) {
-		for (int i = 0; i < pc_obj.points_read_this_time; i++) {
-			point_scan_index.push_back(currentIdx);
-		}
-	}
-	has_selection = true;
+	has_selection = pc_obj.has_v_s;
+	has_scan_index = pc_obj.has_v_si;
 
 	return true;
 }

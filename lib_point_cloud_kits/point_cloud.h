@@ -246,7 +246,7 @@ public:
 	int num_of_functional_selections = 20; // from 0 - 19 
 	int num_of_regions = 25; // from 20 - 44
 	int max_num_of_selections = num_of_functional_selections + num_of_regions;
-	float currentIdx = 0;
+	float currentScanIdx_Recon = 0; // for scan index re-construction 
 	/*
 		per vertex info, can be stored externally in a .cgvscan file 
 	*/
@@ -376,11 +376,8 @@ public:
 	bool export_to_an_obj_file(const std::string& file_name);
 
 protected:
-	/// boolean flag  
-	bool has_scan_index = false;
 	/// container to store  one component index per point
 	std::vector<unsigned> component_indices;
-
 	/// container to store point range per component
 	std::vector<component_info> components;
 	/// return begin point index for iteration
@@ -433,6 +430,10 @@ protected:
 	bool has_comp_trans;
 	/// flag that tells whether component colors are allocated
 	bool has_comp_clrs;
+	///
+	bool has_scan_index = false;
+	///
+	bool has_scan_indices();
 	/// read obj-file. Ignores all except of v, vn and vc lines. v lines can be extended by 3 rgb color components
 	bool read_obj(const std::string& file_name);
 	///
@@ -496,28 +497,18 @@ public:
 	///
 	bool read_pts_subsampled(const std::string& file_name, float percentage);
 	///
-	bool read_campose(const std::string& file_name);
-	///
-	bool has_cam_posi = false;
-	///
-	bool has_selection = false;
-	///
 
 	/// read from .campose file, 10.01.2021
 	int num_of_shots; 
 	int num_of_points_in_campose;
-	///
 	std::vector<int> list_point_idx;
-	///
 	std::vector<cgv::math::quaternion<float>> list_cam_rotation;
-	///
 	std::vector<cgv::math::fvec<float, 3>> list_cam_translation;
-	///
 	bool render_cams = false;
-	///
 	std::vector<cgv::media::color<float, cgv::media::RGB>> list_clrs;
-	///
 	cgv::render::sphere_render_style srs;
+	bool has_cam_posi = false;
+	bool read_campose(const std::string& file_name); 
 
 	//cgv::render::box_render_style brs;
 	///
@@ -526,6 +517,10 @@ public:
 	int num_points = 0;
 	/// 
 	bool write_reflectance = true;
+
+	/// boolean flags  
+	///
+	bool has_selection = false;
 
 	/// construct empty point cloud
 	point_cloud();
@@ -566,13 +561,16 @@ public:
 	void del_with_clip_plane(Dir cur_plane_normal, Pnt a_point_on_the_plane);
 
 	void clip_plane(Dir plane_nml, Pnt a_point_on_plane);
-
+	///
+	void randomize_position();
 	/// permute points
 	void permute(std::vector<Idx>& perm, bool permute_component_indices);
 	/// translate by adding direction vector dir to point positions and update bounding box
 	void translate(const Dir& dir, Idx component_index = -1);
 	/// rotate points and normals with quaternion
 	void rotate(const Qat& qat, Idx component_index = -1);
+	///
+	void rotate_scan_index0(const Qat& qat);
 	/// transform points with linear transform and mark bounding box outdated (careful: normals are not yet transformed!)
 	void transform(const Mat& mat);
 	/// transform with affine transform and mark bounding box outdated (careful: normals are not yet transformed!)
@@ -629,8 +627,7 @@ public:
 	bool has_normals() const;
 	
 	bool has_selections();
-	///
-	bool has_scan_indices();
+
 	/// allocate normals if not already allocated
 	void create_normals();
 	/// deallocate normals

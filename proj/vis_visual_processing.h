@@ -618,6 +618,13 @@ public:
 		std::string f = cgv::gui::file_save_dialog("Save", "OBJ Mesh:*");
 		data_ptr->point_cloud_kit->pc.export_to_an_obj_file(f);
 	}
+	void do_icp_once() {
+		perform_icp_and_acquire_matrices();
+		apply_register_matrices_for_the_original_point_cloud();
+	}
+	void randomize_current_pc() {
+		data_ptr->point_cloud_kit->pc.randomize_position();
+	}
 	void rotate_right(){ data_ptr->active_off_rotation -= 30; }
 	void rotate_left() { data_ptr->active_off_rotation += 30; }
 };

@@ -131,6 +131,8 @@ public:
 	/// open or append depending on event that triggered this function
 	bool open_or_append(cgv::gui::event& e, const std::string& file_name);
 	///
+	bool reading_from_raw_scan = false;
+	///
 	bool read_pc_with_dialog(bool append);
 
 	bool read_cgvcad_with_dialog();

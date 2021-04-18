@@ -849,8 +849,8 @@ void visual_processing::read_pc_queue() {
 ///
 void visual_processing::read_pc_append() {
 	data_ptr->point_cloud_kit->read_pc_with_dialog(true);
-	data_ptr->point_cloud_kit->pc.currentIdx++; // increase current scan index after reading points  
-	on_set(&data_ptr->point_cloud_kit->pc.currentIdx);
+	data_ptr->point_cloud_kit->pc.currentScanIdx_Recon++; // increase current scan index after reading points  
+	on_set(&data_ptr->point_cloud_kit->pc.currentScanIdx_Recon);
 }
 /// 
 void visual_processing::downsampling() {
@@ -1206,37 +1206,49 @@ void visual_processing::create_gui() {
 		static_cast<drawable*>(this), &visual_processing::post_redraw));
 
 	connect_copy(add_button("read_pc")->click, rebind(this, &visual_processing::start_reading_pc_parallel));
-	connect_copy(add_button("read_pc_append")->click, rebind(this, &visual_processing::read_pc_append));
+	connect_copy(add_button("randomize_current_pc")->click, rebind(this, &visual_processing::randomize_current_pc));
+	connect_copy(add_button("read_pc_append(obj raw scan)")->click, rebind(this, &visual_processing::read_pc_append));
 	connect_copy(add_button("prepare_marking")->click, rebind(this, &visual_processing::prepare_marking));
 	connect_copy(add_button("print_pc_information")->click, rebind(this, &visual_processing::print_pc_information));
 	connect_copy(add_button("save")->click,rebind(this, &visual_processing::start_writting_pc_parallel));
 	add_member_control(this, "Ignore Deleted Points", data_ptr->point_cloud_kit->pc.ignore_deleted_points, "check");
+	connect_copy(add_button("clean_all_pcs")->click, rebind(this, &visual_processing::clean_all_pcs));
 	
-	//
-	connect_copy(add_button("update_scan_index_visibility_test")->click,
-		rebind(this, &visual_processing::update_scan_index_visibility_test));
-	connect_copy(add_button("point_visibility_vis_all_points")->click,
-		rebind(this, &visual_processing::point_visibility_vis_all_points));
-	connect_copy(add_button("set_src_and_target_scan_idx_as_test")->click,
-		rebind(this, &visual_processing::set_src_and_target_scan_idx_as_test));
-	connect_copy(add_button("extract_point_clouds_for_icp_test")->click,
-		rebind(this, &visual_processing::extract_point_clouds_for_icp));
-	connect_copy(add_button("perform_icp_and_acquire_matrices")->click,
-		rebind(this, &visual_processing::perform_icp_and_acquire_matrices));
-	connect_copy(add_button("apply_register_matrices_for_the_original_point_cloud")->click,
-		rebind(this, &visual_processing::apply_register_matrices_for_the_original_point_cloud));
+	if (begin_tree_node("VR ICP", data_ptr->point_cloud_kit->show_nmls, true, "level=3")) {
+		//
+		connect_copy(add_button("update_scan_index_visibility_test")->click,
+			rebind(this, &visual_processing::update_scan_index_visibility_test));
+		connect_copy(add_button("point_visibility_vis_all_points")->click,
+			rebind(this, &visual_processing::point_visibility_vis_all_points));
+		connect_copy(add_button("set_src_and_target_scan_idx_as_test")->click,
+			rebind(this, &visual_processing::set_src_and_target_scan_idx_as_test));
+		connect_copy(add_button("extract_point_clouds_for_icp_test")->click,
+			rebind(this, &visual_processing::extract_point_clouds_for_icp));
+
+		//
+		connect_copy(add_button("perform_icp_and_acquire_matrices")->click,
+			rebind(this, &visual_processing::perform_icp_and_acquire_matrices));
+		connect_copy(add_button("apply_register_matrices_for_the_original_point_cloud")->click,
+			rebind(this, &visual_processing::apply_register_matrices_for_the_original_point_cloud));
+
+		//
+		add_member_control(this, "source_scan_index", data_ptr->point_cloud_kit->src_scan_idx,
+			"value_slider", "min=0;max=10;log=false;ticks=false;");
+		add_member_control(this, "target_scan_index", data_ptr->point_cloud_kit->target_scan_idx,
+			"value_slider", "min=0;max=10;log=false;ticks=false;");
+		connect_copy(add_button("do_icp_once")->click,
+			rebind(this, &visual_processing::do_icp_once));
+	}
+
 	
-	//
-	connect_copy(add_button("read_cgvcad")->click,
-		rebind(this, &visual_processing::read_cgvcad_with_dialog));
-
-
 	// 
 	if (begin_tree_node("Model Fitting", data_ptr->point_cloud_kit->show_nmls, true, "level=3")) {
 		connect_copy(add_button("fitting_render_control_points_test")->click, 
 			rebind(this, &visual_processing::fitting_render_control_points_test));
 		connect_copy(add_button("build_connectivity_graph_fitting_and_render_control_points")->click, 
-			rebind(this, &visual_processing::build_connectivity_graph_fitting_and_render_control_points));
+				rebind(this, &visual_processing::build_connectivity_graph_fitting_and_render_control_points));
+		connect_copy(add_button("read_cgvcad")->click,
+			rebind(this, &visual_processing::read_cgvcad_with_dialog));
 	}
 
 	//
@@ -1253,7 +1265,8 @@ void visual_processing::create_gui() {
 
 	//
 	if (begin_tree_node("Scan Index", data_ptr->point_cloud_kit->show_nmls, true, "level=3")) {
-		add_member_control(this, "scan_index", data_ptr->point_cloud_kit->pc.currentIdx, "value_slider", "min=0;max=10;log=false;ticks=true;");
+		add_member_control(this, "scan_index", data_ptr->point_cloud_kit->pc.currentScanIdx_Recon, 
+			"value_slider", "min=0;max=10;log=false;ticks=true;");
 		add_member_control(this, "point size", data_ptr->point_cloud_kit->point_size,
 			"value_slider", "min=0.05;max=5;log=false;ticks=false;");
 		add_member_control(this, "percentual_halo_width", data_ptr->point_cloud_kit->percentual_halo_width,

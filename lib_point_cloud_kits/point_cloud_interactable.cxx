@@ -311,6 +311,7 @@ bool point_cloud_interactable::open_or_append(cgv::gui::event& e, const std::str
 /// read point cloud with a dialog 
 bool point_cloud_interactable::read_pc_with_dialog(bool append) {
 	std::string f = cgv::gui::file_open_dialog("Open", "Point Cloud:*");
+	reading_from_raw_scan = append;
 	if (!append) 
 		clear_all();
 	if (!open(f))
@@ -1553,13 +1554,16 @@ void point_cloud_interactable::extract_point_clouds_for_icp_marked_only() {
 void point_cloud_interactable::perform_icp_and_acquire_matrices() {
 	// align pc_src to pc_target, target is fixed 
 	if (pc_target.get_nr_points() && pc_src.get_nr_points()) {
+		// set sources 
+		icp.set_source_cloud(pc_src);
+		icp.set_target_cloud(pc_target);
 		// init matrices 
 		rmat.identity();
 		tvec.zeros();
 		// setup pdarameters 
 		icp.set_iterations(10);
 		icp.set_eps(1e-8);
-		icp.set_num_random(40);
+		icp.set_num_random(50);
 		// pc_to_be_append has been changed during the registration 
 		icp.reg_icp_get_matrices(&pc_src, &pc_target, rmat, tvec);
 	}
@@ -2380,6 +2384,38 @@ void point_cloud_interactable::on_point_cloud_change_callback(PointCloudChangeEv
 		update_member(&surfel_style.illumination_mode);
 	}
 	if (((pcc_event & PCC_POINTS_MASK) == PCC_POINTS_RESIZE) || ((pcc_event & PCC_POINTS_MASK) == PCC_NEW_POINT_CLOUD)) {
+		// reconstruct colors if not present 
+		if (!pc.has_colors()) {
+			pc.C.resize(pc.get_nr_points());
+			for (auto& pc : pc.C) pc = rgba(0.4,0.4,0.4,1);
+		}
+		// reconstruct normals if not present 
+		if (!pc.has_normals()) {
+			compute_normals();
+			orient_normals();
+		}
+		// create per-point scan index if not present, 0 by default 
+		// the first is for one scan, later for raw scans 
+		// mainly used for point appending 
+		if (pc.point_scan_index.size() == 0 || reading_from_raw_scan) {
+			int append_starting_index = pc.point_scan_index.size();
+			pc.point_scan_index.resize(pc.get_nr_points());
+			for (int Idx = append_starting_index; Idx < pc.point_scan_index.size(); Idx++) {
+				pc.point_scan_index.at(Idx) = pc.currentScanIdx_Recon;
+			}
+			pc.has_scan_index = true;
+		}
+		// create per-point selection if not present 
+		if (pc.point_selection.size() == 0 || reading_from_raw_scan) {
+			pc.point_selection.resize(pc.get_nr_points());
+			for (auto& psi : pc.point_selection) psi = 1;
+			pc.has_selection = true;
+		}
+		reading_from_raw_scan = false;
+		// prepare scan indices visibility, create if not present 
+		pc.scan_index_visibility.resize(pc.num_of_scan_indices);
+		for (auto& siv : pc.scan_index_visibility) {siv = true;}
+		pc.update_scan_index_visibility();
 		// box is used to adjust correct size of the normals, surfel size... and for selection estimation 
 		// also used for rendering of the boxes 
 		pc.box_out_of_date = true;
@@ -2391,10 +2427,6 @@ void point_cloud_interactable::on_point_cloud_change_callback(PointCloudChangeEv
 		}
 		// neighbor_graph is used for normal and feature computation, built upon tree ds 
 		ng.clear();
-		// prepare scan indices visibility 
-		pc.scan_index_visibility.resize(pc.num_of_scan_indices);
-		for (auto& siv : pc.scan_index_visibility) {siv = true;}
-		pc.update_scan_index_visibility();
 		// configure point cloud rendering, step...
 		show_point_end = pc.get_nr_points();
 		show_point_begin = 0;

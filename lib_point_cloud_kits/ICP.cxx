@@ -72,7 +72,7 @@ namespace cgv {
 
 			// the tree for source cloud has to be re-built each iteration
 			// the cloud should be transformed to updated position  
-			//std::shared_ptr<ann_tree> tree_inv = std::make_shared<ann_tree>();
+			std::shared_ptr<ann_tree> tree_inv = std::make_shared<ann_tree>();
 			// tree shoud be rebuilt each epoch for src point cloud and only once!
 			tree_inv->build(*sourceCloud);
 
@@ -154,7 +154,7 @@ namespace cgv {
 		}
 
 		/// re write, a very quick test 
-		void ICP::reg_icp_get_matrices(point_cloud* pc_src, point_cloud* pc_target, Mat& rmat, Dir& tvec) {
+		void ICP::reg_icp_get_matrices(point_cloud* pc_src, point_cloud* pc_target, Mat& rmat_accu, Dir& tvec_accu) {
 			// set once, use sourceCloud as global varible for sampling 
 			sourceCloud = pc_src;
 			targetCloud = pc_target;
@@ -185,6 +185,10 @@ namespace cgv {
 			Pnt source_center; source_center.zeros();
 			Pnt target_center; target_center.zeros();
 			float cost = 1.0;
+			Mat rmat;
+			Dir tvec;
+			rmat.identity();
+			tvec.zeros();
 
 			// main iteration of the ICP algorithm 
 			int num_of_iters = 0;
@@ -223,10 +227,9 @@ namespace cgv {
 				cgv::math::mat<float> R(3, 3, &rmat(0, 0));
 				if (cgv::math::det(R) < 0) {
 					// multiply the 1,1...-1 diag matrix 
-					Mat fS;
-					fS.zeros();
-					fS(0, 0) = 1;
-					fS(1, 1) = 1;
+					Mat fS; fS.zeros();
+					fS(0, 0) =  1;
+					fS(1, 1) =  1;
 					fS(2, 2) = -1;
 					rmat = fU * fS * cgv::math::transpose(fV);
 				}
@@ -254,6 +257,10 @@ namespace cgv {
 					sourceCloud->rotate(cgv::math::quaternion<float>(rmat));
 					sourceCloud->translate(tvec);
 
+					// update accumulated rmat and tvec 
+					rmat_accu = rmat * rmat_accu;
+					tvec_accu += tvec;
+
 					// update min cost 
 					mincost = abs(cost);
 				}
@@ -262,7 +269,8 @@ namespace cgv {
 			std::cout << "--------------" << std::endl;
 			std::cout << "iter used: " << num_of_iters << std::endl;
 			std::cout << "cost = " << mincost << std::endl;
-			std::cout << "coverged = " << (num_of_iters < maxIterations) << std::endl;
+			std::string coveraged = (num_of_iters < maxIterations) ? "true" : "false";
+			std::cout << "coveraged = " << coveraged << std::endl;
 		}
 
 		///@deprecated, output the rotation matrix and translation vector 
@@ -459,13 +467,13 @@ namespace cgv {
 			center_point /= (float)input.get_nr_points();
 		}
 
-		float ICP::error(Pnt& ps, Pnt& pd, Mat& r, Dir& t)
+		float ICP::error(Pnt& pq, Pnt& ps, Mat& r, Dir& t)
 		{
 			//Pnt res;
 			//res = r * pd;
 			//float err = pow(ps.x() - res.x() - t[0], 2.0) + pow(ps.y() - res.y() - t[1], 2.0) + pow(ps.z() - res.z() - t[2], 2.0);
 			//return err;
-			Pnt tmp = ps - r * pd - t;
+			Pnt tmp = pq - r * ps - t;
 			return dot(tmp, tmp);
 		}
 
