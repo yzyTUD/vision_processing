@@ -1512,14 +1512,73 @@ void point_cloud_interactable::update_scan_index_visibility_test() {
 	pc.update_scan_index_visibility();
 }
 
+void point_cloud_interactable::set_src_and_target_scan_idx_as_test() {
+	src_scan_idx = 1;
+	target_scan_idx = 0;
+}
+
 /// extract to pc_src and pc_target
-void point_cloud_interactable::extract_point_clouds_for_icp(int src_scan_idx, int target_scan_idx) {
-	
+void point_cloud_interactable::extract_point_clouds_for_icp() {
+	pc_src.clear_all();
+	pc_target.clear_all();
+	// colloect points, todo: support more features 
+	for (int Idx = 0; Idx < pc.get_nr_points(); Idx++) {
+		if (pc.point_scan_index.at(Idx) == src_scan_idx)
+			pc_src.add_point(pc.pnt(Idx), pc.clr(Idx), pc.nml(Idx));
+		if (pc.point_scan_index.at(Idx) == target_scan_idx)
+			pc_target.add_point(pc.pnt(Idx), pc.clr(Idx), pc.nml(Idx));
+	}
+	pc_src.box_out_of_date = true;
+	pc_target.box_out_of_date = true;
+	// state: tree ds not build
+}
+
+/// support for feature selection and icp just within feature points 
+void point_cloud_interactable::extract_point_clouds_for_icp_marked_only() {
+	pc_src.clear_all();
+	pc_target.clear_all();
+	// colloect points, todo: support more features 
+	for (int Idx = 0; Idx < pc.get_nr_points(); Idx++) {
+		if (pc.point_scan_index.at(Idx) == src_scan_idx)
+			pc_src.add_point(pc.pnt(Idx), pc.clr(Idx), pc.nml(Idx));
+		if (pc.point_scan_index.at(Idx) == target_scan_idx)
+			pc_target.add_point(pc.pnt(Idx), pc.clr(Idx), pc.nml(Idx));
+	}
+	pc_src.box_out_of_date = true;
+	pc_target.box_out_of_date = true;
+	// state: tree ds not build
 }
 
 /// register 
-void point_cloud_interactable::register_extract_point_clouds() {
-	// align pc_to_be_append to last_pc 
+void point_cloud_interactable::perform_icp_and_acquire_matrices() {
+	// align pc_src to pc_target, target is fixed 
+	if (pc_target.get_nr_points() && pc_src.get_nr_points()) {
+		// init matrices 
+		rmat.identity();
+		tvec.zeros();
+		// setup pdarameters 
+		icp.set_iterations(10);
+		icp.set_eps(1e-8);
+		icp.set_num_random(40);
+		// pc_to_be_append has been changed during the registration 
+		icp.reg_icp_get_matrices(&pc_src, &pc_target, rmat, tvec);
+	}
+	else { std::cout << "icp: error point cloud size" << std::endl; }
+}
+
+/// apply transformations to the global pc 
+void point_cloud_interactable::apply_register_matrices_for_the_original_point_cloud() {
+	for (int Idx = 0; Idx < pc.get_nr_points(); Idx++) {
+		if (pc.point_scan_index.at(Idx) == src_scan_idx) {
+			pc.pnt(Idx) = rmat * pc.pnt(Idx) + tvec;
+		}
+	}
+	// state: point position updated, will be passed to gpu with set_array() in pc drawable automatically 
+}
+
+/// register without subsampling 
+void point_cloud_interactable::register_cur_and_last_pc_if_present() {
+	// align pc_src to pc_target, target is fixed 
 	if (pc_target.get_nr_points() && pc_src.get_nr_points()) {
 		// set sources 
 		icp.set_source_cloud(pc_src);
@@ -1536,28 +1595,6 @@ void point_cloud_interactable::register_extract_point_clouds() {
 		icp.reg_icp(rotation, translation, pc_src, pc_target, icp_filter_type, this->get_context());
 	}
 	else { std::cout << "icp: error point cloud size" << std::endl; }
-}
-
-/// register without subsampling 
-void point_cloud_interactable::register_cur_and_last_pc_if_present() {
-	// align pc_to_be_append to last_pc 
-	if (pc_last.get_nr_points() && pc_to_be_append.get_nr_points()) {
-		rotation.identity();
-		translation.zeros();
-		icp.set_iterations(10);
-		icp.set_eps(1e-8);
-		icp.set_num_random(40);
-
-		icp.set_source_cloud(pc_to_be_append);
-		icp.set_target_cloud(pc_last);
-		icp.build_target_ann_tree();
-
-		// pc_to_be_append has been changed during the registration 
-		icp.reg_icp(rotation, translation, crs_srs_pc, crs_tgt_pc, icp_filter_type, this->get_context());
-	}
-	else {
-		//err: empty pcs 
-	}
 }
 
 ///
@@ -2343,36 +2380,37 @@ void point_cloud_interactable::on_point_cloud_change_callback(PointCloudChangeEv
 		update_member(&surfel_style.illumination_mode);
 	}
 	if (((pcc_event & PCC_POINTS_MASK) == PCC_POINTS_RESIZE) || ((pcc_event & PCC_POINTS_MASK) == PCC_NEW_POINT_CLOUD)) {
+		// box is used to adjust correct size of the normals, surfel size... and for selection estimation 
+		// also used for rendering of the boxes 
+		pc.box_out_of_date = true;
+		// tree ds will be 
 		tree_ds_out_of_date = true;
 		if (tree_ds) {
 			delete tree_ds;
 			tree_ds = 0;
 		}
+		// neighbor_graph is used for normal and feature computation, built upon tree ds 
 		ng.clear();
+		// prepare scan indices visibility 
+		pc.scan_index_visibility.resize(pc.num_of_scan_indices);
+		for (auto& siv : pc.scan_index_visibility) {siv = true;}
+		pc.update_scan_index_visibility();
+		// configure point cloud rendering, step...
 		show_point_end = pc.get_nr_points();
 		show_point_begin = 0;
-
-		update_member(&show_point_begin);
-		update_member(&show_point_end);
-
 		show_point_count = pc.get_nr_points();
-		update_member(&show_point_count);
-
 		interact_point_step = std::max((unsigned)(show_point_count / 1000000), 1u);
 		nr_draw_calls = std::max((unsigned)(show_point_count / 1000000), 1u);
+		// update gui, not used currently 
+		update_member(&show_point_begin);
+		update_member(&show_point_end);
+		update_member(&show_point_count);
 		update_member(&interact_point_step);
 		update_member(&nr_draw_calls);
-
 		configure_subsample_controls();
 	}
 	if ((pcc_event & PCC_POINTS_MASK) == PCC_NEW_POINT_CLOUD && do_auto_view) {
 		auto_set_view();
-	}
-	if ((pcc_event & PCC_POINTS_MASK) == PCC_NEW_POINT_CLOUD) {
-		// prepare point cloud after read 
-		pc.scan_index_visibility.resize(pc.num_of_scan_indices);
-		for (auto& siv : pc.scan_index_visibility) {siv = true;}
-		pc.update_scan_index_visibility();
 	}
 	post_redraw();
 }

@@ -64,6 +64,7 @@ namespace cgv {
 			bool correspondences_feature_matching(normal_estimator& ne_s, normal_estimator& ne_t, std::shared_ptr<ann_tree> tree, std::shared_ptr<ann_tree> tree_inv, Pnt& source_p, Pnt& target_p);
 			bool correspondences_filter_nml(std::shared_ptr<ann_tree> tree, std::shared_ptr<ann_tree> tree_inv, Pnt& source_p, Pnt& target_p);
 
+			void reg_icp_get_matrices(point_cloud* pc_src, point_cloud* pc_target, Mat& rmat, Dir& tvec);
 			void reg_icp(Mat& rotation_m, Dir& translation_v, point_cloud& S, point_cloud& Q, cgv::pointcloud::ICP::Sampling_Type icp_filter_type, cgv::render::context* ctx);
 			void get_center_point(const point_cloud& input, Pnt& mid_point);
 			float error(Pnt& ps, Pnt& pd, Mat& r, Dir& t);

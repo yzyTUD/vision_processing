@@ -1167,12 +1167,11 @@ size_t point_cloud::add_point(const Pnt& p)
 	box_out_of_date = true;
 	return idx;
 }
+
 /// add points without normals 
 size_t point_cloud::add_point(const Pnt& p, const RGBA& c,
 	const float& scan_index, const cgv::type::uint8_type& sel) {
-
 	// check before this 
-
 	P.push_back(p);
 	C.push_back(c);
 	point_scan_index.push_back(scan_index);
@@ -1181,12 +1180,20 @@ size_t point_cloud::add_point(const Pnt& p, const RGBA& c,
 	size_t idx = P.size();
 	return idx;
 }
+/// add points for icp 
+size_t point_cloud::add_point(const Pnt& p, const RGBA& c, const Nml& nml) {
+	// check before add 
+	P.push_back(p);
+	C.push_back(c);
+	N.push_back(nml);
+
+	size_t idx = P.size();
+	return idx;
+}
 /// add points with full vertex attributes 
 size_t point_cloud::add_point(const Pnt& p, const RGBA& c,
 	const Nml& nml, const float& scan_index, const cgv::type::uint8_type& sel) {
-
-	// check before this 
-
+	// check before add 
 	P.push_back(p);
 	C.push_back(c);
 	N.push_back(nml);
@@ -3245,7 +3252,7 @@ point_cloud::Pnt point_cloud::transformed_pnt(size_t i) const
 }
 
 /// return box
-// lazy bbxox compiuting 
+// lazy bbox compiuting 
 const point_cloud::Box& point_cloud::box(Idx ci) const
 {
 	if (ci == -1) {

@@ -595,12 +595,24 @@ public:
 	void update_scan_index_visibility_test() {
 		data_ptr->point_cloud_kit->update_scan_index_visibility_test();
 	}
+	void extract_point_clouds_for_icp() {
+		data_ptr->point_cloud_kit->extract_point_clouds_for_icp();
+	}
 	void point_visibility_vis_all_points() {
 		std:vector<bool>* visibility_array = &data_ptr->point_cloud_kit->pc.scan_index_visibility;
 		for (int i = 0; i < visibility_array->size(); i++) {
 			visibility_array->at(i) = true;
 		}
 		data_ptr->point_cloud_kit->pc.update_scan_index_visibility();
+	}
+	void perform_icp_and_acquire_matrices() {
+		data_ptr->point_cloud_kit->perform_icp_and_acquire_matrices();
+	}
+	void set_src_and_target_scan_idx_as_test() {
+		data_ptr->point_cloud_kit->set_src_and_target_scan_idx_as_test();
+	}
+	void apply_register_matrices_for_the_original_point_cloud() {
+		data_ptr->point_cloud_kit->apply_register_matrices_for_the_original_point_cloud();
 	}
 	void export_to_an_obj_file() {
 		std::string f = cgv::gui::file_save_dialog("Save", "OBJ Mesh:*");

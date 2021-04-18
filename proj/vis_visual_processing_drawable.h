@@ -1217,6 +1217,14 @@ void visual_processing::create_gui() {
 		rebind(this, &visual_processing::update_scan_index_visibility_test));
 	connect_copy(add_button("point_visibility_vis_all_points")->click,
 		rebind(this, &visual_processing::point_visibility_vis_all_points));
+	connect_copy(add_button("set_src_and_target_scan_idx_as_test")->click,
+		rebind(this, &visual_processing::set_src_and_target_scan_idx_as_test));
+	connect_copy(add_button("extract_point_clouds_for_icp_test")->click,
+		rebind(this, &visual_processing::extract_point_clouds_for_icp));
+	connect_copy(add_button("perform_icp_and_acquire_matrices")->click,
+		rebind(this, &visual_processing::perform_icp_and_acquire_matrices));
+	connect_copy(add_button("apply_register_matrices_for_the_original_point_cloud")->click,
+		rebind(this, &visual_processing::apply_register_matrices_for_the_original_point_cloud));
 	
 	//
 	connect_copy(add_button("read_cgvcad")->click,

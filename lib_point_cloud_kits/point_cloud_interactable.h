@@ -278,6 +278,20 @@ public:
 	std::vector<vr_kit_image_renderer> image_renderer_list;
 
 	/*VR-ICP related */
+	/// a quick test 
+	void update_scan_index_visibility_test(); // typically, we update them directly with controller 
+	///
+	void set_src_and_target_scan_idx_as_test();
+	///
+	void extract_point_clouds_for_icp();
+	///
+	void extract_point_clouds_for_icp_marked_only();
+	///
+	void perform_icp_and_acquire_matrices();
+	///
+	void apply_register_matrices_for_the_original_point_cloud();
+	///
+	void drop_last_registration();
 	/// deprecated 
 	void highlight_last_pc();
 	/// deprecated
@@ -286,15 +300,17 @@ public:
 	void register_with_subsampled_pcs(point_cloud& _pc);
 	/// perform ICP algo. with given source and target clouds  
 	void register_cur_and_last_pc_if_present();
-	/// a quick test 
-	void update_scan_index_visibility_test(); // typically, we update them directly with controller 
 	///
-	void extract_point_clouds_for_icp(int src_scan_idx, int target_scan_idx);
-	///
-	void register_extract_point_clouds();
+public:
+	int src_scan_idx = -1;
+	int target_scan_idx = -1;
+
 	///
 	point_cloud pc_src;
 	point_cloud pc_target;
+	point_cloud_types::Mat rmat;
+	point_cloud_types::Dir tvec;
+	//
 	point_cloud crs_srs_pc; // tmp source and target pcs 
 	point_cloud crs_tgt_pc;
 	point_cloud oripc;
@@ -337,6 +353,10 @@ public:
 	bool tree_ds_out_of_date;
 	/// the ann tree is used for nearest neighbor queries
 	ann_tree* tree_ds;
+	///
+	ann_tree* pc_src_ds;
+	///
+	ann_tree* pc_target_ds;
 	//
 	ann_tree* tree_ds_target_pc_last_frame;
 	//

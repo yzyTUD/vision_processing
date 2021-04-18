@@ -70,7 +70,7 @@ namespace cgv {
 		//
 		void ICP::aquire_crspds_bilateral(point_cloud& S, point_cloud& Q, int num) {
 
-			// the tree for source cloud has to be built each iteration
+			// the tree for source cloud has to be re-built each iteration
 			// the cloud should be transformed to updated position  
 			std::shared_ptr<ann_tree> tree_inv = std::make_shared<ann_tree>();
 			tree_inv->build(*sourceCloud);
@@ -151,7 +151,16 @@ namespace cgv {
 			return false;
 		}
 
-		///output the rotation matrix and translation vector
+		/// re write, a very quick test 
+		void ICP::reg_icp_get_matrices(point_cloud* pc_src, point_cloud* pc_target, Mat& rmat, Dir& tvec) {
+			// check 
+			if (pc_src == nullptr || pc_target == nullptr){ std::cout << "error, null pointer" << std::endl;}
+
+			// test 
+			tvec = Dir(0,1,0);
+		}
+
+		///@deprecated, output the rotation matrix and translation vector 
 		void ICP::reg_icp(Mat& rotation_mat, Dir& translation_vec, point_cloud& S, point_cloud& Q, cgv::pointcloud::ICP::Sampling_Type icp_filter_type, cgv::render::context* ctx) {
 			if (!tree) {
 				/// create the ann tree
