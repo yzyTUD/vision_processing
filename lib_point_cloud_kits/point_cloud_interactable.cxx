@@ -581,6 +581,18 @@ void point_cloud_interactable::mark_points_with_conroller(Pnt p, float r, cgv::t
 								continue;
 							}
 						}
+						// ignore points that are not having correct scaning index 
+						if (objctive == point_cloud::PointSelectiveAttribute::ICP_SOURCE_A) {
+							if (pc.point_scan_index.at(knn.at(i)) != src_scan_idx) {
+								continue;
+							}
+						}
+						// ignore points that are not having correct scaning index 
+						if (objctive == point_cloud::PointSelectiveAttribute::ICP_TARGET_A) {
+							if (pc.point_scan_index.at(knn.at(i)) != target_scan_idx) {
+								continue;
+							}
+						}
 						// record tracing information
 						pointHistoryEntry phe;
 						phe.point_index = knn.at(i);
@@ -603,6 +615,18 @@ void point_cloud_interactable::mark_points_with_conroller(Pnt p, float r, cgv::t
 						// ignore marked points if is highlighting unmarked points 
 						if (highlight_unmarked_points) {
 							if (pc.point_selection.at(i) >= 20u) { // already marked 
+								continue;
+							}
+						}
+						// ignore points that are not having correct scaning index, ineffecient 
+						if (objctive == point_cloud::PointSelectiveAttribute::ICP_SOURCE_A) {
+							if (pc.point_scan_index.at(i) != src_scan_idx) {
+								continue;
+							}
+						}
+						// ignore points that are not having correct scaning index 
+						if (objctive == point_cloud::PointSelectiveAttribute::ICP_TARGET_A) {
+							if (pc.point_scan_index.at(i) != target_scan_idx) {
 								continue;
 							}
 						}
@@ -1092,9 +1116,8 @@ void point_cloud_interactable::init_region_growing_by_collecting_group_and_seeds
 	// unsigned int shoud cast to int! -> only when comparing bet. them 
 	for (int pi = 0; pi < pc.get_nr_points(); pi++) {
 		if (pc.point_selection.at(pi) == current_selecting_idx) {
-			// which group? which point?
-			region_id_and_seeds[pc.point_selection.at(pi)].emplace(pi);
-			region_id_and_nmls[pc.point_selection.at(pi)].emplace(pc.nml(pi));
+			region_id_and_seeds[(int)current_selecting_idx].emplace(pi);
+			region_id_and_nmls[(int)current_selecting_idx].emplace(pc.nml(pi));
 			pc.point_selection_visited[pi] = true;
 		}
 	}
@@ -1150,7 +1173,17 @@ bool point_cloud_interactable::grow_one_step_bfs(bool check_nml, int which_group
 				// ignore deleted 
 				if (pc.point_selection.at(k) == point_cloud::PointSelectiveAttribute::DEL)
 					continue;
-				// 
+				// special case: 
+				// make sure grow only on points that have source scan index 
+				if (which_group == (int)point_cloud::PointSelectiveAttribute::ICP_SOURCE_A) {
+					if (pc.point_scan_index.at(k) != src_scan_idx)
+						continue;
+				}
+				// make sure grow only on points that have target scan index 
+				if (which_group == (int)point_cloud::PointSelectiveAttribute::ICP_TARGET_A) {
+					if (pc.point_scan_index.at(k) != target_scan_idx)
+						continue;
+				}
 				vec3 cur_k_nml = pc.nml(k); // compare nml
 				//std::cout << "dot of nmls: " << dot(cur_nml, cur_k_nml) << std::endl;
 				// compare curvature

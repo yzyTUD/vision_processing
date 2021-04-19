@@ -158,6 +158,15 @@ void visual_processing::parallel_timer_event() {
 			data_ptr->point_cloud_kit->can_parallel_grow = false;
 			int i = 0;
 			while (i < data_ptr->point_cloud_kit->steps_per_event_as_speed) {
+				// part of the functional regions will be growed 
+				data_ptr->point_cloud_kit->grow_one_step_bfs(
+					data_ptr->point_cloud_kit->region_grow_check_normals, 
+						point_cloud::PointSelectiveAttribute::ICP_SOURCE_A);
+
+				data_ptr->point_cloud_kit->grow_one_step_bfs(
+					data_ptr->point_cloud_kit->region_grow_check_normals,
+						point_cloud::PointSelectiveAttribute::ICP_TARGET_A);
+				// grow non-functional regions 
 				for (int gi = data_ptr->point_cloud_kit->pc.num_of_functional_selections;
 					gi < data_ptr->point_cloud_kit->pc.max_num_of_selections; gi++)
 				{
@@ -419,20 +428,20 @@ bool visual_processing::handle(cgv::gui::event& e)
 						// the copied points will fillow the movemnt of users right hand 
 						point_copy_btn_pressed();
 					}
-					//if (data_ptr->check_roulette_selection(data_ptr->get_id_with_name("VRICP\nRenderSrcOnly"))) {
-					//	data_ptr->point_cloud_kit->mark_points_with_conroller( 
-					//		data_ptr->cur_right_hand_posi + data_ptr->cur_off_right,
-					//		data_ptr->point_cloud_kit->controller_effect_range, 
-					//		point_cloud::PointSelectiveAttribute::ICP_SOURCE_A
-					//	);
-					//}
-					//if (data_ptr->check_roulette_selection(data_ptr->get_id_with_name("VRICP\nRenderTargetOnly"))) {
-					//	data_ptr->point_cloud_kit->mark_points_with_conroller(
-					//		data_ptr->cur_right_hand_posi + data_ptr->cur_off_right,
-					//		data_ptr->point_cloud_kit->controller_effect_range,
-					//		point_cloud::PointSelectiveAttribute::ICP_TARGET_A
-					//	);
-					//}
+					if (data_ptr->check_roulette_selection(data_ptr->get_id_with_name("VRICP\nRenderSrcOnly"))) {
+						data_ptr->point_cloud_kit->mark_points_with_conroller( 
+							data_ptr->cur_right_hand_posi + data_ptr->cur_off_right,
+							data_ptr->point_cloud_kit->controller_effect_range, 
+							point_cloud::PointSelectiveAttribute::ICP_SOURCE_A
+						);
+					}
+					if (data_ptr->check_roulette_selection(data_ptr->get_id_with_name("VRICP\nRenderTargetOnly"))) {
+						data_ptr->point_cloud_kit->mark_points_with_conroller(
+							data_ptr->cur_right_hand_posi + data_ptr->cur_off_right,
+							data_ptr->point_cloud_kit->controller_effect_range,
+							point_cloud::PointSelectiveAttribute::ICP_TARGET_A
+						);
+					}
 				}
 			}
 			if (vrke.get_action() == cgv::gui::KA_RELEASE) { //
@@ -503,6 +512,9 @@ bool visual_processing::handle(cgv::gui::event& e)
 				}
 				
 				/*VR ICP: touch to activate */
+				if (data_ptr->check_roulette_selection(data_ptr->get_id_with_name("VRICP\nHighlightSrcAndTarget"))) {
+					data_ptr->point_cloud_kit->colorize_with_scan_index = !data_ptr->point_cloud_kit->colorize_with_scan_index;
+				}
 				if (data_ptr->check_roulette_selection(data_ptr->get_id_with_name("VRICP\nRenderBoth"))) {
 					data_ptr->point_cloud_kit->render_both_src_target_clouds();
 				}
@@ -512,8 +524,13 @@ bool visual_processing::handle(cgv::gui::event& e)
 				if (data_ptr->check_roulette_selection(data_ptr->get_id_with_name("VRICP\nRenderTargetOnly"))) {
 					data_ptr->point_cloud_kit->render_select_target_cloud_only();
 				}
-				if (data_ptr->check_roulette_selection(data_ptr->get_id_with_name("VRICP\nExtractPointClouds"))) {
+				if (data_ptr->check_roulette_selection(data_ptr->get_id_with_name("VRICP\nExtractPointClouds\nMarkedOnly"))) {
 					data_ptr->point_cloud_kit->extract_point_clouds_for_icp_marked_only();
+					// visual feedback 
+					data_ptr->point_cloud_kit->render_both_src_target_clouds();
+				}
+				if (data_ptr->check_roulette_selection(data_ptr->get_id_with_name("VRICP\nExtractPointClouds"))) {
+					data_ptr->point_cloud_kit->extract_point_clouds_for_icp();
 					// visual feedback 
 					data_ptr->point_cloud_kit->render_both_src_target_clouds();
 				}

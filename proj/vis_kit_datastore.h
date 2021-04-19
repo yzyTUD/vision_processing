@@ -329,9 +329,11 @@ public:
 		//////////////////////////////////////////////////////////////////
 		gp_btn_tmp.clear();
 		gp_btn_tmp.push_back("VRICP\nSetSrcAndTarget\nScanIndex(Via GUI)");
+		gp_btn_tmp.push_back("VRICP\nHighlightSrcAndTarget");
 		gp_btn_tmp.push_back("VRICP\nRenderBoth");
 		gp_btn_tmp.push_back("VRICP\nRenderSrcOnly");
 		gp_btn_tmp.push_back("VRICP\nRenderTargetOnly");
+		gp_btn_tmp.push_back("VRICP\nExtractPointClouds\nMarkedOnly");
 		gp_btn_tmp.push_back("VRICP\nExtractPointClouds");
 		gp_btn_tmp.push_back("VRICP\nPerformICP_10Iters");
 		gps.push_back(gp_btn_tmp);
