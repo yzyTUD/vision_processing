@@ -335,6 +335,7 @@ public:
 		gp_btn_tmp.push_back("VRICP\nRenderTargetOnly");
 		gp_btn_tmp.push_back("VRICP\nExtractPointClouds\nMarkedOnly");
 		gp_btn_tmp.push_back("VRICP\nExtractPointClouds");
+		gp_btn_tmp.push_back("VRICP\nRandomizeSource");
 		gp_btn_tmp.push_back("VRICP\nPerformICP_10Iters");
 		gps.push_back(gp_btn_tmp);
 

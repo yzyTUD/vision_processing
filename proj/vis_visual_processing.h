@@ -623,7 +623,7 @@ public:
 		apply_register_matrices_for_the_original_point_cloud();
 	}
 	void randomize_current_pc() {
-		data_ptr->point_cloud_kit->pc.randomize_position();
+		data_ptr->point_cloud_kit->pc.randomize_position(data_ptr->point_cloud_kit->src_scan_idx);
 	}
 	void rotate_right(){ data_ptr->active_off_rotation -= 30; }
 	void rotate_left() { data_ptr->active_off_rotation += 30; }

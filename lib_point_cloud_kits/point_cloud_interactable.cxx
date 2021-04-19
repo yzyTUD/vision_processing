@@ -1116,8 +1116,8 @@ void point_cloud_interactable::init_region_growing_by_collecting_group_and_seeds
 	// unsigned int shoud cast to int! -> only when comparing bet. them 
 	for (int pi = 0; pi < pc.get_nr_points(); pi++) {
 		if (pc.point_selection.at(pi) == current_selecting_idx) {
-			region_id_and_seeds[(int)current_selecting_idx].emplace(pi);
-			region_id_and_nmls[(int)current_selecting_idx].emplace(pc.nml(pi));
+			region_id_and_seeds[pc.point_selection.at(pi)].emplace(pi);
+			region_id_and_nmls[pc.point_selection.at(pi)].emplace(pc.nml(pi));
 			pc.point_selection_visited[pi] = true;
 		}
 	}

@@ -648,14 +648,18 @@ void point_cloud::clear_all() {
 	currentScanIdx_Recon = 0;
 }
 
-void point_cloud::randomize_position() {
+void point_cloud::randomize_position(int scan_index) {
 	uniform_real_distribution<float> angle_distribution(0.f, 3.142f);
 	uniform_real_distribution<float> direction_distribution(0.f, 0.05f);
 	random_device rng; 
 	float rot_intensity = 0.2f;
 	float trans_intensity = 0.1;
 	float angle = rot_intensity * angle_distribution(rng);
-	rotate_scan_index0(cgv::math::quaternion<float>(normalize(vec3(direction_distribution(rng), direction_distribution(rng), direction_distribution(rng))), angle));
+	rotate_scan_indexi(
+		cgv::math::quaternion<float>(
+			normalize(vec3(direction_distribution(rng), direction_distribution(rng), direction_distribution(rng))), angle)
+		, scan_index
+	);
 	//translate(trans_intensity * vec3(direction_distribution(rng), direction_distribution(rng), direction_distribution(rng)));
 }
 
@@ -1134,14 +1138,14 @@ void point_cloud::rotate(const Qat& qat, Idx ci)
 		comp_box_out_of_date[ci] = true;
 }
 
-void point_cloud::rotate_scan_index0(const Qat& qat)
+void point_cloud::rotate_scan_indexi(const Qat& qat, int scanIdx)
 {
 	for (int i = 0; i < get_nr_points(); i++)
-		if(point_scan_index.at(i) == 0)
+		if(point_scan_index.at(i) == scanIdx)
 			pnt(i) = qat.apply(pnt(i));
 	if (has_normals()) {  // rotate nmls if present 
 		for (int i = 0; i < get_nr_points(); i++)
-			if (point_scan_index.at(i) == 0)
+			if (point_scan_index.at(i) == scanIdx)
 				nml(i) = qat.apply(nml(i));
 	}
 	box_out_of_date = true;

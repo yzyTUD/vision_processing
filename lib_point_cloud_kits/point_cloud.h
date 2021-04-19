@@ -535,6 +535,8 @@ public:
 	void clear();
 	// 
 	void clear_all();
+	///
+	void randomize_position(int scan_index);
 	/// 
 	void clear_campose();
 	/// delete marked points 
@@ -561,8 +563,7 @@ public:
 	void del_with_clip_plane(Dir cur_plane_normal, Pnt a_point_on_the_plane);
 
 	void clip_plane(Dir plane_nml, Pnt a_point_on_plane);
-	///
-	void randomize_position();
+
 	/// permute points
 	void permute(std::vector<Idx>& perm, bool permute_component_indices);
 	/// translate by adding direction vector dir to point positions and update bounding box
@@ -570,7 +571,7 @@ public:
 	/// rotate points and normals with quaternion
 	void rotate(const Qat& qat, Idx component_index = -1);
 	///
-	void rotate_scan_index0(const Qat& qat);
+	void rotate_scan_indexi(const Qat& qat, int scanIdx);
 	/// transform points with linear transform and mark bounding box outdated (careful: normals are not yet transformed!)
 	void transform(const Mat& mat);
 	/// transform with affine transform and mark bounding box outdated (careful: normals are not yet transformed!)

@@ -512,6 +512,11 @@ bool visual_processing::handle(cgv::gui::event& e)
 				}
 				
 				/*VR ICP: touch to activate */
+				//
+				if (data_ptr->check_roulette_selection(data_ptr->get_id_with_name("VRICP\nSetSrcAndTarget\nScanIndex(Via GUI)"))) {
+					data_ptr->point_cloud_kit->src_scan_idx = 1;
+					data_ptr->point_cloud_kit->target_scan_idx = 0;
+				}
 				if (data_ptr->check_roulette_selection(data_ptr->get_id_with_name("VRICP\nHighlightSrcAndTarget"))) {
 					data_ptr->point_cloud_kit->colorize_with_scan_index = !data_ptr->point_cloud_kit->colorize_with_scan_index;
 				}
@@ -537,6 +542,9 @@ bool visual_processing::handle(cgv::gui::event& e)
 				if (data_ptr->check_roulette_selection(data_ptr->get_id_with_name("VRICP\nPerformICP_10Iters"))) {
 					data_ptr->point_cloud_kit->perform_icp_and_acquire_matrices();
 					data_ptr->point_cloud_kit->apply_register_matrices_for_the_original_point_cloud();
+				}
+				if (data_ptr->check_roulette_selection(data_ptr->get_id_with_name("VRICP\nRandomizeSource"))) {
+					data_ptr->point_cloud_kit->pc.randomize_position(data_ptr->point_cloud_kit->src_scan_idx);
 				}
 
 				/*region growing */
