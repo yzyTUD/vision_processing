@@ -294,6 +294,12 @@ public:
 	void apply_register_matrices_for_the_original_point_cloud();
 	///
 	void drop_last_registration();
+	///
+	void render_select_src_cloud_only();
+	///
+	void render_select_target_cloud_only();
+	///
+	void render_both_src_target_clouds();
 	/// deprecated 
 	void highlight_last_pc();
 	/// deprecated

@@ -1365,129 +1365,127 @@ void point_cloud_interactable::ensure_point_selection() {
 	}
 }
 /// subsampled_target will be computed acc to p, r information 
-void point_cloud_interactable::subsampling_target(
-	Pnt& p, float& r, bool confirmed) {
-	if (pc_last.get_nr_points() && tree_ds_target_pc_last_frame) {
-		//ensure_tree_ds(); this is only for pc 
-		ensure_point_selection();
-		float closest_dist = tree_ds_target_pc_last_frame->find_closest_and_its_dist(p);
-		//std::cout << "closest_dist = "<< closest_dist << std::endl;
-		if (closest_dist > r) {
-			if (marked == true) {
-				for (Idx i = 0; i < (Idx)pc_last.get_nr_points(); ++i) {
-					if (pc_last.point_selection.at(i) == point_cloud::PointSelectiveAttribute::VISUAL_MARK)
-						pc_last.point_selection.at(i) = point_cloud::PointSelectiveAttribute::ORI;
-				}
-				marked = false;
-			}
-		}
-		else {
-			//std::cout << "some points inside the sphere!" << std::endl;
-			Box pc_bbox = pc_last.box();
-			float vol_pc = pc_bbox.get_extent().x() * pc_bbox.get_extent().y() * pc_bbox.get_extent().z();
-			int max_points_estimated = pc_last.get_nr_points() * pow((2 * r), 3) / vol_pc;
-			std::vector<int> knn;
-			std::vector<float> dist_list;
-			tree_ds_target_pc_last_frame->find_closest_points(p, max_points_estimated, knn, dist_list);
-			// if the last point is in outside of the ball on hand, 
-			// all wanted points are included
-			if (dist_list.at(dist_list.size() - 1) > r) {
-				// start at minimal dist 
-				for (int i = 0; i < knn.size(); i++) {
-					// check if is smaller than r 
-					if (dist_list.at(i) < r) {
-						if (confirmed)
-							pc_last.point_selection.at(knn.at(i)) = point_cloud::PointSelectiveAttribute::ICP_TARGET;
-						else {
-							pc_last.point_selection.at(knn.at(i)) = point_cloud::PointSelectiveAttribute::VISUAL_MARK;
-							marked = true;
-						}
-						pc_last.has_selection = true;
-					}
-				}
-			}
-			else {
-				// too few points are estimated, iter the entire cloud 
-				for (Idx i = 0; i < (Idx)pc_last.get_nr_points(); ++i) {
-					if ((pc_last.pnt(i) - p).length() < r) {
-						if (confirmed)
-							pc_last.point_selection.at(i) = point_cloud::PointSelectiveAttribute::ICP_TARGET;
-						else {
-							pc_last.point_selection.at(i) = point_cloud::PointSelectiveAttribute::VISUAL_MARK;
-							marked = true;
-						}
-						pc_last.has_selection = true;
-					}
-				}
-			}
+void point_cloud_interactable::subsampling_target(Pnt& p, float& r, bool confirmed) {
+	//if (pc_last.get_nr_points() && tree_ds_target_pc_last_frame) {
+	//	//ensure_tree_ds(); this is only for pc 
+	//	ensure_point_selection();
+	//	float closest_dist = tree_ds_target_pc_last_frame->find_closest_and_its_dist(p);
+	//	//std::cout << "closest_dist = "<< closest_dist << std::endl;
+	//	if (closest_dist > r) {
+	//		if (marked == true) {
+	//			for (Idx i = 0; i < (Idx)pc_last.get_nr_points(); ++i) {
+	//				if (pc_last.point_selection.at(i) == point_cloud::PointSelectiveAttribute::VISUAL_MARK)
+	//					pc_last.point_selection.at(i) = point_cloud::PointSelectiveAttribute::ORI;
+	//			}
+	//			marked = false;
+	//		}
+	//	}
+	//	else {
+	//		//std::cout << "some points inside the sphere!" << std::endl;
+	//		Box pc_bbox = pc_last.box();
+	//		float vol_pc = pc_bbox.get_extent().x() * pc_bbox.get_extent().y() * pc_bbox.get_extent().z();
+	//		int max_points_estimated = pc_last.get_nr_points() * pow((2 * r), 3) / vol_pc;
+	//		std::vector<int> knn;
+	//		std::vector<float> dist_list;
+	//		tree_ds_target_pc_last_frame->find_closest_points(p, max_points_estimated, knn, dist_list);
+	//		// if the last point is in outside of the ball on hand, 
+	//		// all wanted points are included
+	//		if (dist_list.at(dist_list.size() - 1) > r) {
+	//			// start at minimal dist 
+	//			for (int i = 0; i < knn.size(); i++) {
+	//				// check if is smaller than r 
+	//				if (dist_list.at(i) < r) {
+	//					if (confirmed)
+	//						pc_last.point_selection.at(knn.at(i)) = point_cloud::PointSelectiveAttribute::ICP_TARGET;
+	//					else {
+	//						pc_last.point_selection.at(knn.at(i)) = point_cloud::PointSelectiveAttribute::VISUAL_MARK;
+	//						marked = true;
+	//					}
+	//					pc_last.has_selection = true;
+	//				}
+	//			}
+	//		}
+	//		else {
+	//			// too few points are estimated, iter the entire cloud 
+	//			for (Idx i = 0; i < (Idx)pc_last.get_nr_points(); ++i) {
+	//				if ((pc_last.pnt(i) - p).length() < r) {
+	//					if (confirmed)
+	//						pc_last.point_selection.at(i) = point_cloud::PointSelectiveAttribute::ICP_TARGET;
+	//					else {
+	//						pc_last.point_selection.at(i) = point_cloud::PointSelectiveAttribute::VISUAL_MARK;
+	//						marked = true;
+	//					}
+	//					pc_last.has_selection = true;
+	//				}
+	//			}
+	//		}
 
-		}
-	}
+	//	}
+	//}
 }
 /// subsample the source point cloud 
-void point_cloud_interactable::subsampling_source(
-	Pnt& p, float& r, bool confirmed) {
-	//subsampled_source, pc changed, treeds changed, obj changed 
-	if (pc_to_be_append.get_nr_points() && tree_ds_source_pc) {
-		//ensure_tree_ds(); this is only for pc 
-		ensure_point_selection();
-		float closest_dist = tree_ds_source_pc->find_closest_and_its_dist(p);
-		//std::cout << "closest_dist = "<< closest_dist << std::endl;
-		if (closest_dist > r) {
-			if (marked == true) {
-				for (Idx i = 0; i < (Idx)pc_to_be_append.get_nr_points(); ++i) {
-					if (pc_to_be_append.point_selection.at(i) == point_cloud::PointSelectiveAttribute::VISUAL_MARK)
-						pc_to_be_append.point_selection.at(i) = point_cloud::PointSelectiveAttribute::ORI;
-				}
-				marked = false;
-			}
-		}
-		else {
-			//std::cout << "some points inside the sphere!" << std::endl;
-			Box pc_bbox = pc_to_be_append.box();
-			float vol_pc = pc_bbox.get_extent().x() * pc_bbox.get_extent().y() * pc_bbox.get_extent().z();
-			int max_points_estimated = pc_to_be_append.get_nr_points() * pow((2 * r), 3) / vol_pc;
-			std::vector<int> knn;
-			std::vector<float> dist_list;
-			tree_ds_source_pc->find_closest_points(p, max_points_estimated, knn, dist_list);
-			// if the last point is in outside of the ball on hand, 
-			// all wanted points are included
-			if (dist_list.at(dist_list.size() - 1) > r) {
-				// start at minimal dist 
-				for (int i = 0; i < knn.size(); i++) {
-					// check if is smaller than r 
-					if (dist_list.at(i) < r) {
-						if (confirmed)
-							pc_to_be_append.point_selection.at(knn.at(i)) = point_cloud::PointSelectiveAttribute::ICP_SOURCE;
-						else {
-							pc_to_be_append.point_selection.at(knn.at(i)) = point_cloud::PointSelectiveAttribute::VISUAL_MARK;
-							marked = true;
-						}
-						pc_to_be_append.has_selection = true;
-					}
-				}
-			}
-			else {
-				// too few points are estimated, iter the entire cloud 
-				for (Idx i = 0; i < (Idx)pc_to_be_append.get_nr_points(); ++i) {
-					if ((pc_to_be_append.pnt(i) - p).length() < r) {
-						if (confirmed)
-							pc_to_be_append.point_selection.at(i) = point_cloud::PointSelectiveAttribute::ICP_SOURCE;
-						else {
-							pc_to_be_append.point_selection.at(i) = point_cloud::PointSelectiveAttribute::VISUAL_MARK;
-							marked = true;
-						}
-						pc_to_be_append.has_selection = true;
-					}
-				}
-			}
+void point_cloud_interactable::subsampling_source(Pnt& p, float& r, bool confirmed) {
+	////subsampled_source, pc changed, treeds changed, obj changed 
+	//if (pc_to_be_append.get_nr_points() && tree_ds_source_pc) {
+	//	//ensure_tree_ds(); this is only for pc 
+	//	ensure_point_selection();
+	//	float closest_dist = tree_ds_source_pc->find_closest_and_its_dist(p);
+	//	//std::cout << "closest_dist = "<< closest_dist << std::endl;
+	//	if (closest_dist > r) {
+	//		if (marked == true) {
+	//			for (Idx i = 0; i < (Idx)pc_to_be_append.get_nr_points(); ++i) {
+	//				if (pc_to_be_append.point_selection.at(i) == point_cloud::PointSelectiveAttribute::VISUAL_MARK)
+	//					pc_to_be_append.point_selection.at(i) = point_cloud::PointSelectiveAttribute::ORI;
+	//			}
+	//			marked = false;
+	//		}
+	//	}
+	//	else {
+	//		//std::cout << "some points inside the sphere!" << std::endl;
+	//		Box pc_bbox = pc_to_be_append.box();
+	//		float vol_pc = pc_bbox.get_extent().x() * pc_bbox.get_extent().y() * pc_bbox.get_extent().z();
+	//		int max_points_estimated = pc_to_be_append.get_nr_points() * pow((2 * r), 3) / vol_pc;
+	//		std::vector<int> knn;
+	//		std::vector<float> dist_list;
+	//		tree_ds_source_pc->find_closest_points(p, max_points_estimated, knn, dist_list);
+	//		// if the last point is in outside of the ball on hand, 
+	//		// all wanted points are included
+	//		if (dist_list.at(dist_list.size() - 1) > r) {
+	//			// start at minimal dist 
+	//			for (int i = 0; i < knn.size(); i++) {
+	//				// check if is smaller than r 
+	//				if (dist_list.at(i) < r) {
+	//					if (confirmed)
+	//						pc_to_be_append.point_selection.at(knn.at(i)) = point_cloud::PointSelectiveAttribute::ICP_SOURCE;
+	//					else {
+	//						pc_to_be_append.point_selection.at(knn.at(i)) = point_cloud::PointSelectiveAttribute::VISUAL_MARK;
+	//						marked = true;
+	//					}
+	//					pc_to_be_append.has_selection = true;
+	//				}
+	//			}
+	//		}
+	//		else {
+	//			// too few points are estimated, iter the entire cloud 
+	//			for (Idx i = 0; i < (Idx)pc_to_be_append.get_nr_points(); ++i) {
+	//				if ((pc_to_be_append.pnt(i) - p).length() < r) {
+	//					if (confirmed)
+	//						pc_to_be_append.point_selection.at(i) = point_cloud::PointSelectiveAttribute::ICP_SOURCE;
+	//					else {
+	//						pc_to_be_append.point_selection.at(i) = point_cloud::PointSelectiveAttribute::VISUAL_MARK;
+	//						marked = true;
+	//					}
+	//					pc_to_be_append.has_selection = true;
+	//				}
+	//			}
+	//		}
 
-		}
-	}
+	//	}
+	//}
 }
 /// 
 void point_cloud_interactable::collect_to_subsampled_pcs() {
-	pc_last_subsampled.clear_all();
+	/*pc_last_subsampled.clear_all();
 	pc_to_be_append_subsampled.clear_all();
 	for (int i = 0; i < pc_last.get_nr_points(); i++) {
 		if (pc_last.point_selection.at(i) == point_cloud::PointSelectiveAttribute::ICP_TARGET) {
@@ -1499,7 +1497,7 @@ void point_cloud_interactable::collect_to_subsampled_pcs() {
 			pc_to_be_append_subsampled.add_point_subsampling(pc_to_be_append.pnt(i), pc_to_be_append.nml(i));
 		}
 	}
-	
+	*/
 }
 
 ///
@@ -1516,6 +1514,36 @@ void point_cloud_interactable::update_scan_index_visibility_test() {
 void point_cloud_interactable::set_src_and_target_scan_idx_as_test() {
 	src_scan_idx = 1;
 	target_scan_idx = 0;
+}
+
+void point_cloud_interactable::render_select_src_cloud_only() {
+	for (int i = 0; i < pc.scan_index_visibility.size(); i++) {
+		if (i == src_scan_idx)
+			pc.scan_index_visibility.at(i) = true;
+		else
+			pc.scan_index_visibility.at(i) = false;
+	}
+	pc.update_scan_index_visibility();
+}
+
+void point_cloud_interactable::render_select_target_cloud_only() {
+	for (int i = 0; i < pc.scan_index_visibility.size(); i++) {
+		if (i == target_scan_idx)
+			pc.scan_index_visibility.at(i) = true;
+		else
+			pc.scan_index_visibility.at(i) = false;
+	}
+	pc.update_scan_index_visibility();
+}
+
+void point_cloud_interactable::render_both_src_target_clouds() {
+	for (int i = 0; i < pc.scan_index_visibility.size(); i++) {
+		if ((i == src_scan_idx)||(i == target_scan_idx))
+			pc.scan_index_visibility.at(i) = true;
+		else
+			pc.scan_index_visibility.at(i) = false;
+	}
+	pc.update_scan_index_visibility();
 }
 
 /// extract to pc_src and pc_target
@@ -1541,9 +1569,11 @@ void point_cloud_interactable::extract_point_clouds_for_icp_marked_only() {
 	// colloect points, todo: support more features 
 	for (int Idx = 0; Idx < pc.get_nr_points(); Idx++) {
 		if (pc.point_scan_index.at(Idx) == src_scan_idx)
-			pc_src.add_point(pc.pnt(Idx), pc.clr(Idx), pc.nml(Idx));
+			if(pc.point_selection.at(Idx) == point_cloud::PointSelectiveAttribute::ICP_SOURCE_A)
+				pc_src.add_point(pc.pnt(Idx), pc.clr(Idx), pc.nml(Idx));
 		if (pc.point_scan_index.at(Idx) == target_scan_idx)
-			pc_target.add_point(pc.pnt(Idx), pc.clr(Idx), pc.nml(Idx));
+			if (pc.point_selection.at(Idx) == point_cloud::PointSelectiveAttribute::ICP_TARGET_A)
+				pc_target.add_point(pc.pnt(Idx), pc.clr(Idx), pc.nml(Idx));
 	}
 	pc_src.box_out_of_date = true;
 	pc_target.box_out_of_date = true;

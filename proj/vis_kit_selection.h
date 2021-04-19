@@ -660,6 +660,13 @@ public:
 			data_ptr->point_cloud_kit->controller_effect_range = 0.02; // make sure larger than ctrl point size 
 			render_a_sphere_on_righthand_shading_effect(ctx);
 		}
+		//
+		if (data_ptr->check_roulette_selection(data_ptr->get_id_with_name("VRICP\nRenderSrcOnly"))) {
+			render_a_sphere_on_righthand_shading_effect(ctx);
+		}
+		if (data_ptr->check_roulette_selection(data_ptr->get_id_with_name("VRICP\nRenderTargetOnly"))) {
+			render_a_sphere_on_righthand_shading_effect(ctx);
+		}
 	}
 	///
 	void render_a_handhold_plane_for_clipping(cgv::render::context& ctx) {
