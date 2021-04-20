@@ -670,6 +670,19 @@ public:
 		if (data_ptr->check_roulette_selection(data_ptr->get_id_with_name("VRICP\nRenderTargetOnly"))) {
 			render_a_sphere_on_righthand_shading_effect(ctx);
 		}
+		// icp clicked points 
+		if (data_ptr->check_roulette_selection(data_ptr->get_id_with_name("VRICP\nClickPoints\nDpd\nSrc"))) {
+			float radius_before = data_ptr->point_cloud_kit->controller_effect_range;
+			data_ptr->point_cloud_kit->controller_effect_range = 0.001;
+			render_a_sphere_on_righthand_shading_effect(ctx);
+			data_ptr->point_cloud_kit->controller_effect_range = radius_before;
+		}
+		if (data_ptr->check_roulette_selection(data_ptr->get_id_with_name("VRICP\nClickPoints\nDpd\nTarget"))) {
+			float radius_before = data_ptr->point_cloud_kit->controller_effect_range;
+			data_ptr->point_cloud_kit->controller_effect_range = 0.001;
+			render_a_sphere_on_righthand_shading_effect(ctx);
+			data_ptr->point_cloud_kit->controller_effect_range = radius_before;
+		}
 	}
 	///
 	void render_a_handhold_plane_for_clipping(cgv::render::context& ctx) {

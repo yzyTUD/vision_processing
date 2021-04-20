@@ -153,6 +153,50 @@ namespace cgv {
 			return false;
 		}
 
+		///
+		void ICP::reg_icp_get_matrices_from_4pair_points(std::vector<Pnt>* clicking_points_src, std::vector<Pnt>* clicking_points_target, Mat& rmat_accu, Dir& tvec_accu) {
+			Pnt source_center;
+			Pnt target_center;
+			source_center.zeros();
+			target_center.zeros();
+			Mat fA(0.0f);	// initializes fA to matrix filled with zeros
+			cgv::math::mat<float> U, V;
+			cgv::math::diag_mat<float> Sigma;
+
+			// compute centers 
+			for (auto p : *clicking_points_src) {
+				source_center += p;
+			}source_center /= (float)clicking_points_src->size();
+
+			for (auto q : *clicking_points_target) {
+				target_center += q;
+			}target_center /= (float)clicking_points_target->size();
+
+			// compute cov matrix 
+			fA.zeros();
+			for (int i = 0; i < (float)clicking_points_src->size(); i++) {
+				fA += Mat(clicking_points_target->at(i) - target_center, clicking_points_src->at(i) - source_center);
+			}
+
+			///cast fA to A
+			cgv::math::mat<float> A(3, 3, &fA(0, 0));
+			cgv::math::svd(A, U, Sigma, V);
+			Mat fU(3, 3, &U(0, 0)), fV(3, 3, &V(0, 0));
+
+			///get new R and t
+			rmat_accu = fU * cgv::math::transpose(fV);
+			cgv::math::mat<float> R(3, 3, &rmat_accu(0, 0));
+			if (cgv::math::det(R) < 0) {
+				// multiply the 1,1...-1 diag matrix 
+				Mat fS; fS.zeros();
+				fS(0, 0) = 1;
+				fS(1, 1) = 1;
+				fS(2, 2) = -1;
+				rmat_accu = fU * fS * cgv::math::transpose(fV);
+			}
+			tvec_accu = target_center - rmat_accu * source_center;
+		}
+
 		/// re write, a very quick test 
 		void ICP::reg_icp_get_matrices(point_cloud* pc_src, point_cloud* pc_target, point_cloud& S, point_cloud& Q, Mat& rmat_accu, Dir& tvec_accu) {
 			// set once, use sourceCloud as global varible for sampling 

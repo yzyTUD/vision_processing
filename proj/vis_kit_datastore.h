@@ -332,10 +332,15 @@ public:
 		gp_btn_tmp.push_back("VRICP\nRenderBoth");
 		gp_btn_tmp.push_back("VRICP\nRenderSrcOnly");
 		gp_btn_tmp.push_back("VRICP\nRenderTargetOnly");
+		//
+		gp_btn_tmp.push_back("VRICP\nClickPoints\nDpd\nSrc"); // manual alignment 
+		gp_btn_tmp.push_back("VRICP\nClickPoints\nDpd\nTarget");
+		gp_btn_tmp.push_back("VRICP\nPerformICP\n_8CorrespPoints");
+		//
 		gp_btn_tmp.push_back("VRICP\nExtractPointClouds\nMarkedOnly");
 		gp_btn_tmp.push_back("VRICP\nExtractPointClouds");
 		gp_btn_tmp.push_back("VRICP\nRandomizeSource");
-		gp_btn_tmp.push_back("VRICP\nPerformICP_1Iter");
+		gp_btn_tmp.push_back("VRICP\nPerformICP_1Iter"); 
 		gps.push_back(gp_btn_tmp);
 
 		//////////////////////////////////////////////////////////////////

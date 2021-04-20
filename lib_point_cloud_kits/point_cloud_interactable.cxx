@@ -1628,7 +1628,7 @@ void point_cloud_interactable::perform_icp_and_acquire_matrices() {
 		icp.set_eps(1e-8);
 		icp.set_num_random(icp_samples);
 		// pc_to_be_append has been changed during the registration 
-		icp.reg_icp_get_matrices(&pc_src, &pc_target, S, Q, rmat, tvec);
+		icp.reg_icp_get_matrices(&pc_src, &pc_target, S, Q, rmat, tvec); // rmat will be corrept if icp_iterations>1, precision error. S doesnt have 
 		// update feature points for rendering 
 		// update feature_points_src from S: selected points in source cloud 
 		feature_points_src.resize(S.get_nr_points());
@@ -1646,6 +1646,23 @@ void point_cloud_interactable::perform_icp_and_acquire_matrices() {
 		}
 	}
 	else { std::cout << "icp: error point cloud size" << std::endl; }
+}
+
+void point_cloud_interactable::perform_icp_given_four_pair_points() {
+	icp.reg_icp_get_matrices_from_4pair_points(&icp_clicking_points_src, &icp_clicking_points_target, rmat, tvec);
+}
+
+void perform_icp_1Iter() { // impl. outside 
+
+}
+
+// manually clicking bring the point clouds closer and perfrom traditional ICP with ease 
+void point_cloud_interactable::perform_icp_manual_clicking() {
+	perform_icp_given_four_pair_points();
+	apply_register_matrices_for_the_original_point_cloud();
+	// apply to four clicking points src 
+	for (auto& cps : icp_clicking_points_src)
+		cps = rmat * cps + tvec;
 }
 
 /// apply transformations to the global pc 
@@ -2088,6 +2105,10 @@ point_cloud_interactable::point_cloud_interactable() : ne(pc, ng)
 
 	frame_pointers.push_back(0);
 
+	icp_clicking_points_src.resize(4);
+	icp_clicking_point_colors_src.resize(4);
+	icp_clicking_points_target.resize(4);
+	icp_clicking_point_colors_target.resize(4);
 }
 ///
 void point_cloud_interactable::auto_set_view()
@@ -2278,6 +2299,22 @@ void point_cloud_interactable::draw(cgv::render::context& ctx)
 		sr.set_position_array(ctx, feature_points_target);
 		sr.set_color_array(ctx, feature_point_colors_target);
 		sr.render(ctx, 0, feature_points_target.size());
+	}
+
+	// 
+	if (icp_clicking_points_src.size() > 0) {
+		auto& sr = cgv::render::ref_sphere_renderer(ctx);
+		sr.set_render_style(srs_icp_feature_points);
+		sr.set_position_array(ctx, icp_clicking_points_src);
+		sr.set_color_array(ctx, icp_clicking_point_colors_src);
+		sr.render(ctx, 0, icp_clicking_points_src.size());
+	}
+	if (icp_clicking_points_target.size() > 0) {
+		auto& sr = cgv::render::ref_sphere_renderer(ctx);
+		sr.set_render_style(srs_icp_feature_points);
+		sr.set_position_array(ctx, icp_clicking_points_target);
+		sr.set_color_array(ctx, icp_clicking_point_colors_target);
+		sr.render(ctx, 0, icp_clicking_points_target.size());
 	}
 }
 ///

@@ -291,7 +291,11 @@ public:
 	///
 	void perform_icp_and_acquire_matrices();
 	///
+	void perform_icp_given_four_pair_points();
+	///
 	void apply_register_matrices_for_the_original_point_cloud();
+	///
+	void perform_icp_manual_clicking(); // external api 
 	///
 	void drop_last_registration();
 	///
@@ -325,6 +329,11 @@ public:
 	std::vector<vec3> feature_points_target;
 	std::vector<rgb> feature_point_colors_target;
 	cgv::render::sphere_render_style srs_icp_feature_points;
+	//
+	std::vector<vec3> icp_clicking_points_src; // visualization 
+	std::vector<rgb> icp_clicking_point_colors_src;
+	std::vector<vec3> icp_clicking_points_target;
+	std::vector<rgb> icp_clicking_point_colors_target;
 	//
 	point_cloud crs_srs_pc; // tmp source and target pcs 
 	point_cloud crs_tgt_pc;

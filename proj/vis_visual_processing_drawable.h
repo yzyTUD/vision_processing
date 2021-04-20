@@ -464,6 +464,100 @@ bool visual_processing::handle(cgv::gui::event& e)
 				}
 			}
 		}
+		
+		if (data_ptr->check_roulette_selection(data_ptr->get_id_with_name("VRICP\nClickPoints\nDpd\nSrc"))) {
+			if (vrke.get_key() == vr::VR_DPAD_LEFT)
+			{
+				if (vrke.get_action() == cgv::gui::KA_PRESS)
+				{
+					if (vrke.get_controller_index() == data_ptr->right_rgbd_controller_index)
+					{
+						data_ptr->point_cloud_kit->icp_clicking_points_src.at(0) = data_ptr->cur_right_hand_posi + data_ptr->cur_off_right;
+						data_ptr->point_cloud_kit->icp_clicking_point_colors_src.at(0) = rgb(1, 0, 0);
+					}
+				}
+			}			
+			if (vrke.get_key() == vr::VR_DPAD_UP)
+			{
+				if (vrke.get_action() == cgv::gui::KA_PRESS)
+				{
+					if (vrke.get_controller_index() == data_ptr->right_rgbd_controller_index)
+					{
+						data_ptr->point_cloud_kit->icp_clicking_points_src.at(1) = data_ptr->cur_right_hand_posi + data_ptr->cur_off_right;
+						data_ptr->point_cloud_kit->icp_clicking_point_colors_src.at(1) = rgb(0, 1, 0);
+					}
+				}
+			}
+			if (vrke.get_key() == vr::VR_DPAD_RIGHT)
+			{
+				if (vrke.get_action() == cgv::gui::KA_PRESS)
+				{
+					if (vrke.get_controller_index() == data_ptr->right_rgbd_controller_index)
+					{
+						data_ptr->point_cloud_kit->icp_clicking_points_src.at(2) = data_ptr->cur_right_hand_posi + data_ptr->cur_off_right;
+						data_ptr->point_cloud_kit->icp_clicking_point_colors_src.at(2) = rgb(0, 0, 1);
+					}
+				}
+			}
+			if (vrke.get_key() == vr::VR_DPAD_DOWN)
+			{
+				if (vrke.get_action() == cgv::gui::KA_PRESS)
+				{
+					if (vrke.get_controller_index() == data_ptr->right_rgbd_controller_index)
+					{
+						data_ptr->point_cloud_kit->icp_clicking_points_src.at(3) = data_ptr->cur_right_hand_posi + data_ptr->cur_off_right;
+						data_ptr->point_cloud_kit->icp_clicking_point_colors_src.at(3) = rgb(1, 1, 0);
+					}
+				}
+			}
+		}
+		if (data_ptr->check_roulette_selection(data_ptr->get_id_with_name("VRICP\nClickPoints\nDpd\nTarget"))) {
+			if (vrke.get_key() == vr::VR_DPAD_LEFT)
+			{
+				if (vrke.get_action() == cgv::gui::KA_PRESS)
+				{
+					if (vrke.get_controller_index() == data_ptr->right_rgbd_controller_index)
+					{
+						data_ptr->point_cloud_kit->icp_clicking_points_target.at(0) = data_ptr->cur_right_hand_posi + data_ptr->cur_off_right;
+						data_ptr->point_cloud_kit->icp_clicking_point_colors_target.at(0) = rgb(1, 0, 0);
+					}
+				}
+			}
+			if (vrke.get_key() == vr::VR_DPAD_UP)
+			{
+				if (vrke.get_action() == cgv::gui::KA_PRESS)
+				{
+					if (vrke.get_controller_index() == data_ptr->right_rgbd_controller_index)
+					{
+						data_ptr->point_cloud_kit->icp_clicking_points_target.at(1) = data_ptr->cur_right_hand_posi + data_ptr->cur_off_right;
+						data_ptr->point_cloud_kit->icp_clicking_point_colors_target.at(1) = rgb(0, 1, 0);
+					}
+				}
+			}
+			if (vrke.get_key() == vr::VR_DPAD_RIGHT)
+			{
+				if (vrke.get_action() == cgv::gui::KA_PRESS)
+				{
+					if (vrke.get_controller_index() == data_ptr->right_rgbd_controller_index)
+					{
+						data_ptr->point_cloud_kit->icp_clicking_points_target.at(2) = data_ptr->cur_right_hand_posi + data_ptr->cur_off_right;
+						data_ptr->point_cloud_kit->icp_clicking_point_colors_target.at(2) = rgb(0, 0, 1);
+					}
+				}
+			}
+			if (vrke.get_key() == vr::VR_DPAD_DOWN)
+			{
+				if (vrke.get_action() == cgv::gui::KA_PRESS)
+				{
+					if (vrke.get_controller_index() == data_ptr->right_rgbd_controller_index)
+					{
+						data_ptr->point_cloud_kit->icp_clicking_points_target.at(3) = data_ptr->cur_right_hand_posi + data_ptr->cur_off_right;
+						data_ptr->point_cloud_kit->icp_clicking_point_colors_target.at(3) = rgb(1, 1, 0);
+					}
+				}
+			}
+		}
+
 	}
 	// touch/ move to adjest 
 	if (e.get_kind() == cgv::gui::EID_STICK) {
@@ -531,6 +625,12 @@ bool visual_processing::handle(cgv::gui::event& e)
 					// visual feedback 
 					data_ptr->point_cloud_kit->render_both_src_target_clouds();
 				}
+				if (data_ptr->check_roulette_selection(data_ptr->get_id_with_name("VRICP\nPerformICP\n_8CorrespPoints"))) {
+					// state: you need to click 4 pair points before this 
+					data_ptr->point_cloud_kit->perform_icp_manual_clicking();
+					// state: matrix will be applied to point cloud after this 
+				}
+				// this has been moved to the move event 
 					/*if (data_ptr->check_roulette_selection(data_ptr->get_id_with_name("VRICP\nPerformICP_10Iters"))) {
 						data_ptr->point_cloud_kit->perform_icp_and_acquire_matrices();
 						data_ptr->point_cloud_kit->apply_register_matrices_for_the_original_point_cloud();
