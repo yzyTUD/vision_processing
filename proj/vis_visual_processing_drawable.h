@@ -1297,8 +1297,15 @@ void visual_processing::create_gui() {
 			"value_slider", "min=0;max=10;log=false;ticks=false;");
 		add_member_control(this, "target_scan_index", data_ptr->point_cloud_kit->target_scan_idx,
 			"value_slider", "min=0;max=10;log=false;ticks=false;");
+
+		//
+		add_member_control(this, "icp_iterations", data_ptr->point_cloud_kit->icp_iterations,
+			"value_slider", "min=1;max=20;log=false;ticks=true;");
 		connect_copy(add_button("do_icp_once")->click,
 			rebind(this, &visual_processing::do_icp_once));
+
+
+		//
 	}
 
 	
@@ -1328,8 +1335,10 @@ void visual_processing::create_gui() {
 	if (begin_tree_node("Scan Index", data_ptr->point_cloud_kit->show_nmls, true, "level=3")) {
 		add_member_control(this, "scan_index", data_ptr->point_cloud_kit->pc.currentScanIdx_Recon, 
 			"value_slider", "min=0;max=10;log=false;ticks=true;");
+		add_member_control(this, "surfel point size", data_ptr->point_cloud_kit->surfel_style.point_size,
+			"value_slider", "min=0.01;max=5;log=false;ticks=false;");
 		add_member_control(this, "point size", data_ptr->point_cloud_kit->point_size,
-			"value_slider", "min=0.05;max=5;log=false;ticks=false;");
+			"value_slider", "min=0.01;max=5;log=false;ticks=false;");
 		add_member_control(this, "percentual_halo_width", data_ptr->point_cloud_kit->percentual_halo_width,
 			"value_slider", "min=0.05;max=5;log=false;ticks=false;");
 		add_member_control(this, "colorize_with_scan_index", data_ptr->point_cloud_kit->colorize_with_scan_index, "check");

@@ -275,7 +275,6 @@ public:
 	float paratone_5;
 	float paratone_6;
 	float paratone_7;
-
 	// parametric surface rendering 
 	bool render_parametric_surface = false;
 	bool render_control_points = true;

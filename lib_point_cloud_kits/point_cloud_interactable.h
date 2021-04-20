@@ -310,14 +310,20 @@ public:
 	void register_cur_and_last_pc_if_present();
 	///
 public:
-	int src_scan_idx = -1;
-	int target_scan_idx = -1;
-
+	int src_scan_idx = 1;
+	int target_scan_idx = 0;
+	int icp_iterations = 1;
 	///
 	point_cloud pc_src;
 	point_cloud pc_target;
 	point_cloud_types::Mat rmat;
 	point_cloud_types::Dir tvec;
+	point_cloud S, Q;
+	std::vector<vec3> feature_points_src; // visualization 
+	std::vector<rgb> feature_point_colors_src;
+	std::vector<vec3> feature_points_target;
+	std::vector<rgb> feature_point_colors_target;
+	cgv::render::sphere_render_style srs_icp_feature_points;
 	//
 	point_cloud crs_srs_pc; // tmp source and target pcs 
 	point_cloud crs_tgt_pc;

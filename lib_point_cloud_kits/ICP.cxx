@@ -154,7 +154,7 @@ namespace cgv {
 		}
 
 		/// re write, a very quick test 
-		void ICP::reg_icp_get_matrices(point_cloud* pc_src, point_cloud* pc_target, Mat& rmat_accu, Dir& tvec_accu) {
+		void ICP::reg_icp_get_matrices(point_cloud* pc_src, point_cloud* pc_target, point_cloud& S, point_cloud& Q, Mat& rmat_accu, Dir& tvec_accu) {
 			// set once, use sourceCloud as global varible for sampling 
 			sourceCloud = pc_src;
 			targetCloud = pc_target;
@@ -173,33 +173,45 @@ namespace cgv {
 
 			// init helpers
 			float mincost = std::numeric_limits<float>::infinity();// define min as Infinity
-			Mat fA(0.0f);	// initializes fA to matrix filled with zeros
+			Pnt source_center; 
+			Pnt target_center; 
 			cgv::math::mat<float> U, V;
 			cgv::math::diag_mat<float> Sigma;
+			Mat rmat;
+			Dir tvec;
+			Mat fA(0.0f);	// initializes fA to matrix filled with zeros
 			U.zeros();
 			V.zeros();
 			Sigma.zeros();
-			point_cloud S, Q;// subset of the pcs, used for samples 
+			//point_cloud S, Q;// subset of the pcs, used for samples 
 			S.clear();
 			Q.clear();
-			Pnt source_center; source_center.zeros();
-			Pnt target_center; target_center.zeros();
+			source_center.zeros();
+			target_center.zeros();
 			float cost = 1.0;
-			Mat rmat;
-			Dir tvec;
 			rmat.identity();
 			tvec.zeros();
+			rmat_accu.identity();
 
 			// main iteration of the ICP algorithm 
 			int num_of_iters = 0;
 			for (int iter = 0; iter < maxIterations && abs(cost) > eps; iter++)
 			{
+				// init varibles 
+				S.clear();
+				Q.clear();
+				U.zeros();
+				V.zeros();
+				Sigma.zeros();
+				source_center.zeros();
+				target_center.zeros();
+				rmat.identity();
+				tvec.zeros();
+
 				// init seed 
 				std::srand((unsigned)std::time(0) + iter);
 
 				// perform sampling 
-				S.clear();
-				Q.clear();
 				aquire_crspds_bilateral(S, Q, 0);
 				std::cout << "num of real samples used = " << S.get_nr_points() << std::endl;
 
@@ -257,20 +269,33 @@ namespace cgv {
 					sourceCloud->rotate(cgv::math::quaternion<float>(rmat));
 					sourceCloud->translate(tvec);
 
-					// update accumulated rmat and tvec 
+					// update S for rendering 
+					for (int i = 0; i < S.get_nr_points(); i++) {
+						S.pnt(i) = rmat * S.pnt(i) + tvec;
+					}
+
+					// instantly update all points in original point cloud, avoid matrix accumulate error, a quick test 
+					/*for (int Idx = 0; Idx < pc->get_nr_points(); Idx++) {
+						if (pc->point_scan_index.at(Idx) == src_scan_idx) {
+							pc->pnt(Idx) = rmat * pc->pnt(Idx) + tvec;
+						}
+					}*/
+
+					// update accumulated rmat and tvec, accumulated error ... (correct when iter = 1)
 					rmat_accu = rmat * rmat_accu;
 					tvec_accu += tvec;
 
 					// update min cost 
 					mincost = abs(cost);
+
 				}
 				num_of_iters++;
 			}
-			std::cout << "--------------" << std::endl;
-			std::cout << "iter used: " << num_of_iters << std::endl;
 			std::cout << "cost = " << mincost << std::endl;
+			/*std::cout << "--------------" << std::endl;
+			std::cout << "iter used: " << num_of_iters << std::endl;
 			std::string coveraged = (num_of_iters < maxIterations) ? "true" : "false";
-			std::cout << "coveraged = " << coveraged << std::endl;
+			std::cout << "coveraged = " << coveraged << std::endl;*/
 		}
 
 		///@deprecated, output the rotation matrix and translation vector 

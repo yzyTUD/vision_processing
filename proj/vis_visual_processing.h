@@ -621,6 +621,8 @@ public:
 	void do_icp_once() {
 		perform_icp_and_acquire_matrices();
 		apply_register_matrices_for_the_original_point_cloud();
+		//for (int i = 0; i < data_ptr->point_cloud_kit->icp_iterations; i++) {
+		//}
 	}
 	void randomize_current_pc() {
 		data_ptr->point_cloud_kit->pc.randomize_position(data_ptr->point_cloud_kit->src_scan_idx);

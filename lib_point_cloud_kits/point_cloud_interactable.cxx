@@ -1624,11 +1624,26 @@ void point_cloud_interactable::perform_icp_and_acquire_matrices() {
 		rmat.identity();
 		tvec.zeros();
 		// setup pdarameters 
-		icp.set_iterations(10);
+		icp.set_iterations(icp_iterations);
 		icp.set_eps(1e-8);
 		icp.set_num_random(50);
 		// pc_to_be_append has been changed during the registration 
-		icp.reg_icp_get_matrices(&pc_src, &pc_target, rmat, tvec);
+		icp.reg_icp_get_matrices(&pc_src, &pc_target, S, Q, rmat, tvec);
+		// update feature points for rendering 
+		// update feature_points_src from S: selected points in source cloud 
+		feature_points_src.resize(S.get_nr_points());
+		feature_point_colors_src.resize(S.get_nr_points());
+		for (int Idx = 0; Idx < S.get_nr_points(); Idx++) {
+			feature_points_src.at(Idx) = S.pnt(Idx);
+			feature_point_colors_src.at(Idx) = rgb(0, 1, 0);
+		}
+		// update feature_points_target from Q: selected points in target cloud 
+		feature_points_target.resize(Q.get_nr_points());
+		feature_point_colors_target.resize(S.get_nr_points());
+		for (int Idx = 0; Idx < Q.get_nr_points(); Idx++) {
+			feature_points_target.at(Idx) = Q.pnt(Idx);
+			feature_point_colors_target.at(Idx) = rgb(1, 0, 0);
+		}
 	}
 	else { std::cout << "icp: error point cloud size" << std::endl; }
 }
@@ -2246,6 +2261,23 @@ void point_cloud_interactable::draw(cgv::render::context& ctx)
 		renderer.set_translation_array(ctx, fea_box_trans);
 		renderer.set_rotation_array(ctx, fea_box_rot);
 		renderer.render(ctx, 0, fea_box.size());
+	}
+
+	// render feature points for ICP 
+	srs_icp_feature_points.radius = surfel_style.point_size / 100.0f;
+	if (feature_points_src.size() > 0) {
+		auto& sr = cgv::render::ref_sphere_renderer(ctx);
+		sr.set_render_style(srs_icp_feature_points);
+		sr.set_position_array(ctx, feature_points_src);
+		sr.set_color_array(ctx, feature_point_colors_src);
+		sr.render(ctx, 0, feature_points_src.size());
+	}
+	if (feature_points_target.size() > 0) {
+		auto& sr = cgv::render::ref_sphere_renderer(ctx);
+		sr.set_render_style(srs_icp_feature_points);
+		sr.set_position_array(ctx, feature_points_target);
+		sr.set_color_array(ctx, feature_point_colors_target);
+		sr.render(ctx, 0, feature_points_target.size());
 	}
 }
 ///
