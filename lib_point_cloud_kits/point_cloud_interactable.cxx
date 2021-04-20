@@ -1624,9 +1624,9 @@ void point_cloud_interactable::perform_icp_and_acquire_matrices() {
 		rmat.identity();
 		tvec.zeros();
 		// setup pdarameters 
-		icp.set_iterations(icp_iterations);
+		icp.set_iterations(icp_iterations); // shall set to 1 for now, avoid numerical problem ... but we have effecency problem 
 		icp.set_eps(1e-8);
-		icp.set_num_random(50);
+		icp.set_num_random(icp_samples);
 		// pc_to_be_append has been changed during the registration 
 		icp.reg_icp_get_matrices(&pc_src, &pc_target, S, Q, rmat, tvec);
 		// update feature points for rendering 

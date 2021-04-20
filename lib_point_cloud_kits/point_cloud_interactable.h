@@ -313,6 +313,7 @@ public:
 	int src_scan_idx = 1;
 	int target_scan_idx = 0;
 	int icp_iterations = 1;
+	int icp_samples = 50;
 	///
 	point_cloud pc_src;
 	point_cloud pc_target;

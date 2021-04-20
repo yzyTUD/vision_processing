@@ -482,37 +482,29 @@ bool visual_processing::handle(cgv::gui::event& e)
 						data_ptr->point_cloud_kit->downsampling(step, num_points / 2.0, 1);
 					}
 				}
-				// selection = nShowNml
 				if (data_ptr->check_roulette_selection(data_ptr->get_id_with_name("PointCloud\nShowNml"))) { 
 					data_ptr->point_cloud_kit->show_nmls = !data_ptr->point_cloud_kit->show_nmls;
 				}
-				// 
 				if (data_ptr->check_roulette_selection(data_ptr->get_id_with_name("PointCloud\nToggle\nACloud"))) {
 					data_ptr->point_cloud_kit->enable_acloud_effect = 
 						!data_ptr->point_cloud_kit->enable_acloud_effect;
 				}
-				//
 				if (data_ptr->check_roulette_selection(data_ptr->get_id_with_name("PointCloud\nToggle\nCamera\nCulling"))) {
 					data_ptr->point_cloud_kit->enable_headset_culling = 
 						!data_ptr->point_cloud_kit->enable_headset_culling;
 				}
-				// touch to activate deletion selection/marking of the points 
 				if (data_ptr->check_roulette_selection(data_ptr->get_id_with_name("PointCloud\nDelPoints\nTouchTo\nActivate"))) {
 					// this will be used in the throttle event 
 					selection_kit->current_selecting_idx = point_cloud::PointSelectiveAttribute::DEL;
 				}
-				// touch to activate 
 				if (data_ptr->check_roulette_selection(data_ptr->get_id_with_name("PointCloud\nMarkAs\nOrig"))) {
 					// this will be used in the throttle event 
 					selection_kit->current_selecting_idx = point_cloud::PointSelectiveAttribute::ORI;
 				}
-				// touch to toggle 
 				if (data_ptr->check_roulette_selection(data_ptr->get_id_with_name("PointCloud\nToggle\npcColor"))) {
 					data_ptr->point_cloud_kit->render_with_original_color = !data_ptr->point_cloud_kit->render_with_original_color;
 				}
-				
 				/*VR ICP: touch to activate */
-				//
 				if (data_ptr->check_roulette_selection(data_ptr->get_id_with_name("VRICP\nSetSrcAndTarget\nScanIndex(Via GUI)"))) {
 					data_ptr->point_cloud_kit->src_scan_idx = 1;
 					data_ptr->point_cloud_kit->target_scan_idx = 0;
@@ -539,17 +531,15 @@ bool visual_processing::handle(cgv::gui::event& e)
 					// visual feedback 
 					data_ptr->point_cloud_kit->render_both_src_target_clouds();
 				}
-				if (data_ptr->check_roulette_selection(data_ptr->get_id_with_name("VRICP\nPerformICP_10Iters"))) {
-					data_ptr->point_cloud_kit->perform_icp_and_acquire_matrices();
-					data_ptr->point_cloud_kit->apply_register_matrices_for_the_original_point_cloud();
-				}
+					/*if (data_ptr->check_roulette_selection(data_ptr->get_id_with_name("VRICP\nPerformICP_10Iters"))) {
+						data_ptr->point_cloud_kit->perform_icp_and_acquire_matrices();
+						data_ptr->point_cloud_kit->apply_register_matrices_for_the_original_point_cloud();
+					}*/
 				if (data_ptr->check_roulette_selection(data_ptr->get_id_with_name("VRICP\nRandomizeSource"))) {
 					data_ptr->point_cloud_kit->pc.randomize_position(data_ptr->point_cloud_kit->src_scan_idx);
 				}
-
 				/*region growing */
-				// selection = PointCloud\nGroupPicker
-				if (data_ptr->check_roulette_selection(data_ptr->get_id_with_name("RegionGrowing\nGroupPick"))) { 
+				if (data_ptr->check_roulette_selection(data_ptr->get_id_with_name("RegionGrowing\nGroupPicker"))) { 
 					//data_ptr->point_cloud_kit->show_nmls = !data_ptr->point_cloud_kit->show_nmls;
 				}
 				if (data_ptr->check_roulette_selection(data_ptr->get_id_with_name("RegionGrowing\nAutoRegion\nGrowing"))) {
@@ -561,7 +551,6 @@ bool visual_processing::handle(cgv::gui::event& e)
 				if (data_ptr->check_roulette_selection(data_ptr->get_id_with_name("RegionGrowing\nHighlightUnmarked"))) {
 					data_ptr->point_cloud_kit->highlight_unmarked_points = !data_ptr->point_cloud_kit->highlight_unmarked_points;
 				}
-
 				/*topology extraction */
 				if (data_ptr->check_roulette_selection(data_ptr->get_id_with_name("TopologyExtraction\nBoundary\nExtraction"))) {
 					data_ptr->point_cloud_kit->point_classification();
@@ -575,8 +564,6 @@ bool visual_processing::handle(cgv::gui::event& e)
 				if (data_ptr->check_roulette_selection(data_ptr->get_id_with_name("TopologyExtraction\nTopology\nExtraction"))) {
 					//data_ptr->point_cloud_kit->extract_connectivity_graph();
 				}
-				//
-
 				/*point cleaning */
 				if (data_ptr->check_roulette_selection(data_ptr->get_id_with_name("PCCleaning\nStepBackWard"))) {
 					data_ptr->point_cloud_kit->step_back_last_selection();
@@ -586,7 +573,6 @@ bool visual_processing::handle(cgv::gui::event& e)
 					data_ptr->point_cloud_kit->step_forward_selection();
 					send_updated_point_cloud_to_gpu();
 				}
-
 				/*animating */ 
 				if (data_ptr->check_roulette_selection(data_ptr->get_id_with_name("Animating\nPause"))) {
 					data_ptr->is_replay = false;
@@ -597,7 +583,6 @@ bool visual_processing::handle(cgv::gui::event& e)
 				if (data_ptr->check_roulette_selection(data_ptr->get_id_with_name("Animating\nRenderAnAnimating\nTube"))) {
 					data_ptr->render_an_animating_tube = !data_ptr->render_an_animating_tube;
 				}
-
 				/*demo point cloud loading */
 				if (data_ptr->check_roulette_selection(data_ptr->get_id_with_name("PointCloud\nGenCube"))) {
 					generate_pc_cube(); // well prepared to be used 
@@ -611,6 +596,7 @@ bool visual_processing::handle(cgv::gui::event& e)
 		}
 		if (vrse.get_action() == cgv::gui::SA_MOVE) { // event 
 			if (vrse.get_controller_index() == data_ptr->right_rgbd_controller_index) { // controller 
+				/*point cloud rendering */ 
 				if (data_ptr->check_roulette_selection(data_ptr->get_id_with_name("PointCloud\nPointSize"))) {
 					if (vrse.get_y() > 0) {
 						// larger point size 
@@ -622,6 +608,12 @@ bool visual_processing::handle(cgv::gui::event& e)
 						data_ptr->point_cloud_kit->point_size -= 0.1f;
 					}
 				}
+				/*vr icp */ 
+				if (data_ptr->check_roulette_selection(data_ptr->get_id_with_name("VRICP\nPerformICP_1Iter"))) {
+					data_ptr->point_cloud_kit->perform_icp_and_acquire_matrices();
+					data_ptr->point_cloud_kit->apply_register_matrices_for_the_original_point_cloud();
+				}
+				/*artistic cloud rendering */
 				if (data_ptr->check_roulette_selection(data_ptr->get_id_with_name("PointCloud\nCulling\nRange"))) {
 					if (vrse.get_y() > 0) {
 						// larger point size 
@@ -1294,13 +1286,15 @@ void visual_processing::create_gui() {
 
 		//
 		add_member_control(this, "source_scan_index", data_ptr->point_cloud_kit->src_scan_idx,
-			"value_slider", "min=0;max=10;log=false;ticks=false;");
+			"value_slider", "min=0;max=10;log=false;ticks=true;");
 		add_member_control(this, "target_scan_index", data_ptr->point_cloud_kit->target_scan_idx,
-			"value_slider", "min=0;max=10;log=false;ticks=false;");
+			"value_slider", "min=0;max=10;log=false;ticks=true;");
 
 		//
 		add_member_control(this, "icp_iterations", data_ptr->point_cloud_kit->icp_iterations,
 			"value_slider", "min=1;max=20;log=false;ticks=true;");
+		add_member_control(this, "icp_iterations", data_ptr->point_cloud_kit->icp_samples,
+			"value_slider", "min=10;max=100;log=false;ticks=true;");
 		connect_copy(add_button("do_icp_once")->click,
 			rebind(this, &visual_processing::do_icp_once));
 
