@@ -222,12 +222,9 @@ class CGV_API point_cloud : public point_cloud_types
 	typedef cgv::media::color<float, cgv::media::RGB> rgb;
 public:
 	/*
-		point selection definition, per point cloud varible
+		point selection definition
 	*/
-	std::vector<cgv::math::fvec<float, 3>> cam_posi_list;
 	/// per vertex marked index, PointSelectiveAttribute
-	/// 20 reserved
-	/// copy to shader file 
 	enum PointSelectiveAttribute {
 		VISUAL_MARK, // reserved 
 		ORI = 1,
@@ -270,7 +267,9 @@ public:
 	std::vector<float> point_scan_index; 
 	/// control the point visibility for vr-icp 
 	std::vector<float> point_visibility; 
-public: 
+public:
+	/*camera positions */
+	std::vector<cgv::math::fvec<float, 3>> cam_posi_list;
 	/*
 		vr-icp 
 	*/
@@ -319,16 +318,19 @@ public:
 	bool write_cgvcgvconnectivity(const std::string& file_name);
 
 	/*
-		can be stored externally in a .cgvfitting file, per point cloud varible
-		or, .cgvmodel build upon connectivity and fitting informaiton 
-		explicit storage 
+		explicit storage of topological information 
 	*/
-	/// V_fit.size() will be the same as the V_conn.size(), at least 3 floats representing 3 coordinates 
+	/// a list of corners 
 	std::vector<mV> modelV;
-	/// fitted curve, at least 4 float parameters 
+	/// a list of edges
 	std::vector<mEdge> modelEdge;
-	/// fitted surface, at least 16 float parameters 
+	/// a list of surfaces 
 	std::vector<mFace> modelFace;
+
+	/*
+		model extraction
+	
+	*/
 	/// global storage of the control points, can be used to render directly 
 	std::vector<Pnt> control_points;
 	/// for rendering 

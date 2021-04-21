@@ -76,7 +76,8 @@ bool point_cloud_interactable::open(const std::string& fn)
 		return false;
 	}
 	// manage vars after change of the point cloud 
-	on_point_cloud_change_callback(PCC_NEW_POINT_CLOUD);
+	if (pc.get_nr_points() > 0) // sometimes, we are not realy reading point clouds 
+		on_point_cloud_change_callback(PCC_NEW_POINT_CLOUD);
 	//update_file_name(fn);
 	//store_original_pc();
 	//auto_downsampling();

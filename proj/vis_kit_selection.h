@@ -514,10 +514,12 @@ public:
 							data_ptr->palette_lefthand_object_colors[smallestpalleteIdx];
 						// ok-todo: update picking group information 
 						// current, we can only select regions, build on top of functional indices 
-						if (current_selecting_idx < 10)
+						if (smallestpalleteIdx < 10)
 							current_selecting_idx = smallestpalleteIdx; //data_ptr->point_cloud_kit->pc.num_of_functional_selections
 						else 
 							current_selecting_idx = smallestpalleteIdx + 10; // 10 is the remining selctions in fucntional 
+
+						std::cout << "current selecting index = " << current_selecting_idx << std::endl;
 					}
 
 					data_ptr->point_cloud_kit->headset_direction = data_ptr->headset_direction;
