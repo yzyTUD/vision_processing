@@ -81,7 +81,7 @@ public:
 	//	for (int i = 0; i < 16; i++) 
 	//		control_point_colors.at(i) = rgb(0,0,1);
 	//}
-	void update(std::vector<vec3>* cpgptr,std::vector<rgb>* cpcptr, std::vector<int>* cpi) {
+	void update(std::vector<vec3>* cpgptr,std::vector<rgb>* cpcptr, std::vector<int>* cpi, int patch_index) {
 		// write to control_points
 		for (int i = 0; i < cpi->size(); i++)
 			if (cpgptr->size() > 0)
@@ -91,7 +91,7 @@ public:
 			if(cpcptr->size()>0)
 				control_point_colors.at(i) = cpcptr->at(cpi->at(i));
 			else
-				control_point_colors.at(i) = rgb(0, 0, 1);
+				control_point_colors.at(i) = rgb(1.0f / patch_index, 1 - 1.0f / patch_index, 1.0f / patch_index);
 		}
 	}
 	void render_surface_patch_instanced(context& ctx) {
@@ -211,7 +211,7 @@ public:
 			//
 			std::vector<int>* control_point_indices_ptr = &((mf_ptr->at(i)).control_point_indices);
 			surface_patches.at(i).update(control_points_g_ptr,
-				control_point_colors_ptr, control_point_indices_ptr);
+				control_point_colors_ptr, control_point_indices_ptr, i);
 		}
 	}
 	/// download control points to local representation 
@@ -224,7 +224,7 @@ public:
 			std::vector<int>* control_point_indices_ptr = 
 				&data_ptr->point_cloud_kit->pc.demo_model.at(i);
 			surface_patches.at(i).update(control_points_g_ptr,
-				control_point_colors_ptr, control_point_indices_ptr);
+				control_point_colors_ptr, control_point_indices_ptr, i);
 		}
 	}
 		

@@ -151,7 +151,7 @@ void visual_processing::timer_event(double t, double dt) {
 void visual_processing::parallel_timer_event() {
 	while (true) {
 		// control the speed here 
-		if (data_ptr != NULL)
+		if (data_ptr != nullptr)
 		if (data_ptr->point_cloud_kit->do_region_growing_directly)
 		if (data_ptr->point_cloud_kit->can_parallel_grow) {
 			// atomic
