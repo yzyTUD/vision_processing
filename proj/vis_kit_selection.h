@@ -620,6 +620,13 @@ public:
 		if(data_ptr->render_a_quad_on_righthand)
 			render_a_quad_on_righthand_vertical(ctx);
 
+		// quick rendering test 
+		/*glDisable(GL_CULL_FACE);
+		auto& prog = ctx.ref_surface_shader_program();
+		prog.enable(ctx);
+		ctx.tesselate_unit_cylinder(50);
+		prog.disable(ctx);*/
+
 	}
 	/// call me 
 	void finish_draw(context& ctx) {
@@ -984,6 +991,7 @@ public:
 	}
 	///
 	void finish_frame(context& ctx) {
+
 		/*if (!view_ptr)
 			return;
 		if (!data_ptr)

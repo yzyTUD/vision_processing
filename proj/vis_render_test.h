@@ -80,7 +80,7 @@ public:
 	{
 		auto& prog = ctx.ref_surface_shader_program();
 		prog.enable(ctx);
-		ctx.tesselate_unit_cube();
+		ctx.tesselate_unit_cylinder(25);
 		prog.disable(ctx);
 	}
 	/// overload the create gui method

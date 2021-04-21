@@ -107,6 +107,14 @@ public:
 	///
 	bool generate_pc_hemisphere();
 
+	void generate_pc_unit_torus();
+
+	void generate_pc_random_sphere();
+
+	void generate_pc_init_sphere();
+
+	void generate_pc_unit_cylinder();
+
 	void generate_testing_plane();
 
 	void store_original_pc();

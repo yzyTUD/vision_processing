@@ -83,6 +83,272 @@ bool point_cloud_interactable::open(const std::string& fn)
 	//auto_downsampling();
 	return true;
 }
+
+/// 
+void point_cloud_interactable::generate_pc_random_sphere() {
+	std::default_random_engine g;
+	std::uniform_real_distribution<float> d(-1, 1);
+	int nr_vertices = 5000;
+
+	//
+	pc.clear_all();
+
+	// collect 
+	for (int i = 0; i < nr_vertices; i++) {
+		vec3 sampled_vector = vec3(d(g), d(g), d(g));
+		sampled_vector.normalize();
+		vec3 p = sampled_vector;
+		vec3 nml = sampled_vector;
+		rgb c = rgb(0.4);
+		int scan_index = 0;
+		int selection_index = 1;
+		pc.add_point(p, c, nml, scan_index, selection_index);
+	}
+
+	//
+	pc.create_colors();
+	pc.create_normals();
+	pc.has_scan_index = true;
+	pc.has_selection = true;
+
+	//
+	pc.box_out_of_date = true;
+	on_point_cloud_change_callback(PCC_NEW_POINT_CLOUD);
+	finished_loading_points = true;
+
+}
+
+void point_cloud_interactable::generate_pc_unit_torus() {
+	//
+	pc.clear_all();
+	//
+	int resolution = 100; int nr_vertices = 2 * (resolution + 1); 
+	float minor_radius = 0.2;
+
+	std::vector<float> V; V.resize(6 * (resolution + 1));
+	std::vector<float> N; N.resize(6 * (resolution + 1));
+	std::vector<float> T; T.resize(4 * (resolution + 1));
+	std::vector<int> F; F.resize(2 * (resolution + 1));
+	int i;
+	for (int i = 0; i <= resolution; ++i) {
+		F[2 * i] = 2 * i;
+		F[2 * i + 1] = 2 * i + 1;
+	}
+	float step = float(2 * M_PI / resolution);
+	float phi = 0;
+	float cp1 = 1, sp1 = 0;
+	float u = 0;
+	float duv = float(1.0 / resolution);
+	for (i = 0; i < resolution; ++i, u += duv) {
+		float cp0 = cp1, sp0 = sp1;
+		phi += step;
+		cp1 = cos(phi);
+		sp1 = sin(phi);
+		float theta = 0;
+		float v = 0;
+		int kv = 0, kn = 0, kt = 0;
+		for (int j = 0; j <= resolution; ++j, theta += step, v += duv) {
+			float ct = cos(theta), st = sin(theta);
+			N[kn++] = ct * cp0;
+			N[kn++] = ct * sp0;
+			N[kn++] = st;
+			T[kt++] = u;
+			T[kt++] = v;
+			V[kv++] = cp0 + minor_radius * cp0 * ct;
+			V[kv++] = sp0 + minor_radius * sp0 * ct;
+			V[kv++] = minor_radius * st;
+			N[kn++] = ct * cp1;
+			N[kn++] = ct * sp1;
+			N[kn++] = st;
+			T[kt++] = u + duv;
+			T[kt++] = v;
+			V[kv++] = cp1 + minor_radius * cp1 * ct;
+			V[kv++] = sp1 + minor_radius * sp1 * ct;
+			V[kv++] = minor_radius * st;
+		}
+		//
+		std::vector<vec3> Parray;
+		std::vector<vec3> Narray;
+		Parray.resize(nr_vertices);
+		Narray.resize(nr_vertices);
+		for (int i = 0; i < nr_vertices; ++i)
+			Parray[i] = *reinterpret_cast<const vec3*>(&V[0] + 3 * F[i]);
+		for (int i = 0; i < nr_vertices; ++i)
+			Narray[i] = *reinterpret_cast<const vec3*>(&N[0] + 3 * F[i]);
+
+		// collect 
+		for (int i = 0; i < nr_vertices; i++) {
+			vec3 p = Parray.at(i);
+			vec3 nml = Narray.at(i);
+			rgb c = rgb(0.4);
+			int scan_index = 0;
+			int selection_index = 1;
+			pc.add_point(p, c, nml, scan_index, selection_index);
+		}
+	}
+
+	//
+	pc.create_colors();
+	pc.create_normals();
+	pc.has_scan_index = true;
+	pc.has_selection = true;
+
+	//
+	pc.box_out_of_date = true;
+	on_point_cloud_change_callback(PCC_NEW_POINT_CLOUD);
+	finished_loading_points = true;
+}
+
+void point_cloud_interactable::generate_pc_unit_cylinder() {
+	int resolution = 50;
+	std::vector<float> V; V.reserve(6 * (resolution + 1));
+	std::vector<float> N; N.reserve(6 * (resolution + 1));
+	std::vector<float> T; T.reserve(4 * (resolution + 1));
+
+	std::vector<int> F; F.resize(2 * (resolution + 1));
+	int i;
+	for (i = 0; i <= 2 * resolution + 1; ++i)
+		F[i] = i;
+
+	float step = float(2 * M_PI / resolution);
+	float phi = 0;
+	float u = 0;
+	float duv = float(1.0 / resolution);
+	for (int i = 0; i <= resolution; ++i, u += duv, phi += step) {
+		float cp = cos(phi);
+		float sp = sin(phi);
+		N.push_back(cp);
+		N.push_back(sp);
+		N.push_back(0);
+		T.push_back(u);
+		T.push_back(1);
+		V.push_back(cp);
+		V.push_back(sp);
+		V.push_back(1);
+		N.push_back(cp);
+		N.push_back(sp);
+		N.push_back(0);
+		T.push_back(u);
+		T.push_back(0);
+		V.push_back(cp);
+		V.push_back(sp);
+		V.push_back(-1);
+	}
+	unsigned nr_vertices = 2 * (resolution + 1);
+	std::vector<vec3> Parray;
+	std::vector<vec3> Narray;
+	Parray.resize(nr_vertices);
+	Narray.resize(nr_vertices);
+	for (int i = 0; i < nr_vertices; ++i)
+		Parray[i] = *reinterpret_cast<const vec3*>(&V[0] + 3 * i);
+	for (int i = 0; i < nr_vertices; ++i)
+		Narray[i] = *reinterpret_cast<const vec3*>(&N[0] + 3 * i);
+
+	//
+	pc.clear_all();
+
+	// collect 
+	for (int i = 0; i < nr_vertices; i++) {
+		vec3 p = Parray.at(i);
+		vec3 nml = Narray.at(i);
+		rgb c = rgb(0.4);
+		int scan_index = 0;
+		int selection_index = 1;
+		pc.add_point(p, c, nml, scan_index, selection_index);
+	}
+
+	//
+	pc.create_colors();
+	pc.create_normals();
+	pc.has_scan_index = true;
+	pc.has_selection = true;
+
+	//
+	pc.box_out_of_date = true;
+	on_point_cloud_change_callback(PCC_NEW_POINT_CLOUD);
+	finished_loading_points = true;
+}
+
+/// 
+void point_cloud_interactable::generate_pc_init_sphere() {
+	//
+	pc.clear_all();
+	//
+	int resolution = 50; int nr_vertices = 2 * (resolution + 1);
+	std::vector<float> V; V.resize(6 * (resolution + 1));
+	std::vector<float> N; N.resize(6 * (resolution + 1));
+	std::vector<float> T; T.resize(4 * (resolution + 1));
+	std::vector<int> F; F.resize(2 * (resolution + 1));
+	int i;
+	for (int i = 0; i <= resolution; ++i) {
+		F[2 * i] = 2 * i;
+		F[2 * i + 1] = 2 * i + 1;
+	}
+	float step = float(M_PI / resolution);
+	float phi = 0;
+	float cp1 = 1, sp1 = 0;
+	float u = 0;
+	float duv = float(1.0 / resolution);
+	for (i = 0; i < resolution; ++i, u += duv) {
+		float cp0 = cp1, sp0 = sp1;
+		phi += 2 * step;
+		cp1 = cos(phi);
+		sp1 = sin(phi);
+		float theta = float(-0.5 * M_PI);
+		float v = 0;
+		int kv = 0, kn = 0, kt = 0;
+		for (int j = 0; j <= resolution; ++j, theta += step, v += duv) {
+			float ct = cos(theta), st = sin(theta);
+			N[kn++] = ct * cp0;
+			N[kn++] = ct * sp0;
+			N[kn++] = st;
+			T[kt++] = u;
+			T[kt++] = v;
+			V[kv++] = ct * cp0;
+			V[kv++] = ct * sp0;
+			V[kv++] = st;
+			N[kn++] = ct * cp1;
+			N[kn++] = ct * sp1;
+			N[kn++] = st;
+			T[kt++] = u + duv;
+			T[kt++] = v;
+			V[kv++] = ct * cp1;
+			V[kv++] = ct * sp1;
+			V[kv++] = st;
+		}
+		//
+		std::vector<vec3> Parray;
+		std::vector<vec3> Narray;
+		Parray.resize(nr_vertices);
+		Narray.resize(nr_vertices);
+		for (int i = 0; i < nr_vertices; ++i)
+			Parray[i] = *reinterpret_cast<const vec3*>(&V[0] + 3 * F[i]);
+		for (int i = 0; i < nr_vertices; ++i)
+			Narray[i] = *reinterpret_cast<const vec3*>(&N[0] + 3 * F[i]);
+
+		// collect 
+		for (int i = 0; i < nr_vertices; i++) {
+			vec3 p = Parray.at(i);
+			vec3 nml = Narray.at(i);
+			rgb c = rgb(0.4);
+			int scan_index = 0;
+			int selection_index = 1;
+			pc.add_point(p, c, nml, scan_index, selection_index);
+		}
+	}
+
+	//
+	pc.create_colors();
+	pc.create_normals();
+	pc.has_scan_index = true;
+	pc.has_selection = true;
+
+	//
+	pc.box_out_of_date = true;
+	on_point_cloud_change_callback(PCC_NEW_POINT_CLOUD);
+	finished_loading_points = true;
+}
+
 /// procedure point cloud generation, a hemisphere
 bool point_cloud_interactable::generate_pc_hemisphere() {
 	pc.clear_all();

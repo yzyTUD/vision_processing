@@ -50,37 +50,6 @@ public:
 		control_points.resize(16);
 		control_point_colors.resize(16);
 	}
-	//void build_demo() {
-	//	// for bezier patch rendering 
-	//	// write control_point_array
-	//	control_point_array[0] = vec3(0, 0, 0);
-	//	control_point_array[1] = vec3(0, 1.01, 1);
-	//	control_point_array[2] = vec3(0, 1.08, 2);
-	//	control_point_array[3] = vec3(0, 0, 3);
-
-	//	control_point_array[4] = vec3(1, 1.2, 0);
-	//	control_point_array[5] = vec3(1, 1.3, 1);
-	//	control_point_array[6] = vec3(1, 1.2, 2);
-	//	control_point_array[7] = vec3(1, 1.1, 3);
-	//
-	//	control_point_array[8] = vec3(2, 1.4, 0);
-	//	control_point_array[9] = vec3(2, 1.6, 1);
-	//	control_point_array[10] = vec3(2, 1.1, 2);
-	//	control_point_array[11] = vec3(2, 1.2, 3);
-
-	//	control_point_array[12] = vec3(3, 0, 0);
-	//	control_point_array[13] = vec3(3, 1.3, 1);
-	//	control_point_array[14] = vec3(3, 1.4, 2);
-	//	control_point_array[15] = vec3(3, 0, 3);
-
-	//	// for control points rendering 
-	//	// write to control_points
-	//	for (int i = 0; i < 16; i++) 
-	//		control_points.at(i) = control_point_array[i];
-	//	// write to control_point_colors 
-	//	for (int i = 0; i < 16; i++) 
-	//		control_point_colors.at(i) = rgb(0,0,1);
-	//}
 	void update(std::vector<vec3>* cpgptr,std::vector<rgb>* cpcptr, std::vector<int>* cpi, int patch_index) {
 		// write to control_points
 		for (int i = 0; i < cpi->size(); i++)
@@ -126,9 +95,6 @@ public:
 	void render_control_point_mesh(context& ctx) {
 		// lazy check and build prog for the loop
 		if (!prepared_control_point_mesh) {
-			/*if (!default_prog.build_program(ctx, "default.glpr", true)) {
-				std::cerr << "could not build default shader program" << std::endl;
-			}*/
 			default_prog = ctx.ref_default_shader_program(false);
 			//for (int i = 0; i < nr_quads_per_row; i++) {
 			//	for (int j = 0; j < nr_quads_per_row; j++) {

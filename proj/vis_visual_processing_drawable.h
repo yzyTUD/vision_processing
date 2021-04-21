@@ -184,6 +184,7 @@ void visual_processing::parallel_timer_event() {
 ///
 visual_processing::~visual_processing() {
 	data_ptr = nullptr;
+	timer_thread->join();
 	timer_thread = nullptr;
 }
 ///
@@ -643,6 +644,8 @@ bool visual_processing::handle(cgv::gui::event& e)
 					//data_ptr->point_cloud_kit->show_nmls = !data_ptr->point_cloud_kit->show_nmls;
 				}
 				if (data_ptr->check_roulette_selection(data_ptr->get_id_with_name("RegionGrowing\nAutoRegion\nGrowing"))) {
+					//timer_thread = new thread(&visual_processing::parallel_timer_event, this);
+					//timer_thread->exit();
 					data_ptr->point_cloud_kit->do_region_growing_directly = !data_ptr->point_cloud_kit->do_region_growing_directly;
 				}
 				if (data_ptr->check_roulette_selection(data_ptr->get_id_with_name("RegionGrowing\nToggle\nCheckNmls"))) {
@@ -1511,6 +1514,15 @@ void visual_processing::create_gui() {
 			rebind(this, &visual_processing::generate_pc_cube));
 		connect_copy(add_button("generate_testing_plane")->click,
 			rebind(this, &visual_processing::generate_testing_plane));
+		connect_copy(add_button("generate_pc_init_sphere")->click,
+			rebind(this, &visual_processing::generate_pc_init_sphere));
+		connect_copy(add_button("generate_pc_random_sphere")->click,
+			rebind(this, &visual_processing::generate_pc_random_sphere));
+		connect_copy(add_button("generate_pc_unit_sylinder")->click,
+			rebind(this, &visual_processing::generate_pc_unit_sylinder));
+		connect_copy(add_button("generate_pc_unit_torus")->click,
+			rebind(this, &visual_processing::generate_pc_unit_torus));
+		//
 		//
 		connect_copy(add_button("send_updated_point_cloud_to_gpu")->click,
 			rebind(this, &visual_processing::send_updated_point_cloud_to_gpu));

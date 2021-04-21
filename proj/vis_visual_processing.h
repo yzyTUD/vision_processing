@@ -563,6 +563,22 @@ public:
 		data_ptr->point_cloud_kit->generate_testing_plane();
 		post_redraw();
 	}
+	void generate_pc_init_sphere() {
+		data_ptr->point_cloud_kit->generate_pc_init_sphere();
+		post_redraw();
+	}
+	void generate_pc_random_sphere() {
+		data_ptr->point_cloud_kit->generate_pc_random_sphere();
+		post_redraw();
+	}
+	void generate_pc_unit_sylinder() {
+		data_ptr->point_cloud_kit->generate_pc_unit_cylinder();
+		post_redraw();
+	}
+	void generate_pc_unit_torus() {
+		data_ptr->point_cloud_kit->generate_pc_unit_torus();
+		post_redraw();
+	}
 	void toggle_normal_orientations() {
 		data_ptr->point_cloud_kit->toggle_normal_orientations();
 		post_redraw();
