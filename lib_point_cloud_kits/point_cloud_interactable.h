@@ -103,6 +103,8 @@ public:
 	/// icp related 
 	void highlight_point_cloud_with_index_0_1();
 
+	void scale_points_to_desk();
+
 
 	///
 	bool generate_pc_hemisphere();

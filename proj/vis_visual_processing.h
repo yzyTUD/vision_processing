@@ -611,6 +611,10 @@ public:
 	void update_scan_index_visibility_test() {
 		data_ptr->point_cloud_kit->update_scan_index_visibility_test();
 	}
+	void scale_points_to_desk(){
+		data_ptr->point_cloud_kit->scale_points_to_desk();
+		post_redraw();
+	}
 	void extract_point_clouds_for_icp() {
 		data_ptr->point_cloud_kit->extract_point_clouds_for_icp();
 	}

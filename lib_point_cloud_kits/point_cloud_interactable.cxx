@@ -1801,6 +1801,26 @@ void point_cloud_interactable::collect_to_subsampled_pcs() {
 }
 
 ///
+void point_cloud_interactable::scale_points_to_desk() {
+	vec3 point_center = pc.box().get_center();
+	float max_extent = 0;
+	vec3 point_extent = pc.box().get_extent();
+	max_extent = point_extent.x();
+	if (point_extent.y() > max_extent)
+		max_extent = point_extent.y();
+	if (point_extent.z() > max_extent)
+		max_extent = point_extent.z();
+	float factor = 1.0f / max_extent;
+	pc.translate(-point_center);
+	mat3 scale_matrix; 
+	scale_matrix.identity();
+	scale_matrix(0, 0) = factor;
+	scale_matrix(1, 1) = factor;
+	scale_matrix(2, 2) = factor;
+	pc.transform(scale_matrix);
+}
+
+///
 void point_cloud_interactable::update_scan_index_visibility_test() {
 	for (int i = 0; i < pc.scan_index_visibility.size(); i++) {
 		if (i == 0 || i == 1)

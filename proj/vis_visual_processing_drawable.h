@@ -1370,6 +1370,11 @@ void visual_processing::create_gui() {
 	add_member_control(this, "Ignore Deleted Points", data_ptr->point_cloud_kit->pc.ignore_deleted_points, "check");
 	connect_copy(add_button("clean_all_pcs")->click, rebind(this, &visual_processing::clean_all_pcs));
 	
+	if (begin_tree_node("Point Scale", data_ptr->point_cloud_kit->show_nmls, true, "level=3")) {
+		connect_copy(add_button("scale_points_to_disk")->click,
+			rebind(this, &visual_processing::scale_points_to_desk));
+	}
+
 	if (begin_tree_node("VR ICP", data_ptr->point_cloud_kit->show_nmls, true, "level=3")) {
 		//
 		connect_copy(add_button("update_scan_index_visibility_test")->click,
