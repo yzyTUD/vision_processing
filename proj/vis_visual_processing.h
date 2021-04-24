@@ -649,6 +649,14 @@ public:
 	}
 	void rotate_right(){ data_ptr->active_off_rotation -= 30; }
 	void rotate_left() { data_ptr->active_off_rotation += 30; }
+	void drop_other_info_points_only() {
+		data_ptr->point_cloud_kit->pc.N.clear();
+		data_ptr->point_cloud_kit->pc.point_selection_visited.clear();
+		data_ptr->point_cloud_kit->pc.point_selection.clear();
+		data_ptr->point_cloud_kit->pc.point_scan_index.clear();
+		data_ptr->point_cloud_kit->pc.point_visibility.clear();
+		std::cout << "dropped!" << std::endl;
+	}
 };
 
 ///@}

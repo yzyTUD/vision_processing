@@ -241,6 +241,7 @@ public:
 	void draw(context& ctx)
 	{
 		// update patches, to support real time modification
+		//fetch_from_point_cloud_kit();
 		fetch_from_point_cloud_kit_demo();
 		//
 		if (data_ptr->render_parametric_surface) {

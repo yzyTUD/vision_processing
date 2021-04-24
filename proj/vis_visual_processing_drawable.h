@@ -992,6 +992,7 @@ void visual_processing::read_pc_parallel() {
 		&data_ptr->point_selection_colors,
 		data_ptr->point_cloud_kit->pc.max_num_of_selections);
 	data_ptr->point_cloud_kit->can_parallel_grow = true;
+	std::cout << "reading done" << std::endl;
 }
 ///
 void visual_processing::start_reading_pc_parallel() {
@@ -1373,6 +1374,9 @@ void visual_processing::create_gui() {
 	if (begin_tree_node("Point Scale", data_ptr->point_cloud_kit->show_nmls, true, "level=3")) {
 		connect_copy(add_button("scale_points_to_disk")->click,
 			rebind(this, &visual_processing::scale_points_to_desk));
+		connect_copy(add_button("drop_other_info_points_only")->click,
+			rebind(this, &visual_processing::drop_other_info_points_only));
+		//
 	}
 
 	if (begin_tree_node("VR ICP", data_ptr->point_cloud_kit->show_nmls, true, "level=3")) {

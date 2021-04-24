@@ -11,6 +11,14 @@ using namespace std;
 using namespace cgv::render;
 using namespace cgv::utils::file;
 ///
+#include <cgv/base/find_action.h>
+#include <cgv/render/view.h>
+///
+#ifdef REGISTER_SHADER_FILES
+#include <cgv/base/register.h>
+//#include <point_cloud_shader_inc.h>
+#endif
+///
 gl_point_cloud_drawable::gl_point_cloud_drawable() 
 {
 	view_ptr = 0;
@@ -45,7 +53,6 @@ gl_point_cloud_drawable::gl_point_cloud_drawable()
 
 	relative_model_matrix_controller_to_pc.identity();
 	last_model_matrix.identity();
-
 }
 ///
 bool gl_point_cloud_drawable::read(const std::string& _file_name)
@@ -174,165 +181,223 @@ void gl_point_cloud_drawable::draw_boxes(context& ctx)
 	}
 }
 ///
-void gl_point_cloud_drawable::set_arrays(context& ctx, size_t offset, size_t count)
+bool gl_point_cloud_drawable::ensure_view_pointer()
 {
-	if (count == -1)
-		count = pc.get_nr_points();
-	s_renderer.set_position_array(ctx, &pc.pnt(unsigned(offset)), pc.get_nr_points(), unsigned(sizeof(Pnt))*show_point_step);
-	if (pc.has_colors() || use_these_point_colors || (use_these_point_color_indices && use_these_point_palette)) {
-		if (use_these_point_colors)
-			s_renderer.set_color_array(ctx, &use_these_point_colors->at(offset), count, unsigned(sizeof(Clr))*show_point_step);
-		else if (use_these_point_color_indices && use_these_point_palette) {
-			// only this part 
-			s_renderer.set_color_array(ctx, &pc.clr(unsigned(offset)), count, unsigned(sizeof(Clr)) * show_point_step);
-			s_renderer.set_indexed_color_array(ctx, &use_these_point_color_indices->at(offset), count, *use_these_point_palette, show_point_step);
-		}else
-			s_renderer.set_color_array(ctx, &pc.clr(unsigned(offset)), count, unsigned(sizeof(Clr))*show_point_step);
-	}
-	if (pc.has_normals())
-		s_renderer.set_normal_array(ctx, &pc.nml(unsigned(offset)), count, unsigned(sizeof(Nml))*show_point_step);
-
-	// this part has been uploaded before ... 
-	// selection_index -> color_index in shader 
-	/*if (pc.has_selections())
-		s_renderer.set_attribute_array_renderer(ctx, 
-			"selection_index", &pc.point_selection.at(unsigned(offset)), 
-			count, unsigned(sizeof(cgv::type::uint8_type)) * show_point_step);*/
-	if (pc.has_scan_indices())
-		s_renderer.set_attribute_array_renderer(ctx,
-			"scan_index", &pc.point_scan_index.at(unsigned(offset)), count, unsigned(sizeof(float)) * show_point_step);
-	if (pc.has_scan_indices())
-		s_renderer.set_attribute_array_renderer(ctx,
-			"point_visibility", &pc.point_visibility.at(unsigned(offset)), count, unsigned(sizeof(float)) * show_point_step);
-
+	/*cgv::base::base_ptr bp(dynamic_cast<cgv::base::base*>(this));
+	if (bp) {
+		vector<cgv::render::view*> views;
+		cgv::base::find_interface<cgv::render::view>(bp, views);
+		if (!views.empty()) {
+			view_ptr = views[0];
+			return true;
+		}
+	}*/
+	return false;
 }
-/// render with surfel 
-void gl_point_cloud_drawable::draw_points_surfel(context& ctx)
+///
+void gl_point_cloud_drawable::on_rendering_settings_changed() {
+	renderer_out_of_date = true;
+	raw_renderer_out_of_date = true;
+	finished_loading_points = true; // prepared to upload data to gpu 
+}
+///
+void gl_point_cloud_drawable::draw_normals(context& ctx)
 {
-	if (raw_prog.is_linked())
-		destruct_prog_and_buffers_when_switching(ctx);
-
-	show_point_begin = 0;
-	show_point_end = pc.get_nr_points();
-
-	if (!show_points)
+	if (!show_nmls || !pc.has_normals())
 		return;
-
-	use_these_point_color_indices = &pc.point_selection; // 
-	set_arrays(ctx);
-
-	//if (pc.has_components()) {
-	//	if (use_these_component_colors)
-	//		s_renderer.set_group_colors(ctx, &use_these_component_colors->front(), use_these_component_colors->size());
-	//	else
-	//		if (pc.has_component_colors())
-	//			s_renderer.set_group_colors(ctx, &pc.component_color(0), pc.get_nr_components());
-	//	if (pc.has_component_transformations()) {
-	//		s_renderer.set_group_rotations(ctx, &pc.component_rotation(0), pc.get_nr_components());
-	//		s_renderer.set_group_translations(ctx, &pc.component_translation(0), pc.get_nr_components());
-	//	}
-	//	s_renderer.set_group_index_array(ctx, &pc.component_index(0), pc.get_nr_points());
-	//}
-
-	//if (!arrays_uploaded) {
-	//	arrays_uploaded = true;
-	//}
-
-	bool tmp = surfel_style.use_group_color;
-	if (pc.has_components() && use_these_component_colors)
-		surfel_style.use_group_color = true;
-	else if (use_these_point_colors || (use_these_point_color_indices && use_these_point_palette))
-		surfel_style.use_group_color = false;
-	surfel_style.use_group_color = tmp;
-
-	s_renderer.validate_and_enable(ctx);
-	s_renderer.ref_prog().set_uniform(ctx, "enable_headset_culling", enable_headset_culling);
-	s_renderer.ref_prog().set_uniform(ctx, "headset_position", headset_position);
-	s_renderer.ref_prog().set_uniform(ctx, "headset_direction", headset_direction);
-	s_renderer.ref_prog().set_uniform(ctx, "headset_culling_range", headset_culling_range);
-
-	s_renderer.ref_prog().set_uniform(ctx, "enable_acloud_effect", enable_acloud_effect);
-	s_renderer.ref_prog().set_uniform(ctx, "left_controller_position", left_controller_position);
-	s_renderer.ref_prog().set_uniform(ctx, "right_controller_position", right_controller_position);
-	s_renderer.ref_prog().set_uniform(ctx, "controller_effect_range", controller_effect_range);
-
-	s_renderer.ref_prog().set_uniform(ctx, "visual_delete", visual_delete);
-	s_renderer.ref_prog().set_uniform(ctx, "render_with_original_color", render_with_original_color);
-	s_renderer.ref_prog().set_uniform(ctx, "colorize_with_scan_index", colorize_with_scan_index);
-
-	s_renderer.ref_prog().set_uniform(ctx, "renderScan0", renderScan0);
-	s_renderer.ref_prog().set_uniform(ctx, "renderScan1", renderScan1);
-	s_renderer.ref_prog().set_uniform(ctx, "renderScan2", renderScan2);
-	s_renderer.ref_prog().set_uniform(ctx, "renderScan3", renderScan3);
-	s_renderer.ref_prog().set_uniform(ctx, "renderScan4", renderScan4);
-	s_renderer.ref_prog().set_uniform(ctx, "renderScan5", renderScan5);
-
-	s_renderer.ref_prog().set_uniform(ctx, "render_with_functional_ids_only", render_with_functional_ids_only);
-	s_renderer.ref_prog().set_uniform(ctx, "highlight_unmarked_points", highlight_unmarked_points);
-	
+	n_renderer.set_normal_scale(pc.box().get_extent().length() / sqrt(float(pc.get_nr_points())));
+	n_renderer.set_position_array(ctx, &pc.pnt(0), pc.get_nr_points(), sizeof(Pnt)*show_point_step);
+	if (pc.has_colors())
+		n_renderer.set_color_array(ctx, &pc.clr(0), pc.get_nr_points(), sizeof(Clr)*show_point_step);
+	if (pc.has_normals())
+		n_renderer.set_normal_array(ctx, &pc.nml(0), pc.get_nr_points(), sizeof(Nml)*show_point_step);
 	std::size_t n = (show_point_end - show_point_begin) / show_point_step;
 	GLint offset = GLint(show_point_begin / show_point_step);
-
-	if (sort_points && ensure_view_pointer()) {
-		struct sort_pred {
-			const point_cloud& pc;
-			const Pnt& view_dir;
-			bool operator () (GLuint i, GLuint j) const {
-				return dot(pc.pnt(i), view_dir) > dot(pc.pnt(j), view_dir);
-			}
-			sort_pred(const point_cloud& _pc, const Pnt& _view_dir) : pc(_pc), view_dir(_view_dir) {}
-		};
-		Pnt view_dir = view_ptr->get_view_dir();
-		std::vector<GLuint> indices;
-		if (pc.has_components() && use_these_component_colors) {
-			unsigned nr = 0;
-			for (unsigned ci = 0; ci < pc.get_nr_components(); ++ci) {
-				if ((*use_these_component_colors)[ci][3] > 0.0f) {
-					unsigned off = unsigned(pc.components[ci].index_of_first_point);
-					for (unsigned i = 0; i < pc.components[ci].nr_points; ++i)
-						indices.push_back((GLuint)(off + i));
-				}
-			}
-		}
-		else {
-			indices.resize(n);
-			size_t i;
-			for (i = 0; i < indices.size(); ++i)
-				indices[i] = (GLuint)(show_point_step*i) + offset;
-		}
-		std::sort(indices.begin(), indices.end(), sort_pred(pc, view_dir));
-
-		glDepthFunc(GL_LEQUAL);
-		size_t nn = indices.size() / nr_draw_calls;
-		for (unsigned i = 1; i<nr_draw_calls; ++i)
-			glDrawElements(GL_POINTS, GLsizei(nn), GL_UNSIGNED_INT, &indices[(i - 1)*nn]);
-		glDrawElements(GL_POINTS, GLsizei(indices.size() - (nr_draw_calls - 1)*nn), GL_UNSIGNED_INT, &indices[(nr_draw_calls - 1)*nn]);
-		glDepthFunc(GL_LESS);
-	}
-	else {
-		if (pc.has_components() && use_these_component_colors) {
-			for (unsigned ci = 0; ci < pc.get_nr_components(); ++ci) {
-				if ((*use_these_component_colors)[ci][3] > 0.0f) {
-					set_arrays(ctx, pc.components[ci].index_of_first_point, pc.components[ci].nr_points);
-					glDrawArrays(GL_POINTS, 0, GLsizei(pc.components[ci].nr_points));
-				}
-			}
-		}
-		else {
-			size_t nn = n / nr_draw_calls;
-			for (unsigned i=1; i<nr_draw_calls; ++i)
-				glDrawArrays(GL_POINTS, GLint(offset + (i-1)*nn), GLsizei(nn));
-			glDrawArrays(GL_POINTS, GLint(offset + (nr_draw_calls - 1)*nn), GLsizei(n-(nr_draw_calls - 1)*nn));
-		}
-	}
-	s_renderer.disable(ctx);
+	n_renderer.render(ctx, offset,n);
 }
-/// destruct other vaos 
+///
+bool gl_point_cloud_drawable::init(cgv::render::context& ctx)
+{
+	if (!cp_renderer.init(ctx))
+		return false;
+	cp_renderer.set_render_style(cp_style);
+	if (!sl_manager.init(ctx))
+		return false;
+	if (!s_renderer.init(ctx))
+		return false;
+	// here to control use cpu mem or gpu mem 
+	s_renderer.enable_attribute_array_manager(ctx, sl_manager);
+	s_renderer.set_render_style(surfel_style);
+
+	if (!n_renderer.init(ctx))
+		return false;
+	n_renderer.set_render_style(normal_style);
+	if (!b_renderer.init(ctx))
+		return false;
+	b_renderer.set_render_style(box_style);
+	b_renderer.set_position_is_center(false);
+	if (!bw_renderer.init(ctx))
+		return false;
+	bw_renderer.set_render_style(box_wire_style);
+	bw_renderer.set_position_is_center(false);
+	return true;
+}
+///
+void gl_point_cloud_drawable::clear(cgv::render::context& ctx)
+{
+	s_renderer.clear(ctx);
+	sl_manager.destruct(ctx);
+	n_renderer.clear(ctx);
+	b_renderer.clear(ctx);
+	bw_renderer.clear(ctx);
+}
+/// helper functions to switch rendering modes: destruct other vaos 
 void gl_point_cloud_drawable::destruct_prog_and_buffers_when_switching(context& ctx) {
 	raw_prog.destruct(ctx);
 	raw_renderer_out_of_date = true;
 	glDeleteVertexArrays(1, &raw_vao);
 	glDeleteBuffers(1, &raw_vbo_position);
+}
+/// helper functions to switch rendering modes: set to quad rendering mode 
+void gl_point_cloud_drawable::switch_to_quad_rendering() {
+	RENDERING_STRATEGY = 1;
+	is_switching = true;
+	on_rendering_settings_changed();
+}
+///
+void gl_point_cloud_drawable::draw(context& ctx)
+{
+	// a quick check 
+	if (pc.get_nr_points() == 0)
+		return;
+	// perhaps the size of the points is already not 0 but not finished loading points 
+	if (!finished_loading_points)
+		return;
+
+	// 
+	draw_boxes(ctx);
+	draw_normals(ctx);
+
+	// diff rendering strategies
+	if (RENDERING_STRATEGY == 1)
+		draw_points_quad(ctx);
+	if (RENDERING_STRATEGY == 2) 
+		draw_points_point_rendering(ctx);
+	if (RENDERING_STRATEGY == 3) 
+		draw_points_surfel(ctx);
+	if (RENDERING_STRATEGY == 4) 
+		draw_points_clod(ctx);
+}
+/// render with gl points 
+void gl_point_cloud_drawable::draw_points_point_rendering(context& ctx) {
+	if (pc.get_nr_points() == 0)
+		return;
+	if (!show_points)
+		return;
+	if (raw_renderer_out_of_date) {
+		if (!raw_prog.is_linked())
+			raw_prog.build_program(ctx, "point_vr.glpr", true);
+		if (raw_vao == -1)
+			glGenVertexArrays(1, &raw_vao);
+		if (raw_vbo_position == -1)
+			glGenBuffers(1, &raw_vbo_position);
+
+		if (is_switching) {
+			raw_prog.destruct(ctx);
+			raw_prog.build_program(ctx, "point_vr.glpr", true);
+			glDeleteVertexArrays(1, &raw_vao);
+			glDeleteBuffers(1, &raw_vbo_position);
+			glGenVertexArrays(1, &raw_vao);
+			glGenBuffers(1, &raw_vbo_position);
+			is_switching = false;
+		}
+
+		// prepare data, * 
+		input_buffer_data.clear();
+		for (int i = 0; i < pc.P.size(); i++) {
+			VertexAttributeBinding p;
+			p.position = pc.P[i];
+			p.color = pc.C[i];
+			p.normal = pc.N[i];
+			input_buffer_data.push_back(p);
+		}
+
+		// bind vao 
+		glBindVertexArray(raw_vao);
+		// upload all data chunk 
+		glBindBuffer(GL_ARRAY_BUFFER, raw_vbo_position);
+		glBufferData(GL_ARRAY_BUFFER, input_buffer_data.size() * sizeof(VertexAttributeBinding), input_buffer_data.data(), GL_STATIC_DRAW);
+		// find all locations to be used, *
+		int strip_size = sizeof(VertexAttributeBinding);
+		int color_var_size = 3;
+		int color_loc = raw_prog.get_attribute_location(ctx, "color");
+		int position_var_size = 3;
+		int position_loc = raw_prog.get_attribute_location(ctx, "position");
+		int normal_var_size = 3;
+		int normal_loc = raw_prog.get_attribute_location(ctx, "normal");
+		// specify their format, * 
+		glVertexAttribPointer(color_loc, color_var_size, GL_UNSIGNED_BYTE, GL_TRUE, strip_size,
+			(void*)offsetof(struct VertexAttributeBinding, color));
+		glVertexAttribPointer(position_loc, position_var_size, GL_FLOAT, GL_FALSE, strip_size,
+			(void*)offsetof(struct VertexAttributeBinding, position));
+		glVertexAttribPointer(normal_loc, normal_var_size, GL_FLOAT, GL_FALSE, strip_size,
+			(void*)offsetof(struct VertexAttributeBinding, normal));
+		// enable them, * 
+		glEnableVertexAttribArray(color_loc);
+		glEnableVertexAttribArray(position_loc);
+		if(normal_loc) glEnableVertexAttribArray(normal_loc);
+		// unbind
+		glBindBuffer(GL_ARRAY_BUFFER, 0);
+		glBindVertexArray(0);
+
+		raw_renderer_out_of_date = false;
+	}
+	glDisable(GL_CULL_FACE);
+	raw_prog.enable(ctx);
+	glBindVertexArray(raw_vao);
+	glPointSize(5);
+
+	raw_prog.set_uniform(ctx, "enable_headset_culling", enable_headset_culling);
+	raw_prog.set_uniform(ctx, "headset_position", headset_position);
+	raw_prog.set_uniform(ctx, "headset_direction", headset_direction);
+	raw_prog.set_uniform(ctx, "headset_culling_range", headset_culling_range);
+	// setup uniforms 
+	//int y_view_angle = 45;
+	//float pixel_extent_per_depth = (float)(2.0 * tan(0.5 * 0.0174532925199 * y_view_angle) / ctx.get_height());
+	//raw_prog.set_uniform(ctx, "pixel_extent_per_depth", pixel_extent_per_depth);
+	//raw_prog.set_uniform(ctx, "orient_splats", true);
+	//raw_prog.set_uniform(ctx, "point_size", point_size);
+	//raw_prog.set_uniform(ctx, "map_color_to_material", 3); // must have 
+	//raw_prog.set_uniform(ctx, "blend_points", true);
+	//raw_prog.set_uniform(ctx, "percentual_halo_width", percentual_halo_width);
+
+	//raw_prog.set_uniform(ctx, "enable_headset_culling", enable_headset_culling);
+	//raw_prog.set_uniform(ctx, "headset_position", headset_position);
+	//raw_prog.set_uniform(ctx, "headset_direction", headset_direction);
+	//raw_prog.set_uniform(ctx, "headset_culling_range", headset_culling_range);
+	//raw_prog.set_uniform(ctx, "enable_acloud_effect", enable_acloud_effect);
+	//raw_prog.set_uniform(ctx, "left_controller_position", left_controller_position);
+	//raw_prog.set_uniform(ctx, "right_controller_position", right_controller_position);
+	//raw_prog.set_uniform(ctx, "controller_effect_range", controller_effect_range);
+	glDrawArrays(GL_POINTS, 0, input_buffer_data.size());
+	glBindVertexArray(0);
+	raw_prog.disable(ctx);
+}
+/// render with clod rendering 
+void gl_point_cloud_drawable::draw_points_clod(context& ctx) {
+	if (pc.get_nr_points() == 0)
+		return;
+	if (!show_points)
+		return;
+	if (renderer_out_of_date) {
+		cp_renderer.set_positions(ctx, pc.P);
+		cp_renderer.set_colors(ctx, pc.C);
+		cp_renderer.generate_lods((cgv::render::LoDMode)lod_mode);
+		cp_renderer.set_normals(ctx, pc.N);
+		renderer_out_of_date = false;
+	}
+	if (cp_renderer.enable(ctx))
+		cp_renderer.draw(ctx, 0, (size_t)pc.get_nr_points());
 }
 /// render test 
 void gl_point_cloud_drawable::draw_raw(context& ctx) { // quick test 
@@ -519,223 +584,157 @@ void gl_point_cloud_drawable::draw_points_quad(context& ctx) {
 	glBindVertexArray(0);
 	raw_prog.disable(ctx);
 }
-/// 
-void gl_point_cloud_drawable::switch_to_quad_rendering() {
-	RENDERING_STRATEGY = 1;
-	is_switching = true;
-	on_rendering_settings_changed();
-}
-/// render with gl points 
-void gl_point_cloud_drawable::draw_points_point_rendering(context& ctx) {
-	if (pc.get_nr_points() == 0)
-		return;
-	if (!show_points)
-		return;
-	if (raw_renderer_out_of_date) {
-		if (!raw_prog.is_linked())
-			raw_prog.build_program(ctx, "point_vr.glpr", true);
-		if (raw_vao == -1)
-			glGenVertexArrays(1, &raw_vao);
-		if (raw_vbo_position == -1)
-			glGenBuffers(1, &raw_vbo_position);
-
-		if (is_switching) {
-			raw_prog.destruct(ctx);
-			raw_prog.build_program(ctx, "point_vr.glpr", true);
-			glDeleteVertexArrays(1, &raw_vao);
-			glDeleteBuffers(1, &raw_vbo_position);
-			glGenVertexArrays(1, &raw_vao);
-			glGenBuffers(1, &raw_vbo_position);
-			is_switching = false;
-		}
-
-		// prepare data, * 
-		input_buffer_data.clear();
-		for (int i = 0; i < pc.P.size(); i++) {
-			VertexAttributeBinding p;
-			p.position = pc.P[i];
-			p.color = pc.C[i];
-			p.normal = pc.N[i];
-			input_buffer_data.push_back(p);
-		}
-
-		// bind vao 
-		glBindVertexArray(raw_vao);
-		// upload all data chunk 
-		glBindBuffer(GL_ARRAY_BUFFER, raw_vbo_position);
-		glBufferData(GL_ARRAY_BUFFER, input_buffer_data.size() * sizeof(VertexAttributeBinding), input_buffer_data.data(), GL_STATIC_DRAW);
-		// find all locations to be used, *
-		int strip_size = sizeof(VertexAttributeBinding);
-		int color_var_size = 3;
-		int color_loc = raw_prog.get_attribute_location(ctx, "color");
-		int position_var_size = 3;
-		int position_loc = raw_prog.get_attribute_location(ctx, "position");
-		int normal_var_size = 3;
-		int normal_loc = raw_prog.get_attribute_location(ctx, "normal");
-		// specify their format, * 
-		glVertexAttribPointer(color_loc, color_var_size, GL_UNSIGNED_BYTE, GL_TRUE, strip_size,
-			(void*)offsetof(struct VertexAttributeBinding, color));
-		glVertexAttribPointer(position_loc, position_var_size, GL_FLOAT, GL_FALSE, strip_size,
-			(void*)offsetof(struct VertexAttributeBinding, position));
-		glVertexAttribPointer(normal_loc, normal_var_size, GL_FLOAT, GL_FALSE, strip_size,
-			(void*)offsetof(struct VertexAttributeBinding, normal));
-		// enable them, * 
-		glEnableVertexAttribArray(color_loc);
-		glEnableVertexAttribArray(position_loc);
-		if(normal_loc) glEnableVertexAttribArray(normal_loc);
-		// unbind
-		glBindBuffer(GL_ARRAY_BUFFER, 0);
-		glBindVertexArray(0);
-
-		raw_renderer_out_of_date = false;
-	}
-	glDisable(GL_CULL_FACE);
-	raw_prog.enable(ctx);
-	glBindVertexArray(raw_vao);
-	glPointSize(5);
-
-	raw_prog.set_uniform(ctx, "enable_headset_culling", enable_headset_culling);
-	raw_prog.set_uniform(ctx, "headset_position", headset_position);
-	raw_prog.set_uniform(ctx, "headset_direction", headset_direction);
-	raw_prog.set_uniform(ctx, "headset_culling_range", headset_culling_range);
-	// setup uniforms 
-	//int y_view_angle = 45;
-	//float pixel_extent_per_depth = (float)(2.0 * tan(0.5 * 0.0174532925199 * y_view_angle) / ctx.get_height());
-	//raw_prog.set_uniform(ctx, "pixel_extent_per_depth", pixel_extent_per_depth);
-	//raw_prog.set_uniform(ctx, "orient_splats", true);
-	//raw_prog.set_uniform(ctx, "point_size", point_size);
-	//raw_prog.set_uniform(ctx, "map_color_to_material", 3); // must have 
-	//raw_prog.set_uniform(ctx, "blend_points", true);
-	//raw_prog.set_uniform(ctx, "percentual_halo_width", percentual_halo_width);
-
-	//raw_prog.set_uniform(ctx, "enable_headset_culling", enable_headset_culling);
-	//raw_prog.set_uniform(ctx, "headset_position", headset_position);
-	//raw_prog.set_uniform(ctx, "headset_direction", headset_direction);
-	//raw_prog.set_uniform(ctx, "headset_culling_range", headset_culling_range);
-	//raw_prog.set_uniform(ctx, "enable_acloud_effect", enable_acloud_effect);
-	//raw_prog.set_uniform(ctx, "left_controller_position", left_controller_position);
-	//raw_prog.set_uniform(ctx, "right_controller_position", right_controller_position);
-	//raw_prog.set_uniform(ctx, "controller_effect_range", controller_effect_range);
-	glDrawArrays(GL_POINTS, 0, input_buffer_data.size());
-	glBindVertexArray(0);
-	raw_prog.disable(ctx);
-}
-/// render with clod rendering 
-void gl_point_cloud_drawable::draw_points_clod(context& ctx) {
-	if (pc.get_nr_points() == 0)
-		return;
-	if (!show_points)
-		return;
-	if (renderer_out_of_date) {
-		cp_renderer.set_positions(ctx, pc.P);
-		cp_renderer.set_colors(ctx, pc.C);
-		cp_renderer.generate_lods((cgv::render::LoDMode)lod_mode);
-		cp_renderer.set_normals(ctx, pc.N);
-		renderer_out_of_date = false;
-	}
-	if (cp_renderer.enable(ctx))
-		cp_renderer.draw(ctx, 0, (size_t)pc.get_nr_points());
-}
-///
-void gl_point_cloud_drawable::on_rendering_settings_changed() {
-	renderer_out_of_date = true;
-	raw_renderer_out_of_date = true;
-	finished_loading_points = true; // prepared to upload data to gpu 
-}
-///
-void gl_point_cloud_drawable::draw_normals(context& ctx)
+/// set arrays for surfel renderer 
+void gl_point_cloud_drawable::set_arrays(context& ctx, size_t offset, size_t count)
 {
-	if (!show_nmls || !pc.has_normals())
-		return;
-	n_renderer.set_normal_scale(pc.box().get_extent().length() / sqrt(float(pc.get_nr_points())));
-	n_renderer.set_position_array(ctx, &pc.pnt(0), pc.get_nr_points(), sizeof(Pnt)*show_point_step);
-	if (pc.has_colors())
-		n_renderer.set_color_array(ctx, &pc.clr(0), pc.get_nr_points(), sizeof(Clr)*show_point_step);
+	if (count == -1)
+		count = pc.get_nr_points();
+	s_renderer.set_position_array(ctx, &pc.pnt(unsigned(offset)), pc.get_nr_points(), unsigned(sizeof(Pnt))*show_point_step);
+	if (pc.has_colors() || use_these_point_colors || (use_these_point_color_indices && use_these_point_palette)) {
+		if (use_these_point_colors)
+			s_renderer.set_color_array(ctx, &use_these_point_colors->at(offset), count, unsigned(sizeof(Clr))*show_point_step);
+		else if (use_these_point_color_indices && use_these_point_palette) {
+			// only this part 
+			s_renderer.set_color_array(ctx, &pc.clr(unsigned(offset)), count, unsigned(sizeof(Clr)) * show_point_step);
+			s_renderer.set_indexed_color_array(ctx, &use_these_point_color_indices->at(offset), count, *use_these_point_palette, show_point_step);
+		}else
+			s_renderer.set_color_array(ctx, &pc.clr(unsigned(offset)), count, unsigned(sizeof(Clr))*show_point_step);
+	}
 	if (pc.has_normals())
-		n_renderer.set_normal_array(ctx, &pc.nml(0), pc.get_nr_points(), sizeof(Nml)*show_point_step);
+		s_renderer.set_normal_array(ctx, &pc.nml(unsigned(offset)), count, unsigned(sizeof(Nml))*show_point_step);
+
+	// this part has been uploaded before ... 
+	// selection_index -> color_index in shader 
+	/*if (pc.has_selections())
+		s_renderer.set_attribute_array_renderer(ctx, 
+			"selection_index", &pc.point_selection.at(unsigned(offset)), 
+			count, unsigned(sizeof(cgv::type::uint8_type)) * show_point_step);*/
+	if (pc.has_scan_indices())
+		s_renderer.set_attribute_array_renderer(ctx,
+			"scan_index", &pc.point_scan_index.at(unsigned(offset)), count, unsigned(sizeof(float)) * show_point_step);
+	if (pc.has_scan_indices())
+		s_renderer.set_attribute_array_renderer(ctx,
+			"point_visibility", &pc.point_visibility.at(unsigned(offset)), count, unsigned(sizeof(float)) * show_point_step);
+
+}
+/// render with surfel 
+void gl_point_cloud_drawable::draw_points_surfel(context& ctx)
+{
+	if (raw_prog.is_linked())
+		destruct_prog_and_buffers_when_switching(ctx);
+
+	show_point_begin = 0;
+	show_point_end = pc.get_nr_points();
+
+	if (!show_points)
+		return;
+
+	use_these_point_color_indices = &pc.point_selection; // 
+	set_arrays(ctx);
+
+	//if (pc.has_components()) {
+	//	if (use_these_component_colors)
+	//		s_renderer.set_group_colors(ctx, &use_these_component_colors->front(), use_these_component_colors->size());
+	//	else
+	//		if (pc.has_component_colors())
+	//			s_renderer.set_group_colors(ctx, &pc.component_color(0), pc.get_nr_components());
+	//	if (pc.has_component_transformations()) {
+	//		s_renderer.set_group_rotations(ctx, &pc.component_rotation(0), pc.get_nr_components());
+	//		s_renderer.set_group_translations(ctx, &pc.component_translation(0), pc.get_nr_components());
+	//	}
+	//	s_renderer.set_group_index_array(ctx, &pc.component_index(0), pc.get_nr_points());
+	//}
+
+	//if (!arrays_uploaded) {
+	//	arrays_uploaded = true;
+	//}
+
+	bool tmp = surfel_style.use_group_color;
+	if (pc.has_components() && use_these_component_colors)
+		surfel_style.use_group_color = true;
+	else if (use_these_point_colors || (use_these_point_color_indices && use_these_point_palette))
+		surfel_style.use_group_color = false;
+	surfel_style.use_group_color = tmp;
+
+	s_renderer.validate_and_enable(ctx);
+	s_renderer.ref_prog().set_uniform(ctx, "enable_headset_culling", enable_headset_culling);
+	s_renderer.ref_prog().set_uniform(ctx, "headset_position", headset_position);
+	s_renderer.ref_prog().set_uniform(ctx, "headset_direction", headset_direction);
+	s_renderer.ref_prog().set_uniform(ctx, "headset_culling_range", headset_culling_range);
+
+	s_renderer.ref_prog().set_uniform(ctx, "enable_acloud_effect", enable_acloud_effect);
+	s_renderer.ref_prog().set_uniform(ctx, "left_controller_position", left_controller_position);
+	s_renderer.ref_prog().set_uniform(ctx, "right_controller_position", right_controller_position);
+	s_renderer.ref_prog().set_uniform(ctx, "controller_effect_range", controller_effect_range);
+
+	s_renderer.ref_prog().set_uniform(ctx, "visual_delete", visual_delete);
+	s_renderer.ref_prog().set_uniform(ctx, "render_with_original_color", render_with_original_color);
+	s_renderer.ref_prog().set_uniform(ctx, "colorize_with_scan_index", colorize_with_scan_index);
+
+	s_renderer.ref_prog().set_uniform(ctx, "renderScan0", renderScan0);
+	s_renderer.ref_prog().set_uniform(ctx, "renderScan1", renderScan1);
+	s_renderer.ref_prog().set_uniform(ctx, "renderScan2", renderScan2);
+	s_renderer.ref_prog().set_uniform(ctx, "renderScan3", renderScan3);
+	s_renderer.ref_prog().set_uniform(ctx, "renderScan4", renderScan4);
+	s_renderer.ref_prog().set_uniform(ctx, "renderScan5", renderScan5);
+
+	s_renderer.ref_prog().set_uniform(ctx, "render_with_functional_ids_only", render_with_functional_ids_only);
+	s_renderer.ref_prog().set_uniform(ctx, "highlight_unmarked_points", highlight_unmarked_points);
+	
 	std::size_t n = (show_point_end - show_point_begin) / show_point_step;
 	GLint offset = GLint(show_point_begin / show_point_step);
-	n_renderer.render(ctx, offset,n);
-}
-///
-bool gl_point_cloud_drawable::init(cgv::render::context& ctx)
-{
-	if (!cp_renderer.init(ctx))
-		return false;
-	cp_renderer.set_render_style(cp_style);
-	if (!sl_manager.init(ctx))
-		return false;
-	if (!s_renderer.init(ctx))
-		return false;
-	// here to control use cpu mem or gpu mem 
-	s_renderer.enable_attribute_array_manager(ctx, sl_manager);
-	s_renderer.set_render_style(surfel_style);
 
-	if (!n_renderer.init(ctx))
-		return false;
-	n_renderer.set_render_style(normal_style);
-	if (!b_renderer.init(ctx))
-		return false;
-	b_renderer.set_render_style(box_style);
-	b_renderer.set_position_is_center(false);
-	if (!bw_renderer.init(ctx))
-		return false;
-	bw_renderer.set_render_style(box_wire_style);
-	bw_renderer.set_position_is_center(false);
-	return true;
-}
-///
-void gl_point_cloud_drawable::clear(cgv::render::context& ctx)
-{
-	s_renderer.clear(ctx);
-	sl_manager.destruct(ctx);
-	n_renderer.clear(ctx);
-	b_renderer.clear(ctx);
-	bw_renderer.clear(ctx);
-}
-///
-void gl_point_cloud_drawable::draw(context& ctx)
-{
-	// a quick check 
-	if (pc.get_nr_points() == 0)
-		return;
-	// perhaps the size of the points is already not 0 but not finished loading points 
-	if (!finished_loading_points)
-		return;
+	if (sort_points && ensure_view_pointer()) {
+		struct sort_pred {
+			const point_cloud& pc;
+			const Pnt& view_dir;
+			bool operator () (GLuint i, GLuint j) const {
+				return dot(pc.pnt(i), view_dir) > dot(pc.pnt(j), view_dir);
+			}
+			sort_pred(const point_cloud& _pc, const Pnt& _view_dir) : pc(_pc), view_dir(_view_dir) {}
+		};
+		Pnt view_dir = view_ptr->get_view_dir();
+		std::vector<GLuint> indices;
+		if (pc.has_components() && use_these_component_colors) {
+			unsigned nr = 0;
+			for (unsigned ci = 0; ci < pc.get_nr_components(); ++ci) {
+				if ((*use_these_component_colors)[ci][3] > 0.0f) {
+					unsigned off = unsigned(pc.components[ci].index_of_first_point);
+					for (unsigned i = 0; i < pc.components[ci].nr_points; ++i)
+						indices.push_back((GLuint)(off + i));
+				}
+			}
+		}
+		else {
+			indices.resize(n);
+			size_t i;
+			for (i = 0; i < indices.size(); ++i)
+				indices[i] = (GLuint)(show_point_step*i) + offset;
+		}
+		std::sort(indices.begin(), indices.end(), sort_pred(pc, view_dir));
 
-	// 
-	draw_boxes(ctx);
-	draw_normals(ctx);
-
-	// diff rendering strategies
-	if (RENDERING_STRATEGY == 1)
-		draw_points_quad(ctx);
-	if (RENDERING_STRATEGY == 2) 
-		draw_points_point_rendering(ctx);
-	if (RENDERING_STRATEGY == 3) 
-		draw_points_surfel(ctx);
-	if (RENDERING_STRATEGY == 4) 
-		draw_points_clod(ctx);
-}
-///
-#include <cgv/base/find_action.h>
-#include <cgv/render/view.h>
-///
-bool gl_point_cloud_drawable::ensure_view_pointer()
-{
-	cgv::base::base_ptr bp(dynamic_cast<cgv::base::base*>(this));
-	if (bp) {
-		vector<cgv::render::view*> views;
-		cgv::base::find_interface<cgv::render::view>(bp, views);
-		if (!views.empty()) {
-			view_ptr = views[0];
-			return true;
+		glDepthFunc(GL_LEQUAL);
+		size_t nn = indices.size() / nr_draw_calls;
+		for (unsigned i = 1; i<nr_draw_calls; ++i)
+			glDrawElements(GL_POINTS, GLsizei(nn), GL_UNSIGNED_INT, &indices[(i - 1)*nn]);
+		glDrawElements(GL_POINTS, GLsizei(indices.size() - (nr_draw_calls - 1)*nn), GL_UNSIGNED_INT, &indices[(nr_draw_calls - 1)*nn]);
+		glDepthFunc(GL_LESS);
+	}
+	else {
+		if (pc.has_components() && use_these_component_colors) {
+			for (unsigned ci = 0; ci < pc.get_nr_components(); ++ci) {
+				if ((*use_these_component_colors)[ci][3] > 0.0f) {
+					set_arrays(ctx, pc.components[ci].index_of_first_point, pc.components[ci].nr_points);
+					glDrawArrays(GL_POINTS, 0, GLsizei(pc.components[ci].nr_points));
+				}
+			}
+		}
+		else {
+			size_t nn = n / nr_draw_calls;
+			for (unsigned i=1; i<nr_draw_calls; ++i)
+				glDrawArrays(GL_POINTS, GLint(offset + (i-1)*nn), GLsizei(nn));
+			glDrawArrays(GL_POINTS, GLint(offset + (nr_draw_calls - 1)*nn), GLsizei(n-(nr_draw_calls - 1)*nn));
 		}
 	}
-	return false;
+	s_renderer.disable(ctx);
 }
-///
-#ifdef REGISTER_SHADER_FILES
-#include <cgv/base/register.h>
-//#include <point_cloud_shader_inc.h>
-#endif
