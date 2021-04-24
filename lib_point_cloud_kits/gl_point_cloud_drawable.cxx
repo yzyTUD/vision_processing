@@ -589,73 +589,60 @@ void gl_point_cloud_drawable::set_arrays(context& ctx, size_t offset, size_t cou
 {
 	if (count == -1)
 		count = pc.get_nr_points();
+
+	// upload vertices, one must have, others are optional  
 	s_renderer.set_position_array(ctx, &pc.pnt(unsigned(offset)), pc.get_nr_points(), unsigned(sizeof(Pnt))*show_point_step);
-	if (pc.has_colors() || use_these_point_colors || (use_these_point_color_indices && use_these_point_palette)) {
-		if (use_these_point_colors)
-			s_renderer.set_color_array(ctx, &use_these_point_colors->at(offset), count, unsigned(sizeof(Clr))*show_point_step);
-		else if (use_these_point_color_indices && use_these_point_palette) {
-			// only this part 
-			s_renderer.set_color_array(ctx, &pc.clr(unsigned(offset)), count, unsigned(sizeof(Clr)) * show_point_step);
-			s_renderer.set_indexed_color_array(ctx, &use_these_point_color_indices->at(offset), count, *use_these_point_palette, show_point_step);
-		}else
-			s_renderer.set_color_array(ctx, &pc.clr(unsigned(offset)), count, unsigned(sizeof(Clr))*show_point_step);
+	
+	// upload colors 
+	if (pc.has_colors()) {
+		s_renderer.set_color_array(ctx, &pc.clr(unsigned(offset)), count, unsigned(sizeof(Clr)) * show_point_step);
 	}
+
+	// upload point selection point_color_indices indicates face id or topo info id 
+	if (use_these_point_color_indices) {
+		s_renderer.set_attribute_array_renderer(ctx,
+			"color_index",
+			&pc.point_selection.at(unsigned(offset)),
+			count,
+			unsigned(sizeof(cgv::type::uint8_type)) * show_point_step
+		);
+		// do not forget to set renderer parameters... private varible init to true. so we do not have to do this for now: 
+		// s_renderer.has_indexed_colors = true; (adjust renderer later )
+	}
+	
+	// upload normals 
 	if (pc.has_normals())
 		s_renderer.set_normal_array(ctx, &pc.nml(unsigned(offset)), count, unsigned(sizeof(Nml))*show_point_step);
 
-	// this part has been uploaded before ... 
-	// selection_index -> color_index in shader 
-	/*if (pc.has_selections())
-		s_renderer.set_attribute_array_renderer(ctx, 
-			"selection_index", &pc.point_selection.at(unsigned(offset)), 
-			count, unsigned(sizeof(cgv::type::uint8_type)) * show_point_step);*/
-	if (pc.has_scan_indices())
+	// upload scan indices 
+	// a good refernce when adding point attributes 
+	// actually, this will always be true, I fill the fields with some default values 
+	if (pc.has_scan_indices()) {
 		s_renderer.set_attribute_array_renderer(ctx,
-			"scan_index", &pc.point_scan_index.at(unsigned(offset)), count, unsigned(sizeof(float)) * show_point_step);
-	if (pc.has_scan_indices())
-		s_renderer.set_attribute_array_renderer(ctx,
-			"point_visibility", &pc.point_visibility.at(unsigned(offset)), count, unsigned(sizeof(float)) * show_point_step);
+			"scan_index", 
+			&pc.point_scan_index.at(unsigned(offset)), 
+			count, 
+			unsigned(sizeof(float)) * show_point_step
+		);
+	}
 
+	
 }
 /// render with surfel 
 void gl_point_cloud_drawable::draw_points_surfel(context& ctx)
 {
-	if (raw_prog.is_linked())
-		destruct_prog_and_buffers_when_switching(ctx);
-
-	show_point_begin = 0;
-	show_point_end = pc.get_nr_points();
-
 	if (!show_points)
 		return;
 
-	use_these_point_color_indices = &pc.point_selection; // 
+	// do this when switching renderers 
+	if (raw_prog.is_linked())
+		destruct_prog_and_buffers_when_switching(ctx);
+
+	// upload/ update attributes to shaders 
 	set_arrays(ctx);
 
-	//if (pc.has_components()) {
-	//	if (use_these_component_colors)
-	//		s_renderer.set_group_colors(ctx, &use_these_component_colors->front(), use_these_component_colors->size());
-	//	else
-	//		if (pc.has_component_colors())
-	//			s_renderer.set_group_colors(ctx, &pc.component_color(0), pc.get_nr_components());
-	//	if (pc.has_component_transformations()) {
-	//		s_renderer.set_group_rotations(ctx, &pc.component_rotation(0), pc.get_nr_components());
-	//		s_renderer.set_group_translations(ctx, &pc.component_translation(0), pc.get_nr_components());
-	//	}
-	//	s_renderer.set_group_index_array(ctx, &pc.component_index(0), pc.get_nr_points());
-	//}
-
-	//if (!arrays_uploaded) {
-	//	arrays_uploaded = true;
-	//}
-
-	bool tmp = surfel_style.use_group_color;
-	if (pc.has_components() && use_these_component_colors)
-		surfel_style.use_group_color = true;
-	else if (use_these_point_colors || (use_these_point_color_indices && use_these_point_palette))
-		surfel_style.use_group_color = false;
-	surfel_style.use_group_color = tmp;
-
+	// adjust renderer parameters 
+	surfel_style.use_group_color = false;
 	s_renderer.validate_and_enable(ctx);
 	s_renderer.ref_prog().set_uniform(ctx, "enable_headset_culling", enable_headset_culling);
 	s_renderer.ref_prog().set_uniform(ctx, "headset_position", headset_position);
@@ -681,7 +668,8 @@ void gl_point_cloud_drawable::draw_points_surfel(context& ctx)
 	s_renderer.ref_prog().set_uniform(ctx, "render_with_functional_ids_only", render_with_functional_ids_only);
 	s_renderer.ref_prog().set_uniform(ctx, "highlight_unmarked_points", highlight_unmarked_points);
 	
-	std::size_t n = (show_point_end - show_point_begin) / show_point_step;
+	std::size_t n = pc.get_nr_points();
+		//(show_point_end - show_point_begin) / show_point_step;
 	GLint offset = GLint(show_point_begin / show_point_step);
 
 	if (sort_points && ensure_view_pointer()) {

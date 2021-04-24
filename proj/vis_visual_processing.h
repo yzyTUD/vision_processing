@@ -654,7 +654,6 @@ public:
 		data_ptr->point_cloud_kit->pc.point_selection_visited.clear();
 		data_ptr->point_cloud_kit->pc.point_selection.clear();
 		data_ptr->point_cloud_kit->pc.point_scan_index.clear();
-		data_ptr->point_cloud_kit->pc.point_visibility.clear();
 		std::cout << "dropped!" << std::endl;
 	}
 };

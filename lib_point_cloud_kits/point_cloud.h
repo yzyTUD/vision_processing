@@ -265,8 +265,6 @@ public:
 	std::vector<cgv::type::uint8_type> point_selection; // will be used as face index
 	/// container for per vertex scan indices, which scan it belones to 
 	std::vector<float> point_scan_index; 
-	/// control the point visibility for vr-icp 
-	std::vector<float> point_visibility; 
 public:
 	/*camera positions */
 	std::vector<cgv::math::fvec<float, 3>> cam_posi_list;

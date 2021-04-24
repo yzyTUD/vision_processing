@@ -358,17 +358,17 @@ point_cloud::Idx point_cloud::end_index(Idx component_index) const
 
 /// from boolean vector to per-point vector, call this if scan_index_visibility changed 
 void point_cloud::update_scan_index_visibility() {
-	point_visibility.resize(get_nr_points());
-	// loop all points, look up visibility boolean flag in scan_index_visibility, 
-	// pass to point_visibility, which will be used in shader 
-	for (int Idx = 0; Idx < point_visibility.size(); Idx++) {
-		if (scan_index_visibility.size() > 0) {
-			point_visibility.at(Idx) = scan_index_visibility.at((int)point_scan_index.at(Idx))?1.0f:0.0f;
-		}
-		else {
-			point_visibility.at(Idx) = 1.0f;
-		}
-	}
+	//point_visibility.resize(get_nr_points());
+	//// loop all points, look up visibility boolean flag in scan_index_visibility, 
+	//// pass to point_visibility, which will be used in shader 
+	//for (int Idx = 0; Idx < point_visibility.size(); Idx++) {
+	//	if (scan_index_visibility.size() > 0) {
+	//		point_visibility.at(Idx) = scan_index_visibility.at((int)point_scan_index.at(Idx))?1.0f:0.0f;
+	//	}
+	//	else {
+	//		point_visibility.at(Idx) = 1.0f;
+	//	}
+	//}
 		
 }
 
@@ -606,7 +606,7 @@ void point_cloud::clear_all() {
 	point_selection.clear();
 	point_selection_visited.clear();
 	point_scan_index.clear();
-	point_visibility.clear();
+	//point_visibility.clear();
 
 	/// container to store  one component index per point
 	component_indices.clear();
