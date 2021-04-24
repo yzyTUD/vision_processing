@@ -122,7 +122,7 @@ public:
 	/*palette rendering, render with color palletes*/
 	std::vector<Clr>* use_these_point_colors;
 	std::vector<RGBA>* use_these_point_palette;
-	std::vector<cgv::type::uint8_type>* use_these_point_color_indices;
+	std::vector<int>* use_these_point_color_indices;
 	std::vector<RGBA>* use_these_component_colors;
 
 	/*cpu reduction*/

@@ -270,9 +270,7 @@ public:
 					if (vrke.get_controller_index() == data_ptr->right_rgbd_controller_index) { //
 						if (data_ptr->check_roulette_selection(data_ptr->get_id_with_name("RegionGrowing\nPrepare\nMarking"))) { //
 							// this will overwrite face segmentations 
-							data_ptr->point_cloud_kit->prepare_grow(false,
-								&data_ptr->point_selection_colors, 
-									data_ptr->point_cloud_kit->pc.max_num_of_selections);
+							data_ptr->point_cloud_kit->prepare_grow(false); // not read from file 
 						}
 					}
 				}
@@ -515,7 +513,7 @@ public:
 						// ok-todo: update picking group information 
 						// current, we can only select regions, build on top of functional indices 
 						if (smallestpalleteIdx < 10)
-							current_selecting_idx = smallestpalleteIdx; //data_ptr->point_cloud_kit->pc.num_of_functional_selections
+							current_selecting_idx = smallestpalleteIdx; //data_ptr->point_cloud_kit->pc.num_of_topo_selections_rendered
 						else 
 							current_selecting_idx = smallestpalleteIdx + 10; // 10 is the remining selctions in fucntional 
 
@@ -634,11 +632,11 @@ public:
 		if (data_ptr->check_roulette_selection(data_ptr->get_id_with_name("PointCloud\nMarkAs\nOrig"))) {
 			render_a_sphere_on_righthand(ctx);
 			//data_ptr->righthand_object_colors[0] = rgb(1,0,0,1);
-			data_ptr->righthand_object_colors[0] = data_ptr->point_selection_colors[1];
+			data_ptr->righthand_object_colors[0] = data_ptr->face_id_to_color[1];
 		}
 		if (data_ptr->check_roulette_selection(data_ptr->get_id_with_name("PointCloud\nDelPoints\nTouchTo\nActivate"))) {
 			render_a_sphere_on_righthand(ctx);
-			data_ptr->righthand_object_colors[0] = data_ptr->point_selection_colors[2];
+			data_ptr->righthand_object_colors[0] = data_ptr->face_id_to_color[2];
 		}
 		if (data_ptr->check_roulette_selection(data_ptr->get_id_with_name("RegionGrowing\nGroupPicker"))) {
 			render_palette_on_left_hand(ctx);

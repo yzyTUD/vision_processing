@@ -472,9 +472,9 @@ void gl_point_cloud_drawable::draw_points_quad(context& ctx) {
 			else
 				p.normal = vec3(0, 1, 0);
 
-			if (pc.has_selection)
+			if (pc.has_face_selections())
 				// from uint8 -> int 
-				p.index = (int)pc.point_selection[i]; 
+				p.index = (int)pc.face_id[i]; 
 			else
 				p.index = 1;
 
@@ -598,21 +598,33 @@ void gl_point_cloud_drawable::set_arrays(context& ctx, size_t offset, size_t cou
 		s_renderer.set_color_array(ctx, &pc.clr(unsigned(offset)), count, unsigned(sizeof(Clr)) * show_point_step);
 	}
 
-	// upload point selection point_color_indices indicates face id or topo info id 
-	if (use_these_point_color_indices) {
+	// upload normals 
+	if (pc.has_normals())
+		s_renderer.set_normal_array(ctx, &pc.nml(unsigned(offset)), count, unsigned(sizeof(Nml))*show_point_step);
+
+	// upload point selection, point_color_indices indicates face id or topo info id 
+	if (pc.has_face_selections()) {
 		s_renderer.set_attribute_array_renderer(ctx,
-			"color_index",
-			&pc.point_selection.at(unsigned(offset)),
+			"face_id",
+			&pc.face_id.at(unsigned(offset)),
 			count,
-			unsigned(sizeof(cgv::type::uint8_type)) * show_point_step
+			unsigned(sizeof(int)) * show_point_step
 		);
 		// do not forget to set renderer parameters... private varible init to true. so we do not have to do this for now: 
 		// s_renderer.has_indexed_colors = true; (adjust renderer later )
 	}
-	
-	// upload normals 
-	if (pc.has_normals())
-		s_renderer.set_normal_array(ctx, &pc.nml(unsigned(offset)), count, unsigned(sizeof(Nml))*show_point_step);
+
+	// upload topological selection, indicates corner/ edge/ faces...
+	if (pc.has_topo_selections()) {
+		s_renderer.set_attribute_array_renderer(ctx,
+			"topo_id",
+			&pc.topo_id.at(unsigned(offset)),
+			count,
+			unsigned(sizeof(int)) * show_point_step
+		);
+		// do not forget to set renderer parameters... private varible init to true. so we do not have to do this for now: 
+		// s_renderer.has_indexed_colors = true; (adjust renderer later )
+	}
 
 	// upload scan indices 
 	// a good refernce when adding point attributes 

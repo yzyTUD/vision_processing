@@ -540,10 +540,11 @@ public:
 	void restore_supersampling() { data_ptr->point_cloud_kit->restore_supersampling(); }
 
 	void prepare_marking() { 
-		//data_ptr->point_cloud_kit->prepare_marking(&data_ptr->point_selection_colors); 
-		data_ptr->point_cloud_kit->prepare_grow(false,
-			&data_ptr->point_selection_colors,
-			data_ptr->point_cloud_kit->pc.max_num_of_selections);
+		//data_ptr->point_cloud_kit->prepare_marking(&data_ptr->face_id_to_color); 
+		data_ptr->point_cloud_kit->prepare_grow(false);
+	}
+	void convert_to_int_face_selection_representation() {
+		data_ptr->point_cloud_kit->pc.convert_to_int_face_selection_representation();
 	}
 
 	// point cloud generation 
@@ -587,7 +588,7 @@ public:
 		data_ptr->point_cloud_kit->print_pc_information();
 	}
 	void boundary_extraction() {
-		//data_ptr->point_cloud_kit->boundary_extraction();
+		data_ptr->point_cloud_kit->extract_all();
 	}
 	void extract_connectivity_graph() {
 		//data_ptr->point_cloud_kit->extract_connectivity_graph();
@@ -651,8 +652,8 @@ public:
 	void rotate_left() { data_ptr->active_off_rotation += 30; }
 	void drop_other_info_points_only() {
 		data_ptr->point_cloud_kit->pc.N.clear();
-		data_ptr->point_cloud_kit->pc.point_selection_visited.clear();
-		data_ptr->point_cloud_kit->pc.point_selection.clear();
+		data_ptr->point_cloud_kit->pc.point_visited.clear();
+		data_ptr->point_cloud_kit->pc.face_id.clear();
 		data_ptr->point_cloud_kit->pc.point_scan_index.clear();
 		std::cout << "dropped!" << std::endl;
 	}

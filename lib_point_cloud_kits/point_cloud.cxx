@@ -24,7 +24,7 @@ protected:
 	std::vector<Nml>& N;
 	std::vector<Clr>& C;
 
-	std::vector<cgv::type::uint8_type>& P_S; // point selection 
+	std::vector<int>& P_S; // point selection 
 	std::vector<float>* P_ScanIndex = 0;
 public:
 	cgv::math::fvec<float, 3> cam_posi;
@@ -33,8 +33,7 @@ public:
 	bool has_v_si = false;
 	int points_read_this_time = 0;
 	///
-	point_cloud_obj_loader(std::vector<Pnt>& _P, std::vector<Nml>& _N, std::vector<Clr>& _C, 
-		std::vector<cgv::type::uint8_type>& _P_C) 
+	point_cloud_obj_loader(std::vector<Pnt>& _P, std::vector<Nml>& _N, std::vector<Clr>& _C, std::vector<int>& _P_C) 
 		: P(_P), N(_N), C(_C), P_S(_P_C){}
 	/// split from initial function, set saparatly, keep obj reading unchanged 
 	void set_P_ScanIndex_vector_address_to_be_written(std::vector<float>* _P_ScanIndex) {
@@ -102,10 +101,8 @@ public:
 				else {
 					if (tokens[0][1] == '_' && tokens[0][2] == 's') { // selection index 
 						int v_s;
-						unsigned char v_s_char;
 						is_integer(tokens[1].begin, tokens[1].end, v_s);
-						v_s_char = v_s;
-						P_S.push_back(v_s_char);
+						P_S.push_back(v_s);
 						has_v_s = true;
 						break;
 					}
@@ -565,8 +562,8 @@ void point_cloud::clear_all_for_get_next_shot() {
 	I.clear();
 	F.clear();
 
-	point_selection.clear();
-	point_selection_visited.clear();
+	face_id.clear();
+	point_visited.clear();
 
 	/// container to store  one component index per point
 	component_indices.clear();
@@ -603,8 +600,8 @@ void point_cloud::clear_all() {
 	T.clear();
 	I.clear();
 	F.clear();
-	point_selection.clear();
-	point_selection_visited.clear();
+	face_id.clear();
+	point_visited.clear();
 	point_scan_index.clear();
 	//point_visibility.clear();
 
@@ -626,7 +623,6 @@ void point_cloud::clear_all() {
 	has_comp_clrs = false;
 	has_features = false;
 	has_scan_index = false;
-	has_selection = false;
 	has_cam_posi = false;
 
 	comp_box_out_of_date.clear();
@@ -753,30 +749,30 @@ bool point_cloud::compare_these_two_points_nml(int i, int j, const point_cloud& 
 }
 
 void point_cloud::smart_append(const point_cloud& pc) {
-	if (pc.get_nr_points() == 0)
-		return;
-	has_selection = pc.has_selection;
-	has_nmls = pc.has_normals();
-	has_clrs = pc.has_colors();
-	has_texcrds = pc.has_texture_coordinates();
+	//if (pc.get_nr_points() == 0)
+	//	return;
+	////has_face_selection = pc.has_face_selection;
+	//has_nmls = pc.has_normals();
+	//has_clrs = pc.has_colors();
+	//has_texcrds = pc.has_texture_coordinates();
 
-	for (int i = 0; i < P.size(); i++) {
-		for (int j = 0; j < pc.get_nr_points(); j++) {
-			// normal changed, update nml 
-			if (compare_these_two_points_posi(i, j, pc) && !compare_these_two_points_nml(i, j, pc)) {
-				// must has nml. if (has_normals())
-				N.at(i) = pc.nml(j);
-			}
-			// if a new point added 
-			if (!compare_these_two_points_posi(i, j, pc)) {
-				P.push_back(pc.pnt(j));
-				if (has_nmls && pc.has_normals())
-					N.push_back(pc.nml(j));
-			}
-		}
-	}
+	//for (int i = 0; i < P.size(); i++) {
+	//	for (int j = 0; j < pc.get_nr_points(); j++) {
+	//		// normal changed, update nml 
+	//		if (compare_these_two_points_posi(i, j, pc) && !compare_these_two_points_nml(i, j, pc)) {
+	//			// must has nml. if (has_normals())
+	//			N.at(i) = pc.nml(j);
+	//		}
+	//		// if a new point added 
+	//		if (!compare_these_two_points_posi(i, j, pc)) {
+	//			P.push_back(pc.pnt(j));
+	//			if (has_nmls && pc.has_normals())
+	//				N.push_back(pc.nml(j));
+	//		}
+	//	}
+	//}
 
-	box_out_of_date = true;
+	//box_out_of_date = true;
 }
 
 void point_cloud::remove_deleted_points_impl() {
@@ -785,7 +781,7 @@ void point_cloud::remove_deleted_points_impl() {
 	vector<Nml> tmp_N;
 
 	for (int i = 0; i < P.size(); i++) {
-		if (point_selection[i] != PointSelectiveAttribute::DEL) {
+		if (face_id[i] != TOPOAttribute::DEL) {
 			// preserve if on the same side 
 			tmp_P.push_back(P.at(i));
 			if (has_colors())
@@ -825,8 +821,8 @@ void point_cloud::append_with_mat4(point_cloud& pc, mat4 mvp)
 			C.push_back(pc.clr(i));
 		if (has_normals() && pc.has_normals())
 			N.push_back(pc.nml(i));
-		if ((has_selections() && pc.has_selections()))
-			point_selection.push_back(pc.point_selection.at(i));
+		if ((has_face_selections() && pc.has_face_selections()))
+			face_id.push_back(pc.face_id.at(i));
 		if (has_scan_indices() && pc.has_scan_indices())
 			point_scan_index.push_back(pc.point_scan_index.at(i));
 		if (has_texture_coordinates() && pc.has_texture_coordinates())
@@ -842,7 +838,7 @@ void point_cloud::append(const point_cloud& pc)
 		return;
 	has_clrs = pc.has_colors();
 	has_nmls = pc.has_normals();
-	has_selection = pc.has_selection;
+	has_face_selection = pc.has_face_selection;
 	has_scan_index = pc.has_scan_index;
 	has_texcrds = pc.has_texture_coordinates();
 
@@ -852,8 +848,8 @@ void point_cloud::append(const point_cloud& pc)
 		C.resize(n);
 	if (has_normals())
 		N.resize(n);
-	if (has_selection)
-		point_selection.resize(n);
+	if (has_face_selection)
+		face_id.resize(n);
 	if (has_scan_index)
 		point_scan_index.resize(n);
 	//
@@ -869,8 +865,8 @@ void point_cloud::append(const point_cloud& pc)
 		std::copy(pc.C.begin(), pc.C.end(), C.begin() + old_n);
 	if (has_normals() && pc.has_normals())
 		std::copy(pc.N.begin(), pc.N.end(), N.begin() + old_n);
-	if (has_selection)
-		std::copy(pc.point_selection.begin(), pc.point_selection.end(), point_selection.begin() + old_n);
+	if (has_face_selection)
+		std::copy(pc.face_id.begin(), pc.face_id.end(), face_id.begin() + old_n);
 	if (has_scan_index)
 		std::copy(pc.point_scan_index.begin(), pc.point_scan_index.end(), point_scan_index.begin() + old_n);
 	//
@@ -1010,10 +1006,10 @@ void point_cloud::clip_plane(Dir cur_plane_normal, Pnt a_point_on_the_plane) {
 				//
 				if (F.size())
 					F.at(j) = F.at(i);
-				if (point_selection.size())
-					point_selection.at(j) = point_selection.at(i);
-				if (point_selection_visited.size())
-					point_selection_visited.at(j) = point_selection_visited.at(i);
+				if (face_id.size())
+					face_id.at(j) = face_id.at(i);
+				if (point_visited.size())
+					point_visited.at(j) = point_visited.at(i);
 			}
 			++j;
 		}
@@ -1030,10 +1026,10 @@ void point_cloud::clip_plane(Dir cur_plane_normal, Pnt a_point_on_the_plane) {
 			I.resize(j);
 		if (F.size())
 			F.resize(j);
-		if (point_selection.size())
-			point_selection.resize(j);
-		if (point_selection_visited.size())
-			point_selection_visited.resize(j);
+		if (face_id.size())
+			face_id.resize(j);
+		if (point_visited.size())
+			point_visited.resize(j);
 	}
 	box_out_of_date = true;
 	if (has_pixel_coordinates())
@@ -1208,12 +1204,12 @@ size_t point_cloud::add_point(const Pnt& p)
 
 /// add points without normals 
 size_t point_cloud::add_point(const Pnt& p, const RGBA& c,
-	const float& scan_index, const cgv::type::uint8_type& sel) {
+	const float& scan_index, const int& sel) {
 	// check before this 
 	P.push_back(p);
 	C.push_back(c);
 	point_scan_index.push_back(scan_index);
-	point_selection.push_back(sel);
+	face_id.push_back(sel);
 
 	size_t idx = P.size();
 	return idx;
@@ -1230,13 +1226,13 @@ size_t point_cloud::add_point(const Pnt& p, const RGBA& c, const Nml& nml) {
 }
 /// add points with full vertex attributes 
 size_t point_cloud::add_point(const Pnt& p, const RGBA& c,
-	const Nml& nml, const float& scan_index, const cgv::type::uint8_type& sel) {
+	const Nml& nml, const float& scan_index, const int& sel) {
 	// check before add 
 	P.push_back(p);
 	C.push_back(c);
 	N.push_back(nml);
 	point_scan_index.push_back(scan_index);
-	point_selection.push_back(sel);
+	face_id.push_back(sel);
 
 	size_t idx = P.size();
 	return idx;
@@ -2033,8 +2029,8 @@ bool point_cloud::read_cgvscan(const std::string& file_name)
 				has_scan_index = true;
 			}
 			if (j >= 11) {
-				point_selection.push_back((cgv::type::uint8_type)values[10]);
-				has_selection = true;
+				face_id.push_back(values[10]);
+				has_face_selection = true;
 			}
 		}
 		if (tokens[0][0] == 'c' && tokens[0][1] == 'a' && tokens[0][2] == 'm') {
@@ -2090,12 +2086,12 @@ bool point_cloud::write_cgvscan(const std::string& file_name)
 		if (has_colors())
 			os << color_component_to_float(C[i][0]) << " " << color_component_to_float(C[i][1])
 				<< " " << color_component_to_float(C[i][2]) << " ";
-		if (point_scan_index.size() > 0)
+		if (has_scan_indices())
 			os << point_scan_index.at(i) << " ";
 		else
 			std::cout << "do not have scan index..." << std::endl;
-		if (point_selection.size() > 0)
-			os << (int)point_selection.at(i) << " ";
+		if (has_face_selections())
+			os << face_id.at(i) << " ";
 		else
 			std::cout << "do not have point selection! check your points " << std::endl;
 		os << std::endl; // end of the line 
@@ -2315,13 +2311,13 @@ void point_cloud::downsampling(int step) {
 	P.resize(tmp_P.size());
 	P = tmp_P;
 
-	if (has_selection) {
+	if (has_face_selections()) {
 		cnt = 0;
-		std::vector<cgv::type::uint8_type> tmp_selection(point_selection.size() / step);
-		std::copy_if(point_selection.begin(), point_selection.end(), tmp_selection.begin(),
-			[&cnt, &step](cgv::type::uint8_type i)->bool {return ++cnt % step == 0; });
-		point_selection.resize(tmp_selection.size());
-		point_selection = tmp_selection;
+		std::vector<int> tmp_selection(face_id.size() / step);
+		std::copy_if(face_id.begin(), face_id.end(), tmp_selection.begin(),
+			[&cnt, &step](int i)->bool {return ++cnt % step == 0; });
+		face_id.resize(tmp_selection.size());
+		face_id = tmp_selection;
 	}
 	if (has_normals()) {
 		cnt = 0;
@@ -2516,8 +2512,8 @@ bool point_cloud::read_campose(const std::string& file_name) {
 
 bool point_cloud::read_obj(const string& _file_name) 
 {
-	// read point infos to P,N,C,point_selection
-	point_cloud_obj_loader pc_obj(P,N,C,point_selection);
+	// read point infos to P,N,C,face_id
+	point_cloud_obj_loader pc_obj(P,N,C,face_id);
 	if (!exists(_file_name))
 		return false;
 	//clear();
@@ -2526,7 +2522,7 @@ bool point_cloud::read_obj(const string& _file_name)
 	if(pc_obj.has_cam)
 		cam_posi_list.push_back(pc_obj.cam_posi); // push back new read camera position  
 	has_cam_posi = pc_obj.has_cam;
-	has_selection = pc_obj.has_v_s;
+	has_face_selection = pc_obj.has_v_s;
 	has_scan_index = pc_obj.has_v_si;
 
 	return true;
@@ -2669,7 +2665,7 @@ bool point_cloud::write_ply(const std::string& file_name) const
 		return false;
 	int real_vertex_num = 0;
 	for (int j = 0; j < (int)P.size(); j++) {
-		if (has_selection && (2 == (int)point_selection[j]))
+		if (has_face_selection && (2 == (int)face_id[j])) // ignore deleted points 
 			continue;
 		else
 			real_vertex_num++;
@@ -2688,8 +2684,7 @@ bool point_cloud::write_ply(const std::string& file_name) const
 	for (int j = 0; j < (int)P.size(); j++) {
 		if (j % 1000 == 0)
 			printf("%d Percent done.\r", (int)(100.0 * j / (int)P.size()));
-		// delete unwanted points, can not recall
-		if (has_selection && (2 == (int)point_selection[j]))
+		if (has_face_selection && (2 == (int)face_id[j])) // delete unwanted points, can not undo
 			continue;
 		PlyVertex vertex;
 		vertex.x = P[j][0];
@@ -2869,8 +2864,8 @@ bool point_cloud::write_obj(const std::string& file_name) const
 			<< " " << color_component_to_float(C[i][1]) << " " << color_component_to_float(C[i][2]) << endl;
 		else
 			os << "v " << P[i][0] << " " << P[i][1] << " " << P[i][2] << endl;
-		/*if (has_selection) {
-			os << "v_s " << (int)point_selection.at(i) << endl;
+		/*if (has_face_selection) {
+			os << "v_s " << (int)face_id.at(i) << endl;
 		}*/
 	}
 	for (i=0; i<N.size(); ++i)
@@ -2931,8 +2926,8 @@ bool point_cloud::export_to_an_obj_file(const std::string& file_name) {
 ///
 bool point_cloud::read_cgvmodel(const string& _file_name)
 {
-	// read point infos to P,N,C,point_selection
-	point_cloud_obj_loader pc_obj(P, N, C, point_selection);
+	// read point infos to P,N,C,face_id
+	point_cloud_obj_loader pc_obj(P, N, C, face_id);
 	// reuse the obj reader, init with additional vertex attributes
 	pc_obj.set_P_ScanIndex_vector_address_to_be_written(&point_scan_index);
 	// exit when file does not exist 
@@ -2943,7 +2938,7 @@ bool point_cloud::read_cgvmodel(const string& _file_name)
 	if(pc_obj.has_cam)
 		cam_posi_list.push_back(pc_obj.cam_posi); // push back the newly read camera position from cgv model files 
 	has_cam_posi = pc_obj.has_cam;
-	has_selection = pc_obj.has_v_s;
+	has_face_selection = pc_obj.has_v_s;
 	has_scan_index = pc_obj.has_v_si;
 
 	return true;
@@ -2962,14 +2957,14 @@ bool point_cloud::write_cgvmodel(const std::string& file_name) const
 	// save points and colors
 	for (i = 0; i < P.size(); ++i) {
 		if (ignore_deleted_points) {
-			if ((int)point_selection.at(i)!=2) {
+			if ((int)face_id.at(i)!=2) {
 				if (has_colors())
 					os << "v " << P[i][0] << " " << P[i][1] << " " << P[i][2] << " " << color_component_to_float(C[i][0])
 					<< " " << color_component_to_float(C[i][1]) << " " << color_component_to_float(C[i][2]) << endl;
 				else
 					os << "v " << P[i][0] << " " << P[i][1] << " " << P[i][2] << endl;
 				os << "vn " << N[i][0] << " " << N[i][1] << " " << N[i][2] << endl;
-				os << "v_s " << (int)point_selection.at(i) << endl; // present if prepared for region growing 
+				os << "v_s " << (int)face_id.at(i) << endl; // present if prepared for region growing 
 				os << "v_si " << point_scan_index.at(i) << endl; // present if: 1. read point cloud from ply 2. read manually form objs 
 			}
 		}
@@ -2980,7 +2975,7 @@ bool point_cloud::write_cgvmodel(const std::string& file_name) const
 			else
 				os << "v " << P[i][0] << " " << P[i][1] << " " << P[i][2] << endl;
 			os << "vn " << N[i][0] << " " << N[i][1] << " " << N[i][2] << endl;
-			os << "v_s " << (int)point_selection.at(i) << endl; // present if prepared for region growing 
+			os << "v_s " << (int)face_id.at(i) << endl; // present if prepared for region growing 
 			os << "v_si " << point_scan_index.at(i) << endl; // present if: 1. read point cloud from ply 2. read manually form objs 
 		}
 
@@ -3072,8 +3067,12 @@ bool point_cloud::has_normals() const
 	return (has_nmls || N.size()>0);
 }
 
-bool point_cloud::has_selections() {
-	return (has_selection || point_selection.size() > 0);
+bool point_cloud::has_face_selections() {
+	return face_id.size() > 0;
+}
+
+bool point_cloud::has_topo_selections() {
+	return topo_id.size() > 0;
 }
 
 bool point_cloud::has_scan_indices() {

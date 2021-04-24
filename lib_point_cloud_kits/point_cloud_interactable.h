@@ -59,8 +59,8 @@ enum PointCloudChangeEvent
 class pointHistoryEntry {
 public:
 	int point_index;
-	cgv::type::uint8_type from_selection;
-	cgv::type::uint8_type to_selection;
+	int from_face_id;
+	int to_face_id;
 	int timestamp;
 	//
 };
@@ -172,10 +172,10 @@ public:
 	std::stack<std::vector<pointHistoryEntry>> point_marking_history;
 	/// history recording 
 	int history_indexer = 0;
-	/// make sure vector size: point_selection, point_selection_visited
-	void prepare_marking(std::vector<rgba>* psc);
+	/// make sure vector size: face_id, point_visited
+	void prepare_marking();
 	/// mark with controllers 
-	void mark_points_with_conroller(Pnt p, float r, cgv::type::uint8_type objctive);
+	void mark_points_with_conroller(Pnt p, float r, int objctive);
 	/// marking test 
 	void marking_test_mark_all_points_as_given_group(int objective);
 	/// quick point deletion: with a clipping plane 
@@ -250,7 +250,7 @@ public:
 	bool add_to_seed = true;
 	bool can_parallel_grow = true;
 	///
-	void prepare_grow(bool read_from_file, std::vector<rgba>* psc, int max_num_regions);
+	void prepare_grow(bool read_from_file);
 	///
 	bool grow_one_step_bfs(bool check_nml, int which_group);
 	///
@@ -506,6 +506,6 @@ public:
 	//@}
 };
 
-typedef cgv::data::ref_ptr<point_cloud_interactable, true> point_cloud_viewer_ptr;
+//typedef cgv::data::ref_ptr<point_cloud_interactable, true> point_cloud_viewer_ptr;
 
 #include <cgv/config/lib_end.h>

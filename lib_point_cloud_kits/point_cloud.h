@@ -224,26 +224,26 @@ public:
 	/*
 		point selection definition
 	*/
-	/// per vertex marked index, PointSelectiveAttribute
-	enum PointSelectiveAttribute {
-		VISUAL_MARK, // reserved 
+	// per vertex marked index, make it easily readable, passing parameters to functions 
+	enum TOPOAttribute { 
+		RESERVED, 
 		ORI = 1,
 		DEL = 2,
 		BOUNDARIES = 3,
 		CORNER = 4,
 		ICP_SOURCE_A = 5,
 		ICP_TARGET_A = 6,
-		ICP_SOURCE_B,
-		ICP_TARGET_B,
 		TO_BE_SUBSAMPLED,
 		NEWLY_GENERATED,
-		// add new functional idx above
+		//...
 		EndOfFunctionalIndices // region id start from the end of this struct 
 	};
-	int num_of_functional_selections = 20; // from 0 - 19 
-	int num_of_regions = 25; // from 20 - 44
-	int max_num_of_selections = num_of_functional_selections + num_of_regions;
+	// face attribute is just the number suggests, also, 0 is reserved 
+	int num_of_topo_selections_rendered = 10; // temp number of topo selections used
+	int num_of_face_selections_rendered = 25; // used for rendering palette and boost region growing via resize() 
+	int num_of_palette_spheres_rendered = num_of_topo_selections_rendered + num_of_face_selections_rendered;
 	float currentScanIdx_Recon = 0; // for scan index re-construction 
+
 	/*
 		per vertex info, can be stored externally in a .cgvscan file 
 	*/
@@ -260,9 +260,11 @@ public:
 	/// container for local features 
 	std::vector<Dir> F;
 	/// per-vertex attribute: used for region growing, used internally, wont be passed to gpu 
-	std::vector<bool> point_selection_visited;
-	/// per-vertex attribute: which group the point belones to 
-	std::vector<cgv::type::uint8_type> point_selection; // will be used as face index
+	std::vector<bool> point_visited; // point_visited
+	/// per-vertex attribute: used for marking faces, the first step, region growing 
+	std::vector<int> face_id; // from point_selection, write to .scan file  
+	/// per-vertex attribute: used for marking edges/ vertices/ faces... subsampled... 
+	std::vector<int> topo_id;
 	/// container for per vertex scan indices, which scan it belones to 
 	std::vector<float> point_scan_index; 
 public:
@@ -375,6 +377,14 @@ public:
 	/// save as obj file with per vertex 
 	bool export_to_an_obj_file(const std::string& file_name);
 
+
+	// 
+	void convert_to_int_face_selection_representation() {
+		for (auto& fi : face_id) {
+			fi -= 19; // start from 20 previous, 20 -> 1 
+		}
+		std::cout << "face_id modified! " << std::endl;
+	}
 protected:
 	/// container to store  one component index per point
 	std::vector<unsigned> component_indices;
@@ -519,8 +529,6 @@ public:
 	bool write_reflectance = true;
 
 	/// boolean flags  
-	///
-	bool has_selection = false;
 
 	/// construct empty point cloud
 	point_cloud();
@@ -584,10 +592,10 @@ public:
 	size_t add_point(const Pnt& p, const RGBA& c);
 	///
 	size_t add_point(const Pnt& p, const RGBA& c,
-		const float& point_scan_index, const cgv::type::uint8_type& point_selection);
+		const float& point_scan_index, const int& face_id);
 	///
 	size_t add_point(const Pnt& p, const RGBA& c,
-		const Nml& nml, const float& point_scan_index, const cgv::type::uint8_type& point_selection);
+		const Nml& nml, const float& point_scan_index, const int& face_id);
 	/// add points for icp 
 	size_t add_point(const Pnt& p, const RGBA& c, const Nml& nml);
 	///
@@ -626,8 +634,12 @@ public:
 
 	/// return whether the point cloud has normals
 	bool has_normals() const;
+
+	bool has_face_selection; // boolean indicates if we have per-point face id attribute 
+	bool has_face_selections();
 	
-	bool has_selections();
+	bool has_topo_selection;
+	bool has_topo_selections();
 
 	/// allocate normals if not already allocated
 	void create_normals();

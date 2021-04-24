@@ -33,7 +33,7 @@ void point_cloud_interactable::print_pc_information() {
 	std::cout << "pc.T.size: " << pc.T.size() << std::endl;
 	std::cout << "pc.I.size: " << pc.I.size() << std::endl;
 	std::cout << "pc.F.size: " << pc.F.size() << std::endl;
-	std::cout << "pc.point_selection.size: " << pc.point_selection.size() << std::endl;
+	std::cout << "pc.face_id.size: " << pc.face_id.size() << std::endl;
 	std::cout << "pc.point_scan_index.size: " << pc.point_scan_index.size() << std::endl;
 	std::cout << "pc.F_conn.size(): " << pc.F_conn.size() << std::endl;
 	//for (auto f : pc.F_conn) {
@@ -109,7 +109,7 @@ void point_cloud_interactable::generate_pc_random_sphere() {
 	pc.create_colors();
 	pc.create_normals();
 	pc.has_scan_index = true;
-	pc.has_selection = true;
+	pc.has_face_selection = true;
 
 	//
 	pc.box_out_of_date = true;
@@ -191,7 +191,7 @@ void point_cloud_interactable::generate_pc_unit_torus() {
 	pc.create_colors();
 	pc.create_normals();
 	pc.has_scan_index = true;
-	pc.has_selection = true;
+	pc.has_face_selection = true;
 
 	//
 	pc.box_out_of_date = true;
@@ -261,7 +261,7 @@ void point_cloud_interactable::generate_pc_unit_cylinder() {
 	pc.create_colors();
 	pc.create_normals();
 	pc.has_scan_index = true;
-	pc.has_selection = true;
+	pc.has_face_selection = true;
 
 	//
 	pc.box_out_of_date = true;
@@ -341,7 +341,7 @@ void point_cloud_interactable::generate_pc_init_sphere() {
 	pc.create_colors();
 	pc.create_normals();
 	pc.has_scan_index = true;
-	pc.has_selection = true;
+	pc.has_face_selection = true;
 
 	//
 	pc.box_out_of_date = true;
@@ -379,7 +379,7 @@ bool point_cloud_interactable::generate_pc_hemisphere() {
 		}
 	}
 	pc.create_colors();
-	pc.has_selection = true;
+	pc.has_face_selection = true;
 	pc.has_scan_index = true;
 	pc.box_out_of_date = true;
 	on_point_cloud_change_callback(PCC_NEW_POINT_CLOUD);
@@ -407,7 +407,7 @@ void point_cloud_interactable::generate_testing_plane() {
 	pc.create_colors();
 	pc.create_normals();
 	pc.has_scan_index = true;
-	pc.has_selection = true;
+	pc.has_face_selection = true;
 
 	//
 	pc.box_out_of_date = true;
@@ -447,7 +447,7 @@ bool point_cloud_interactable::generate_pc_cube() {
 		}
 	}
 	pc.create_colors();
-	pc.has_selection = true;
+	pc.has_face_selection = true;
 	pc.has_scan_index = true;
 	pc.box_out_of_date = true;
 	on_point_cloud_change_callback(PCC_NEW_POINT_CLOUD);
@@ -681,15 +681,15 @@ void point_cloud_interactable::align_leica_scans_with_cgv() {
 
 /*marking on point cloud, cpu side, ineffecient when upload to gpu*/
 /// clear seeds, setup color indices ...
-void point_cloud_interactable::prepare_marking(std::vector<rgba>* psc) {
-	pc.point_selection.resize(pc.get_nr_points());
-	for (auto& v : pc.point_selection) v = 0;
-	pc.point_selection_visited.resize(pc.get_nr_points());
-	for (auto& w : pc.point_selection_visited) w = false;
+void point_cloud_interactable::prepare_marking() {
+	pc.face_id.resize(pc.get_nr_points());
+	for (auto& v : pc.face_id) v = 0;
+	pc.point_visited.resize(pc.get_nr_points());
+	for (auto& w : pc.point_visited) w = false;
 
-	use_these_point_palette = psc;
-	use_these_point_color_indices = &pc.point_selection;
-
+	// modified rendering process, no need anymore 
+	//use_these_point_palette = psc;
+	//use_these_point_color_indices = &pc.face_id;
 }
 /// current operation is a list of entries 
 void point_cloud_interactable::new_history_recording() {
@@ -702,33 +702,19 @@ void point_cloud_interactable::reset_last_marking_non_processed_part(int which_i
 	//for (int i = 0; i < point_marking_history.back().size(); i++) {
 	//	// reset if not changed marking, that is, which_is_marked_and_not_used
 	//	// current point index: point_marking_history.back().at(i).point_index
-	//	// current selection: pc.point_selection.at(point_marking_history.back().at(i))
-	//	if (pc.point_selection.at(point_marking_history.back().at(i).point_index) == (int)which_is_marked_and_not_used) {
-	//		pc.point_selection.at(point_marking_history.back().at(i).point_index) 
-	//			= point_cloud::PointSelectiveAttribute::ORI;
+	//	// current selection: pc.face_id.at(point_marking_history.back().at(i))
+	//	if (pc.face_id.at(point_marking_history.back().at(i).point_index) == (int)which_is_marked_and_not_used) {
+	//		pc.face_id.at(point_marking_history.back().at(i).point_index) 
+	//			= point_cloud::TOPOAttribute::ORI;
 	//	}
 	//}
 }
 /// not finished -> to be tested
 void point_cloud_interactable::reset_last_marked_points() {
-	// a list of current changing: point_marking_history.back()
-	// element, .at(i), is pointHistoryEntry
-	// set the value to current selection bundle -> to_	
-	// step too much 
-	//if (history_indexer > (point_marking_history.size() - 1))
-	//	return;
-	//for (int i = 0; i < point_marking_history.at(point_marking_history.size() - 1 - history_indexer).size(); i++) {
-	//	pc.point_selection.at(point_marking_history.at(point_marking_history.size() - history_indexer - 1)
-	//		.at(i).point_index)
-	//		= point_marking_history.at(point_marking_history.size() - 1 - history_indexer).at(i).from_selection;
-	//}
-	//// step back virtually
-	//history_indexer++;
-
-	// recover the top entry list 
+	// recover the top entry list, undo the point face marking 
 	for (int i = 0; i < point_marking_history.top().size(); i++) {
-		pc.point_selection.at(point_marking_history.top().at(i).point_index) = 
-			(cgv::type::uint8_type)point_marking_history.top().at(i).from_selection;
+		pc.face_id.at(point_marking_history.top().at(i).point_index) = 
+			point_marking_history.top().at(i).from_face_id;
 	}
 	// and pop 
 	point_marking_history.pop();
@@ -742,17 +728,7 @@ void point_cloud_interactable::step_back_last_selection() {
 // not finished -> to be tested
 // errors may occour when step too much 
 void point_cloud_interactable::step_forward_selection() {
-	//// step too much 
-	//if (history_indexer < 1)
-	//	return;
-	//// set the value to current selection bundle -> to_
-	//for (int i = 0; i < point_marking_history.at(point_marking_history.size() - history_indexer - 1).size(); i++) {
-	//	pc.point_selection.at(point_marking_history.at(point_marking_history.size() - history_indexer - 1)
-	//		.at(i).point_index)
-	//		= point_marking_history.at(point_marking_history.size() - history_indexer - 1).at(i).to_selection;
-	//}
-	//// step next 
-	//history_indexer--;
+
 }
 ///
 void point_cloud_interactable::mark_all_points_and_push_to_tmp_pointcloud_test(Pnt p, float r, int ignore_id = -1) {
@@ -760,12 +736,12 @@ void point_cloud_interactable::mark_all_points_and_push_to_tmp_pointcloud_test(P
 	float scan_index = 0;
 	for (Idx i = 0; i < (Idx)pc.get_nr_points(); ++i) {
 		//if ((pc.pnt(i) - p).length() < r) {
-			if (pc.point_selection.at(i) != ignore_id) {
+			if (pc.face_id.at(i) != ignore_id) {
 				if (pc.point_scan_index.size() > 0)
 					scan_index = pc.point_scan_index.at(i);
 				else
 					scan_index = 0;
-				to_be_copied_pointcloud.add_point(pc.pnt(i), pc.clr(i), pc.nml(i), scan_index, pc.point_selection.at(i));
+				to_be_copied_pointcloud.add_point(pc.pnt(i), pc.clr(i), pc.nml(i), scan_index, pc.face_id.at(i));
 				some_points_copied = true;
 			}
 		//}
@@ -775,7 +751,7 @@ void point_cloud_interactable::mark_all_points_and_push_to_tmp_pointcloud_test(P
 		to_be_copied_pointcloud.create_colors();
 		to_be_copied_pointcloud.create_normals();
 		to_be_copied_pointcloud.has_scan_index = true;
-		to_be_copied_pointcloud.has_selection = true;
+		to_be_copied_pointcloud.has_face_selection = true;
 		to_be_copied_pointcloud.box_out_of_date = true;
 	}
 }
@@ -785,12 +761,12 @@ void point_cloud_interactable::mark_points_and_push_to_tmp_pointcloud(Pnt p, flo
 	float scan_index = 0;
 	for (Idx i = 0; i < (Idx)pc.get_nr_points(); ++i) {
 		if ((pc.pnt(i) - p).length() < r) {
-			if (pc.point_selection.at(i) != ignore_id) {
+			if (pc.face_id.at(i) != ignore_id) {
 				if (pc.point_scan_index.size() > 0)
 					scan_index = pc.point_scan_index.at(i);
 				else
 					scan_index = 0;
-				to_be_copied_pointcloud.add_point(pc.pnt(i), pc.clr(i), pc.nml(i), scan_index, pc.point_selection.at(i));
+				to_be_copied_pointcloud.add_point(pc.pnt(i), pc.clr(i), pc.nml(i), scan_index, pc.face_id.at(i));
 				some_points_copied = true;
 			}
 		}
@@ -800,13 +776,13 @@ void point_cloud_interactable::mark_points_and_push_to_tmp_pointcloud(Pnt p, flo
 		to_be_copied_pointcloud.create_colors();
 		to_be_copied_pointcloud.create_normals();
 		to_be_copied_pointcloud.has_scan_index = true;
-		to_be_copied_pointcloud.has_selection = true;
+		to_be_copied_pointcloud.has_face_selection = true;
 		to_be_copied_pointcloud.box_out_of_date = true;
 	}
 }
 /// currently, we set confirmed to true. The visual feedback is better to be impl. in shaders.
 /// ignore deleted points by default 
-void point_cloud_interactable::mark_points_with_conroller(Pnt p, float r, cgv::type::uint8_type objctive) {
+void point_cloud_interactable::mark_points_with_conroller(Pnt p, float r, int objctive) {
 	new_history_recording();
 	if (pc.get_nr_points()) {
 		ensure_tree_ds();
@@ -839,36 +815,36 @@ void point_cloud_interactable::mark_points_with_conroller(Pnt p, float r, cgv::t
 					// check if is smaller than r 
 					if (dist_list.at(i) < r) {
 						// ignore deleted points 
-						if (pc.point_selection.at(knn.at(i)) == point_cloud::PointSelectiveAttribute::DEL) {
+						if (pc.topo_id.at(knn.at(i)) == point_cloud::TOPOAttribute::DEL) {
 							continue;
 						}
 						// ignore marked points if is highlighting unmarked points 
 						if (highlight_unmarked_points) {
-							if (pc.point_selection.at(knn.at(i)) >= 20u) { // already marked 
+							if (pc.face_id.at(knn.at(i)) > 0) { // ignore already marked, 0 means unmarked  
 								continue;
 							}
 						}
-						// ignore points that are not having correct scaning index 
-						if (objctive == point_cloud::PointSelectiveAttribute::ICP_SOURCE_A) {
-							if (pc.point_scan_index.at(knn.at(i)) != src_scan_idx) {
-								continue;
-							}
-						}
-						// ignore points that are not having correct scaning index 
-						if (objctive == point_cloud::PointSelectiveAttribute::ICP_TARGET_A) {
-							if (pc.point_scan_index.at(knn.at(i)) != target_scan_idx) {
-								continue;
-							}
-						}
+						//// ignore points that are not having correct scaning index 
+						//if (objctive == point_cloud::TOPOAttribute::ICP_SOURCE_A) {
+						//	if (pc.point_scan_index.at(knn.at(i)) != src_scan_idx) {
+						//		continue;
+						//	}
+						//}
+						//// ignore points that are not having correct scaning index 
+						//if (objctive == point_cloud::TOPOAttribute::ICP_TARGET_A) {
+						//	if (pc.point_scan_index.at(knn.at(i)) != target_scan_idx) {
+						//		continue;
+						//	}
+						//}
 						// record tracing information
 						pointHistoryEntry phe;
 						phe.point_index = knn.at(i);
-						phe.from_selection = pc.point_selection.at(knn.at(i));
-						phe.to_selection = objctive;
+						phe.from_face_id = pc.face_id.at(knn.at(i));
+						phe.to_face_id = objctive;
 						point_marking_history.top().push_back(phe);
-						// perfrom real operations 
-						pc.point_selection.at(knn.at(i)) = objctive;
-						pc.has_selection = true;
+						// perform real operations 
+						pc.face_id.at(knn.at(i)) = objctive;
+						pc.has_face_selection = true;
 					}
 				}
 			}else {
@@ -876,36 +852,36 @@ void point_cloud_interactable::mark_points_with_conroller(Pnt p, float r, cgv::t
 				for (Idx i = 0; i < (Idx)pc.get_nr_points(); ++i) {
 					if ((pc.pnt(i) - p).length() < r) {
 						// ignore deleted points 
-						if (pc.point_selection.at(i) == point_cloud::PointSelectiveAttribute::DEL) {
+						if (pc.topo_id.at(i) == point_cloud::TOPOAttribute::DEL) {
 							continue;
 						}
 						// ignore marked points if is highlighting unmarked points 
 						if (highlight_unmarked_points) {
-							if (pc.point_selection.at(i) >= 20u) { // already marked 
+							if (pc.face_id.at(i) > 0) { // ignore already marked, 0 means unmarked  
 								continue;
 							}
 						}
-						// ignore points that are not having correct scaning index, ineffecient 
-						if (objctive == point_cloud::PointSelectiveAttribute::ICP_SOURCE_A) {
-							if (pc.point_scan_index.at(i) != src_scan_idx) {
-								continue;
-							}
-						}
-						// ignore points that are not having correct scaning index 
-						if (objctive == point_cloud::PointSelectiveAttribute::ICP_TARGET_A) {
-							if (pc.point_scan_index.at(i) != target_scan_idx) {
-								continue;
-							}
-						}
+						//// ignore points that are not having correct scaning index, ineffecient 
+						//if (objctive == point_cloud::TOPOAttribute::ICP_SOURCE_A) {
+						//	if (pc.point_scan_index.at(i) != src_scan_idx) {
+						//		continue;
+						//	}
+						//}
+						//// ignore points that are not having correct scaning index 
+						//if (objctive == point_cloud::TOPOAttribute::ICP_TARGET_A) {
+						//	if (pc.point_scan_index.at(i) != target_scan_idx) {
+						//		continue;
+						//	}
+						//}
 						// record tracing information
 						pointHistoryEntry phe;
 						phe.point_index = i;
-						phe.from_selection = pc.point_selection.at(i);
-						phe.to_selection = objctive;
+						phe.from_face_id = pc.face_id.at(i);
+						phe.to_face_id = objctive;
 						point_marking_history.top().push_back(phe);
 						// perform real operations 
-						pc.point_selection.at(i) = objctive;
-						pc.has_selection = true;
+						pc.face_id.at(i) = objctive;
+						pc.has_face_selection = true;
 					}
 				}
 			}
@@ -919,12 +895,12 @@ void point_cloud_interactable::marking_test_mark_all_points_as_given_group(int o
 		// record tracing information
 		pointHistoryEntry phe;
 		phe.point_index = i;
-		phe.from_selection = pc.point_selection.at(i);
-		phe.to_selection = objective;
+		phe.from_face_id = pc.face_id.at(i);
+		phe.to_face_id = objective;
 		point_marking_history.top().push_back(phe);
 		// int -> uint8
 		// perform real operations 
-		pc.point_selection[i] = (cgv::type::uint8_type)objective;
+		pc.face_id[i] = (cgv::type::uint8_type)objective;
 	}
 }
 /// TODO history support 
@@ -932,14 +908,14 @@ void point_cloud_interactable::mark_points_with_clipping_plane(Pnt p,Nml plane_n
 	new_history_recording();
 	for (Idx i = 0; i < (Idx)pc.get_nr_points(); ++i) {
 		if (dot(p - pc.pnt(i), plane_normal) < 0) {
-			pc.point_selection[i] = (cgv::type::uint8_type)objective;
+			pc.face_id[i] = (cgv::type::uint8_type)objective;
 		}
 	}
 }
 
 /*operations after marked */
 /// pre-requirement: rg is done, per point selection ready. after marked.
-/// result will be stored and visualized with PointSelectiveAttribute
+/// result will be stored and visualized with TOPOAttribute
 #include <set>
 void point_cloud_interactable::point_classification() {
 	std::vector<int> will_be_marked_as_boundary;
@@ -952,14 +928,14 @@ void point_cloud_interactable::point_classification() {
 		// initialize the topology information 
 		// pc.per_vertex_topology = 
 		// ignore deleted points 
-		if (pc.point_selection.at(i) == point_cloud::PointSelectiveAttribute::DEL)
+		if (pc.topo_id.at(i) == point_cloud::TOPOAttribute::DEL)
 			continue;
 		// find knn points 
 		std::vector<int> knn;
 		tree_ds->find_closest_points(pc.pnt(i), 30, knn);
 		std::set<cgv::type::uint8_type> incident_point_ids;
 		for (auto k: knn) { // k is the index 
-			incident_point_ids.insert(pc.point_selection.at(k));
+			incident_point_ids.insert(pc.face_id.at(k));
 		}
 		//
 		if (incident_point_ids.size() == 1) { // interior points, keep the current selection (face id )
@@ -999,36 +975,24 @@ void point_cloud_interactable::point_classification() {
 		// need further process to find out which point belones to which individual vertex/edge/face
 	}
 	for (auto b : will_be_marked_as_boundary) {
-		// record tracing information
-		pointHistoryEntry phe;
-		phe.point_index = b;
-		phe.from_selection = pc.point_selection.at(b);
-		phe.to_selection = point_cloud::PointSelectiveAttribute::BOUNDARIES;
-		current_selection.push_back(phe);
+		// trace the marking: skipped
 		// perform 
-		pc.point_selection.at(b) = point_cloud::PointSelectiveAttribute::BOUNDARIES;
+		pc.topo_id.at(b) = point_cloud::TOPOAttribute::BOUNDARIES;
 	}
 	for (auto c : will_be_marked_as_corner) {
-		// record tracing information
-		pointHistoryEntry phe;
-		phe.point_index = c;
-		phe.from_selection = pc.point_selection.at(c);
-		phe.to_selection = point_cloud::PointSelectiveAttribute::CORNER;
-		current_selection.push_back(phe);
+		// trace the marking: skipped
 		// perform 
-		pc.point_selection.at(c) = point_cloud::PointSelectiveAttribute::CORNER;
+		pc.topo_id.at(c) = point_cloud::TOPOAttribute::CORNER;
 	}
-	if (current_selection.size() > 0)
-		point_marking_history.push(current_selection);
 	on_point_cloud_change_callback(PCC_COLORS);
-	render_with_functional_ids_only = true;
+	render_with_functional_ids_only = true; // not working for now ...
 }
 
 /// topology extraction: faces 
 void point_cloud_interactable::face_extraction() {
 	std::set<int> regions;
 	for (auto& f : pc.F_conn) { // loop all, no matter which face 
-		f.face_id = (int)(pc.point_selection.at(f.point_id)) - 20; // make sure face id starts from 0 
+		f.face_id = pc.face_id.at(f.point_id); // face id starts from 1 if marked  
 		regions.insert(f.face_id);
 	}
 	pc.num_face_ids = regions.size();
@@ -1217,8 +1181,8 @@ void point_cloud_interactable::fitting_render_control_points_test() {
 	pc.control_points.push_back(pc.pnt(17268));
 	pc.control_point_colors.push_back(rgb(0, 1, 0));*/
 
-	/*pc.point_selection.at(78673) = 2u;
-	pc.point_selection.at(17268) = 2u;*/
+	/*pc.face_id.at(78673) = 2u;
+	pc.face_id.at(17268) = 2u;*/
 
 	//pc.demo_surface.push_back();
 
@@ -1264,11 +1228,11 @@ void point_cloud_interactable::selective_subsampling_cpu() {
 	// iterate all points 
 	for (int i = 0; i < pc.get_nr_points(); i++) {
 		// if marked as TO_BE_SUBSAMPLED 
-		if (point_cloud::PointSelectiveAttribute::TO_BE_SUBSAMPLED == pc.point_selection[i]) {
+		if (point_cloud::TOPOAttribute::TO_BE_SUBSAMPLED == pc.topo_id[i]) {
 			// if random condition fullfilled, the larger the radio, more points will be deleted
 			if (d(g) < selective_subsampling_radio) {
 				// mark it as deleted 
-				pc.point_selection[i] = point_cloud::PointSelectiveAttribute::DEL;
+				pc.topo_id[i] = point_cloud::TOPOAttribute::DEL;
 			}
 		}
 	}
@@ -1304,7 +1268,7 @@ void point_cloud_interactable::spawn_points_in_the_handhold_quad(quat controller
 		float newScanIndex = 0;
 
 		/*selection index*/
-		cgv::type::uint8_type newSelectionIndex = point_cloud::PointSelectiveAttribute::NEWLY_GENERATED;
+		cgv::type::uint8_type newSelectionIndex = point_cloud::TOPOAttribute::NEWLY_GENERATED;
 
 		// add to pc 
 		pc.add_point(newP, newC, newN, newScanIndex, newSelectionIndex);
@@ -1314,7 +1278,7 @@ void point_cloud_interactable::spawn_points_in_the_handhold_quad(quat controller
 	pc.create_colors();
 	pc.create_normals();
 	pc.has_scan_index = true;
-	pc.has_selection = true;
+	pc.has_face_selection = true;
 
 	// rebuild ann tree, managing rendering range..., crutial task when point cloud changes
 	pc.box_out_of_date = true;
@@ -1322,34 +1286,33 @@ void point_cloud_interactable::spawn_points_in_the_handhold_quad(quat controller
 }
 /*region growing after marked*/
 /// max_num_regions is not used 
-void point_cloud_interactable::prepare_grow(bool read_from_file, std::vector<rgba>* psc, int max_num_regions) {
+void point_cloud_interactable::prepare_grow(bool read_from_file) {
 	// atomic operation 
 	can_parallel_grow = false;
 
-	// if no selection present, clear point_selection
-	if (!(read_from_file && pc.has_selection)) {
-		pc.point_selection.resize(pc.get_nr_points());
-		// initialize to 1
-		for (auto& v : pc.point_selection) v = 1;
-		pc.has_selection = true;
+	// reconstruct face id if not present for proper growing  
+	if (!pc.has_face_selections()) {
+		pc.face_id.resize(pc.get_nr_points());
+		for (auto& v : pc.face_id) v = 0; // 1 means original points 
+		pc.has_face_selection = true;
 	}
 
 	// reset rendering properties 
 	show_nmls = false;
-	use_these_point_palette = psc;
-	use_these_point_color_indices = &pc.point_selection;
+	// use_these_point_palette = psc; // not used 
+	// use_these_point_color_indices = &pc.face_id; do this in draw call 
 
 	// reset region growing properties 
-	pc.point_selection_visited.resize(pc.get_nr_points());
-	for (auto& v : pc.point_selection_visited) v = false;
+	pc.point_visited.resize(pc.get_nr_points());
+	for (auto& v : pc.point_visited) v = false;
 
 	// replaced by functions 
 	region_id_and_seeds.clear();
 	region_id_and_nmls.clear();
 	std::queue<int> empty_indexqueue;
 	std::queue<vec3> empty_nmlqueue;
-	region_id_and_seeds.resize(pc.max_num_of_selections, empty_indexqueue);
-	region_id_and_nmls.resize(pc.max_num_of_selections, empty_nmlqueue);
+	region_id_and_seeds.resize(pc.num_of_face_selections_rendered, empty_indexqueue);
+	region_id_and_nmls.resize(pc.num_of_face_selections_rendered, empty_nmlqueue);
 
 	// enable again  
 	can_parallel_grow = true;
@@ -1364,15 +1327,15 @@ void point_cloud_interactable::reset_region_growing_seeds() {
 	region_id_and_nmls.clear();
 	std::queue<int> empty_indexqueue;
 	std::queue<vec3> empty_nmlqueue;
-	region_id_and_seeds.resize(pc.max_num_of_selections, empty_indexqueue);
-	region_id_and_nmls.resize(pc.max_num_of_selections, empty_nmlqueue);
+	region_id_and_seeds.resize(pc.num_of_face_selections_rendered, empty_indexqueue);
+	region_id_and_nmls.resize(pc.num_of_face_selections_rendered, empty_nmlqueue);
 }
 /// push to queue operation, as an init to RG 
 void point_cloud_interactable::init_region_growing_by_collecting_group_and_seeds_vr(cgv::type::uint8_type current_selecting_idx) {
 	// old version:
-		//for (int gi = pc.num_of_functional_selections; gi< pc.max_num_of_selections; gi++) {
+		//for (int gi = pc.num_of_topo_selections_rendered; gi< pc.num_of_palette_spheres_rendered; gi++) {
 		//	for (int idx = 0; idx < pc.get_nr_points(); idx++) {
-		//		if (pc.point_selection.at(idx) == gi) {
+		//		if (pc.face_id.at(idx) == gi) {
 		//			region_id_and_seeds[gi].push(idx);
 		//		}
 		//	}
@@ -1382,10 +1345,10 @@ void point_cloud_interactable::init_region_growing_by_collecting_group_and_seeds
 	// only region selection are accepted
 	// unsigned int shoud cast to int! -> only when comparing bet. them 
 	for (int pi = 0; pi < pc.get_nr_points(); pi++) {
-		if (pc.point_selection.at(pi) == current_selecting_idx) {
-			region_id_and_seeds[pc.point_selection.at(pi)].emplace(pi);
-			region_id_and_nmls[pc.point_selection.at(pi)].emplace(pc.nml(pi));
-			pc.point_selection_visited[pi] = true;
+		if (pc.face_id.at(pi) == current_selecting_idx) {
+			region_id_and_seeds[pc.face_id.at(pi)].emplace(pi);
+			region_id_and_nmls[pc.face_id.at(pi)].emplace(pc.nml(pi));
+			pc.point_visited[pi] = true;
 		}
 	}
 }
@@ -1395,7 +1358,7 @@ void point_cloud_interactable::init_region_growing_by_setting_group_and_seeds(in
 	////region_id_and_seeds.insert(std::make_pair(growing_group, picked_id_list));
 	//// use the first seed's normal for test 
 	//region_id_and_nml[growing_group] = pc.nml(picked_id_list.front());
-	//pc.has_selection = true;
+	//pc.has_face_selection = true;
 }
 /// perform region grow in timer event 
 void point_cloud_interactable::do_region_growing_timer_event(double t, double dt) {
@@ -1404,7 +1367,7 @@ void point_cloud_interactable::do_region_growing_timer_event(double t, double dt
 	//	bool can_not_sleep = false;
 	//	while (i < steps_per_event_as_speed) {
 	//		// grow marked regions, not functional ones 
-	//		for (int gi = pc.num_of_functional_selections; gi < pc.max_num_of_selections; gi++)
+	//		for (int gi = pc.num_of_topo_selections_rendered; gi < pc.num_of_palette_spheres_rendered; gi++)
 	//			can_not_sleep = can_not_sleep || grow_one_step_bfs(true, gi);
 	//		//post_redraw();
 	//		// check if can sleep: all grow_xxx return false, todo 
@@ -1435,19 +1398,19 @@ bool point_cloud_interactable::grow_one_step_bfs(bool check_nml, int which_group
 			tree_ds->find_closest_points(pc.pnt(to_be_visit), 8, knn);// 3 * 8 + 2 = 26
 			for (auto k : knn) {
 				// ignore visited 
-				if (pc.point_selection_visited.at(k))
+				if (pc.point_visited.at(k))
 					continue;
 				// ignore deleted 
-				if (pc.point_selection.at(k) == point_cloud::PointSelectiveAttribute::DEL)
+				if (pc.topo_id.at(k) == point_cloud::TOPOAttribute::DEL) // topo_id and face_id should work together 
 					continue;
 				// special case: 
 				// make sure grow only on points that have source scan index 
-				if (which_group == (int)point_cloud::PointSelectiveAttribute::ICP_SOURCE_A) {
+				if (which_group == (int)point_cloud::TOPOAttribute::ICP_SOURCE_A) {
 					if (pc.point_scan_index.at(k) != src_scan_idx)
 						continue;
 				}
 				// make sure grow only on points that have target scan index 
-				if (which_group == (int)point_cloud::PointSelectiveAttribute::ICP_TARGET_A) {
+				if (which_group == (int)point_cloud::TOPOAttribute::ICP_TARGET_A) {
 					if (pc.point_scan_index.at(k) != target_scan_idx)
 						continue;
 				}
@@ -1473,8 +1436,8 @@ bool point_cloud_interactable::grow_one_step_bfs(bool check_nml, int which_group
 					// if pass check, update and mark as new seed 
 					if (pass_nml_check) {
 						// update 
-						pc.point_selection.at(k) = (cgv::type::uint8_type)which_group;
-						pc.point_selection_visited.at(k) = true;
+						pc.face_id.at(k) = which_group;
+						pc.point_visited.at(k) = true;
 						// check redudancy 
 						auto& c = get_container(region_id_and_seeds[which_group]);
 						const auto it = std::find(c.cbegin(), c.cend(), k);
@@ -1487,8 +1450,8 @@ bool point_cloud_interactable::grow_one_step_bfs(bool check_nml, int which_group
 				}
 				else {
 					// update 
-					pc.point_selection.at(k) = (cgv::type::uint8_type)which_group;
-					pc.point_selection_visited.at(k) = true;
+					pc.face_id.at(k) = which_group;
+					pc.point_visited.at(k) = true;
 					region_id_and_seeds[which_group].push(k);
 				}
 				//std::cout << "is growing" << std::endl;
@@ -1503,7 +1466,7 @@ bool point_cloud_interactable::grow_one_step_bfs(bool check_nml, int which_group
 }
 /// check if all points growed 
 bool point_cloud_interactable::all_points_growed() {
-	for (auto ps : pc.point_selection) {
+	for (auto ps : pc.face_id) {
 		if (ps == 0)
 			return false;
 	}
@@ -1529,7 +1492,7 @@ void point_cloud_interactable::grow_one_step_bfs_ensure() {
 	//		// reset num_of_real_knn
 	//		num_of_real_knn = 0;
 	//		for (auto k : knn) {
-	//			if (!pc.point_selection_visited.at(k)) {
+	//			if (!pc.point_visited.at(k)) {
 	//				num_of_real_knn++;
 	//			}
 	//		}
@@ -1543,8 +1506,8 @@ void point_cloud_interactable::grow_one_step_bfs_ensure() {
 	//			// compare nml
 	//			// compare curvature
 	//			// update 
-	//			pc.point_selection.at(k) = 1;
-	//			pc.point_selection_visited.at(k) = true;
+	//			pc.face_id.at(k) = 1;
+	//			pc.point_visited.at(k) = true;
 	//			seeds.push(k);
 	//			//std::cout << "is growing" << std::endl;
 	//		}
@@ -1555,62 +1518,56 @@ void point_cloud_interactable::grow_one_step_bfs_ensure() {
 /// for now, we only set confirmed to true 
 void point_cloud_interactable::mark_points_inside_selection_tool(Pnt p, float r, bool confirmed, int objctive)
 {
-	if (pc.get_nr_points()) {
-		ensure_tree_ds();
-		float closest_dist = tree_ds->find_closest_and_its_dist(p);
-		//std::cout << "closest_dist = "<< closest_dist << std::endl;
-		// restore the color marked visually, this is better to be done with gpu
-		if (closest_dist > r) {
-			if (marked == true){
-				for (Idx i = 0; i < (Idx)pc.get_nr_points(); ++i) {
-					if (pc.point_selection.at(i) == point_cloud::PointSelectiveAttribute::VISUAL_MARK)
-						pc.point_selection.at(i) = point_cloud::PointSelectiveAttribute::ORI;
-				}
-				marked = false;
-			}
-		}
-		else {
-			//std::cout << "some points inside the sphere!" << std::endl;
-			Box pc_bbox = pc.box();
-			float vol_pc = pc_bbox.get_extent().x() * pc_bbox.get_extent().y() * pc_bbox.get_extent().z();
-			int max_points_estimated = pc.get_nr_points() *pow((2 * r),3) / vol_pc;
-			std::vector<int> knn;
-			std::vector<float> dist_list;
-			tree_ds->find_closest_points(p, max_points_estimated, knn, dist_list);
-			// if the last point is in outside of the ball on hand, 
-			// all wanted points are included
-			if (dist_list.at(dist_list.size() - 1) > r) {
-				// start at minimal dist 
-				for (int i = 0; i < knn.size(); i++) {
-					// check if is smaller than r 
-					if (dist_list.at(i) < r) {
-						if(confirmed)
-							pc.point_selection.at(knn.at(i)) = objctive;
-						else {
-							pc.point_selection.at(knn.at(i)) = point_cloud::PointSelectiveAttribute::VISUAL_MARK;
-							marked = true;
-						}
-						pc.has_selection = true;
-					}
-				}
-			}
-			else {
-				// too few points are estimated, iter the entire cloud 
-				for (Idx i = 0; i < (Idx)pc.get_nr_points(); ++i) {
-					if ((pc.pnt(i) - p).length() < r) {
-						if (confirmed)
-							pc.point_selection.at(i) = objctive;
-						else {
-							pc.point_selection.at(i) = point_cloud::PointSelectiveAttribute::VISUAL_MARK;
-							marked = true;
-						}
-						pc.has_selection = true;
-					}
-				}
-			}
-			
-		}
-	}
+	//if (pc.get_nr_points()) {
+	//	ensure_tree_ds();
+	//	float closest_dist = tree_ds->find_closest_and_its_dist(p);
+	//	//std::cout << "closest_dist = "<< closest_dist << std::endl;
+	//	// restore the color marked visually, this is better to be done with gpu
+	//	if (closest_dist > r) {
+	//		// do nothing 
+	//	}
+	//	else {
+	//		//std::cout << "some points inside the sphere!" << std::endl;
+	//		Box pc_bbox = pc.box();
+	//		float vol_pc = pc_bbox.get_extent().x() * pc_bbox.get_extent().y() * pc_bbox.get_extent().z();
+	//		int max_points_estimated = pc.get_nr_points() *pow((2 * r),3) / vol_pc;
+	//		std::vector<int> knn;
+	//		std::vector<float> dist_list;
+	//		tree_ds->find_closest_points(p, max_points_estimated, knn, dist_list);
+	//		// if the last point is in outside of the ball on hand, 
+	//		// all wanted points are included
+	//		if (dist_list.at(dist_list.size() - 1) > r) {
+	//			// start at minimal dist 
+	//			for (int i = 0; i < knn.size(); i++) {
+	//				// check if is smaller than r 
+	//				if (dist_list.at(i) < r) {
+	//					if(confirmed)
+	//						pc.face_id.at(knn.at(i)) = objctive;
+	//					else {
+	//						pc.face_id.at(knn.at(i)) = point_cloud::TOPOAttribute::RESERVED;
+	//						marked = true;
+	//					}
+	//					pc.has_face_selection = true;
+	//				}
+	//			}
+	//		}
+	//		else {
+	//			// too few points are estimated, iter the entire cloud 
+	//			for (Idx i = 0; i < (Idx)pc.get_nr_points(); ++i) {
+	//				if ((pc.pnt(i) - p).length() < r) {
+	//					if (confirmed)
+	//						pc.face_id.at(i) = objctive;
+	//					else {
+	//						pc.face_id.at(i) = point_cloud::TOPOAttribute::RESERVED;
+	//						marked = true;
+	//					}
+	//					pc.has_face_selection = true;
+	//				}
+	//			}
+	//		}
+	//		
+	//	}
+	//}
 }
 /// only need to compute once after record the current frame
 bool point_cloud_interactable::assign_pc_and_ensure_source_tree_ds(point_cloud& _pc) {
@@ -1630,52 +1587,52 @@ bool point_cloud_interactable::assign_pc_and_ensure_source_tree_ds(point_cloud& 
 }
 /// make sure that the point cloud has selection
 void point_cloud_interactable::ensure_point_selection_pc() {
-	if (pc.get_nr_points()) {
-		if (!pc.point_selection.size() ||
-			pc.point_selection.size() != pc.get_nr_points())
-		{
-			pc.point_selection.resize(pc.get_nr_points());
-			for (auto& v : pc.point_selection) {
-				v = point_cloud::PointSelectiveAttribute::ORI;
-			}
-		}
-	}
+	//if (pc.get_nr_points()) {
+	//	if (!pc.face_id.size() ||
+	//		pc.face_id.size() != pc.get_nr_points())
+	//	{
+	//		pc.face_id.resize(pc.get_nr_points());
+	//		for (auto& v : pc.face_id) {
+	//			v = point_cloud::TOPOAttribute::ORI;
+	//		}
+	//	}
+	//}
 }
 /// inner function 
 void point_cloud_interactable::ensure_point_selection() {
-	if (pc_last.get_nr_points()) {
-		if (!pc_last.point_selection.size()|| 
-			pc_last.point_selection.size()!= pc_last.get_nr_points()) 
-		{
-			pc_last.point_selection.resize(pc_last.get_nr_points());
-			for (auto& v : pc_last.point_selection) {
-				v = point_cloud::PointSelectiveAttribute::ORI;
-			}
-		}
-	}
-	if (pc_to_be_append.get_nr_points()) {
-		if (!pc_to_be_append.point_selection.size() || 
-			pc_to_be_append.point_selection.size() != pc_to_be_append.get_nr_points()) 
-		{
-			pc_to_be_append.point_selection.resize(pc_to_be_append.get_nr_points());
-			for (auto& v : pc_to_be_append.point_selection) {
-				v = point_cloud::PointSelectiveAttribute::ORI;
-			}
-		}
-	}
+	//if (pc_last.get_nr_points()) {
+	//	if (!pc_last.face_id.size()|| 
+	//		pc_last.face_id.size()!= pc_last.get_nr_points()) 
+	//	{
+	//		pc_last.face_id.resize(pc_last.get_nr_points());
+	//		for (auto& v : pc_last.face_id) {
+	//			v = point_cloud::TOPOAttribute::ORI;
+	//		}
+	//	}
+	//}
+	//if (pc_to_be_append.get_nr_points()) {
+	//	if (!pc_to_be_append.face_id.size() || 
+	//		pc_to_be_append.face_id.size() != pc_to_be_append.get_nr_points()) 
+	//	{
+	//		pc_to_be_append.face_id.resize(pc_to_be_append.get_nr_points());
+	//		for (auto& v : pc_to_be_append.face_id) {
+	//			v = point_cloud::TOPOAttribute::ORI;
+	//		}
+	//	}
+	//}
 }
 /// subsampled_target will be computed acc to p, r information 
 void point_cloud_interactable::subsampling_target(Pnt& p, float& r, bool confirmed) {
 	//if (pc_last.get_nr_points() && tree_ds_target_pc_last_frame) {
 	//	//ensure_tree_ds(); this is only for pc 
-	//	ensure_point_selection();
+	//	ensure_face_id();
 	//	float closest_dist = tree_ds_target_pc_last_frame->find_closest_and_its_dist(p);
 	//	//std::cout << "closest_dist = "<< closest_dist << std::endl;
 	//	if (closest_dist > r) {
 	//		if (marked == true) {
 	//			for (Idx i = 0; i < (Idx)pc_last.get_nr_points(); ++i) {
-	//				if (pc_last.point_selection.at(i) == point_cloud::PointSelectiveAttribute::VISUAL_MARK)
-	//					pc_last.point_selection.at(i) = point_cloud::PointSelectiveAttribute::ORI;
+	//				if (pc_last.face_id.at(i) == point_cloud::TOPOAttribute::RESERVED)
+	//					pc_last.face_id.at(i) = point_cloud::TOPOAttribute::ORI;
 	//			}
 	//			marked = false;
 	//		}
@@ -1696,12 +1653,12 @@ void point_cloud_interactable::subsampling_target(Pnt& p, float& r, bool confirm
 	//				// check if is smaller than r 
 	//				if (dist_list.at(i) < r) {
 	//					if (confirmed)
-	//						pc_last.point_selection.at(knn.at(i)) = point_cloud::PointSelectiveAttribute::ICP_TARGET;
+	//						pc_last.face_id.at(knn.at(i)) = point_cloud::TOPOAttribute::ICP_TARGET;
 	//					else {
-	//						pc_last.point_selection.at(knn.at(i)) = point_cloud::PointSelectiveAttribute::VISUAL_MARK;
+	//						pc_last.face_id.at(knn.at(i)) = point_cloud::TOPOAttribute::RESERVED;
 	//						marked = true;
 	//					}
-	//					pc_last.has_selection = true;
+	//					pc_last.has_face_selection = true;
 	//				}
 	//			}
 	//		}
@@ -1710,12 +1667,12 @@ void point_cloud_interactable::subsampling_target(Pnt& p, float& r, bool confirm
 	//			for (Idx i = 0; i < (Idx)pc_last.get_nr_points(); ++i) {
 	//				if ((pc_last.pnt(i) - p).length() < r) {
 	//					if (confirmed)
-	//						pc_last.point_selection.at(i) = point_cloud::PointSelectiveAttribute::ICP_TARGET;
+	//						pc_last.face_id.at(i) = point_cloud::TOPOAttribute::ICP_TARGET;
 	//					else {
-	//						pc_last.point_selection.at(i) = point_cloud::PointSelectiveAttribute::VISUAL_MARK;
+	//						pc_last.face_id.at(i) = point_cloud::TOPOAttribute::RESERVED;
 	//						marked = true;
 	//					}
-	//					pc_last.has_selection = true;
+	//					pc_last.has_face_selection = true;
 	//				}
 	//			}
 	//		}
@@ -1728,14 +1685,14 @@ void point_cloud_interactable::subsampling_source(Pnt& p, float& r, bool confirm
 	////subsampled_source, pc changed, treeds changed, obj changed 
 	//if (pc_to_be_append.get_nr_points() && tree_ds_source_pc) {
 	//	//ensure_tree_ds(); this is only for pc 
-	//	ensure_point_selection();
+	//	ensure_face_id();
 	//	float closest_dist = tree_ds_source_pc->find_closest_and_its_dist(p);
 	//	//std::cout << "closest_dist = "<< closest_dist << std::endl;
 	//	if (closest_dist > r) {
 	//		if (marked == true) {
 	//			for (Idx i = 0; i < (Idx)pc_to_be_append.get_nr_points(); ++i) {
-	//				if (pc_to_be_append.point_selection.at(i) == point_cloud::PointSelectiveAttribute::VISUAL_MARK)
-	//					pc_to_be_append.point_selection.at(i) = point_cloud::PointSelectiveAttribute::ORI;
+	//				if (pc_to_be_append.face_id.at(i) == point_cloud::TOPOAttribute::RESERVED)
+	//					pc_to_be_append.face_id.at(i) = point_cloud::TOPOAttribute::ORI;
 	//			}
 	//			marked = false;
 	//		}
@@ -1756,12 +1713,12 @@ void point_cloud_interactable::subsampling_source(Pnt& p, float& r, bool confirm
 	//				// check if is smaller than r 
 	//				if (dist_list.at(i) < r) {
 	//					if (confirmed)
-	//						pc_to_be_append.point_selection.at(knn.at(i)) = point_cloud::PointSelectiveAttribute::ICP_SOURCE;
+	//						pc_to_be_append.face_id.at(knn.at(i)) = point_cloud::TOPOAttribute::ICP_SOURCE;
 	//					else {
-	//						pc_to_be_append.point_selection.at(knn.at(i)) = point_cloud::PointSelectiveAttribute::VISUAL_MARK;
+	//						pc_to_be_append.face_id.at(knn.at(i)) = point_cloud::TOPOAttribute::RESERVED;
 	//						marked = true;
 	//					}
-	//					pc_to_be_append.has_selection = true;
+	//					pc_to_be_append.has_face_selection = true;
 	//				}
 	//			}
 	//		}
@@ -1770,12 +1727,12 @@ void point_cloud_interactable::subsampling_source(Pnt& p, float& r, bool confirm
 	//			for (Idx i = 0; i < (Idx)pc_to_be_append.get_nr_points(); ++i) {
 	//				if ((pc_to_be_append.pnt(i) - p).length() < r) {
 	//					if (confirmed)
-	//						pc_to_be_append.point_selection.at(i) = point_cloud::PointSelectiveAttribute::ICP_SOURCE;
+	//						pc_to_be_append.face_id.at(i) = point_cloud::TOPOAttribute::ICP_SOURCE;
 	//					else {
-	//						pc_to_be_append.point_selection.at(i) = point_cloud::PointSelectiveAttribute::VISUAL_MARK;
+	//						pc_to_be_append.face_id.at(i) = point_cloud::TOPOAttribute::RESERVED;
 	//						marked = true;
 	//					}
-	//					pc_to_be_append.has_selection = true;
+	//					pc_to_be_append.has_face_selection = true;
 	//				}
 	//			}
 	//		}
@@ -1788,12 +1745,12 @@ void point_cloud_interactable::collect_to_subsampled_pcs() {
 	/*pc_last_subsampled.clear_all();
 	pc_to_be_append_subsampled.clear_all();
 	for (int i = 0; i < pc_last.get_nr_points(); i++) {
-		if (pc_last.point_selection.at(i) == point_cloud::PointSelectiveAttribute::ICP_TARGET) {
+		if (pc_last.face_id.at(i) == point_cloud::TOPOAttribute::ICP_TARGET) {
 			pc_last_subsampled.add_point_subsampling(pc_last.pnt(i), pc_last.nml(i));
 		}
 	}
 	for (int i = 0; i < pc_to_be_append.get_nr_points(); i++) {
-		if (pc_to_be_append.point_selection.at(i) == point_cloud::PointSelectiveAttribute::ICP_SOURCE) {
+		if (pc_to_be_append.face_id.at(i) == point_cloud::TOPOAttribute::ICP_SOURCE) {
 			pc_to_be_append_subsampled.add_point_subsampling(pc_to_be_append.pnt(i), pc_to_be_append.nml(i));
 		}
 	}
@@ -1889,10 +1846,10 @@ void point_cloud_interactable::extract_point_clouds_for_icp_marked_only() {
 	// colloect points, todo: support more features 
 	for (int Idx = 0; Idx < pc.get_nr_points(); Idx++) {
 		if (pc.point_scan_index.at(Idx) == src_scan_idx)
-			if(pc.point_selection.at(Idx) == point_cloud::PointSelectiveAttribute::ICP_SOURCE_A)
+			if(pc.topo_id.at(Idx) == point_cloud::TOPOAttribute::ICP_SOURCE_A)
 				pc_src.add_point(pc.pnt(Idx), pc.clr(Idx), pc.nml(Idx));
 		if (pc.point_scan_index.at(Idx) == target_scan_idx)
-			if (pc.point_selection.at(Idx) == point_cloud::PointSelectiveAttribute::ICP_TARGET_A)
+			if (pc.topo_id.at(Idx) == point_cloud::TOPOAttribute::ICP_TARGET_A)
 				pc_target.add_point(pc.pnt(Idx), pc.clr(Idx), pc.nml(Idx));
 	}
 	pc_src.box_out_of_date = true;
@@ -2017,26 +1974,26 @@ void point_cloud_interactable::highlight_last_pc() {
 	//if (num_of_pcs > 0) {
 	//	tmppc = pc;
 	//	pc = pc_last;
-	//	ensure_point_selection();
-	//	for (auto& v : pc_last.point_selection) {
-	//		v = point_cloud::PointSelectiveAttribute::ICP_TARGET_HIGHLIGHT;
+	//	ensure_face_id();
+	//	for (auto& v : pc_last.face_id) {
+	//		v = point_cloud::TOPOAttribute::ICP_TARGET_HIGHLIGHT;
 	//	}
-	//	use_these_point_color_indices = &pc_last.point_selection;
+	//	use_these_point_color_indices = &pc_last.face_id;
 	//	is_highlighting = true;
 	//}
-	//for (auto& v : pc_to_be_append.point_selection) {
-	//	v = point_cloud::PointSelectiveAttribute::ICP_SOURCE_HIGHLIGHT;
+	//for (auto& v : pc_to_be_append.face_id) {
+	//	v = point_cloud::TOPOAttribute::ICP_SOURCE_HIGHLIGHT;
 	//}
 }
 ///
 void point_cloud_interactable::reset_highlighted_last_pc() {
-	pc = tmppc;
-	ensure_point_selection_pc();
-	for (auto& v : pc_last.point_selection) {
-		v = point_cloud::PointSelectiveAttribute::ORI;
-	}
-	use_these_point_color_indices = &pc.point_selection;
-	is_highlighting = false;
+	//pc = tmppc;
+	//ensure_point_selection_pc();
+	//for (auto& v : pc_last.face_id) {
+	//	v = point_cloud::TOPOAttribute::ORI;
+	//}
+	//use_these_point_color_indices = &pc.face_id;
+	//is_highlighting = false;
 }
 /// quick test 
 void point_cloud_interactable::fill_subsampled_pcs_with_cur_pc_as_a_test() {
@@ -2813,6 +2770,18 @@ void point_cloud_interactable::on_point_cloud_change_callback(PointCloudChangeEv
 			compute_normals();
 			orient_normals();
 		}
+		// create per-point face id  if not present 
+		if (pc.face_id.size() == 0 || reading_from_raw_scan) {
+			pc.face_id.resize(pc.get_nr_points());
+			for (auto& fi : pc.face_id) fi = 0; // 0 means non-selected faces 
+			pc.has_face_selection = true;
+		}
+		// create per-point topo id if not present 
+		if (pc.topo_id.size() == 0 || reading_from_raw_scan) {
+			pc.topo_id.resize(pc.get_nr_points());
+			for (auto& ti : pc.topo_id) ti = 0; // 0 means non-topological information present 
+			pc.has_topo_selection = true; // not used actually? 
+		}
 		// create per-point scan index if not present, 0 by default 
 		// the first is for one scan, later for raw scans 
 		// mainly used for point appending 
@@ -2823,12 +2792,6 @@ void point_cloud_interactable::on_point_cloud_change_callback(PointCloudChangeEv
 				pc.point_scan_index.at(Idx) = pc.currentScanIdx_Recon;
 			}
 			pc.has_scan_index = true;
-		}
-		// create per-point selection if not present 
-		if (pc.point_selection.size() == 0 || reading_from_raw_scan) {
-			pc.point_selection.resize(pc.get_nr_points());
-			for (auto& psi : pc.point_selection) psi = 1;
-			pc.has_selection = true;
 		}
 		reading_from_raw_scan = false;
 		// prepare scan indices visibility, create if not present 

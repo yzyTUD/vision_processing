@@ -161,14 +161,14 @@ void visual_processing::parallel_timer_event() {
 				// part of the functional regions will be growed 
 				data_ptr->point_cloud_kit->grow_one_step_bfs(
 					data_ptr->point_cloud_kit->region_grow_check_normals, 
-						point_cloud::PointSelectiveAttribute::ICP_SOURCE_A);
+						point_cloud::TOPOAttribute::ICP_SOURCE_A);
 
 				data_ptr->point_cloud_kit->grow_one_step_bfs(
 					data_ptr->point_cloud_kit->region_grow_check_normals,
-						point_cloud::PointSelectiveAttribute::ICP_TARGET_A);
+						point_cloud::TOPOAttribute::ICP_TARGET_A);
 				// grow non-functional regions 
-				for (int gi = data_ptr->point_cloud_kit->pc.num_of_functional_selections;
-					gi < data_ptr->point_cloud_kit->pc.max_num_of_selections; gi++)
+				for (int gi = data_ptr->point_cloud_kit->pc.num_of_topo_selections_rendered;
+					gi < data_ptr->point_cloud_kit->pc.num_of_palette_spheres_rendered; gi++)
 				{
 					data_ptr->point_cloud_kit->grow_one_step_bfs(
 						data_ptr->point_cloud_kit->region_grow_check_normals, gi);
@@ -433,14 +433,14 @@ bool visual_processing::handle(cgv::gui::event& e)
 						data_ptr->point_cloud_kit->mark_points_with_conroller( 
 							data_ptr->cur_right_hand_posi + data_ptr->cur_off_right,
 							data_ptr->point_cloud_kit->controller_effect_range, 
-							point_cloud::PointSelectiveAttribute::ICP_SOURCE_A
+							point_cloud::TOPOAttribute::ICP_SOURCE_A
 						);
 					}
 					if (data_ptr->check_roulette_selection(data_ptr->get_id_with_name("VRICP\nRenderTargetOnly"))) {
 						data_ptr->point_cloud_kit->mark_points_with_conroller(
 							data_ptr->cur_right_hand_posi + data_ptr->cur_off_right,
 							data_ptr->point_cloud_kit->controller_effect_range,
-							point_cloud::PointSelectiveAttribute::ICP_TARGET_A
+							point_cloud::TOPOAttribute::ICP_TARGET_A
 						);
 					}
 				}
@@ -590,11 +590,11 @@ bool visual_processing::handle(cgv::gui::event& e)
 				}
 				if (data_ptr->check_roulette_selection(data_ptr->get_id_with_name("PointCloud\nDelPoints\nTouchTo\nActivate"))) {
 					// this will be used in the throttle event 
-					selection_kit->current_selecting_idx = point_cloud::PointSelectiveAttribute::DEL;
+					selection_kit->current_selecting_idx = point_cloud::TOPOAttribute::DEL;
 				}
 				if (data_ptr->check_roulette_selection(data_ptr->get_id_with_name("PointCloud\nMarkAs\nOrig"))) {
 					// this will be used in the throttle event 
-					selection_kit->current_selecting_idx = point_cloud::PointSelectiveAttribute::ORI;
+					selection_kit->current_selecting_idx = point_cloud::TOPOAttribute::ORI;
 				}
 				if (data_ptr->check_roulette_selection(data_ptr->get_id_with_name("PointCloud\nToggle\npcColor"))) {
 					data_ptr->point_cloud_kit->render_with_original_color = !data_ptr->point_cloud_kit->render_with_original_color;
@@ -967,13 +967,13 @@ void visual_processing::apply_further_transformation() {
 /*pc reading and data_ptr->point_cloud_kit processing tool */
 ///  read the whole pc to data_ptr->point_cloud_kit
 void visual_processing::read_pc() {
-	// the original pc will be automatically stored 
-	data_ptr->point_cloud_kit->read_pc_with_dialog(false);
-	data_ptr->point_cloud_kit->on_rendering_settings_changed();
-	data_ptr->point_cloud_kit->prepare_grow(true,
-		&data_ptr->point_selection_colors,
-		data_ptr->point_cloud_kit->pc.max_num_of_selections);
-	post_redraw();
+	if (data_ptr != nullptr) {
+		// the original pc will be automatically stored 
+		data_ptr->point_cloud_kit->read_pc_with_dialog(false);
+		data_ptr->point_cloud_kit->on_rendering_settings_changed();
+		data_ptr->point_cloud_kit->prepare_grow(true); // reading from file, set parameter to true 
+		post_redraw();
+	}
 }
 ///  read the whole pc to data_ptr->point_cloud_kit
 void visual_processing::read_pc_parallel() {
@@ -988,9 +988,7 @@ void visual_processing::read_pc_parallel() {
 		return;
 	}
 	data_ptr->point_cloud_kit->on_rendering_settings_changed();
-	data_ptr->point_cloud_kit->prepare_grow(true,
-		&data_ptr->point_selection_colors,
-		data_ptr->point_cloud_kit->pc.max_num_of_selections);
+	data_ptr->point_cloud_kit->prepare_grow(true); //  reading from file, do not overwrite point face selection  
 	data_ptr->point_cloud_kit->can_parallel_grow = true;
 	std::cout << "reading done" << std::endl;
 }
@@ -1181,16 +1179,16 @@ void visual_processing::switch_rendering_mode_clod_based() {
 ///
 void visual_processing::mark_all_points_as_tobedownsampled() {
 	data_ptr->point_cloud_kit->marking_test_mark_all_points_as_given_group(
-		(int)point_cloud::PointSelectiveAttribute::TO_BE_SUBSAMPLED);
+		(int)point_cloud::TOPOAttribute::TO_BE_SUBSAMPLED);
 }
 ///
 void visual_processing::mark_all_active_points_as_tobedownsampled() {
 	data_ptr->point_cloud_kit->new_history_recording();
 	//
 	for (int i = 0; i < data_ptr->point_cloud_kit->pc.get_nr_points(); i++) {
-		if (data_ptr->point_cloud_kit->pc.point_selection[i] != point_cloud::PointSelectiveAttribute::DEL)
-			data_ptr->point_cloud_kit->pc.point_selection[i] = 
-				point_cloud::PointSelectiveAttribute::TO_BE_SUBSAMPLED;
+		if (data_ptr->point_cloud_kit->pc.face_id[i] != point_cloud::TOPOAttribute::DEL)
+			data_ptr->point_cloud_kit->pc.face_id[i] = 
+				point_cloud::TOPOAttribute::TO_BE_SUBSAMPLED;
 	}
 }
 /*quick test and then, integrate*/
@@ -1199,7 +1197,7 @@ void visual_processing::del_clipping_btn_press() {
 	data_ptr->point_cloud_kit->mark_points_with_clipping_plane(
 		data_ptr->cur_right_hand_posi,
 		data_ptr->normal_clipping_plane_RHand,
-		point_cloud::PointSelectiveAttribute::DEL
+		point_cloud::TOPOAttribute::DEL
 	);
 	// do not have to upload to gpu since we must use the surfel renderer for now 
 	// it will continuesly update 
@@ -1212,7 +1210,7 @@ void visual_processing::del_menu_btn_press() {
 	// marking on cpu side, mark as deleted 
 	data_ptr->point_cloud_kit->mark_points_with_conroller(
 		data_ptr->cur_right_hand_posi + data_ptr->cur_off_right,
-		data_ptr->point_cloud_kit->controller_effect_range, point_cloud::PointSelectiveAttribute::DEL);
+		data_ptr->point_cloud_kit->controller_effect_range, point_cloud::TOPOAttribute::DEL);
 }
 ///
 void visual_processing::del_menu_btn_release() {
@@ -1226,13 +1224,13 @@ void visual_processing::selective_downsampling_menu_btn_press() {
 	data_ptr->point_cloud_kit->mark_points_with_conroller(
 		data_ptr->cur_right_hand_posi + data_ptr->cur_off_right,
 			data_ptr->point_cloud_kit->controller_effect_range, 
-				point_cloud::PointSelectiveAttribute::TO_BE_SUBSAMPLED);
+				point_cloud::TOPOAttribute::TO_BE_SUBSAMPLED);
 	// TO_BE_SUBSAMPLED -> DEL
 	data_ptr->point_cloud_kit->selective_subsampling_cpu();
 	// reset unused marks (some time needs)
 	// do not keep them as TO_BE_SUBSAMPLED, unwanted effect 
 	data_ptr->point_cloud_kit->reset_last_marking_non_processed_part(
-		point_cloud::PointSelectiveAttribute::TO_BE_SUBSAMPLED);
+		point_cloud::TOPOAttribute::TO_BE_SUBSAMPLED);
 }
 ///
 void visual_processing::selective_downsampling_menu_btn_release() {
@@ -1370,7 +1368,24 @@ void visual_processing::create_gui() {
 	connect_copy(add_button("save")->click,rebind(this, &visual_processing::start_writting_pc_parallel));
 	add_member_control(this, "Ignore Deleted Points", data_ptr->point_cloud_kit->pc.ignore_deleted_points, "check");
 	connect_copy(add_button("clean_all_pcs")->click, rebind(this, &visual_processing::clean_all_pcs));
-	
+
+	//
+	if (begin_tree_node("Region Growing Revisit", data_ptr->point_cloud_kit->show_nmls, true, "level=3")) {
+		connect_copy(add_button("convert_to_int_face_selection_representation")->click,
+			rebind(this, &visual_processing::convert_to_int_face_selection_representation));
+	}
+
+	// 
+	if (begin_tree_node("Model Fitting (Connectivity )", data_ptr->point_cloud_kit->show_nmls, true, "level=3")) {
+		connect_copy(add_button("fitting_render_control_points_test")->click,
+			rebind(this, &visual_processing::fitting_render_control_points_test));
+		connect_copy(add_button("build_connectivity_graph_fitting_and_render_control_points")->click,
+			rebind(this, &visual_processing::build_connectivity_graph_fitting_and_render_control_points));
+		connect_copy(add_button("read_cgvcad")->click,
+			rebind(this, &visual_processing::read_cgvcad_with_dialog));
+	}
+
+	//
 	if (begin_tree_node("Point Scale", data_ptr->point_cloud_kit->show_nmls, true, "level=3")) {
 		connect_copy(add_button("scale_points_to_disk")->click,
 			rebind(this, &visual_processing::scale_points_to_desk));
@@ -1412,17 +1427,6 @@ void visual_processing::create_gui() {
 
 
 		//
-	}
-
-	
-	// 
-	if (begin_tree_node("Model Fitting", data_ptr->point_cloud_kit->show_nmls, true, "level=3")) {
-		connect_copy(add_button("fitting_render_control_points_test")->click, 
-			rebind(this, &visual_processing::fitting_render_control_points_test));
-		connect_copy(add_button("build_connectivity_graph_fitting_and_render_control_points")->click, 
-				rebind(this, &visual_processing::build_connectivity_graph_fitting_and_render_control_points));
-		connect_copy(add_button("read_cgvcad")->click,
-			rebind(this, &visual_processing::read_cgvcad_with_dialog));
 	}
 
 	//
