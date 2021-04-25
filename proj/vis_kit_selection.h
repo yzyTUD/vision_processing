@@ -75,7 +75,9 @@ private:
 
 public:
 	/*public accessble varibles */
-	int current_selecting_idx = -1;
+	int curr_topo_selecting_id = -1; // active selection id = 0
+	int curr_face_selecting_id = -1; // active selection id = 1
+	int curr_active_selection = -1;
 	/// initialize rotation angle
 	vis_kit_selection()
 	{
@@ -317,50 +319,61 @@ public:
 					}
 				}
 				//if (data_ptr->check_roulette_selection(data_ptr->get_id_with_name("PointCloud\nMarking"))) { // hold throttle to mark
-				//	if (v > 0 && current_selecting_idx!=-1) {
-				//		data_ptr->point_cloud_kit->mark_points_with_conroller(
+				//	if (v > 0 && curr_face_selecting_id!=-1) {
+				//		data_ptr->point_cloud_kit->mark_face_id_with_controller(
 				//			data_ptr->cur_right_hand_posi + data_ptr->cur_off_right,
-				//				marking_style.radius, true, current_selecting_idx);
+				//				marking_style.radius, true, curr_face_selecting_id);
 				//	}
 				//}
 				if (data_ptr->check_roulette_selection(data_ptr->get_id_with_name("RegionGrowing\nGroupPicker"))) { // hold throttle to mark
-					if (v > 0 && current_selecting_idx != -1) {
-						if (data_ptr->point_cloud_kit->can_parallel_grow == true) { 
-							data_ptr->point_cloud_kit->can_parallel_grow = false;
-							data_ptr->point_cloud_kit->mark_points_with_conroller(
-								data_ptr->cur_right_hand_posi + data_ptr->cur_off_right,
-									marking_style.radius, 
-										(cgv::type::uint8_type)current_selecting_idx);
-							if (data_ptr->point_cloud_kit->add_to_seed) {
-								// collect seeds
-								data_ptr->point_cloud_kit->init_region_growing_by_collecting_group_and_seeds_vr(
-									(cgv::type::uint8_type)current_selecting_idx);
-								// then, grow on timer event, sleep optionally 
+					if (v > 0) {
+						// topo selection with controller, it is on upper side in rendering
+						if (curr_active_selection == 0 && curr_topo_selecting_id != -1) {
+							if (data_ptr->point_cloud_kit->can_parallel_grow == true) {
+								data_ptr->point_cloud_kit->can_parallel_grow = false;
+								vec3 right_hand_ball_posi = data_ptr->cur_right_hand_posi + data_ptr->cur_off_right;
+								data_ptr->point_cloud_kit->mark_topo_id_with_controller(
+									right_hand_ball_posi, marking_style.radius, curr_topo_selecting_id);
+								// does not support grow on topo regions visually 
+								data_ptr->point_cloud_kit->can_parallel_grow = true;
 							}
-							data_ptr->point_cloud_kit->can_parallel_grow = true;
+						}
+						
+						// face selection with controller, on lower side  
+						if (curr_active_selection == 1 && curr_face_selecting_id != -1) { 
+							if (data_ptr->point_cloud_kit->can_parallel_grow == true) { 
+								data_ptr->point_cloud_kit->can_parallel_grow = false;
+								vec3 right_hand_ball_posi = data_ptr->cur_right_hand_posi + data_ptr->cur_off_right;
+								data_ptr->point_cloud_kit->mark_face_id_with_controller(
+									right_hand_ball_posi, marking_style.radius, curr_face_selecting_id);
+								if (data_ptr->point_cloud_kit->add_to_seed) {
+									// collect seeds
+									// then, grow on a separate thread, sleep optionally 
+									data_ptr->point_cloud_kit->init_region_growing_by_collecting_group_and_seeds_vr(curr_face_selecting_id);
+								}
+								data_ptr->point_cloud_kit->can_parallel_grow = true;
+							}
 						}
 					}
 				}
 				if (data_ptr->check_roulette_selection(data_ptr->get_id_with_name("PointCloud\nDelPoints\nTouchTo\nActivate"))) { // hold throttle to mark
-					if (v > 0 && current_selecting_idx != -1) {
+					if (v > 0 && curr_face_selecting_id != -1) {
 						if (data_ptr->point_cloud_kit->can_parallel_grow == true) {
 							data_ptr->point_cloud_kit->can_parallel_grow = false;
-							data_ptr->point_cloud_kit->mark_points_with_conroller(
+							data_ptr->point_cloud_kit->mark_face_id_with_controller(
 								data_ptr->cur_right_hand_posi + data_ptr->cur_off_right,
-									marking_style.radius,
-										(cgv::type::uint8_type)current_selecting_idx);
+									marking_style.radius,curr_face_selecting_id);
 							data_ptr->point_cloud_kit->can_parallel_grow = true;
 						}
 					}
 				}
 				if (data_ptr->check_roulette_selection(data_ptr->get_id_with_name("PointCloud\nMarkAs\nOrig"))) { // hold throttle to mark
-					if (v > 0 && current_selecting_idx != -1) {
+					if (v > 0 && curr_face_selecting_id != -1) {
 						if (data_ptr->point_cloud_kit->can_parallel_grow == true) {
 							data_ptr->point_cloud_kit->can_parallel_grow = false;
-							data_ptr->point_cloud_kit->mark_points_with_conroller(
+							data_ptr->point_cloud_kit->mark_face_id_with_controller(
 								data_ptr->cur_right_hand_posi + data_ptr->cur_off_right,
-									marking_style.radius, 
-										(cgv::type::uint8_type)current_selecting_idx);
+									marking_style.radius, curr_face_selecting_id);
 							data_ptr->point_cloud_kit->can_parallel_grow = true;
 						}
 					}
@@ -511,13 +524,17 @@ public:
 						data_ptr->palette_righthand_object_colors[0] = 
 							data_ptr->palette_lefthand_object_colors[smallestpalleteIdx];
 						// ok-todo: update picking group information 
-						// current, we can only select regions, build on top of functional indices 
-						if (smallestpalleteIdx < 10)
-							current_selecting_idx = smallestpalleteIdx; //data_ptr->point_cloud_kit->pc.num_of_topo_selections_rendered
-						else 
-							current_selecting_idx = smallestpalleteIdx + 10; // 10 is the remining selctions in fucntional 
-
-						std::cout << "current selecting index = " << current_selecting_idx << std::endl;
+						// but topo_id = id + 1, face_id = id - 9 (make sure starting from 1, 0 is reserved )
+						if (smallestpalleteIdx < 10) {
+							curr_topo_selecting_id = smallestpalleteIdx + 1; // make sure starting from 1
+							curr_active_selection = 0; // we have just updated topo selection, make it active 
+						}
+						else {
+							curr_face_selecting_id = smallestpalleteIdx - 9; // make sure starting from 1
+							curr_active_selection = 1; // make it active 
+						}
+						//std::cout << "current face selecting index = " << curr_face_selecting_id << std::endl;
+						//std::cout << "current topo selecting index = " << curr_topo_selecting_id << std::endl;
 					}
 
 					data_ptr->point_cloud_kit->headset_direction = data_ptr->headset_direction;
@@ -632,11 +649,11 @@ public:
 		if (data_ptr->check_roulette_selection(data_ptr->get_id_with_name("PointCloud\nMarkAs\nOrig"))) {
 			render_a_sphere_on_righthand(ctx);
 			//data_ptr->righthand_object_colors[0] = rgb(1,0,0,1);
-			data_ptr->righthand_object_colors[0] = data_ptr->face_id_to_color[1];
+			data_ptr->righthand_object_colors[0] = data_ptr->FACE_ID_COLOR_MAPPING[1];
 		}
 		if (data_ptr->check_roulette_selection(data_ptr->get_id_with_name("PointCloud\nDelPoints\nTouchTo\nActivate"))) {
 			render_a_sphere_on_righthand(ctx);
-			data_ptr->righthand_object_colors[0] = data_ptr->face_id_to_color[2];
+			data_ptr->righthand_object_colors[0] = data_ptr->FACE_ID_COLOR_MAPPING[2];
 		}
 		if (data_ptr->check_roulette_selection(data_ptr->get_id_with_name("RegionGrowing\nGroupPicker"))) {
 			render_palette_on_left_hand(ctx);

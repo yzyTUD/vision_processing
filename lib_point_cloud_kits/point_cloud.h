@@ -230,10 +230,10 @@ public:
 		ORI = 1,
 		DEL = 2,
 		BOUNDARIES = 3,
-		CORNER = 4,
+		CORNER = 4, // this is the extracted info, original face id should also be kept 
 		ICP_SOURCE_A = 5,
 		ICP_TARGET_A = 6,
-		TO_BE_SUBSAMPLED,
+		TO_BE_SUBSAMPLED, // before split: you will lose face id by marking this 
 		NEWLY_GENERATED,
 		//...
 		EndOfFunctionalIndices // region id start from the end of this struct 
@@ -472,12 +472,16 @@ protected:
 	bool read_pts(const std::string& file_name);
 	///
 	bool read_txt(const std::string& file_name);
+	///
+	bool read_pwitha(const std::string& file_name);
 
 	/*high lev modeling support */
 	///
 	bool read_cgvscan(const std::string& file_name);
 	///
 	bool write_cgvscan(const std::string& file_name);
+	///
+	bool write_pwitha(const std::string& file_name);
 
 	bool read_txt_dev(const std::string& file_name);
 	/// write ascii format, see read_ascii for format description
@@ -487,7 +491,7 @@ protected:
 	/// write obj format, see read_obj for format description
 	bool write_obj(const std::string& file_name) const;
 	///
-	bool write_cgvmodel(const std::string& file_name) const;
+	bool write_cgvmodel(const std::string& file_name);
 	/// write ply format, see read_ply for format description
 	bool write_ply(const std::string& file_name) const;
 	///

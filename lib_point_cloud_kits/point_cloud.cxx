@@ -1311,6 +1311,8 @@ bool point_cloud::read(const string& _file_name)
 		success = read_cgvmodel(_file_name);
 	if (ext == "cgvscan")
 		success = read_cgvscan(_file_name);
+	if (ext == "pwitha")
+		success = read_pwitha(_file_name);
 	if (ext == "cgvcgvconnectivity")
 		success = read_cgvcgvconnectivity(_file_name);
 	if (ext == "cgvfitting")
@@ -1485,6 +1487,8 @@ bool point_cloud::write(const string& _file_name)
 		return write_cgvmodel(_file_name);
 	if (ext == "cgvscan")
 		return write_cgvscan(_file_name);
+	if (ext == "pwitha")
+		return write_pwitha(_file_name);
 	cerr << "unknown extension <." << ext << ">." << endl;
 	return false;
 }
@@ -1975,6 +1979,100 @@ bool point_cloud::read_txt(const std::string& file_name)
 	return true;
 }
 
+/// point with attribute 
+bool point_cloud::read_pwitha(const std::string& file_name) {
+	string content;
+	cgv::utils::stopwatch watch;
+	if (!cgv::utils::file::read(file_name, content, true))
+		return false;
+	std::cout << "read data from disk ";
+	watch.add_time();
+	vector<line> lines;
+	split_to_lines(content, lines);
+	std::cout << "split data into " << lines.size() << " lines. ";
+	watch.add_time();
+
+	for (int i = 0; i < lines.size(); ++i) {
+		// ignore empty lines 
+		if (lines[i].empty())
+			continue;
+		// preprocessing, split into values 
+		vector<token> tokens;
+		tokenizer(lines[i]).bite_all(tokens);
+		// format: 
+		// x y z nx ny nz r g b scan_index  + selection_index i j (point_index)
+		if (tokens[0][0] == 'v') {
+			const int double_value_wanted_per_line_exact = 20; // 20 reserved, more than we have, not too much at the same time , mem 
+			double values[double_value_wanted_per_line_exact];
+			unsigned n = min(double_value_wanted_per_line_exact, (int)(tokens.size() - 1));
+			unsigned j;
+			for (j = 0; j < n; ++j) {
+				if (!is_double(tokens[j + 1].begin, tokens[j + 1].end, values[j]))
+					continue;
+			}
+			// start matching 
+			// x y z nx ny nz r g b scan_index  + selection_index i j (point_index)
+			if (j >= 3)
+				P.push_back(Pnt((Crd)values[0], (Crd)values[1], (Crd)values[2]));
+			if (j >= 6) {
+				N.push_back(Nml((Crd)values[3], (Crd)values[4], (Crd)values[5]));
+				has_nmls = true;
+			}
+			if (j >= 9) {
+				C.push_back(Clr(
+					float_to_color_component(values[6]),
+					float_to_color_component(values[7]),
+					float_to_color_component(values[8])));
+				has_clrs = true;
+			}
+			if (j >= 10) {
+				int tmp_scan_index = (float)values[9];
+				point_scan_index.push_back(tmp_scan_index);
+				if (tmp_scan_index > num_of_scan_indices)
+					num_of_scan_indices = tmp_scan_index;
+				has_scan_index = true;
+			}
+			//
+			if (j >= 11) {
+				face_id.push_back(values[10]);
+				has_face_selection = true;
+			}
+			if (j >= 12) {
+				topo_id.push_back(values[11]);
+				has_topo_selection = true;
+			}
+		}
+		if (tokens[0][0] == 'c' && tokens[0][1] == 'a' && tokens[0][2] == 'm') {
+			const int double_value_wanted_per_line_exact = 3;
+			double values[double_value_wanted_per_line_exact];
+			unsigned n = min(double_value_wanted_per_line_exact, (int)tokens.size());
+			unsigned j;
+			for (j = 0; j < n; ++j) {
+				if (!is_double(tokens[j + 1].begin, tokens[j + 1].end, values[j])) // the first token is "cam"
+					continue;
+			}
+			// start matching 
+			// x y z nx ny nz r g b scan_index  + selection_index i j (point_index)
+			if (j >= 3)
+				cam_posi_list.push_back(Pnt((Crd)values[0], (Crd)values[1], (Crd)values[2]));
+		}
+
+		// progress bar 
+		if ((P.size() % 100000) == 0)
+			cout << "read " << P.size() << " points" << endl;
+	}
+
+	num_of_scan_indices++; // from index to number 
+
+	std::cout << "points: " << std::endl;
+	std::cout << "has_clrs: " << has_clrs << std::endl;
+	std::cout << "has_nmls: " << has_nmls << std::endl;
+	std::cout << "has_clrs: " << has_clrs << std::endl;
+
+	watch.add_time();
+	return true;
+}
+
 bool point_cloud::read_cgvscan(const std::string& file_name)
 {
 	string content;
@@ -2064,6 +2162,45 @@ bool point_cloud::read_cgvscan(const std::string& file_name)
 	return true;
 }
 
+/// per-point information stored after region growing, topo extraction...
+/// pwitha: point with reconstructed attributes 
+bool point_cloud::write_pwitha(const std::string& file_name) {
+	ofstream os(file_name.c_str());
+	if (os.fail())
+		return false;
+	unsigned int i;
+	/*if (has_cam_posi)
+		os << "cam " << cam_posi << endl;*/
+		// format: 
+		// x y z nx ny nz r g b scan_index  + selection_index i j (point_index)
+		// 
+	if (cam_posi_list.size() > 0)
+		for (auto c : cam_posi_list)
+			os << "cam " << c << std::endl;
+	// iterate all points 
+	// format: p n c scanidx faceid topoid 
+	for (i = 0; i < P.size(); ++i) {
+		// always has positions 
+		os << "v " << P[i][0] << " " << P[i][1] << " " << P[i][2] << " ";
+		if (has_normals());
+		os << N[i][0] << " " << N[i][1] << " " << N[i][2] << " ";
+		if (has_colors())
+			os << color_component_to_float(C[i][0]) << " " << color_component_to_float(C[i][1])
+			<< " " << color_component_to_float(C[i][2]) << " ";
+		if (has_scan_indices())
+			os << point_scan_index.at(i) << " ";
+		//  
+		if (has_face_selections()) // additional attributes 
+			os << face_id.at(i) << " ";
+		if (has_topo_selections())
+			os << topo_id.at(i) << " ";
+		os << std::endl; // end of the line 
+	}
+
+	return !os.fail();
+}
+
+///
 bool point_cloud::write_cgvscan(const std::string& file_name)
 {
 	ofstream os(file_name.c_str());
@@ -2079,8 +2216,10 @@ bool point_cloud::write_cgvscan(const std::string& file_name)
 		for(auto c: cam_posi_list)
 			os << "cam " << c << std::endl;
 	// iterate all points 
+	// format: p n c scanidx faceid topoid 
 	for (i = 0; i < P.size(); ++i) {
-		os << "v " << P[i][0] << " " << P[i][1] << " " << P[i][2] << " ";
+		// always has positions 
+			os << "v " << P[i][0] << " " << P[i][1] << " " << P[i][2] << " ";
 		if (has_normals());
 			os << N[i][0] << " " << N[i][1] << " " << N[i][2] << " ";
 		if (has_colors())
@@ -2088,12 +2227,11 @@ bool point_cloud::write_cgvscan(const std::string& file_name)
 				<< " " << color_component_to_float(C[i][2]) << " ";
 		if (has_scan_indices())
 			os << point_scan_index.at(i) << " ";
-		else
-			std::cout << "do not have scan index..." << std::endl;
-		if (has_face_selections())
+		//  
+		if (has_face_selections()) // additional attributes 
 			os << face_id.at(i) << " ";
-		else
-			std::cout << "do not have point selection! check your points " << std::endl;
+		if (has_topo_selections())
+			os << topo_id.at(i) << " ";
 		os << std::endl; // end of the line 
 	}
 		
@@ -2943,50 +3081,187 @@ bool point_cloud::read_cgvmodel(const string& _file_name)
 
 	return true;
 }
-///
-bool point_cloud::write_cgvmodel(const std::string& file_name) const
+
+/// high-lev structural model 
+bool point_cloud::write_cgvmodel(const std::string& file_name)
 {
 	ofstream os(file_name.c_str());
 	if (os.fail())
 		return false;
 	unsigned int i;
+	// used to split lines 
+	int num_v_per_line = 0; int num_wanted_per_line = 10;
 	// camera position, if present 
-	if (has_cam_posi)
-		for (auto c: cam_posi_list) 
-			os << "cam " << c << endl;
-	// save points and colors
-	for (i = 0; i < P.size(); ++i) {
-		if (ignore_deleted_points) {
-			if ((int)face_id.at(i)!=2) {
-				if (has_colors())
-					os << "v " << P[i][0] << " " << P[i][1] << " " << P[i][2] << " " << color_component_to_float(C[i][0])
-					<< " " << color_component_to_float(C[i][1]) << " " << color_component_to_float(C[i][2]) << endl;
-				else
-					os << "v " << P[i][0] << " " << P[i][1] << " " << P[i][2] << endl;
-				os << "vn " << N[i][0] << " " << N[i][1] << " " << N[i][2] << endl;
-				os << "v_s " << (int)face_id.at(i) << endl; // present if prepared for region growing 
-				os << "v_si " << point_scan_index.at(i) << endl; // present if: 1. read point cloud from ply 2. read manually form objs 
+	if (cam_posi_list.size() > 0)
+		for (auto c : cam_posi_list)
+			os << "cam " << c << std::endl;
+	// save points with attributes 
+	// format: p n c scanidx faceid topoid 
+	for (i = 0; i < get_nr_points(); ++i) {
+		// always has positions 
+		os << "v " << P[i][0] << " " << P[i][1] << " " << P[i][2] << " ";
+		if (has_normals());
+		os << N[i][0] << " " << N[i][1] << " " << N[i][2] << " ";
+		if (has_colors())
+			os << color_component_to_float(C[i][0]) << " " << color_component_to_float(C[i][1])
+			<< " " << color_component_to_float(C[i][2]) << " ";
+		if (has_scan_indices())
+			os << point_scan_index.at(i) << " ";
+		//  
+		if (has_face_selections()) // additional attributes 
+			os << face_id.at(i) << " ";
+		if (has_topo_selections())
+			os << topo_id.at(i) << " ";
+		os << std::endl; // end of the line 
+	}
+
+	// write control points as global info 
+	os << "# control points: " << endl;
+	os << "cp ";
+	os << control_points.size() << " ";
+	num_v_per_line = 0;
+	for (auto cp : control_points) {
+		os << cp << " ";
+		num_v_per_line++;
+		if (num_v_per_line > (num_wanted_per_line - 1)) {
+			os << endl;
+			num_v_per_line = 0;
+		}
+	}
+	os << endl;
+
+	// 
+	for (auto mv : modelV) {
+		/*
+		* format: not the same as stored in memory! avoid ambigus 
+		*/ 
+
+		// pbr: point based representation 
+		os << "mvpb " << mv.corner_id << " ";
+		os << mv.valence << " ";
+		os << mv.point_indices.size() << " ";
+		num_v_per_line = 0;
+		for (auto pid : mv.point_indices) {
+			os << pid << " ";
+			num_v_per_line++;
+			if (num_v_per_line > (num_wanted_per_line - 1)) {
+				os << endl;
+				num_v_per_line = 0;
 			}
 		}
-		else {
-			if (has_colors())
-				os << "v " << P[i][0] << " " << P[i][1] << " " << P[i][2] << " " << color_component_to_float(C[i][0])
-				<< " " << color_component_to_float(C[i][1]) << " " << color_component_to_float(C[i][2]) << endl;
-			else
-				os << "v " << P[i][0] << " " << P[i][1] << " " << P[i][2] << endl;
-			os << "vn " << N[i][0] << " " << N[i][1] << " " << N[i][2] << endl;
-			os << "v_s " << (int)face_id.at(i) << endl; // present if prepared for region growing 
-			os << "v_si " << point_scan_index.at(i) << endl; // present if: 1. read point cloud from ply 2. read manually form objs 
-		}
+		os << endl;
 
-
-	}
-	if (point_scan_index.size() == 0) { // force scan index: if not present, we set them to 0 
-		for (i = 0; i < P.size(); ++i) {
-			os << "v_si " << 0 << endl;
+		// he 
+		os << "mvinci_e ";
+		os << mv.incident_edges.size() << " ";
+		for (auto ie : mv.incident_edges) {
+			os << ie << " ";
 		}
+		os << endl;
+
+		os << "mvinci_f ";
+		os << mv.incident_faces.size() << " ";
+		for (auto incif : mv.incident_faces) {
+			os << incif << " ";
+		}
+		os << endl;
+
+		// fitting 
+		os << "mvfit ";
+		os << mv.control_point_index << " ";
+		os << endl;
 	}
-	//... 
+	if (modelV.size() == 0)
+		os << "# no modelV info" << endl;
+
+	//
+	for (auto me : modelEdge) {
+
+		// pbr: point based representation 
+		os << "mepb " << me.edge_id << " ";
+		os << me.valence << " ";
+		os << me.point_indices.size() << " ";
+		num_v_per_line = 0;
+		for (auto pid : me.point_indices) {
+			os << pid << " ";
+			num_v_per_line++;
+			if (num_v_per_line > (num_wanted_per_line - 1)) {
+				os << endl;
+				num_v_per_line = 0;
+			}
+		}
+		os << endl;
+
+		// he 
+		os << "meinci_c ";
+		os << me.incident_corners.size() << " ";
+		for (auto ic : me.incident_corners) {
+			os << ic << " ";
+		}
+		os << endl;
+
+		os << "meinci_f ";
+		os << me.incident_faces.size() << " ";
+		for (auto incif : me.incident_faces) {
+			os << incif << " ";
+		}
+		os << endl;
+
+		// fitting 
+		os << "mefit ";
+		os << me.control_point_indices.size() << " ";
+		for (auto cpi : me.control_point_indices) {
+			os << cpi << " ";
+		}
+		os << endl;
+	}
+	if (modelEdge.size() == 0)
+		os << "# no modelEdge info" << endl;
+
+	//
+	for (auto mf : modelFace) {
+
+		// pbr: point based representation 
+		os << "mfpb " << mf.face_id << " ";
+		os << mf.point_indices.size() << " ";
+		num_v_per_line = 0;
+		for (auto pid : mf.point_indices) {
+			os << pid << " ";
+			num_v_per_line++;
+			if (num_v_per_line > (num_wanted_per_line - 1)) {
+				os << endl;
+				num_v_per_line = 0;
+			}
+		}
+		os << endl;
+
+		// he 
+		os << "mfinci_c ";
+		os << mf.incident_corners.size() << " ";
+		for (auto ic : mf.incident_corners) {
+			os << ic << " ";
+		}
+		os << endl;
+
+		os << "meinci_e ";
+		os << mf.incident_edges.size() << " ";
+		for (auto incif : mf.incident_edges) {
+			os << incif << " ";
+		}
+		os << endl;
+
+		// fitting 
+		os << "mffit ";
+		os << mf.ready_for_rendering ? 1 : 0; os << " ";
+		os << mf.control_point_indices.size() << " ";
+		for (auto cpi : mf.control_point_indices) {
+			os << cpi << " ";
+		}
+		os << endl;
+	}
+	if (modelFace.size() == 0)
+		os << "# no modelFace info" << endl;
+
 	return !os.fail();
 }
 

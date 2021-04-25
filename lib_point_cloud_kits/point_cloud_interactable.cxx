@@ -780,9 +780,46 @@ void point_cloud_interactable::mark_points_and_push_to_tmp_pointcloud(Pnt p, flo
 		to_be_copied_pointcloud.box_out_of_date = true;
 	}
 }
+
+void point_cloud_interactable::mark_topo_id_with_controller(Pnt p, float r, int objctive) {
+	if (pc.get_nr_points() == 0)
+		return;
+	// todo: improve this ref. below 
+	for (Idx i = 0; i < (Idx)pc.get_nr_points(); ++i) {
+		if ((pc.pnt(i) - p).length() < r) {
+			// ignore deleted points 
+			if (pc.topo_id.at(i) == point_cloud::TOPOAttribute::DEL) {
+				continue;
+			}
+			// ignore marked points if is highlighting unmarked points 
+			if (highlight_unmarked_points) {
+				if (pc.face_id.at(i) > 0) { // do not draw on already marked, 0 means unmarked  
+					continue;
+				}
+			}
+			//// ignore points that are not having correct scaning index, ineffecient 
+			//if (objctive == point_cloud::TOPOAttribute::ICP_SOURCE_A) {
+			//	if (pc.point_scan_index.at(i) != src_scan_idx) {
+			//		continue;
+			//	}
+			//}
+			//// ignore points that are not having correct scaning index 
+			//if (objctive == point_cloud::TOPOAttribute::ICP_TARGET_A) {
+			//	if (pc.point_scan_index.at(i) != target_scan_idx) {
+			//		continue;
+			//	}
+			//}
+			// record topo id change information: todo 
+			// perform real operations 
+			pc.topo_id.at(i) = objctive;
+			pc.has_topo_selection = true; // has real data, do not overwrite 
+		}
+	}
+}
+
 /// currently, we set confirmed to true. The visual feedback is better to be impl. in shaders.
 /// ignore deleted points by default 
-void point_cloud_interactable::mark_points_with_conroller(Pnt p, float r, int objctive) {
+void point_cloud_interactable::mark_face_id_with_controller(Pnt p, float r, int objctive) {
 	new_history_recording();
 	if (pc.get_nr_points()) {
 		ensure_tree_ds();
@@ -1331,7 +1368,7 @@ void point_cloud_interactable::reset_region_growing_seeds() {
 	region_id_and_nmls.resize(pc.num_of_face_selections_rendered, empty_nmlqueue);
 }
 /// push to queue operation, as an init to RG 
-void point_cloud_interactable::init_region_growing_by_collecting_group_and_seeds_vr(cgv::type::uint8_type current_selecting_idx) {
+void point_cloud_interactable::init_region_growing_by_collecting_group_and_seeds_vr(cgv::type::uint8_type curr_face_selecting_id) {
 	// old version:
 		//for (int gi = pc.num_of_topo_selections_rendered; gi< pc.num_of_palette_spheres_rendered; gi++) {
 		//	for (int idx = 0; idx < pc.get_nr_points(); idx++) {
@@ -1345,9 +1382,9 @@ void point_cloud_interactable::init_region_growing_by_collecting_group_and_seeds
 	// only region selection are accepted
 	// unsigned int shoud cast to int! -> only when comparing bet. them 
 	for (int pi = 0; pi < pc.get_nr_points(); pi++) {
-		if (pc.face_id.at(pi) == current_selecting_idx) {
-			region_id_and_seeds[pc.face_id.at(pi)].emplace(pi);
-			region_id_and_nmls[pc.face_id.at(pi)].emplace(pc.nml(pi));
+		if (pc.face_id.at(pi) == curr_face_selecting_id) {
+			region_id_and_seeds[curr_face_selecting_id].emplace(pi);
+			region_id_and_nmls[curr_face_selecting_id].emplace(pc.nml(pi));
 			pc.point_visited[pi] = true;
 		}
 	}

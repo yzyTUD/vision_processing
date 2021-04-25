@@ -430,14 +430,14 @@ bool visual_processing::handle(cgv::gui::event& e)
 						point_copy_btn_pressed();
 					}
 					if (data_ptr->check_roulette_selection(data_ptr->get_id_with_name("VRICP\nRenderSrcOnly"))) {
-						data_ptr->point_cloud_kit->mark_points_with_conroller( 
+						data_ptr->point_cloud_kit->mark_face_id_with_controller( 
 							data_ptr->cur_right_hand_posi + data_ptr->cur_off_right,
 							data_ptr->point_cloud_kit->controller_effect_range, 
 							point_cloud::TOPOAttribute::ICP_SOURCE_A
 						);
 					}
 					if (data_ptr->check_roulette_selection(data_ptr->get_id_with_name("VRICP\nRenderTargetOnly"))) {
-						data_ptr->point_cloud_kit->mark_points_with_conroller(
+						data_ptr->point_cloud_kit->mark_face_id_with_controller(
 							data_ptr->cur_right_hand_posi + data_ptr->cur_off_right,
 							data_ptr->point_cloud_kit->controller_effect_range,
 							point_cloud::TOPOAttribute::ICP_TARGET_A
@@ -590,11 +590,11 @@ bool visual_processing::handle(cgv::gui::event& e)
 				}
 				if (data_ptr->check_roulette_selection(data_ptr->get_id_with_name("PointCloud\nDelPoints\nTouchTo\nActivate"))) {
 					// this will be used in the throttle event 
-					selection_kit->current_selecting_idx = point_cloud::TOPOAttribute::DEL;
+					selection_kit->curr_face_selecting_id = point_cloud::TOPOAttribute::DEL;
 				}
 				if (data_ptr->check_roulette_selection(data_ptr->get_id_with_name("PointCloud\nMarkAs\nOrig"))) {
 					// this will be used in the throttle event 
-					selection_kit->current_selecting_idx = point_cloud::TOPOAttribute::ORI;
+					selection_kit->curr_face_selecting_id = point_cloud::TOPOAttribute::ORI;
 				}
 				if (data_ptr->check_roulette_selection(data_ptr->get_id_with_name("PointCloud\nToggle\npcColor"))) {
 					data_ptr->point_cloud_kit->render_with_original_color = !data_ptr->point_cloud_kit->render_with_original_color;
@@ -1208,7 +1208,7 @@ void visual_processing::del_clipping_btn_press() {
 ///
 void visual_processing::del_menu_btn_press() {
 	// marking on cpu side, mark as deleted 
-	data_ptr->point_cloud_kit->mark_points_with_conroller(
+	data_ptr->point_cloud_kit->mark_face_id_with_controller(
 		data_ptr->cur_right_hand_posi + data_ptr->cur_off_right,
 		data_ptr->point_cloud_kit->controller_effect_range, point_cloud::TOPOAttribute::DEL);
 }
@@ -1221,7 +1221,7 @@ void visual_processing::del_menu_btn_release() {
 ///
 void visual_processing::selective_downsampling_menu_btn_press() {
 	// mark -> TO_BE_SUBSAMPLED, to test, ignore points marked as deleted
-	data_ptr->point_cloud_kit->mark_points_with_conroller(
+	data_ptr->point_cloud_kit->mark_face_id_with_controller(
 		data_ptr->cur_right_hand_posi + data_ptr->cur_off_right,
 			data_ptr->point_cloud_kit->controller_effect_range, 
 				point_cloud::TOPOAttribute::TO_BE_SUBSAMPLED);

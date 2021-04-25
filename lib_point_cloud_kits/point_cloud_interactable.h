@@ -175,7 +175,9 @@ public:
 	/// make sure vector size: face_id, point_visited
 	void prepare_marking();
 	/// mark with controllers 
-	void mark_points_with_conroller(Pnt p, float r, int objctive);
+	void mark_face_id_with_controller(Pnt p, float r, int objctive);
+	/// 
+	void mark_topo_id_with_controller(Pnt p, float r, int objctive);
 	/// marking test 
 	void marking_test_mark_all_points_as_given_group(int objective);
 	/// quick point deletion: with a clipping plane 
@@ -260,7 +262,7 @@ public:
 	///
 	void reset_region_growing_seeds();
 	///
-	void init_region_growing_by_collecting_group_and_seeds_vr(cgv::type::uint8_type current_selecting_idx);
+	void init_region_growing_by_collecting_group_and_seeds_vr(cgv::type::uint8_type curr_face_selecting_id);
 	///
 	void init_region_growing_by_setting_group_and_seeds(int growing_group, std::queue<int> picked_id_list);
 	///
