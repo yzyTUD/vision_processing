@@ -148,44 +148,31 @@ void visual_processing::timer_event(double t, double dt) {
 
 }
 /// timer event executes in an other parallel thread, fixed freq 
-void visual_processing::parallel_timer_event() {
-	while (true) {
-		// control the speed here 
-		if (data_ptr != nullptr)
-		if (data_ptr->point_cloud_kit->do_region_growing_directly)
-		if (data_ptr->point_cloud_kit->can_parallel_grow) {
-			// atomic
-			data_ptr->point_cloud_kit->can_parallel_grow = false;
-			int i = 0;
-			while (i < data_ptr->point_cloud_kit->steps_per_event_as_speed) {
-				// part of the functional regions will be growed 
-				data_ptr->point_cloud_kit->grow_one_step_bfs(
-					data_ptr->point_cloud_kit->region_grow_check_normals, 
-						point_cloud::TOPOAttribute::ICP_SOURCE_A);
+void visual_processing::parallel_region_growing() {
+	data_ptr->point_cloud_kit->can_parallel_grow = false; // atomic: stop seleciton when parallel growing 
+	bool all_enpty_can_stop = false;
+	while (!all_enpty_can_stop) {
 
-				data_ptr->point_cloud_kit->grow_one_step_bfs(
-					data_ptr->point_cloud_kit->region_grow_check_normals,
-						point_cloud::TOPOAttribute::ICP_TARGET_A);
-				// grow non-functional regions 
-				for (int gi = data_ptr->point_cloud_kit->pc.num_of_topo_selections_rendered;
-					gi < data_ptr->point_cloud_kit->pc.num_of_palette_spheres_rendered; gi++)
-				{
-					data_ptr->point_cloud_kit->grow_one_step_bfs(
-						data_ptr->point_cloud_kit->region_grow_check_normals, gi);
-					post_redraw();
-				}
-				i++;
-			}
-			data_ptr->point_cloud_kit->can_parallel_grow = true;
+		for (int gi = 1; gi < data_ptr->point_cloud_kit->pc.num_of_face_selections_rendered; gi++)
+			data_ptr->point_cloud_kit->grow_one_step_bfs(false, gi);
+
+		// start to check: reset 
+		all_enpty_can_stop = true;
+		// iterate all face ids 
+		for (int gi = 1; gi < data_ptr->point_cloud_kit->pc.num_of_face_selections_rendered; gi++)
+		{
+			all_enpty_can_stop = all_enpty_can_stop && data_ptr->point_cloud_kit->seeds_for_regions[gi].empty();
 		}
-		std::this_thread::sleep_for(std::chrono::milliseconds(11));
 	}
+	data_ptr->point_cloud_kit->can_parallel_grow = true;
 }
 ///
 visual_processing::~visual_processing() {
 	data_ptr = nullptr;
-	timer_thread->join();
-	timer_thread = nullptr;
+	/*if (timer_thread)
+		timer_thread->join();
+	if (parallel_region_growing_thread) 
+		parallel_region_growing_thread->join();*/
 }
 ///
 visual_processing::visual_processing() 
@@ -214,7 +201,7 @@ visual_processing::visual_processing()
 	connect(cgv::gui::ref_vr_server().on_device_change, this, &visual_processing::on_device_change);
 	connect(cgv::gui::ref_vr_server().on_status_change, this, &visual_processing::on_status_change);
 	//connect(get_animation_trigger().shoot, this, &visual_processing::timer_event);
-	timer_thread = new thread(&visual_processing::parallel_timer_event,this);
+	//timer_thread = new thread(&visual_processing::parallel_timer_event,this);
 	register_object(base_ptr(light_kit), "");
 
 	cone_style.radius = 0.01f;
@@ -644,7 +631,7 @@ bool visual_processing::handle(cgv::gui::event& e)
 					//data_ptr->point_cloud_kit->show_nmls = !data_ptr->point_cloud_kit->show_nmls;
 				}
 				if (data_ptr->check_roulette_selection(data_ptr->get_id_with_name("RegionGrowing\nAutoRegion\nGrowing"))) {
-					//timer_thread = new thread(&visual_processing::parallel_timer_event, this);
+					//timer_thread = new thread(&visual_processing::parallel_region_growing, this);
 					//timer_thread->exit();
 					data_ptr->point_cloud_kit->do_region_growing_directly = !data_ptr->point_cloud_kit->do_region_growing_directly;
 				}
@@ -971,7 +958,7 @@ void visual_processing::read_pc() {
 		// the original pc will be automatically stored 
 		data_ptr->point_cloud_kit->read_pc_with_dialog(false);
 		data_ptr->point_cloud_kit->on_rendering_settings_changed();
-		data_ptr->point_cloud_kit->prepare_grow(true); // reading from file, set parameter to true 
+		data_ptr->point_cloud_kit->prepare_grow(false); // reading from file, do not overwrite
 		post_redraw();
 	}
 }
@@ -988,7 +975,7 @@ void visual_processing::read_pc_parallel() {
 		return;
 	}
 	data_ptr->point_cloud_kit->on_rendering_settings_changed();
-	data_ptr->point_cloud_kit->prepare_grow(true); //  reading from file, do not overwrite point face selection  
+	data_ptr->point_cloud_kit->prepare_grow(false); //  reading from file, do not overwrite point face selection  
 	data_ptr->point_cloud_kit->can_parallel_grow = true;
 	std::cout << "reading done" << std::endl;
 }
@@ -996,6 +983,11 @@ void visual_processing::read_pc_parallel() {
 void visual_processing::start_reading_pc_parallel() {
 	parallel_reading_thread = new thread(&visual_processing::read_pc_parallel,this);
 }
+
+void visual_processing::start_parallel_region_growing() {
+	parallel_region_growing_thread = new thread(&visual_processing::parallel_region_growing, this);
+}
+
 ///
 void visual_processing::read_pc_queue() {
 	data_ptr->point_cloud_kit->read_pc_with_dialog_queue(false);
@@ -1352,6 +1344,7 @@ void visual_processing::create_gui() {
 	add_member_control(this, "render_parametric_surface", data_ptr->render_parametric_surface, "check");
 	add_member_control(this, "render_control_points", data_ptr->render_control_points, "check");
 	add_member_control(this, "render_with_functional_ids_only", data_ptr->point_cloud_kit->render_with_functional_ids_only, "check");
+	add_member_control(this, "force_render_with_original_color", data_ptr->point_cloud_kit->force_render_with_original_color, "check");
 	add_member_control(this, "highlight_unmarked_points", data_ptr->point_cloud_kit->highlight_unmarked_points, "check");
 	add_member_control(this, "render_nmls", data_ptr->point_cloud_kit->show_nmls, "check");
 	add_member_control(this, "colorize_with_scan_index", data_ptr->point_cloud_kit->colorize_with_scan_index, "check");
@@ -1369,10 +1362,26 @@ void visual_processing::create_gui() {
 	add_member_control(this, "Ignore Deleted Points", data_ptr->point_cloud_kit->pc.ignore_deleted_points, "check");
 	connect_copy(add_button("clean_all_pcs")->click, rebind(this, &visual_processing::clean_all_pcs));
 
+	//  compute point properties 
+	if (begin_tree_node("Point Properties Computing", data_ptr->point_cloud_kit->show_nmls, true, "level=3")) {
+		connect_copy(add_button("ep_compute_principal_curvature_and_colorize")->click,
+			rebind(this, &visual_processing::ep_compute_principal_curvature_and_colorize));
+		connect_copy(add_button("compute_feature_points_and_colorize")->click,
+			rebind(this, &visual_processing::compute_feature_points_and_colorize));
+	}
+
 	//
 	if (begin_tree_node("Region Growing Revisit", data_ptr->point_cloud_kit->show_nmls, true, "level=3")) {
-		connect_copy(add_button("convert_to_int_face_selection_representation")->click,
+		connect_copy(add_button("convert_uint_to_int_face_selection_representation")->click,
 			rebind(this, &visual_processing::convert_to_int_face_selection_representation));
+		add_member_control(this, "enable continues region growing", data_ptr->point_cloud_kit->do_region_growing_directly, "check");
+		connect_copy(add_button("prepare_marking")->click, rebind(this, &visual_processing::prepare_marking));
+		connect_copy(add_button("prepare_marking_clear_face_id")->click, rebind(this, &visual_processing::prepare_marking_clear_face_id));
+		connect_copy(add_button("clear_face_id_and_topo_id")->click, rebind(this, &visual_processing::clear_face_id_and_topo_id));
+		connect_copy(add_button("mark_sample_seed")->click, rebind(this, &visual_processing::mark_sample_seed));
+		connect_copy(add_button("start_parallel_region_growing")->click, rebind(this, &visual_processing::start_parallel_region_growing));
+		connect_copy(add_button("debug_region_growing_step_by_step_test")->click, rebind(this, &visual_processing::debug_region_growing_step_by_step_test));
+		
 	}
 
 	// 

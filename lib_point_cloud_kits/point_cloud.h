@@ -21,7 +21,7 @@
 struct V_conn_info {
 	int point_id; // this index can be used to retrieve points in point list
 	int valence;
-	std::set<cgv::type::uint8_type> incident_ids; // incident to surrounding points, their ids 
+	std::set<int> incident_ids; // incident to surrounding points, their ids 
 	int corner_id; // to which corner it belones to 
 	bool visited;
 };
@@ -33,7 +33,7 @@ struct V_conn_info {
 struct E_conn_info {
 	int point_id; // this index can be used to retrieve points in point list
 	int valence;
-	std::set<cgv::type::uint8_type> incident_ids; // incident to surrounding points, their ids 
+	std::set<int> incident_ids; // incident to surrounding points, their ids 
 	int edge_id; // to which edge it belones to 
 	bool visited;
 };
@@ -278,7 +278,7 @@ public:
 	/// per-vertex attribute: used for marking faces, the first step, region growing 
 	std::vector<int> face_id; // from point_selection, write to .scan file  
 	/// per-vertex attribute: used for marking edges/ vertices/ faces... subsampled... 
-	std::vector<int> topo_id;
+	std::vector<int> topo_id; // 0 is reserved, points will be marked to edges, corners... 
 	/// container for per vertex scan indices, which scan it belones to 
 	std::vector<float> point_scan_index; 
 	/// per-vertex attribute: curvature in tangent space, gaussian curvature, mean curvature and principle curvatures can be computed out of it 

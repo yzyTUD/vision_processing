@@ -679,6 +679,7 @@ void gl_point_cloud_drawable::draw_points_surfel(context& ctx)
 
 	s_renderer.ref_prog().set_uniform(ctx, "render_with_functional_ids_only", render_with_functional_ids_only);
 	s_renderer.ref_prog().set_uniform(ctx, "highlight_unmarked_points", highlight_unmarked_points);
+	s_renderer.ref_prog().set_uniform(ctx, "force_render_with_original_color", force_render_with_original_color);
 	
 	std::size_t n = pc.get_nr_points();
 		//(show_point_end - show_point_begin) / show_point_step;

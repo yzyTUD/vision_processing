@@ -65,6 +65,50 @@ public:
 	//
 };
 
+typedef std::pair<int, float> point_priority_mapping;
+// Structure of the operator
+// overloading for comparison
+struct myComp {
+	constexpr bool operator()(
+		point_priority_mapping const& a,
+		point_priority_mapping const& b)
+		const noexcept
+	{
+		return a.second > b.second;
+	}
+};
+// a wrapper priority queue and use a hash set to keep track of the queue.
+class non_redundant_priority_queue {
+	// the second float value indicates the priority
+	// dequeue points with highest priority first 
+	typedef std::pair<int, float> point_priority_mapping;
+public:
+	non_redundant_priority_queue() {}
+
+
+	void push(int pid, float priority) {
+		if (!contains(pid)) {
+			pq_.push(std::make_pair(pid, priority));
+			set_.emplace(pid);
+		}
+	}
+	void pop() {
+		if (!empty()) {
+			point_priority_mapping top = pq_.top();
+			set_.erase(top.first); // only the first value of the pair is recorded in a set 
+			pq_.pop();
+		}
+	}
+	point_priority_mapping top() { return pq_.top(); }
+	point_priority_mapping front() { return pq_.top(); }
+	bool contains(int item) { return set_.find(item) != set_.end(); }
+	bool empty() const { return set_.empty(); }
+
+private:
+	std::priority_queue<point_priority_mapping, std::vector<point_priority_mapping>, myComp> pq_;
+	std::set<int> set_;
+};
+
 /** the point cloud view adds a gui to the gl_point_cloud_drawable_base and adds
     some basic processing like normal computation as well as some debug rendering
 	of the neighbor graph*/
@@ -76,6 +120,8 @@ class CGV_API point_cloud_interactable :
 	public cgv::base::argument_handler   // allows to handle program arguments through the handle_args(args) method
 {
 public:
+	typedef std::pair<int, float> point_priority_mapping;
+
 	/**@name file io */
 	//@{
 	//@name point cloud IO 
@@ -262,7 +308,7 @@ public:
 	///
 	void reset_region_growing_seeds();
 	///
-	void init_region_growing_by_collecting_group_and_seeds_vr(cgv::type::uint8_type curr_face_selecting_id);
+	void init_region_growing_by_collecting_group_and_seeds_vr(int curr_face_selecting_id);
 	///
 	void init_region_growing_by_setting_group_and_seeds(int growing_group, std::queue<int> picked_id_list);
 	///
@@ -287,8 +333,7 @@ public:
 	void fill_subsampled_pcs_with_cur_pc_as_a_test();
 	///
 	void subsampling_target(Pnt& posi, float& radii, bool confirmed);
-	std::vector<std::queue<int>> region_id_and_seeds; // idx means region id, queue stores seeds 
-	std::vector<std::queue<vec3>> region_id_and_nmls; // idx means region id, queue stores normals 
+	std::vector<non_redundant_priority_queue> seeds_for_regions; // 2d, matrix, idx means region id, queue stores seeds 
 	std::vector<vr_kit_image_renderer> image_renderer_list;
 
 	/*VR-ICP related */
@@ -433,7 +478,7 @@ public:
 
 	/**@name computing feature points */
 	std::vector<vec3> feature_points;
-	void compute_feature_points();
+	void compute_feature_points_and_colorize();
 	cgv::render::box_render_style fea_style;
 	std::vector<box3> fea_box;
 	std::vector<rgb> fea_box_color;
@@ -511,7 +556,7 @@ public:
 	///
 	void colorize_with_computed_curvature();
 	///
-	void compute_principal_curvature_and_colorize();
+	void ep_compute_principal_curvature_and_colorize();
 	///
 	void clear_all();
 	//@}

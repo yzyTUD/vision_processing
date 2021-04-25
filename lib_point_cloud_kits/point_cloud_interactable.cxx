@@ -939,7 +939,7 @@ void point_cloud_interactable::marking_test_mark_all_points_as_given_group(int o
 		point_marking_history.top().push_back(phe);
 		// int -> uint8
 		// perform real operations 
-		pc.face_id[i] = (cgv::type::uint8_type)objective;
+		pc.face_id[i] = objective;
 	}
 }
 /// TODO history support 
@@ -947,7 +947,7 @@ void point_cloud_interactable::mark_points_with_clipping_plane(Pnt p,Nml plane_n
 	new_history_recording();
 	for (Idx i = 0; i < (Idx)pc.get_nr_points(); ++i) {
 		if (dot(p - pc.pnt(i), plane_normal) < 0) {
-			pc.face_id[i] = (cgv::type::uint8_type)objective;
+			pc.face_id[i] = objective;
 		}
 	}
 }
@@ -956,6 +956,7 @@ void point_cloud_interactable::mark_points_with_clipping_plane(Pnt p,Nml plane_n
 /// pre-requirement: rg is done, per point selection ready. after marked.
 /// result will be stored and visualized with TOPOAttribute
 #include <set>
+#include <unordered_set>
 void point_cloud_interactable::point_classification() {
 	std::vector<int> will_be_marked_as_boundary;
 	std::vector<int> will_be_marked_as_corner;
@@ -972,7 +973,7 @@ void point_cloud_interactable::point_classification() {
 		// find knn points 
 		std::vector<int> knn;
 		tree_ds->find_closest_points(pc.pnt(i), 30, knn);
-		std::set<cgv::type::uint8_type> incident_point_ids;
+		std::set<int> incident_point_ids;
 		for (auto k: knn) { // k is the index 
 			incident_point_ids.insert(pc.face_id.at(k));
 		}
@@ -1075,7 +1076,7 @@ void point_cloud_interactable::corner_extraction() {
 			// visit the current point 
 			// match in pc.V_conn
 			int curr_point_id = -1;
-			std::set<cgv::type::uint8_type> curr_incident_ids;
+			std::set<int> curr_incident_ids;
 			for (auto& vc : pc.V_conn) {
 				if (vc.point_id == cur_seed_pnt_id) {
 					vc.corner_id = curr_corner_id;
@@ -1154,7 +1155,7 @@ void point_cloud_interactable::edge_extraction() {
 			// visit the current point 
 			// match in pc.V_conn
 			int curr_point_id = -1;
-			std::set<cgv::type::uint8_type> curr_incident_ids;
+			std::set<int> curr_incident_ids;
 			for (auto& ec : pc.E_conn) {
 				if (ec.point_id == cur_seed_pnt_id) {
 					ec.edge_id = curr_edge_id;
@@ -1307,7 +1308,7 @@ void point_cloud_interactable::spawn_points_in_the_handhold_quad(quat controller
 		float newScanIndex = 0;
 
 		/*selection index*/
-		cgv::type::uint8_type newSelectionIndex = point_cloud::TOPOAttribute::NEWLY_GENERATED;
+		int newSelectionIndex = point_cloud::TOPOAttribute::NEWLY_GENERATED;
 
 		// add to pc 
 		pc.add_point(newP, newC, newN, newScanIndex, newSelectionIndex);
@@ -1325,14 +1326,14 @@ void point_cloud_interactable::spawn_points_in_the_handhold_quad(quat controller
 }
 /*region growing after marked*/
 /// max_num_regions is not used 
-void point_cloud_interactable::prepare_grow(bool read_from_file) {
+void point_cloud_interactable::prepare_grow(bool overwrite_face_selection) {
 	// atomic operation 
 	can_parallel_grow = false;
 
 	// reconstruct face id if not present for proper growing  
-	if (!pc.has_face_selections()) {
+	if (!pc.has_face_selections() || overwrite_face_selection) {
 		pc.face_id.resize(pc.get_nr_points());
-		for (auto& v : pc.face_id) v = 0; // 1 means original points 
+		for (auto& v : pc.face_id) v = 0; // 0 means unmarked 
 		pc.has_face_selection = true;
 	}
 
@@ -1345,13 +1346,9 @@ void point_cloud_interactable::prepare_grow(bool read_from_file) {
 	pc.point_visited.resize(pc.get_nr_points());
 	for (auto& v : pc.point_visited) v = false;
 
-	// replaced by functions 
-	region_id_and_seeds.clear();
-	region_id_and_nmls.clear();
-	std::queue<int> empty_indexqueue;
-	std::queue<vec3> empty_nmlqueue;
-	region_id_and_seeds.resize(pc.num_of_face_selections_rendered, empty_indexqueue);
-	region_id_and_nmls.resize(pc.num_of_face_selections_rendered, empty_nmlqueue);
+	// init each region with enmpty queue 
+	seeds_for_regions.clear();
+	seeds_for_regions.resize(pc.num_of_face_selections_rendered, *(new non_redundant_priority_queue)); 
 
 	// enable again  
 	can_parallel_grow = true;
@@ -1362,15 +1359,11 @@ void point_cloud_interactable::reset_all_grows() {
 }
 /// reset the seed lists 
 void point_cloud_interactable::reset_region_growing_seeds() {
-	region_id_and_seeds.clear();
-	region_id_and_nmls.clear();
-	std::queue<int> empty_indexqueue;
-	std::queue<vec3> empty_nmlqueue;
-	region_id_and_seeds.resize(pc.num_of_face_selections_rendered, empty_indexqueue);
-	region_id_and_nmls.resize(pc.num_of_face_selections_rendered, empty_nmlqueue);
+	seeds_for_regions.clear();
+	seeds_for_regions.resize(pc.num_of_face_selections_rendered, *(new non_redundant_priority_queue));
 }
 /// push to queue operation, as an init to RG 
-void point_cloud_interactable::init_region_growing_by_collecting_group_and_seeds_vr(cgv::type::uint8_type curr_face_selecting_id) {
+void point_cloud_interactable::init_region_growing_by_collecting_group_and_seeds_vr(int curr_face_selecting_id) {
 	// old version:
 		//for (int gi = pc.num_of_topo_selections_rendered; gi< pc.num_of_palette_spheres_rendered; gi++) {
 		//	for (int idx = 0; idx < pc.get_nr_points(); idx++) {
@@ -1383,11 +1376,10 @@ void point_cloud_interactable::init_region_growing_by_collecting_group_and_seeds
 	// collect all related idx and push to queue, ready to grow after this 
 	// only region selection are accepted
 	// unsigned int shoud cast to int! -> only when comparing bet. them 
-	for (int pi = 0; pi < pc.get_nr_points(); pi++) {
-		if (pc.face_id.at(pi) == curr_face_selecting_id) {
-			region_id_and_seeds[curr_face_selecting_id].emplace(pi);
-			region_id_and_nmls[curr_face_selecting_id].emplace(pc.nml(pi));
-			pc.point_visited[pi] = true;
+	for (int pid = 0; pid < pc.get_nr_points(); pid++) {
+		if (pc.face_id.at(pid) == curr_face_selecting_id) {
+			seeds_for_regions[curr_face_selecting_id].push(pid, 0); // seeds will be added to queue directly, so have a priority of 0
+			pc.point_visited[pid] = true; // mark seeds as visited 
 		}
 	}
 }
@@ -1417,83 +1409,61 @@ void point_cloud_interactable::do_region_growing_timer_event(double t, double dt
 	//}
 	//on_point_cloud_change_callback(PCC_COLORS);
 }
+
 /// one step growing with bfs 
-/// reduandency removed, totest 
 bool point_cloud_interactable::grow_one_step_bfs(bool check_nml, int which_group) {
 	// bfs, simple approach, do not update normal currently 
 	if (pc.get_nr_points() == 0)
 		return false;
 	if (pc.N.size() == 0)
 		return false;
-	if (region_id_and_seeds.size() == 0)
+	if (seeds_for_regions.size() == 0)
 		return false;
 
 	std::vector<int> knn;
 	ensure_tree_ds();
-	if (region_id_and_seeds[which_group].size()) {
-		int to_be_visit = region_id_and_seeds[which_group].front();
-		region_id_and_seeds[which_group].pop();
-		if (to_be_visit > 0 && to_be_visit < pc.get_nr_points()) {
-			tree_ds->find_closest_points(pc.pnt(to_be_visit), 8, knn);// 3 * 8 + 2 = 26
+	if (!seeds_for_regions[which_group].empty()) {
+		// dequeue 
+		point_priority_mapping to_visit = seeds_for_regions[which_group].front(); // this will query a pid with minimal second value 
+		seeds_for_regions[which_group].pop();
+
+		// visit current 
+		pc.face_id.at(to_visit.first) = which_group;
+		pc.point_visited.at(to_visit.first) = true;
+
+		// query knn and add to queue conditionally  
+		if (to_visit.first >= 0 && to_visit.first < pc.get_nr_points()) { // check if to_visit.first is within range 
+			// query knn and loop over 
+			tree_ds->find_closest_points(pc.pnt(to_visit.first), 8, knn);
 			for (auto k : knn) {
 				// ignore visited 
 				if (pc.point_visited.at(k))
 					continue;
-				// ignore deleted 
-				if (pc.topo_id.at(k) == point_cloud::TOPOAttribute::DEL) // topo_id and face_id should work together 
+
+				// ignore marked 
+				if (pc.face_id.at(k) != 0)
 					continue;
-				// special case: 
-				// make sure grow only on points that have source scan index 
-				if (which_group == (int)point_cloud::TOPOAttribute::ICP_SOURCE_A) {
-					if (pc.point_scan_index.at(k) != src_scan_idx)
-						continue;
-				}
-				// make sure grow only on points that have target scan index 
-				if (which_group == (int)point_cloud::TOPOAttribute::ICP_TARGET_A) {
-					if (pc.point_scan_index.at(k) != target_scan_idx)
-						continue;
-				}
-				vec3 cur_k_nml = pc.nml(k); // compare nml
-				//std::cout << "dot of nmls: " << dot(cur_nml, cur_k_nml) << std::endl;
-				// compare curvature
-				if (check_nml) {
-					bool pass_nml_check = false;
-					bool add_to_queue = true;
-					// iterate over the queue to check 
-					// match to any of the normals 
-					std::queue<vec3> tmp_q = region_id_and_nmls[which_group];
-					while (!tmp_q.empty()) {
-						if (dot(tmp_q.front(), cur_k_nml) > 0.97) {
-							pass_nml_check = true;
-							break;
-						}
-						tmp_q.pop();
-					}
-					/*if (dot(region_id_and_nmls[which_group].front(), cur_k_nml) > 0.97) {
-						pass_nml_check = true;
-					}*/
-					// if pass check, update and mark as new seed 
-					if (pass_nml_check) {
-						// update 
-						pc.face_id.at(k) = which_group;
-						pc.point_visited.at(k) = true;
-						// check redudancy 
-						auto& c = get_container(region_id_and_seeds[which_group]);
-						const auto it = std::find(c.cbegin(), c.cend(), k);
-						const auto position = std::distance(c.cbegin(), it);
-						if (position < region_id_and_seeds[which_group].size()) // if already exists, totest 
-							add_to_queue = false;
-						if(add_to_queue)
-							region_id_and_seeds[which_group].push(k); //emplace
-					}
-				}
-				else {
-					// update 
-					pc.face_id.at(k) = which_group;
-					pc.point_visited.at(k) = true;
-					region_id_and_seeds[which_group].push(k);
-				}
-				//std::cout << "is growing" << std::endl;
+
+				// ignore deleted, topo_id and face_id should work together 
+				if (pc.topo_id.at(k) == point_cloud::TOPOAttribute::DEL) 
+					continue;
+
+				// init varibles 
+				bool add_to_queue = true;
+
+				// drop redundant points in queue
+				if (seeds_for_regions[which_group].contains(k)) // if already exists, drop
+					add_to_queue = false;
+
+				// 
+				if (!add_to_queue)
+					continue;
+
+				// property related 
+				float dist = (pc.pnt(k) - pc.pnt(to_visit.first)).length(); // smallest distance first
+
+				// add to queue 
+				seeds_for_regions[which_group].push(k,dist + to_visit.second); // pc.curvature.at(k).gaussian_curvature
 			}
 		}
 		return true;
@@ -1517,16 +1487,16 @@ void point_cloud_interactable::grow_one_step_bfs_ensure() {
 	//std::vector<int> knn;
 
 	//if (seeds.size()) {
-	//	int to_be_visit = seeds.front();
+	//	int to_visit = seeds.front();
 	//	seeds.pop();
 	//	// extract normal
-	//	vec3 cur_nml = pc.nml(to_be_visit);
+	//	vec3 cur_nml = pc.nml(to_visit);
 	//	int num_of_real_knn = 0;
 	//	int increm_search = 0; // search 5 points at least 
 	//	// ensure the num of not visited points, used to break boundaries 
 	//	while (num_of_real_knn < 4 && !all_points_growed()) {
 	//		increm_search += 4 - num_of_real_knn;
-	//		tree_ds->find_closest_points(pc.pnt(to_be_visit), 1 + increm_search, knn);
+	//		tree_ds->find_closest_points(pc.pnt(to_visit), 1 + increm_search, knn);
 	//		// check 
 	//		// reset num_of_real_knn
 	//		num_of_real_knn = 0;
@@ -2088,8 +2058,7 @@ void point_cloud_interactable::clear_all() {
 	rotation.identity();
 	translation.zeros();
 	icp_filter_type = cgv::pointcloud::ICP::RANDOM_SAMPLING;
-	region_id_and_seeds.clear();
-	region_id_and_nmls.clear();
+	seeds_for_regions.clear();
 
 	// todo: reset vars here ...
 	//use_these_point_colors = 0;
@@ -3013,7 +2982,7 @@ void point_cloud_interactable::create_gui()
 
 
 ///
-void point_cloud_interactable::compute_feature_points()
+void point_cloud_interactable::compute_feature_points_and_colorize()
 {
 	ensure_tree_ds();
 	ensure_neighbor_graph();
@@ -3141,16 +3110,20 @@ void point_cloud_interactable::colorize_with_computed_curvature() {
 	// color with point class 
 	// loop over to assign 
 	for (int i = 0; i < pc.get_nr_points(); i++) {
-		normalized_value = pc.curvature.at(i).gaussian_curvature - translation_factor;
-		normalized_value /= scale_factor_gaussian_curvature;
-		pc.clr(i) = Clr(1,0,0);
+		std::cout << "pc.curvature.at(i).gaussian_curvature: " << pc.curvature.at(i).gaussian_curvature << std::endl;
+		if (pc.curvature.at(i).gaussian_curvature < 0)
+			pc.clr(i) = rgb(1, 0, 0);
+		if (pc.curvature.at(i).gaussian_curvature > 0)
+			pc.clr(i) = rgb(0, 0, 1);
+		if (abs(pc.curvature.at(i).gaussian_curvature) < 1e-7) // == 0, higher priority, overwrite 
+			pc.clr(i) = rgb(0, 1, 0);
 	}
 }
 
 /// the entry point 
-void point_cloud_interactable::compute_principal_curvature_and_colorize() {
+void point_cloud_interactable::ep_compute_principal_curvature_and_colorize() {
 	compute_principal_curvature();
 	fill_curvature_structure();
-	colorize_with_computed_curvature();
+	colorize_with_computed_curvature(); // vis with gaussian_curvature
 }
 

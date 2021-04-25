@@ -60,6 +60,7 @@ public:
 	cgv::render::attribute_array_manager sl_manager;
 	bool render_with_functional_ids_only = false;
 	bool highlight_unmarked_points = false;
+	bool force_render_with_original_color = false;
 
 	/*point rendering */
 	

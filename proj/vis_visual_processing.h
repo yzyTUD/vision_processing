@@ -220,7 +220,7 @@ public:
 	void on_status_change(void* kit_handle, int ci, vr::VRStatus old_status, vr::VRStatus new_status);
 	/// register on device change events
 	void on_device_change(void* kit_handle, bool attach);
-	void parallel_timer_event();
+	void parallel_region_growing();
 	void timer_event(double t, double dt);
 public:
 	visual_processing();
@@ -379,8 +379,10 @@ public:
 	void read_pc_parallel();
 
 	void start_reading_pc_parallel();
+	void start_parallel_region_growing();
 	thread* parallel_reading_thread;
 	thread* parallel_writting_thread;
+	thread* parallel_region_growing_thread;
 
 	void read_pc_queue();
 
@@ -532,7 +534,9 @@ public:
 		mesh_kit->compute_coordinates_with_rot_correction(rotq, translation_vec);
 	}
 
-	void compute_feature_points() { data_ptr->point_cloud_kit->compute_feature_points(); post_redraw(); }
+	void compute_feature_points() { 
+		//data_ptr->point_cloud_kit->compute_feature_points(); post_redraw(); 
+	}
 
 	void render_with_fullpc() { data_ptr->point_cloud_kit->render_with_fullpc(); }
 	void auto_downsampling() { data_ptr->point_cloud_kit->auto_downsampling(); }
@@ -540,11 +544,30 @@ public:
 	void restore_supersampling() { data_ptr->point_cloud_kit->restore_supersampling(); }
 
 	void prepare_marking() { 
-		//data_ptr->point_cloud_kit->prepare_marking(&data_ptr->face_id_to_color); 
 		data_ptr->point_cloud_kit->prepare_grow(false);
+	}
+	void prepare_marking_clear_face_id() {
+		data_ptr->point_cloud_kit->prepare_grow(true);
+	}
+	void clear_face_id_and_topo_id() {
+		for (auto& fi : data_ptr->point_cloud_kit->pc.face_id) fi = 0; // 0 reserved
+		for (auto& ti : data_ptr->point_cloud_kit->pc.topo_id) ti = 0; // 0 reserved
 	}
 	void convert_to_int_face_selection_representation() {
 		data_ptr->point_cloud_kit->pc.convert_to_int_face_selection_representation();
+	}
+	void mark_sample_seed() {
+		if (data_ptr->point_cloud_kit->can_parallel_grow == true) {
+			data_ptr->point_cloud_kit->can_parallel_grow = false;
+			
+			data_ptr->point_cloud_kit->pc.face_id.at(0) = 1; // mark index 0 as face 1 
+			data_ptr->point_cloud_kit->init_region_growing_by_collecting_group_and_seeds_vr(1); // collect face seed with index 
+
+			data_ptr->point_cloud_kit->pc.face_id.at(data_ptr->point_cloud_kit->pc.get_nr_points()-1) = 2; // mark index 0 as face 1 
+			data_ptr->point_cloud_kit->init_region_growing_by_collecting_group_and_seeds_vr(2); // collect face seed with index 
+
+			data_ptr->point_cloud_kit->can_parallel_grow = true;
+		}
 	}
 
 	// point cloud generation 
@@ -656,6 +679,19 @@ public:
 		data_ptr->point_cloud_kit->pc.face_id.clear();
 		data_ptr->point_cloud_kit->pc.point_scan_index.clear();
 		std::cout << "dropped!" << std::endl;
+	}
+
+	void ep_compute_principal_curvature_and_colorize() {
+		data_ptr->point_cloud_kit->ep_compute_principal_curvature_and_colorize();
+		post_redraw();
+	}
+	void compute_feature_points_and_colorize() {
+		data_ptr->point_cloud_kit->compute_feature_points_and_colorize();
+		post_redraw();
+	}
+	void debug_region_growing_step_by_step_test() {
+		data_ptr->point_cloud_kit->grow_one_step_bfs(false, 1);
+		data_ptr->point_cloud_kit->grow_one_step_bfs(false, 2);
 	}
 };
 
