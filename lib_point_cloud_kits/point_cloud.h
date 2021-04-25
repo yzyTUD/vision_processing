@@ -210,6 +210,20 @@ public:
 	Idx& operator () (const PixCrd& pixcrd);
 };
 
+/// encapsule everything about principal_curvature
+struct principal_curvature {
+	typedef cgv::math::fvec<float, 3> Dir;
+
+	//principal components of the normals used for computation
+	Dir principal_curvature_vector;
+	//principal curvatures (eigen values)
+	float kmin;
+	float kmax;
+
+	//computed components, may be visulized by changing colors directly or pass to shader is better  
+	float gaussian_curvature; //((L * N) - (M * M)) / ((E * G) - (F * F)) or kmin * kmax 
+	float mean_curvature;
+};
 
 /** simple point cloud data structure with dynamic containers for positions, normals and colors.
 	Normals and colors are optional and can be dynamically allocated and deallocated. */
@@ -267,7 +281,14 @@ public:
 	std::vector<int> topo_id;
 	/// container for per vertex scan indices, which scan it belones to 
 	std::vector<float> point_scan_index; 
+	/// per-vertex attribute: curvature in tangent space, gaussian curvature, mean curvature and principle curvatures can be computed out of it 
+	std::vector<principal_curvature> curvature; // kmin and kmax, not passed to shader directly 
 public:
+
+	/*curvature estimation */ 
+	// ng required, in upper level -> 
+	// compute_principal_curvature()
+
 	/*camera positions */
 	std::vector<cgv::math::fvec<float, 3>> cam_posi_list;
 	/*

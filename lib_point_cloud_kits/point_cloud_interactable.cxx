@@ -18,6 +18,8 @@
 #include <cgv/utils/tokenizer.h>
 #include <libs\cgv_gl\sphere_renderer.h>
 
+#include "pca.h"
+
 #define FILE_OPEN_TITLE "Open Point Cloud"
 #define FILE_APPEND_TITLE "Append Point Cloud"
 #define FILE_OPEN_FILTER "Point Clouds (apc,bpc):*.apc;*.bpc|Mesh Files (obj,ply,pct):*.obj;*.ply;*.pct|All Files:*.*"
@@ -2121,6 +2123,11 @@ void point_cloud_interactable::ensure_tree_ds()
 		tree_ds_out_of_date = false;
 	}
 }
+
+void point_cloud_interactable::ensure_neighbor_graph() {
+	if (ng.empty())
+		build_neighbor_graph();
+}
 ///
 void point_cloud_interactable::build_neighbor_graph()
 {
@@ -2305,48 +2312,6 @@ void point_cloud_interactable::orient_normals_to_view_point_vr(vec3 cam_posi)
 		post_redraw();
 	//}
 }
-///
-void point_cloud_interactable::compute_feature_points()
-{
-	feature_points.clear();
-	ensure_tree_ds();
-	if (ng.empty())
-		build_neighbor_graph();
-	pc.create_features();
-	for (int i = 0; i < pc.get_nr_points(); i++) {
-		float d[3] = { 0,0,0 };
-		{
-			std::vector<Crd> weights;
-			std::vector<Pnt> points;
-			ne.compute_weights(i, weights, &points);
-			Nml new_nml;
-			cgv::math::estimate_normal_wls((unsigned)points.size(), points[0], &weights[0], new_nml, &d[0]);
-		}
-		Pnt eigen_val_vec = Pnt(d[0], d[1], d[2]);
-		pc.fea(i) = eigen_val_vec;
-		//std::cout << eigen_val_vec << std::endl;
-		if (d[0]>0.1 && d[1]>0.1 && d[2]>0.1)
-			feature_points.push_back(pc.pnt(i));
-	}
-	std::cout << "num of feature points computed: " << feature_points.size() << std::endl;
-
-	// put to boxes 
-	//vec3 box_ext = vec3(0.01);
-	//for (auto& p : feature_points) {
-	//	fea_box.push_back(box3(-box_ext,box_ext));
-	//	fea_box_color.push_back(rgb(0.6));
-	//	fea_box_trans.push_back(p);
-	//	fea_box_rot.push_back(quat());
-	//}
-
-	// normalize fea and map to color 
-	for (int i = 0; i < pc.get_nr_points(); i++) {
-		vec3 fea_vec = pc.fea(i);
-		fea_vec.normalize();
-		pc.clr(i) = Clr(float_to_color_component(fea_vec.x()), float_to_color_component(fea_vec.y()), float_to_color_component(fea_vec.z()));
-	}
-	on_point_cloud_change_callback(PCC_COLORS);
-}
 /// call this before using the view ptr for the first time
 bool point_cloud_interactable::ensure_view_pointer()
 {
@@ -2380,7 +2345,7 @@ point_cloud_interactable::point_cloud_interactable() : ne(pc, ng)
 	interact_trigger.schedule_recuring(interact_delay);
 
 	show_neighbor_graph = false;
-	k = 30;
+	k = 30; // init k to 30 
 	do_symmetrize = false;
 	reorient_normals = true;
 
@@ -3044,5 +3009,148 @@ void point_cloud_interactable::create_gui()
 		add_gui("box_wire_style", box_wire_style);
 		end_tree_node(show_box);
 	}
+}
+
+
+///
+void point_cloud_interactable::compute_feature_points()
+{
+	ensure_tree_ds();
+	ensure_neighbor_graph();
+	pc.F.resize(pc.get_nr_points()); // ensure feature array size  
+	for (int i = 0; i < pc.get_nr_points(); i++) {
+		float d[3] = { 0,0,0 };
+		{
+			std::vector<Crd> weights;
+			std::vector<Pnt> points;
+			ne.compute_weights(i, weights, &points);
+			Nml new_nml;
+			cgv::math::estimate_normal_wls((unsigned)points.size(), points[0], &weights[0], new_nml, &d[0]);
+		}
+		Pnt eigen_val_vec = Pnt(d[0], d[1], d[2]);
+		pc.fea(i) = eigen_val_vec;
+		//std::cout << eigen_val_vec << std::endl;
+		if (d[0] > 0.1 && d[1] > 0.1 && d[2] > 0.1)
+			feature_points.push_back(pc.pnt(i));
+	}
+	std::cout << "feature points computed " << std::endl;
+
+	// put to boxes 
+	//vec3 box_ext = vec3(0.01);
+	//for (auto& p : feature_points) {
+	//	fea_box.push_back(box3(-box_ext,box_ext));
+	//	fea_box_color.push_back(rgb(0.6));
+	//	fea_box_trans.push_back(p);
+	//	fea_box_rot.push_back(quat());
+	//}
+
+	// normalize fea and map to color 
+	for (int i = 0; i < pc.get_nr_points(); i++) {
+		vec3 fea_vec = pc.fea(i);
+		fea_vec.normalize();
+		pc.clr(i) = Clr(float_to_color_component(fea_vec.x()), float_to_color_component(fea_vec.y()), float_to_color_component(fea_vec.z()));
+	}
+	on_point_cloud_change_callback(PCC_COLORS);
+}
+
+///
+void point_cloud_interactable::compute_principal_curvature() {
+	// ensure point structures and properties 
+	ensure_tree_ds();
+	ensure_neighbor_graph();
+	pc.curvature.resize(pc.get_nr_points()); // ensure writting space 
+
+	// define temp helper varibles 
+	std::vector<point_cloud::point_cloud_types::Idx> neighbor_points; 
+	std::vector<point_cloud::point_cloud_types::Nml> projected_normals; // for each neighbor points 
+
+	// loop over to compute 
+	for (int i = 0; i < pc.get_nr_points(); i++) {
+		projected_normals.clear();
+		const Dir& point_normal = pc.nml(i);
+		tree_ds->extract_neighbors(i, k, neighbor_points);
+
+		//projection_matrix 
+		Mat projection_matrix;
+		projection_matrix.identity();
+		projection_matrix -= Mat(point_normal, point_normal);
+
+		// collect projected normals 
+		for (int j = 0; j < neighbor_points.size(); ++j) {
+			// Project normals into the tangent plane
+			Dir projected_normal = pc.nml(neighbor_points[j]) * projection_matrix; //  right multiply? 
+			projected_normals.push_back(projected_normal);
+		}
+
+		cgv::pointcloud::pca3<float> analysis = cgv::pointcloud::pca3<float>(projected_normals.data(), k);
+		auto* eigenvalues = analysis.eigen_values_ptr();
+		auto* eigenvectors = analysis.eigen_vectors_ptr();
+		//store the two largest eigenvalues as prinicpal curvature
+		double kf = 1.0 / k;
+		float curv1 = eigenvalues[0] * kf;
+		float curv2 = eigenvalues[1] * kf;
+
+		// save to structure 
+		principal_curvature tmpcurva;
+		tmpcurva.principal_curvature_vector = *eigenvectors; // derefernce to get a vec3, assign to a Dir, they have the same def.
+		tmpcurva.kmax = curv1;//store the two largest eigenvalues as prinicpal curvature
+		tmpcurva.kmin = curv2;
+		pc.curvature.at(i) = tmpcurva; // pc.curvature already reserved, resized 
+	}
+
+}
+
+void point_cloud_interactable::fill_curvature_structure() {
+	// loop over to compute 
+	for (auto& c: pc.curvature) {
+		c.gaussian_curvature = c.kmax * c.kmin;
+		c.mean_curvature = (c.kmax + c.kmin) * 0.5f;
+	}
+}
+
+/// recolor point cloud with curvature
+void point_cloud_interactable::colorize_with_computed_curvature() {
+	// color with normalizing  
+	//// get_factor_mapping_to_0_1
+	//float vmax = std::numeric_limits<float>::min();
+	//float vmin = std::numeric_limits<float>::max();
+	//for (int i = 0; i < pc.get_nr_points(); i++) {
+	//	float tmpv = pc.curvature.at(i).gaussian_curvature;
+	//	if (tmpv < vmin) {
+	//		vmin = tmpv;
+	//	}
+	//	if (tmpv > vmax) {
+	//		vmax = tmpv;
+	//	}
+	//}
+	//float scale_factor_gaussian_curvature = 1.0f / (vmax - vmin);
+	//float translation_factor = vmin; // make sure start from 0 
+	//float normalized_value;
+
+	//// loop over to assign 
+	//for (int i = 0; i < pc.get_nr_points(); i++) {
+	//	normalized_value = pc.curvature.at(i).gaussian_curvature - translation_factor;
+	//	normalized_value /= scale_factor_gaussian_curvature;
+	//	pc.clr(i) = Clr(
+	//		float_to_color_component(normalized_value),
+	//		float_to_color_component(normalized_value),
+	//		float_to_color_component(1- normalized_value)
+	//	);
+	//}
+
+	// color with point class 
+	// loop over to assign 
+	for (int i = 0; i < pc.get_nr_points(); i++) {
+		normalized_value = pc.curvature.at(i).gaussian_curvature - translation_factor;
+		normalized_value /= scale_factor_gaussian_curvature;
+		pc.clr(i) = Clr(1,0,0);
+	}
+}
+
+/// the entry point 
+void point_cloud_interactable::compute_principal_curvature_and_colorize() {
+	compute_principal_curvature();
+	fill_curvature_structure();
+	colorize_with_computed_curvature();
 }
 

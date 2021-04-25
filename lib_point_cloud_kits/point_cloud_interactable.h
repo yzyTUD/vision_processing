@@ -399,6 +399,8 @@ public:
 	ann_tree* tree_ds_source_pc;
 	/// ensure that ann tree is built and current
 	void ensure_tree_ds();
+	///
+	void ensure_neighbor_graph();
 	/// k parameter for building neighbor graph
 	unsigned k;
 	/// whether to symmetric neighbor graph after build
@@ -503,6 +505,13 @@ public:
 	void on_set(void* member_ptr);
 	/// user interface creation
 	void create_gui();
+	void compute_principal_curvature();
+	///
+	void fill_curvature_structure();
+	///
+	void colorize_with_computed_curvature();
+	///
+	void compute_principal_curvature_and_colorize();
 	///
 	void clear_all();
 	//@}
