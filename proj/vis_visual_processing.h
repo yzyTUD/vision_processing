@@ -383,6 +383,7 @@ public:
 	thread* parallel_reading_thread;
 	thread* parallel_writting_thread;
 	thread* parallel_region_growing_thread;
+	bool parallel_reading = false;
 
 	void read_pc_queue();
 
@@ -451,6 +452,7 @@ public:
 	void point_copy_btn_pressed();
 	void point_copy_btn_release();
 	void release_controller_pc_binding();
+	void on_rendering_settings_changed();
 	void create_gui();
 
 	/// wrappers 

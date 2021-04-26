@@ -5,6 +5,7 @@
 #include <cgv/render/view.h>
 
 #include "point_cloud.h"
+#include "octree.h"
 
 #include <cgv_gl/surfel_renderer.h>
 #include <cgv_gl/normal_renderer.h>
@@ -13,6 +14,12 @@
 #include <libs/cgv_gl/clod_point_renderer.h>
 
 #include "lib_begin.h"
+
+enum class LoDMode {
+	OCTREE = 1,
+	RANDOM_POISSON = 2,
+	INVALID = -1
+};
 
 // should add functions here, should be a manager class 
 /** drawable for a point cloud that manages a neighbor graph and a normal estimator and supports rendering of point cloud and bounding box. */
@@ -66,10 +73,15 @@ public:
 	
 
 	/*clod rendering*/
-	cgv::render::clod_point_renderer cp_renderer;
-	cgv::render::clod_point_render_style cp_style;
-	int lod_mode = (int)cgv::render::LoDMode::RANDOM_POISSON;
+	using LODPoint = cgv::pointcloud::SimpleLODPoint;
+	int lod_mode = (int)LoDMode::OCTREE;
 	bool renderer_out_of_date = true;
+	bool color_based_on_lod = false;
+	static constexpr float min_level_hue = 230.0 / 360.0;
+	static constexpr float max_level_hue = 1.0;
+	cgv::render::clod_point_render_style cp_style; 
+	cgv::pointcloud::octree_lod_generator<LODPoint> lod_generator;
+	std::vector<LODPoint> points_with_lod; // pass points from main mem to here, then send to shader 
 
 	/*normal rendering*/ 
 	cgv::render::normal_renderer n_renderer;

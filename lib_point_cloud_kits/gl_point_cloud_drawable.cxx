@@ -218,9 +218,11 @@ void gl_point_cloud_drawable::draw_normals(context& ctx)
 ///
 bool gl_point_cloud_drawable::init(cgv::render::context& ctx)
 {
-	if (!cp_renderer.init(ctx))
+	// this step is simplified with the cgv ref_renderer api 
+	/*if (!cp_renderer.init(ctx))
 		return false;
-	cp_renderer.set_render_style(cp_style);
+	cp_renderer.set_render_style(cp_style);*/
+	cgv::render::ref_clod_point_renderer(ctx, 1);
 	if (!sl_manager.init(ctx))
 		return false;
 	if (!s_renderer.init(ctx))
@@ -389,15 +391,56 @@ void gl_point_cloud_drawable::draw_points_clod(context& ctx) {
 		return;
 	if (!show_points)
 		return;
+	cgv::render::clod_point_renderer& cp_renderer = ref_clod_point_renderer(ctx);
+	cp_style.draw_circles = true;
+	cp_renderer.set_render_style(cp_style);
 	if (renderer_out_of_date) {
-		cp_renderer.set_positions(ctx, pc.P);
-		cp_renderer.set_colors(ctx, pc.C);
-		cp_renderer.generate_lods((cgv::render::LoDMode)lod_mode);
-		cp_renderer.set_normals(ctx, pc.N);
+		// cast points from pc to V
+		std::vector<LODPoint> V(pc.get_nr_points());
+		for (int i = 0; i < pc.get_nr_points(); ++i) {
+			V[i].position() = pc.pnt(i);
+			V[i].color() = pc.clr(i);
+		}
+		std::cout << "draw_points_clod: computing lods with octree..." << std::endl;
+		points_with_lod = std::move(lod_generator.generate_lods(V));
+		std::cout << "draw_points_clod: lods generated" << std::endl;
+		// state: lods generated 
+		// pass points from points_with_lod to renderer 
+		std::cout << "draw_points_clod: uploading points with lods to renderer" << std::endl;
+		if (color_based_on_lod) {
+			std::vector<LODPoint> pnts = points_with_lod;
+			int num_points = pnts.size();
+			int max_lod = 0;
+			for (int i = 0; i < pc.get_nr_points(); ++i) {
+				max_lod = max((int)pnts[i].level(), max_lod);
+			}
+
+			std::vector<rgb8> col_lut;
+			for (int lod = 0; lod <= max_lod; ++lod) {
+				cgv::media::color<float, cgv::media::HLS> col;
+				col.L() = 0.5f;
+				col.S() = 1.f;
+				col.H() = min_level_hue + (max_level_hue - min_level_hue) * ((float)lod / (float)max_lod);
+				col_lut.push_back(col);
+			}
+			for (int i = 0; i < num_points; ++i) {
+				pnts[i].color() = col_lut[pnts[i].level()];
+			}
+			//cp_renderer.set_points(ctx, pnts.data(), pnts.size());
+			cp_renderer.set_points(ctx, &pnts.data()->position(), &pnts.data()->color(), &pnts.data()->level(), pnts.size(), sizeof(LODPoint));
+		}
+		else {
+			cp_renderer.set_points(ctx, 
+				&points_with_lod.data()->position(), 
+				&points_with_lod.data()->color(), 
+				&points_with_lod.data()->level(), 
+				points_with_lod.size(), sizeof(LODPoint));
+		}
+		std::cout << "draw_points_clod: done." << std::endl;
 		renderer_out_of_date = false;
 	}
 	if (cp_renderer.enable(ctx))
-		cp_renderer.draw(ctx, 0, (size_t)pc.get_nr_points());
+		cp_renderer.draw(ctx, 0, pc.get_nr_points());
 }
 /// render test 
 void gl_point_cloud_drawable::draw_raw(context& ctx) { // quick test 

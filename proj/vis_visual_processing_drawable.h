@@ -981,7 +981,10 @@ void visual_processing::read_pc_parallel() {
 }
 ///
 void visual_processing::start_reading_pc_parallel() {
-	parallel_reading_thread = new thread(&visual_processing::read_pc_parallel,this);
+	if (parallel_reading)
+		parallel_reading_thread = new thread(&visual_processing::read_pc_parallel, this);
+	else
+		read_pc();
 }
 
 void visual_processing::start_parallel_region_growing() {
@@ -1325,6 +1328,10 @@ void visual_processing::release_controller_pc_binding() {
 	data_ptr->point_cloud_in_hand->last_model_matrix = data_ptr->point_cloud_in_hand->current_model_matrix;
 	data_ptr->point_cloud_in_hand->use_current_matrix = false;
 }
+///
+void visual_processing::on_rendering_settings_changed() {
+	data_ptr->point_cloud_kit->on_rendering_settings_changed();
+}
 /*gui */
 ///
 void visual_processing::create_gui() {
@@ -1350,6 +1357,7 @@ void visual_processing::create_gui() {
 	add_member_control(this, "colorize_with_scan_index", data_ptr->point_cloud_kit->colorize_with_scan_index, "check");
 	add_member_control(this, "hmd_culling", data_ptr->point_cloud_kit->enable_headset_culling, "check");
 	add_member_control(this, "from_CC_txt", data_ptr->point_cloud_kit->pc.from_CC, "check");
+	add_member_control(this, "parallel_reading", parallel_reading, "check");
 	connect_copy(add_control("render_pc", render_pc, "check")->value_change, rebind(
 		static_cast<drawable*>(this), &visual_processing::post_redraw));
 
@@ -1361,6 +1369,24 @@ void visual_processing::create_gui() {
 	connect_copy(add_button("save")->click,rebind(this, &visual_processing::start_writting_pc_parallel));
 	add_member_control(this, "Ignore Deleted Points", data_ptr->point_cloud_kit->pc.ignore_deleted_points, "check");
 	connect_copy(add_button("clean_all_pcs")->click, rebind(this, &visual_processing::clean_all_pcs));
+
+	//
+	if (begin_tree_node("Point Cloud Rendering Style", direct_write, true, "level=3")) {
+		/*add_member_control(this, "RENDERING_STRATEGY", data_ptr->point_cloud_kit->RENDERING_STRATEGY,
+			"value_slider", "min=0;max=4;log=false;ticks=true;");*/
+			//stich_rendering_mode_point_based 
+		connect_copy(add_button("render_with_points")->click, rebind(this,
+			&visual_processing::switch_rendering_mode_point_based));
+		connect_copy(add_button("render_with_quads")->click, rebind(this,
+			&visual_processing::switch_rendering_mode_quad_based));
+		connect_copy(add_button("render_with_surfel")->click, rebind(this,
+			&visual_processing::switch_rendering_mode_surfel_based));
+		connect_copy(add_button("render_with_clod")->click, rebind(this,
+			&visual_processing::switch_rendering_mode_clod_based));
+		add_member_control(this, "color_based_on_lod", data_ptr->point_cloud_kit->color_based_on_lod, "check");
+		connect_copy(add_button("on_rendering_settings_changed")->click, rebind(this,
+			&visual_processing::on_rendering_settings_changed));
+	}
 
 	//  compute point properties 
 	if (begin_tree_node("Point Properties Computing", data_ptr->point_cloud_kit->show_nmls, true, "level=3")) {
@@ -1511,21 +1537,6 @@ void visual_processing::create_gui() {
 			&visual_processing::selective_downsampling_menu_btn_press));
 		connect_copy(add_button("selective_downsampling_menu_btn_release")->click, rebind(this,
 			&visual_processing::selective_downsampling_menu_btn_release));
-	}
-
-	//
-	if (begin_tree_node("Point Cloud Rendering Style", direct_write, true, "level=3")) {
-		/*add_member_control(this, "RENDERING_STRATEGY", data_ptr->point_cloud_kit->RENDERING_STRATEGY,
-			"value_slider", "min=0;max=4;log=false;ticks=true;");*/
-			//stich_rendering_mode_point_based 
-		connect_copy(add_button("render_with_points")->click, rebind(this,
-			&visual_processing::switch_rendering_mode_point_based));
-		connect_copy(add_button("render_with_quads")->click, rebind(this,
-			&visual_processing::switch_rendering_mode_quad_based));
-		connect_copy(add_button("render_with_surfel")->click, rebind(this,
-			&visual_processing::switch_rendering_mode_surfel_based));
-		connect_copy(add_button("render_with_clod")->click, rebind(this,
-			&visual_processing::switch_rendering_mode_clod_based));
 	}
 
 	//
