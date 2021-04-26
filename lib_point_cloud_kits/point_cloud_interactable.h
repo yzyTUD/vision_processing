@@ -96,7 +96,7 @@ public:
 		if (!empty()) {
 			point_priority_mapping top = pq_.top();
 			set_.erase(top.first); // only the first value of the pair is recorded in a set 
-			pq_.pop();
+			pq_.pop(); 
 		}
 	}
 	point_priority_mapping top() { return pq_.top(); }
