@@ -1332,6 +1332,10 @@ void visual_processing::release_controller_pc_binding() {
 void visual_processing::on_rendering_settings_changed() {
 	data_ptr->point_cloud_kit->on_rendering_settings_changed();
 }
+///
+void visual_processing::download_points_from_gpu_to_memory() {
+	data_ptr->point_cloud_kit->download_points_from_gpu_to_memory();
+}
 /*gui */
 ///
 void visual_processing::create_gui() {
@@ -1369,6 +1373,13 @@ void visual_processing::create_gui() {
 	connect_copy(add_button("save")->click,rebind(this, &visual_processing::start_writting_pc_parallel));
 	add_member_control(this, "Ignore Deleted Points", data_ptr->point_cloud_kit->pc.ignore_deleted_points, "check");
 	connect_copy(add_button("clean_all_pcs")->click, rebind(this, &visual_processing::clean_all_pcs));
+
+	//
+	if (begin_tree_node("Effecient Point Cloud Marking", direct_write, true, "level=3")) {
+		connect_copy(add_button("download_points_from_gpu_to_memory")->click, rebind(this,
+			&visual_processing::download_points_from_gpu_to_memory));
+		add_member_control(this, "enable_marking", data_ptr->point_cloud_kit->cp_renderer.enable_marking, "check");
+	}
 
 	//
 	if (begin_tree_node("Point Cloud Rendering Style", direct_write, true, "level=3")) {

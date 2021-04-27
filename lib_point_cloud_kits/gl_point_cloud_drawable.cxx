@@ -218,11 +218,12 @@ void gl_point_cloud_drawable::draw_normals(context& ctx)
 ///
 bool gl_point_cloud_drawable::init(cgv::render::context& ctx)
 {
-	// this step is simplified with the cgv ref_renderer api 
-	/*if (!cp_renderer.init(ctx))
+	// - this step is simplified with the cgv ref_renderer api 
+	if (!cp_renderer.init(ctx))
 		return false;
-	cp_renderer.set_render_style(cp_style);*/
-	cgv::render::ref_clod_point_renderer(ctx, 1);
+	cp_renderer.set_render_style(cp_style);
+	//cgv::render::ref_clod_point_renderer(ctx, 1);
+
 	if (!sl_manager.init(ctx))
 		return false;
 	if (!s_renderer.init(ctx))
@@ -391,7 +392,6 @@ void gl_point_cloud_drawable::draw_points_clod(context& ctx) {
 		return;
 	if (!show_points)
 		return;
-	cgv::render::clod_point_renderer& cp_renderer = ref_clod_point_renderer(ctx);
 	cp_style.draw_circles = true;
 	cp_renderer.set_render_style(cp_style);
 	if (renderer_out_of_date) {
@@ -407,14 +407,17 @@ void gl_point_cloud_drawable::draw_points_clod(context& ctx) {
 		// state: lods generated 
 		// pass points from points_with_lod to renderer 
 		std::cout << "draw_points_clod: uploading points with lods to renderer" << std::endl;
+		
 		if (color_based_on_lod) {
 			std::vector<LODPoint> pnts = points_with_lod;
 			int num_points = pnts.size();
+
+			// compute color values for each lod stage 
+			// find max lod value 
 			int max_lod = 0;
 			for (int i = 0; i < pc.get_nr_points(); ++i) {
 				max_lod = max((int)pnts[i].level(), max_lod);
 			}
-
 			std::vector<rgb8> col_lut;
 			for (int lod = 0; lod <= max_lod; ++lod) {
 				cgv::media::color<float, cgv::media::HLS> col;
@@ -423,13 +426,24 @@ void gl_point_cloud_drawable::draw_points_clod(context& ctx) {
 				col.H() = min_level_hue + (max_level_hue - min_level_hue) * ((float)lod / (float)max_lod);
 				col_lut.push_back(col);
 			}
+
+			// change the colors. Just give a "initial" value, as we packed level to .a value, 
+			// we can see the difference of the points at run time  
+			// tood: a better color mapping 
 			for (int i = 0; i < num_points; ++i) {
 				pnts[i].color() = col_lut[pnts[i].level()];
 			}
+
+			// submit to renderer 
 			//cp_renderer.set_points(ctx, pnts.data(), pnts.size());
-			cp_renderer.set_points(ctx, &pnts.data()->position(), &pnts.data()->color(), &pnts.data()->level(), pnts.size(), sizeof(LODPoint));
+			cp_renderer.set_points(ctx, 
+				&pnts.data()->position(), 
+				&pnts.data()->color(), 
+				&pnts.data()->level(), 
+				pnts.size(), sizeof(LODPoint));
 		}
 		else {
+			// submit to renderer 
 			cp_renderer.set_points(ctx, 
 				&points_with_lod.data()->position(), 
 				&points_with_lod.data()->color(), 
@@ -439,9 +453,25 @@ void gl_point_cloud_drawable::draw_points_clod(context& ctx) {
 		std::cout << "draw_points_clod: done." << std::endl;
 		renderer_out_of_date = false;
 	}
-	if (cp_renderer.enable(ctx))
+	if (cp_renderer.enable(ctx)) {
+		cp_renderer.ref_reduce_prog()->set_uniform(ctx, "enable_headset_culling", enable_headset_culling);;
 		cp_renderer.draw(ctx, 0, pc.get_nr_points());
+	}
 }
+
+/// after this, pc will be changed and we are ready to write pc to disk 
+/// check by do the following: render with clod, download_points_from_gpu_to_memory, on_rendering_setting_changed (re-upload points)
+void gl_point_cloud_drawable::download_points_from_gpu_to_memory() {
+	// download from gpu 
+	std::vector<Point> buffer_data;
+	cp_renderer.download_marking_buffer(&buffer_data);
+
+	// write back to pc 
+	for (int i = 0; i < pc.get_nr_points(); ++i) {
+		pc.clr(i) = buffer_data.at(i).color;
+	}
+}
+
 /// render test 
 void gl_point_cloud_drawable::draw_raw(context& ctx) { // quick test 
 	if (pc.get_nr_points() == 0)

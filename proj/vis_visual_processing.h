@@ -453,6 +453,7 @@ public:
 	void point_copy_btn_release();
 	void release_controller_pc_binding();
 	void on_rendering_settings_changed();
+	void download_points_from_gpu_to_memory();
 	void create_gui();
 
 	/// wrappers 
