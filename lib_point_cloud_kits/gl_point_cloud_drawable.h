@@ -84,6 +84,7 @@ public:
 	cgv::render::clod_point_renderer cp_renderer;
 	std::vector<LODPoint> points_with_lod; // pass points from main mem to here, then send to shader 
 	bool is_triggering = false;
+	float clod_render_scale = 0.08;
 
 	/*normal rendering*/ 
 	cgv::render::normal_renderer n_renderer;

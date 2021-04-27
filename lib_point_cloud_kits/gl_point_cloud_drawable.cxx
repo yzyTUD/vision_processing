@@ -458,6 +458,7 @@ void gl_point_cloud_drawable::draw_points_clod(context& ctx) {
 		cp_renderer.ref_reduce_prog()->set_uniform(ctx, "headset_culling_range", headset_culling_range);
 		cp_renderer.ref_reduce_prog()->set_uniform(ctx, "headset_position", headset_position);
 		cp_renderer.ref_reduce_prog()->set_uniform(ctx, "headset_direction", headset_direction);
+		cp_renderer.ref_reduce_prog()->set_uniform(ctx, "scale", clod_render_scale);
 
 		// setup uniform varibles that will be used in marking compute shader 
 		cp_renderer.ref_marking_prog()->set_uniform(ctx, "enable_headset_culling", enable_headset_culling);
