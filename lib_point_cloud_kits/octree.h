@@ -58,7 +58,7 @@ namespace pointcloud {
 		}
 	};
 
-	// LOD point with color as additional attribute
+	// LOD point with color as additional attribute, add color 
 	struct SimpleLODPoint : public GenericLODPoint<0, 2, cgv::render::render_types::vec3, cgv::render::render_types::rgb8, uint8_t> {
 		inline rgb8& color() {
 			return std::get<1>(data);
@@ -68,6 +68,7 @@ namespace pointcloud {
 		}
 	};
 
+	// this is only one sample, we can also use other formats 
 	using LODPoint = GenericLODPoint<0, 2, cgv::render::render_types::vec3,cgv::render::render_types::rgb8,uint8_t>;
 
 	//lookup table used to converting cell indices to linear indices

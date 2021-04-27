@@ -1402,6 +1402,7 @@ void visual_processing::create_gui() {
 		add_member_control(this, "enable_marking", data_ptr->point_cloud_kit->cp_renderer.enable_marking, "check");
 		connect_copy(add_button("reset_marking")->click, rebind(this, &visual_processing::reset_marking));
 		add_member_control(this, "clod_scale", data_ptr->point_cloud_kit->clod_render_scale, "value_slider", "min=0;max=1;log=false;ticks=true;");
+		add_member_control(this, "test_shader_selection", data_ptr->point_cloud_kit->test_shader_selection, "check");
 	}
 
 	//

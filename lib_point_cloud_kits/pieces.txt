@@ -1,0 +1,5 @@
+
+				//selection_indices = (int*)((uint8_t*)selection_indices + 1);
+				//normals = (vec3*)((uint8_t*)normals + 1);
+				//auto input_it = input_buffer_data.begin();
+				//const uint8_t* pos_end = (uint8_t*)positions + (stride * num_points);
