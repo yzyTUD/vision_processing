@@ -221,6 +221,7 @@ bool gl_point_cloud_drawable::init(cgv::render::context& ctx)
 	// - this step is simplified with the cgv ref_renderer api 
 	if (!cp_renderer.init(ctx))
 		return false;
+	//cp_style.draw_circles = false;
 	cp_renderer.set_render_style(cp_style);
 	//cgv::render::ref_clod_point_renderer(ctx, 1);
 
@@ -392,8 +393,6 @@ void gl_point_cloud_drawable::draw_points_clod(context& ctx) {
 		return;
 	if (!show_points)
 		return;
-	cp_style.draw_circles = true;
-	cp_renderer.set_render_style(cp_style);
 	if (renderer_out_of_date) {
 		// cast points from pc to V
 		std::vector<LODPoint> V(pc.get_nr_points());
@@ -456,10 +455,15 @@ void gl_point_cloud_drawable::draw_points_clod(context& ctx) {
 	if (cp_renderer.enable(ctx)) {
 		// setup uniform varibles that will be used in reduce compute shader 
 		cp_renderer.ref_reduce_prog()->set_uniform(ctx, "enable_headset_culling", enable_headset_culling);
+		cp_renderer.ref_reduce_prog()->set_uniform(ctx, "headset_culling_range", headset_culling_range);
 		cp_renderer.ref_reduce_prog()->set_uniform(ctx, "headset_position", headset_position);
 		cp_renderer.ref_reduce_prog()->set_uniform(ctx, "headset_direction", headset_direction);
 
 		// setup uniform varibles that will be used in marking compute shader 
+		cp_renderer.ref_marking_prog()->set_uniform(ctx, "enable_headset_culling", enable_headset_culling);
+		cp_renderer.ref_marking_prog()->set_uniform(ctx, "headset_culling_range", headset_culling_range);
+		cp_renderer.ref_marking_prog()->set_uniform(ctx, "headset_position", headset_position);
+		cp_renderer.ref_marking_prog()->set_uniform(ctx, "headset_direction", headset_direction);
 		cp_renderer.ref_marking_prog()->set_uniform(ctx, "rhand_position", right_controller_position);
 		cp_renderer.ref_marking_prog()->set_uniform(ctx, "lhand_position", left_controller_position);
 		cp_renderer.ref_marking_prog()->set_uniform(ctx, "controller_effect_range", controller_effect_range);

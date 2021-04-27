@@ -676,6 +676,11 @@ bool visual_processing::handle(cgv::gui::event& e)
 					data_ptr->point_cloud_kit->step_forward_selection();
 					send_updated_point_cloud_to_gpu();
 				}
+				/*compute shader point cleaning */
+				if (data_ptr->check_roulette_selection(data_ptr->get_id_with_name("CSPCCleaning\nResetMarking"))) {
+					data_ptr->point_cloud_kit->reset_marking();
+				}
+				//
 				/*animating */ 
 				if (data_ptr->check_roulette_selection(data_ptr->get_id_with_name("Animating\nPause"))) {
 					data_ptr->is_replay = false;

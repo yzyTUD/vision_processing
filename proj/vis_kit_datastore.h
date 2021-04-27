@@ -403,6 +403,7 @@ public:
 		*/
 		gp_btn_tmp.clear();
 		gp_btn_tmp.push_back("CSPCCleaning\nMarking");
+		gp_btn_tmp.push_back("CSPCCleaning\nResetMarking");
 		gps.push_back(gp_btn_tmp);
 
 		/*
