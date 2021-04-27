@@ -439,7 +439,7 @@ void gl_point_cloud_drawable::draw_points_clod(context& ctx) {
 				&pnts.data()->position(), 
 				&pnts.data()->color(), 
 				&pnts.data()->level(), 
-				pnts.size(), sizeof(LODPoint));
+				pnts.size(), sizeof(LODPoint),pc.N.data());
 		}
 		else {
 			// submit to renderer 
@@ -447,7 +447,8 @@ void gl_point_cloud_drawable::draw_points_clod(context& ctx) {
 				&points_with_lod.data()->position(), 
 				&points_with_lod.data()->color(), 
 				&points_with_lod.data()->level(), 
-				points_with_lod.size(), sizeof(LODPoint));
+				points_with_lod.size(), sizeof(LODPoint),
+				pc.N.data());
 		}
 		std::cout << "draw_points_clod: done." << std::endl;
 		renderer_out_of_date = false;
