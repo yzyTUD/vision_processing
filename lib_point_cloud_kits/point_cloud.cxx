@@ -2673,7 +2673,7 @@ struct PlyVertex
   float nx, ny, nz;
   unsigned char red, green, blue, alpha;
   float scan_idx;
-  unsigned char selection_idx;
+  int selection_idx;
 };
 
 static PlyProperty vert_props[] = { /* list of property information for a vertex */
@@ -2689,7 +2689,7 @@ static PlyProperty vert_props[] = { /* list of property information for a vertex
   {"alpha", Uint8, Uint8, offsetof(PlyVertex,alpha), 0, 0, 0, 0},
   {"intensity", Uint8, Uint8, offsetof(PlyVertex,red), 0, 0, 0, 0},
   {"scalar_Original_cloud_index", Float32, Float32, offsetof(PlyVertex,scan_idx), 0, 0, 0, 0},
-  {"selection_idx", Uint8, Uint8, offsetof(PlyVertex,selection_idx), 0, 0, 0, 0},
+  {"selection_idx", Int32, Int32, offsetof(PlyVertex,selection_idx), 0, 0, 0, 0},
 };
 
 typedef struct PlyFace {
@@ -2747,6 +2747,9 @@ bool point_cloud::read_ply(const string& _file_name)
 				if (strcmp("scalar_Original_cloud_index", elem->props[pi]->name) == 0) {
 					has_scan_index = true;
 				}
+				if (strcmp("selection_idx", elem->props[pi]->name) == 0) {
+					has_topo_selection = true;
+				}
 			}
 			if (!(has_P[0] && has_P[1] && has_P[2]))
 				std::cerr << "ply file " << _file_name << " has no complete position property!" << std::endl;
@@ -2757,8 +2760,10 @@ bool point_cloud::read_ply(const string& _file_name)
 				N.resize(nrVertices);
 			if (has_clrs)
 				C.resize(nrVertices);
-			if(has_scan_index)
+			if (has_scan_index)
 				point_scan_index.resize(nrVertices);
+			if (has_topo_selection)
+				topo_id.resize(nrVertices);
 			int p;
 			for (p=0; p<6; ++p) 
 				setup_property_ply(ply_in, &vert_props[p]);
@@ -2769,8 +2774,10 @@ bool point_cloud::read_ply(const string& _file_name)
 					if (has_C[p])
 						setup_property_ply(ply_in, &vert_props[6+p]);
 			}
-			if(has_scan_index)
+			if (has_scan_index)
 				setup_property_ply(ply_in, &vert_props[11]);
+			if (has_topo_selection)
+				setup_property_ply(ply_in, &vert_props[12]);
 			for (int j = 0; j < nrVertices; j++) {
 				if (j % 1000 == 0)
 					printf("%d Percent done.\r", (int)(100.0 * j / nrVertices));
@@ -2784,9 +2791,10 @@ bool point_cloud::read_ply(const string& _file_name)
 					C[j][1] = byte_to_color_component(is_intensity ? vertex.red : vertex.green);
 					C[j][2] = byte_to_color_component(is_intensity ? vertex.red : vertex.blue);
 				}
-				if (has_scan_index) {
+				if (has_scan_index) 
 					point_scan_index[j] = vertex.scan_idx;
-				}
+				if (has_topo_selection)
+					topo_id[j] = vertex.selection_idx;
 			}
 		}
 	}
@@ -2803,7 +2811,7 @@ bool point_cloud::write_ply(const std::string& file_name) const
 		return false;
 	int real_vertex_num = 0;
 	for (int j = 0; j < (int)P.size(); j++) {
-		if (has_face_selection && (2 == (int)face_id[j])) // ignore deleted points 
+		if (has_face_selection && (2 == (int)topo_id[j])) // ignore deleted points 
 			continue;
 		else
 			real_vertex_num++;
@@ -2813,6 +2821,8 @@ bool point_cloud::write_ply(const std::string& file_name) const
 		describe_property_ply (ply_out, &vert_props[p]);
 	if(has_scan_index)
 		describe_property_ply(ply_out, &vert_props[11]);
+	if(has_topo_selection)
+		describe_property_ply(ply_out, &vert_props[12]);
 	describe_element_ply (ply_out, "face", 0);
 	describe_property_ply (ply_out, &face_props[0]);
 	header_complete_ply(ply_out);
@@ -2822,7 +2832,7 @@ bool point_cloud::write_ply(const std::string& file_name) const
 	for (int j = 0; j < (int)P.size(); j++) {
 		if (j % 1000 == 0)
 			printf("%d Percent done.\r", (int)(100.0 * j / (int)P.size()));
-		if (has_face_selection && (2 == (int)face_id[j])) // delete unwanted points, can not undo
+		if (has_face_selection && (2 == (int)topo_id[j])) // delete unwanted points, can not undo
 			continue;
 		PlyVertex vertex;
 		vertex.x = P[j][0];
@@ -2855,6 +2865,8 @@ bool point_cloud::write_ply(const std::string& file_name) const
 		vertex.alpha = 255;
 		if (has_scan_index)
 			vertex.scan_idx = point_scan_index[j];
+		if (has_topo_selection)
+			vertex.selection_idx = topo_id[j];
 		put_element_ply(ply_out, (void *)&vertex);
 	}
 	put_element_setup_ply (ply_out, "face");
