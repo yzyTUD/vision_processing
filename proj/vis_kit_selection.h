@@ -537,6 +537,7 @@ public:
 						//std::cout << "current topo selecting index = " << curr_topo_selecting_id << std::endl;
 					}
 
+					// update headset information in drawbale for shading effects, enable selection effects 
 					data_ptr->point_cloud_kit->headset_direction = data_ptr->headset_direction;
 					data_ptr->point_cloud_kit->headset_position = data_ptr->headset_object_positions[0];
 					data_ptr->point_cloud_kit->right_controller_position = data_ptr->righthand_object_positions[0];

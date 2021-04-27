@@ -83,6 +83,7 @@ public:
 	cgv::pointcloud::octree_lod_generator<LODPoint> lod_generator;
 	cgv::render::clod_point_renderer cp_renderer;
 	std::vector<LODPoint> points_with_lod; // pass points from main mem to here, then send to shader 
+	bool is_triggering = false;
 
 	/*normal rendering*/ 
 	cgv::render::normal_renderer n_renderer;
@@ -171,6 +172,7 @@ public:
 	void on_rendering_settings_changed();
 	void draw_normals(cgv::render::context& ctx);
 	void download_points_from_gpu_to_memory();
+	void reset_marking();
 
 public:
 	/*IO*/

@@ -355,6 +355,7 @@ bool visual_processing::handle(cgv::gui::event& e)
 		float v = te.get_value();
 		bool d = (v == 1); // event 
 		if (te.get_controller_index() == data_ptr->right_rgbd_controller_index) {
+			//
 			if (d) {
 				// click to toggle 
 				if (data_ptr->check_roulette_selection(data_ptr->get_id_with_name("PCCleaning\nFake\nDel"))) {
@@ -382,6 +383,18 @@ bool visual_processing::handle(cgv::gui::event& e)
 					else {
 						data_ptr->point_cloud_kit->which_effect_righthand = 2;
 					}
+				}
+			}
+
+			// compute shader marking, is_triggering will continuely updated to gpu 
+			if (v > 0) { 
+				if (data_ptr->check_roulette_selection(data_ptr->get_id_with_name("CSPCCleaning\nMarking"))) {
+					data_ptr->point_cloud_kit->is_triggering = true;
+				}
+			}
+			else {
+				if (data_ptr->check_roulette_selection(data_ptr->get_id_with_name("CSPCCleaning\nMarking"))) {
+					data_ptr->point_cloud_kit->is_triggering = false;
 				}
 			}
 		}
@@ -1336,6 +1349,9 @@ void visual_processing::on_rendering_settings_changed() {
 void visual_processing::download_points_from_gpu_to_memory() {
 	data_ptr->point_cloud_kit->download_points_from_gpu_to_memory();
 }
+void visual_processing::reset_marking() {
+	data_ptr->point_cloud_kit->reset_marking();
+}
 /*gui */
 ///
 void visual_processing::create_gui() {
@@ -1379,6 +1395,7 @@ void visual_processing::create_gui() {
 		connect_copy(add_button("download_points_from_gpu_to_memory")->click, rebind(this,
 			&visual_processing::download_points_from_gpu_to_memory));
 		add_member_control(this, "enable_marking", data_ptr->point_cloud_kit->cp_renderer.enable_marking, "check");
+		connect_copy(add_button("reset_marking")->click, rebind(this, &visual_processing::reset_marking));
 	}
 
 	//

@@ -436,7 +436,7 @@ void gl_point_cloud_drawable::draw_points_clod(context& ctx) {
 
 			// submit to renderer 
 			//cp_renderer.set_points(ctx, pnts.data(), pnts.size());
-			cp_renderer.set_points(ctx, 
+			cp_renderer.set_points(ctx, // will be packed to input_buffer_data, input_buffer_data can be uploaded and downloaded
 				&pnts.data()->position(), 
 				&pnts.data()->color(), 
 				&pnts.data()->level(), 
@@ -454,11 +454,21 @@ void gl_point_cloud_drawable::draw_points_clod(context& ctx) {
 		renderer_out_of_date = false;
 	}
 	if (cp_renderer.enable(ctx)) {
-		cp_renderer.ref_reduce_prog()->set_uniform(ctx, "enable_headset_culling", enable_headset_culling);;
+		// setup uniform varibles that will be used in reduce compute shader 
+		cp_renderer.ref_reduce_prog()->set_uniform(ctx, "enable_headset_culling", enable_headset_culling);
+		cp_renderer.ref_reduce_prog()->set_uniform(ctx, "headset_position", headset_position);
+		cp_renderer.ref_reduce_prog()->set_uniform(ctx, "headset_direction", headset_direction);
+
+		// setup uniform varibles that will be used in marking compute shader 
+		cp_renderer.ref_marking_prog()->set_uniform(ctx, "rhand_position", right_controller_position);
+		cp_renderer.ref_marking_prog()->set_uniform(ctx, "lhand_position", left_controller_position);
+		cp_renderer.ref_marking_prog()->set_uniform(ctx, "controller_effect_range", controller_effect_range);
+		cp_renderer.ref_marking_prog()->set_uniform(ctx, "is_triggering", is_triggering);
+
+		//
 		cp_renderer.draw(ctx, 0, pc.get_nr_points());
 	}
 }
-
 /// after this, pc will be changed and we are ready to write pc to disk 
 /// check by do the following: render with clod, download_points_from_gpu_to_memory, on_rendering_setting_changed (re-upload points)
 void gl_point_cloud_drawable::download_points_from_gpu_to_memory() {
@@ -472,6 +482,9 @@ void gl_point_cloud_drawable::download_points_from_gpu_to_memory() {
 	}
 }
 
+void gl_point_cloud_drawable::reset_marking() {
+	cp_renderer.reset_marking();
+}
 /// render test 
 void gl_point_cloud_drawable::draw_raw(context& ctx) { // quick test 
 	if (pc.get_nr_points() == 0)

@@ -399,6 +399,13 @@ public:
 		gps.push_back(gp_btn_tmp);
 
 		/*
+			
+		*/
+		gp_btn_tmp.clear();
+		gp_btn_tmp.push_back("CSPCCleaning\nMarking");
+		gps.push_back(gp_btn_tmp);
+
+		/*
 			point cloud cleaning 
 			adjuest range with move event
 			press btn to confirm
@@ -415,7 +422,6 @@ public:
 		gp_btn_tmp.push_back("PCCleaning\nAddition\nSphere");
 		gp_btn_tmp.push_back("PCCleaning\nCopyPoints");
 		// modification 
-		// toolset 
 		gp_btn_tmp.push_back("PCCleaning\nStepBackWard");
 		gp_btn_tmp.push_back("PCCleaning\nStepForward");
 		gps.push_back(gp_btn_tmp);
