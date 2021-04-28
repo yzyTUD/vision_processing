@@ -73,8 +73,8 @@ public:
 	
 
 	/*clod rendering*/
-	using LODPoint = cgv::pointcloud::SimpleLODPoint;
-	//using LODPoint = cgv::render::clod_point_renderer::LODPoint;
+	//using LODPoint = cgv::pointcloud::SimpleLODPoint;
+	using LODPoint = cgv::render::clod_point_renderer::LODPoint;
 	int lod_mode = (int)LoDMode::OCTREE;
 	bool renderer_out_of_date = true;
 	bool color_based_on_lod = false;

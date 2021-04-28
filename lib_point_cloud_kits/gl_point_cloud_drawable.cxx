@@ -387,6 +387,66 @@ void gl_point_cloud_drawable::draw_points_point_rendering(context& ctx) {
 	glBindVertexArray(0);
 	raw_prog.disable(ctx);
 }
+
+///
+template<typename Point>
+void generate_lods_poisson(std::vector<Point>& input_buffer_data)
+{
+	static constexpr int mean = 8;
+	bool run_parralel = (input_buffer_data.size() > 10'000);
+	static cgv::pointcloud::utility::WorkerPool pool(std::thread::hardware_concurrency() - 1);
+
+	if (run_parralel) {
+
+		struct Task {
+			Point* start;
+			int num_points;
+		};
+		struct Tasks {
+			std::atomic_int next_task = 0;
+			std::vector<Task> task;
+		} tasks;
+
+		int64_t points_distributed = 0;
+		int64_t points_total = input_buffer_data.size();
+		constexpr int64_t batch_size = 500000;
+
+		while (points_distributed < points_total) {
+			int64_t batch = min(batch_size, points_total - points_distributed);
+			tasks.task.push_back({ &input_buffer_data[points_distributed],(int)batch });
+			points_distributed += batch;
+		}
+
+		pool.run([&input_buffer_data, &tasks](int thread_id) {
+			std::poisson_distribution<int> dist(mean);
+			std::random_device rdev;
+
+			while (true) {
+				//fetch task
+				int tid = tasks.next_task.fetch_add(1, std::memory_order_relaxed);
+				if (tid < tasks.task.size()) {
+					Task& task = tasks.task[tid];
+
+					Point* end = task.start + task.num_points;
+					for (Point* p = task.start; p < end; p++) {
+						p->level() = min(2 * mean, max(0, mean - abs(dist(rdev) - mean)));
+					}
+				}
+				else {
+					return;
+				}
+			}
+		});
+	}
+	else {
+		std::poisson_distribution<int> dist(8);
+		std::random_device rdev;
+
+		for (auto& v : input_buffer_data) {
+			v.level() = min(2 * mean, max(0, mean - abs(dist(rdev) - mean)));
+		}
+	}
+}
 /// render with clod rendering 
 void gl_point_cloud_drawable::draw_points_clod(context& ctx) {
 	if (pc.get_nr_points() == 0)
@@ -397,14 +457,19 @@ void gl_point_cloud_drawable::draw_points_clod(context& ctx) {
 		// cast points from pc to V, LODPoint is a simpler version of Point in cgv::render::...
 		std::vector<LODPoint> V(pc.get_nr_points());
 		for (int i = 0; i < pc.get_nr_points(); ++i) {
-			//V[i].p_index = i; // recording original id to access further point properties 
+			V[i].index() = i; // recording original id to access further point properties 
 			V[i].position() = pc.pnt(i);
 			V[i].level() = 0;
-			V[i].index() = i;
 		}
 		int size_of_point_stru = sizeof(LODPoint);
-		std::cout << "draw_points_clod: computing lods with octree..." << std::endl;
-		points_with_lod = std::move(lod_generator.generate_lods(V));
+		std::cout << "draw_points_clod: computing lods ..." << std::endl;
+		if ((LoDMode)lod_mode == LoDMode::OCTREE) {
+			points_with_lod = std::move(lod_generator.generate_lods(V));
+		}
+		else {
+			generate_lods_poisson(V);
+			points_with_lod = std::move(V);
+		}
 		std::cout << "draw_points_clod: lods generated" << std::endl;
 		// state: lods generated 
 		// pass points from points_with_lod to renderer 
@@ -462,13 +527,13 @@ void gl_point_cloud_drawable::draw_points_clod(context& ctx) {
 			for (int i = 0; i < num_of_points; ++i) {
 				// input_buffer_data is unordered 
 				input_buffer_data.at(i).position() = *positions;
-				input_buffer_data.at(i).color() = pc.clr(points_with_lod.at(i).index()); //pc.clr(i);// 
+				input_buffer_data.at(i).color() = pc.clr(points_with_lod.at(i).index()); //pc.clr(points_with_lod.at(i).index()); //pc.clr(i);// 
 				input_buffer_data.at(i).level() = *lods;
 
 				// quick test 
 				input_buffer_data.at(i).p_index = 0; //points_with_lod.at(i).index(); // indicating original index 
 				input_buffer_data.at(i).p_selection_index = 0; //pc.topo_id.at(points_with_lod.at(i).index()); // pre was unordered
-				input_buffer_data.at(i).p_normal = pc.nml(points_with_lod.at(i).index()); // pre was unordered //vec3(1, 0, 0);//
+				input_buffer_data.at(i).p_normal = pc.nml(points_with_lod.at(i).index());//vec3(0, 1, 0);//pc.nml(points_with_lod.at(i).index()); // pre was unordered //
 
 				//input_buffer_data.at(i).p_index = points_with_lod.at(i).index(); // indicating original index 
 				//input_buffer_data.at(i).p_selection_index = pc.topo_id.at(points_with_lod.at(i).index()); // pre was unordered

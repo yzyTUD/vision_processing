@@ -326,7 +326,7 @@ struct SamplerRandom : public Sampler<point_t> {
 			callback(node);
 		};
 
-		SampleGrid<128> cgrid;
+		SampleGrid<256> cgrid; // 128 
 
 		traversePost(node.get(), [this,baseSpacing, &onNodeCompleted, &cgrid](IndexNode<point_t>* node) {
 			assert((node == nullptr) || (node->num_points == 0 && node->points.get() == nullptr) || (node->num_points == node->points->size()));
@@ -500,7 +500,7 @@ struct SamplerRandom : public Sampler<point_t> {
 			node->num_points = numAccepted;
 
 			return true;
-			});
+		});
 	}
 
 };
@@ -694,69 +694,69 @@ struct SamplerRandom : public Sampler<point_t> {
 		//auto start = std::chrono::steady_clock::now();
 		auto& grid = lut.grid;
 
-		int size_of_point_stru = sizeof(point_t);
+		/*int size_of_point_stru = sizeof(point_t);
 
 		constexpr int max_chunk_size = 512 * (64 / sizeof(point_t));
 
 		struct Task {
 			int64_t batch_size;
 			int64_t first_point;
-		};
+		};*/
 
-		cgv::pointcloud::utility::TaskPool<Task> tasks;
+		//cgv::pointcloud::utility::TaskPool<Task> tasks;
 
-		{
-			int max_num_tasks = (num_points / max_chunk_size) + 1;
-			tasks.pool.resize(max_num_tasks);
-			auto it = tasks.pool.begin();
+		//{
+		//	int max_num_tasks = (num_points / max_chunk_size) + 1;
+		//	tasks.pool.resize(max_num_tasks);
+		//	auto it = tasks.pool.begin();
 
-			int64_t i = 0;
-			while (i < num_points) {
-				Task& t = *it;
-				t.first_point = i;
-				int64_t points_left = num_points - i;
-				t.batch_size = (points_left < max_chunk_size) ? points_left : max_chunk_size;
-				i += t.batch_size;
-				++it;
-			}
-		}
+		//	int64_t i = 0;
+		//	while (i < num_points) {
+		//		Task& t = *it;
+		//		t.first_point = i;
+		//		int64_t points_left = num_points - i;
+		//		t.batch_size = (points_left < max_chunk_size) ? points_left : max_chunk_size;
+		//		i += t.batch_size;
+		//		++it;
+		//	}
+		//}
 
-		tasks.func = [this, &tasks, &vertices, &min, &cube_size, &grid_size, &grid, &nodes](Task* task) {
-			int batch_size = task->batch_size;
-			int64_t first_point = task->first_point;
+		//tasks.func = [this, &tasks, &vertices, &min, &cube_size, &grid_size, &grid, &nodes](Task* task) {
+		//	int batch_size = task->batch_size;
+		//	int64_t first_point = task->first_point;
 
-			const point_t* start = vertices + first_point;
-			const point_t* end = start + batch_size;
+		//	const point_t* start = vertices + first_point;
+		//	const point_t* end = start + batch_size;
 
-			//create a bucket for each chunk
-			int num_buckets = nodes.size();
-			std::vector<std::vector<point_t>> buckets(num_buckets);
+		//	//create a bucket for each chunk
+		//	int num_buckets = nodes.size();
+		//	std::vector<std::vector<point_t>> buckets(num_buckets);
 
-			for (const point_t* i = start; i < end; ++i) {
-				vec3 p = i->position();
-				int idx = grid_index(p, min, cube_size, grid_size);
-				buckets[grid[idx]].push_back(*i);
-			}
+		//	for (const point_t* i = start; i < end; ++i) {
+		//		vec3 p = i->position();
+		//		int idx = grid_index(p, min, cube_size, grid_size);
+		//		buckets[grid[idx]].push_back(*i);
+		//	}
 
-			for (int i = 0; i < num_buckets; ++i) {
-				if (buckets[i].size() > 0)
-					nodes[i].pc_data->write_points(buckets[i].data(), buckets[i].size());
-			}
+		//	for (int i = 0; i < num_buckets; ++i) {
+		//		if (buckets[i].size() > 0)
+		//			nodes[i].pc_data->write_points(buckets[i].data(), buckets[i].size());
+		//	}
 
-		};
+		//};
 
-		pool_ptr->run([&tasks](int id) {tasks(); });
+		//pool_ptr->run([&tasks](int id) {tasks(); });
 
-		/* //single thread variant
+		 //single thread variant
 		for (int i = 0; i < num_points; ++i) {
-			vec3 p = vertices[i].position;
+			vec3 p = vertices[i].position();
 			int idx = grid_index(p, min, cube_size, grid_size);
 
 			auto& node = nodes[grid[idx]];
 			point_t v = vertices[i];
 			node.pc_data->write_points(&v, 1);
-		}*/
-		auto end = std::chrono::steady_clock::now();
+		}
+		//auto end = std::chrono::steady_clock::now();
 		//std::printf("distributing: %d ns\n", std::chrono::duration_cast<std::chrono::nanoseconds>(end - start));
 	}
 
