@@ -59,17 +59,23 @@ namespace pointcloud {
 	};
 
 	// LOD point with color as additional attribute, add color 
-	struct SimpleLODPoint : public GenericLODPoint<0, 2, cgv::render::render_types::vec3, cgv::render::render_types::rgb8, uint8_t> {
-		inline rgb8& color() {
+	struct SimpleLODPoint : public GenericLODPoint<0, 1, cgv::render::render_types::vec3, uint8_t, int> {
+		/*inline rgb8& color() {
 			return std::get<1>(data);
 		}
 		inline const rgb8& color() const {
 			return std::get<1>(data);
+		}*/
+		inline int& index() {
+			return std::get<2>(data);
+		}
+		inline const int& index() const {
+			return std::get<2>(data);
 		}
 	};
 
 	// this is only one sample, we can also use other formats 
-	using LODPoint = GenericLODPoint<0, 2, cgv::render::render_types::vec3,cgv::render::render_types::rgb8,uint8_t>;
+	//using LODPoint = GenericLODPoint<0, 2, cgv::render::render_types::vec3,cgv::render::render_types::rgb8,uint8_t>;
 
 	//lookup table used to converting cell indices to linear indices
 	struct NodeLUT {
@@ -127,7 +133,13 @@ namespace pointcloud {
 		void write_points(const point_t* points, const int size) {
 			int start = numPointsWritten.fetch_add(size);
 			assert(vertices.size() - start >= size);
-			memcpy(vertices.data() + start, points, size * sizeof(point_t));
+			//int size_to_be_written = size * sizeof(point_t);
+			//if (size_to_be_written > 65535) {
+			//	std::cout << "size_to_be_written too large" << std::endl;
+			//}
+			for (int64_t c = 0; c < size; c++) 
+				memcpy(vertices.data() + start + c, points + c, sizeof(point_t));
+			
 		}
 	};
 
@@ -318,6 +330,8 @@ struct SamplerRandom : public Sampler<point_t> {
 
 		traversePost(node.get(), [this,baseSpacing, &onNodeCompleted, &cgrid](IndexNode<point_t>* node) {
 			assert((node == nullptr) || (node->num_points == 0 && node->points.get() == nullptr) || (node->num_points == node->points->size()));
+			/*if (!((node == nullptr) || (node->num_points == 0 && node->points.get() == nullptr) || (node->num_points == node->points->size())))
+				return false;*/
 
 			node->sampled = true;
 
@@ -403,6 +417,8 @@ struct SamplerRandom : public Sampler<point_t> {
 				}
 
 				assert((child->points == nullptr && child->num_points == 0) || (child->num_points == child->points->size()));
+				/*if (!((child->points == nullptr && child->num_points == 0) || (child->num_points == child->points->size())))
+					return false;*/
 
 				std::vector<int8_t> acceptedFlags(child->num_points, 0);
 				int64_t numRejected = 0;
@@ -677,6 +693,8 @@ struct SamplerRandom : public Sampler<point_t> {
 	{
 		//auto start = std::chrono::steady_clock::now();
 		auto& grid = lut.grid;
+
+		int size_of_point_stru = sizeof(point_t);
 
 		constexpr int max_chunk_size = 512 * (64 / sizeof(point_t));
 
@@ -1207,7 +1225,15 @@ struct SamplerRandom : public Sampler<point_t> {
 				tmp[targetIndex] = (*points)[i];
 				memcpy(tmp.data() + targetIndex, points->data() + i, sizeof(point_t));
 			}
-			memcpy(points->data(), tmp.data(), numPoints * sizeof(point_t));
+
+			/*int size_to_be_written = numPoints * sizeof(point_t);
+			if (size_to_be_written > 65535) {
+				std::cout << "size_to_be_written too large" << std::endl;
+			}*/
+
+			// split to multiple memcpy
+			for (int64_t c = 0; c < numPoints; c++) 
+				memcpy(points->data() + c, tmp.data() + c, sizeof(point_t));
 		}
 
 		auto pyramid = createSumPyramid(counters, counterGridSize);
@@ -1259,10 +1285,19 @@ struct SamplerRandom : public Sampler<point_t> {
 			realization->num_points = candidate.numPoints;
 
 			std::shared_ptr<std::vector<point_t>> buffer = std::make_shared<std::vector<point_t>>(candidate.numPoints); //potential out of memory here
-			memcpy(buffer->data(),
+			
+			/*int size_to_be_written = candidate.numPoints * sizeof(point_t);
+			if (size_to_be_written > 65535) {
+				std::cout << "size_to_be_written too large" << std::endl;
+			}*/
+			/*memcpy(buffer->data(),	
 				points->data() + candidate.indexStart,
 				candidate.numPoints * sizeof(point_t)
-			);
+			);*/
+
+			// split to multiple memcpy
+			for (int64_t c = 0; c < candidate.numPoints; c++) 
+				memcpy(buffer->data() + c, points->data() + candidate.indexStart + c, sizeof(point_t));
 
 			realization->points = buffer;
 

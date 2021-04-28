@@ -394,13 +394,15 @@ void gl_point_cloud_drawable::draw_points_clod(context& ctx) {
 	if (!show_points)
 		return;
 	if (renderer_out_of_date) {
-		// cast points from pc to V
+		// cast points from pc to V, LODPoint is a simpler version of Point in cgv::render::...
 		std::vector<LODPoint> V(pc.get_nr_points());
 		for (int i = 0; i < pc.get_nr_points(); ++i) {
-			V[i].p_index = i; // recording original id to access further point properties 
+			//V[i].p_index = i; // recording original id to access further point properties 
 			V[i].position() = pc.pnt(i);
-			V[i].color() = pc.clr(i);
+			V[i].level() = 0;
+			V[i].index() = i;
 		}
+		int size_of_point_stru = sizeof(LODPoint);
 		std::cout << "draw_points_clod: computing lods with octree..." << std::endl;
 		points_with_lod = std::move(lod_generator.generate_lods(V));
 		std::cout << "draw_points_clod: lods generated" << std::endl;
@@ -409,47 +411,47 @@ void gl_point_cloud_drawable::draw_points_clod(context& ctx) {
 		std::cout << "draw_points_clod: uploading points with lods to renderer" << std::endl;
 		
 		if (color_based_on_lod) {
-			std::vector<LODPoint> pnts = points_with_lod;
-			int num_points = pnts.size();
+			//std::vector<LODPoint> pnts = points_with_lod;
+			//int num_points = pnts.size();
 
-			// compute color values for each lod stage 
-			// find max lod value 
-			int max_lod = 0;
-			for (int i = 0; i < pc.get_nr_points(); ++i) {
-				max_lod = max((int)pnts[i].level(), max_lod);
-			}
-			std::vector<rgb8> col_lut;
-			for (int lod = 0; lod <= max_lod; ++lod) {
-				cgv::media::color<float, cgv::media::HLS> col;
-				col.L() = 0.5f;
-				col.S() = 1.f;
-				col.H() = min_level_hue + (max_level_hue - min_level_hue) * ((float)lod / (float)max_lod);
-				col_lut.push_back(col);
-			}
+			//// compute color values for each lod stage 
+			//// find max lod value 
+			//int max_lod = 0;
+			//for (int i = 0; i < pc.get_nr_points(); ++i) {
+			//	max_lod = max((int)pnts[i].level(), max_lod);
+			//}
+			//std::vector<rgb8> col_lut;
+			//for (int lod = 0; lod <= max_lod; ++lod) {
+			//	cgv::media::color<float, cgv::media::HLS> col;
+			//	col.L() = 0.5f;
+			//	col.S() = 1.f;
+			//	col.H() = min_level_hue + (max_level_hue - min_level_hue) * ((float)lod / (float)max_lod);
+			//	col_lut.push_back(col);
+			//}
 
-			// change the colors. Just give a "initial" value, as we packed level to .a value, 
-			// we can see the difference of the points at run time  
-			// tood: a better color mapping 
-			for (int i = 0; i < num_points; ++i) {
-				pnts[i].color() = col_lut[pnts[i].level()];
-			}
+			//// change the colors. Just give a "initial" value, as we packed level to .a value, 
+			//// we can see the difference of the points at run time  
+			//// tood: a better color mapping 
+			//for (int i = 0; i < num_points; ++i) {
+			//	pnts[i].color() = col_lut[pnts[i].level()];
+			//}
 
-			// submit to renderer, not used for now, rewrite as below
-			//cp_renderer.set_points(ctx, pnts.data(), pnts.size());
-			cp_renderer.set_points(ctx, // will be packed to input_buffer_data, input_buffer_data can be uploaded and downloaded
-				&pnts.data()->position(), 
-				&pnts.data()->color(), 
-				&pnts.data()->level(), 
-				pnts.size(), sizeof(LODPoint),pc.N.data());
+			//// submit to renderer, not used for now, rewrite as below
+			////cp_renderer.set_points(ctx, pnts.data(), pnts.size());
+			//cp_renderer.set_points(ctx, // will be packed to input_buffer_data, input_buffer_data can be uploaded and downloaded
+			//	&pnts.data()->position(), 
+			//	&pnts.data()->color(), 
+			//	&pnts.data()->level(), 
+			//	pnts.size(), sizeof(LODPoint),pc.N.data());
 		}
 		else {
+			// pack with full version: cgv::render::clod_point_renderer::Point
 			int num_of_points = pc.get_nr_points();
 			std::vector<cgv::render::clod_point_renderer::Point> input_buffer_data(num_of_points);
 
 			// fatch data from memory 
 			unsigned stride = sizeof(LODPoint);
 			vec3* positions = &points_with_lod.data()->position();
-			rgb8* colors = &points_with_lod.data()->color();
 			uint8_t* lods = &points_with_lod.data()->level();
 
 			// further properties shall be re-indexed 
@@ -460,15 +462,20 @@ void gl_point_cloud_drawable::draw_points_clod(context& ctx) {
 			for (int i = 0; i < num_of_points; ++i) {
 				// input_buffer_data is unordered 
 				input_buffer_data.at(i).position() = *positions;
-				input_buffer_data.at(i).color() = *colors;
+				input_buffer_data.at(i).color() = pc.clr(points_with_lod.at(i).index()); //pc.clr(i);// 
 				input_buffer_data.at(i).level() = *lods;
 
-				input_buffer_data.at(i).p_index = points_with_lod.at(i).p_index; // indicating original index 
-				input_buffer_data.at(i).p_selection_index = pc.topo_id.at(points_with_lod.at(i).p_index); // pre was unordered
-				input_buffer_data.at(i).p_normal = pc.nml(points_with_lod.at(i).p_index); // pre was unordered
+				// quick test 
+				input_buffer_data.at(i).p_index = 0; //points_with_lod.at(i).index(); // indicating original index 
+				input_buffer_data.at(i).p_selection_index = 0; //pc.topo_id.at(points_with_lod.at(i).index()); // pre was unordered
+				input_buffer_data.at(i).p_normal = pc.nml(points_with_lod.at(i).index()); // pre was unordered //vec3(1, 0, 0);//
+
+				//input_buffer_data.at(i).p_index = points_with_lod.at(i).index(); // indicating original index 
+				//input_buffer_data.at(i).p_selection_index = pc.topo_id.at(points_with_lod.at(i).index()); // pre was unordered
+				//input_buffer_data.at(i).p_normal = pc.nml(points_with_lod.at(i).index()); // pre was unordered
 
 				positions = (vec3*)((uint8_t*)positions + stride);
-				colors = (rgb8*)((uint8_t*)colors + stride);
+				//colors = (rgb8*)((uint8_t*)colors + stride);
 				lods += stride;
 			}
 
