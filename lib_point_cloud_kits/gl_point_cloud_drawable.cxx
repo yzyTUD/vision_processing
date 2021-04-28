@@ -463,7 +463,8 @@ void gl_point_cloud_drawable::draw_points_clod(context& ctx) {
 		}
 		int size_of_point_stru = sizeof(LODPoint);
 		std::cout << "draw_points_clod: computing lods ..." << std::endl;
-		if ((LoDMode)lod_mode == LoDMode::OCTREE) {
+		if (use_octree_sampling) {
+			std::cout << "computing octree lods ..." << std::endl;
 			points_with_lod = std::move(lod_generator.generate_lods(V));
 		}
 		else {
@@ -474,7 +475,37 @@ void gl_point_cloud_drawable::draw_points_clod(context& ctx) {
 		// state: lods generated 
 		// pass points from points_with_lod to renderer 
 		std::cout << "draw_points_clod: uploading points with lods to renderer" << std::endl;
-		
+		if(!color_based_on_lod){
+			// pack with full version: cgv::render::clod_point_renderer::Point
+			int num_of_points = pc.get_nr_points();
+			std::vector<cgv::render::clod_point_renderer::Point> input_buffer_data(num_of_points);
+
+			// fatch data from memory 
+			unsigned stride = sizeof(LODPoint);
+			vec3* positions = &points_with_lod.data()->position();
+			uint8_t* lods = &points_with_lod.data()->level();
+			int32_t* indices = &points_with_lod.data()->index();
+
+			// point properties shall be re-indexed 
+			// pack to input_buffer_data
+			for (int i = 0; i < num_of_points; ++i) {
+				// input_buffer_data is unordered 
+				input_buffer_data.at(i).position() = *positions;
+				input_buffer_data.at(i).level() = *lods;
+
+				// quick test 
+				input_buffer_data.at(i).p_index = *indices; // indicating original index 
+				input_buffer_data.at(i).color() = pc.clr(*indices); //pc.clr(points_with_lod.at(i).index()); //pc.clr(i);// 
+				input_buffer_data.at(i).p_selection_index = pc.topo_id.at(*indices); // pre was unordered
+				//input_buffer_data.at(i).p_normal = pc.nml(*indices); // pre was unordered //
+
+				positions = (vec3*)((uint8_t*)positions + stride);
+				indices = (int32_t*)((uint8_t*)indices + stride);
+				lods += stride;
+			}
+			// submit to renderer 
+			cp_renderer.set_points_packed(ctx, input_buffer_data.data(), input_buffer_data.size());
+		}
 		if (color_based_on_lod) {
 			//std::vector<LODPoint> pnts = points_with_lod;
 			//int num_points = pnts.size();
@@ -508,44 +539,6 @@ void gl_point_cloud_drawable::draw_points_clod(context& ctx) {
 			//	&pnts.data()->color(), 
 			//	&pnts.data()->level(), 
 			//	pnts.size(), sizeof(LODPoint),pc.N.data());
-		}
-		else {
-			// pack with full version: cgv::render::clod_point_renderer::Point
-			int num_of_points = pc.get_nr_points();
-			std::vector<cgv::render::clod_point_renderer::Point> input_buffer_data(num_of_points);
-
-			// fatch data from memory 
-			unsigned stride = sizeof(LODPoint);
-			vec3* positions = &points_with_lod.data()->position();
-			uint8_t* lods = &points_with_lod.data()->level();
-
-			// further properties shall be re-indexed 
-				//int* selection_indices = pc.topo_id.data(); 
-				//vec3* normals = pc.N.data();
-
-			// pack to input_buffer_data
-			for (int i = 0; i < num_of_points; ++i) {
-				// input_buffer_data is unordered 
-				input_buffer_data.at(i).position() = *positions;
-				input_buffer_data.at(i).color() = pc.clr(points_with_lod.at(i).index()); //pc.clr(points_with_lod.at(i).index()); //pc.clr(i);// 
-				input_buffer_data.at(i).level() = *lods;
-
-				// quick test 
-				input_buffer_data.at(i).p_index = 0; //points_with_lod.at(i).index(); // indicating original index 
-				input_buffer_data.at(i).p_selection_index = 0; //pc.topo_id.at(points_with_lod.at(i).index()); // pre was unordered
-				input_buffer_data.at(i).p_normal = pc.nml(points_with_lod.at(i).index());//vec3(0, 1, 0);//pc.nml(points_with_lod.at(i).index()); // pre was unordered //
-
-				//input_buffer_data.at(i).p_index = points_with_lod.at(i).index(); // indicating original index 
-				//input_buffer_data.at(i).p_selection_index = pc.topo_id.at(points_with_lod.at(i).index()); // pre was unordered
-				//input_buffer_data.at(i).p_normal = pc.nml(points_with_lod.at(i).index()); // pre was unordered
-
-				positions = (vec3*)((uint8_t*)positions + stride);
-				//colors = (rgb8*)((uint8_t*)colors + stride);
-				lods += stride;
-			}
-
-			// submit to renderer 
-			cp_renderer.set_points_packed(ctx, input_buffer_data.data(), input_buffer_data.size());
 		}
 		std::cout << "draw_points_clod: done." << std::endl;
 		renderer_out_of_date = false;
@@ -584,11 +577,11 @@ void gl_point_cloud_drawable::download_points_from_gpu_to_memory() {
 	// write back to pc, re-indexing needed 
 	for (auto& bd: buffer_data) {
 
-		if(bd.p_selection_index == 2)
-			pc.clr(bd.p_index) = rgb(1,0,0); // color is base element, so can be access in this way 
-		else {
-			// do nothing 
-		}
+		//if(bd.p_selection_index == 2)
+		//	pc.clr(bd.p_index) = rgb(1,0,0); // color is base element, so can be access in this way 
+		//else {
+		//	// do nothing 
+		//}
 
 		pc.topo_id.at(bd.p_index) = bd.p_selection_index;
 	}

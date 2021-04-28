@@ -75,7 +75,8 @@ public:
 	/*clod rendering*/
 	//using LODPoint = cgv::pointcloud::SimpleLODPoint;
 	using LODPoint = cgv::render::clod_point_renderer::LODPoint;
-	int lod_mode = (int)LoDMode::OCTREE;
+	//int lod_mode = (int)LoDMode::OCTREE;
+	bool use_octree_sampling = false;
 	bool renderer_out_of_date = true;
 	bool color_based_on_lod = false;
 	static constexpr float min_level_hue = 230.0 / 360.0;

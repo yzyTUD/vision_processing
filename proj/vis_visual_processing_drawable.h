@@ -1361,7 +1361,7 @@ void visual_processing::reset_marking() {
 ///
 void visual_processing::create_gui() {
 	add_decorator("visual_processing_main", "heading", "level=2");
-	connect_copy(add_button("rotate_right")->click,
+	/*connect_copy(add_button("rotate_right")->click,
 		rebind(this, &visual_processing::rotate_right));
 	connect_copy(add_button("rotate_left")->click,
 		rebind(this, &visual_processing::rotate_left));
@@ -1369,7 +1369,7 @@ void visual_processing::create_gui() {
 	add_member_control(this, "paratone_2", data_ptr->paratone_2, "value_slider", "min=-1;max=1;log=false;ticks=true;");
 	add_member_control(this, "paratone_3", data_ptr->paratone_3, "value_slider", "min=-1;max=1;log=false;ticks=true;");
 	add_member_control(this, "paratone_4", data_ptr->paratone_4, "value_slider", "min=-1;max=1;log=false;ticks=true;");
-	add_member_control(this, "paratone_5", data_ptr->paratone_5, "value_slider", "min=-1;max=1;log=false;ticks=true;");
+	add_member_control(this, "paratone_5", data_ptr->paratone_5, "value_slider", "min=-1;max=1;log=false;ticks=true;");*/
 
 	add_member_control(this, "render skybox", render_skybox, "check");
 	add_member_control(this, "render_handhold_gui", render_handhold_gui, "check");
@@ -1385,7 +1385,10 @@ void visual_processing::create_gui() {
 	add_member_control(this, "parallel_reading", parallel_reading, "check");
 	connect_copy(add_control("render_pc", render_pc, "check")->value_change, rebind(
 		static_cast<drawable*>(this), &visual_processing::post_redraw));
-
+	connect_copy(add_button("render_with_clod")->click, rebind(this,
+		&visual_processing::switch_rendering_mode_clod_based));
+	add_member_control(this, "use_octree_sampling", data_ptr->point_cloud_kit->use_octree_sampling, "check");
+	
 	connect_copy(add_button("read_pc")->click, rebind(this, &visual_processing::start_reading_pc_parallel));
 	connect_copy(add_button("randomize_current_pc")->click, rebind(this, &visual_processing::randomize_current_pc));
 	connect_copy(add_button("read_pc_append(obj raw scan)")->click, rebind(this, &visual_processing::read_pc_append));
