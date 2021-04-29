@@ -2171,12 +2171,12 @@ bool point_cloud::write_pwitha(const std::string& file_name) {
 	unsigned int i;
 	/*if (has_cam_posi)
 		os << "cam " << cam_posi << endl;*/
-		// format: 
-		// x y z nx ny nz r g b scan_index  + selection_index i j (point_index)
+		// format: x y z nx ny nz r g b scan_index face_id topo_id 
 		// 
 	if (cam_posi_list.size() > 0)
 		for (auto c : cam_posi_list)
 			os << "cam " << c << std::endl;
+	os << "#format: x y z nx ny nz r g b scan_index face_id topo_id " << endl;
 	// iterate all points 
 	// format: p n c scanidx faceid topoid 
 	for (i = 0; i < P.size(); ++i) {
@@ -2397,7 +2397,7 @@ bool point_cloud::read_txt_dev(const std::string& file_name)
 }
 
 
-// factor is 1/step, regular sampling 
+// factor is 1/step, regular sampling, only works for original point clouds (no scan index, face_id, topo_id)
 void point_cloud::downsampling_expected_num_of_points(int num_of_points_wanted) {
 
 	if (num_of_points_wanted <= 1 || num_of_points_wanted > get_nr_points()) {

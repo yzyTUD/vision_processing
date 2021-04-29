@@ -3023,7 +3023,7 @@ void point_cloud_interactable::compute_feature_points_and_colorize()
 }
 
 ///
-void point_cloud_interactable::compute_principal_curvature() {
+void point_cloud_interactable::compute_principal_curvature_unsigned() {
 	// ensure point structures and properties 
 	ensure_tree_ds();
 	ensure_neighbor_graph();
@@ -3065,6 +3065,213 @@ void point_cloud_interactable::compute_principal_curvature() {
 		tmpcurva.kmax = curv1;//store the two largest eigenvalues as prinicpal curvature
 		tmpcurva.kmin = curv2;
 		pc.curvature.at(i) = tmpcurva; // pc.curvature already reserved, resized 
+
+		/*
+			auto* eigenvalues = analysis.eigen_values_ptr();
+			auto* eigenvectors = analysis.eigen_vectors_ptr();
+			//store the two largest eigenvalues as prinicpal curvature
+			double kf = 1.0 / k;
+			float curv1 = eigenvalues[0] * kf;
+			float curv2 = eigenvalues[1] * kf;
+			pce[i] = principal_curvature_estimation(curv1, curv2, eigenvectors[0], eigenvectors[1]);
+
+			const float& principal_max, const float& principal_min, const Dir& principal_tangent_max, const Dir& principal_tangent_min
+		*/
+	}
+
+}
+
+/// recolor point cloud with curvature
+void point_cloud_interactable::colorize_with_computed_curvature_unsigned() {
+
+	float coloring_threshold_enlarged_real = coloring_threshold_enlarged * gui2real_scale;
+
+	// loop over to assign 
+	for (int i = 0; i < pc.get_nr_points(); i++) {
+		//std::cout << "pc.curvature.at(i).gaussian_curvature: " << pc.curvature.at(i).gaussian_curvature << std::endl;
+		if (pc.curvature.at(i).mean_curvature > coloring_threshold_enlarged_real)
+			pc.clr(i) = rgb(1, 0, 0);
+		else
+			pc.clr(i) = rgb(0, 0, 1);
+	}
+}
+
+// describes a surface defined by a quadratic equation with two parameters
+struct quadric {
+	using vec3 = cgv::math::fvec<float, 3>;
+
+	/// coefficients for ax²+by²+c*xy+dx+ey
+	double a, b, c, d, e;
+
+	quadric() = default;
+	quadric(double pa, double pb, double pc, double pd, double pe) : a(pa), b(pb), c(pc), d(pd), e(pe) {}
+
+	double evaluate(double u, double v)
+	{
+		return a * u * u + b * u * v + c * v * v + d * u + e * v;
+	}
+
+	double du(const double u, const double v) {
+		return 2.0 * a * u + b * v + d;
+	}
+
+	double duu(const double u, const double v) {
+		return 2.0 * a;
+	}
+
+	double dv(const double u, const double v) {
+		return 2.0 * c * v + b * u + e;
+	}
+
+	double dvv(const double u, const double v) {
+		return 2.0 * c;
+	}
+
+	double duv(const double u, const double v) {
+		return b;
+	}
+
+	static quadric fit(const std::vector<vec3>& pnts)
+	{
+		assert(pnts.size() >= 5);
+		size_t num_pnts = pnts.size();
+		cgv::math::mat<double> A(num_pnts, 5);
+		cgv::math::mat<double> b(num_pnts, 1);
+		cgv::math::mat<double> x(5, 1); //solution vector
+
+		//copy points to A and b
+		for (int c = 0; c < num_pnts; ++c)
+		{
+			double u = pnts[c][0];
+			double v = pnts[c][1];
+			double y = pnts[c][2];
+
+			A(c, 0) = u * u;
+			A(c, 1) = u * v;
+			A(c, 2) = v * v;
+			A(c, 3) = u;
+			A(c, 4) = v;
+
+			b(c, 0) = y;
+		}
+
+		//cgv::math::mat<double> U, V;
+		//cgv::math::diag_mat<double> sigma;
+		//cgv::math::svd(A, U, sigma, V, true);
+		//solve for b
+
+		auto pseudo_inverse_A = cgv::math::pseudo_inv(A);
+		x = pseudo_inverse_A * b;
+		return quadric(x(0, 0), x(1, 0), x(2, 0), x(3, 0), x(4, 0));
+	}
+};
+
+void point_cloud_interactable::compute_principal_curvature_signed() {
+	// ensure point structures and properties 
+	ensure_tree_ds();
+	ensure_neighbor_graph();
+	pc.curvature.resize(pc.get_nr_points()); // ensure writting space 
+
+	// define temp helper varibles 
+	std::vector<point_cloud::point_cloud_types::Idx> neighbor_points;
+	std::vector<point_cloud::point_cloud_types::Nml> projected_normals; // for each neighbor points 
+	std::vector<point_cloud::point_cloud_types::Pnt> plane_projected_points;
+
+	k = 40;
+
+	// loop over to compute 
+	for (int i = 0; i < pc.get_nr_points(); i++) {
+		const Pnt& selected_point = pc.pnt(i);
+		Mat projection_matrix; // point to plane projection
+		Mat plane_reference_matrix; // point to plane projection
+
+		//build quadratics
+		auto point_quadtratics = cgv::math::mat<float>(5, k);
+		tree_ds->extract_neighbors(i, k, neighbor_points);
+
+		// project point into normal plane
+		Dir& point_normal = pc.nml(i);
+		projection_matrix.identity();
+		projection_matrix -= Mat(point_normal, point_normal);
+
+		Dir y_axis = cgv::math::normalize(projection_matrix * pc.pnt(neighbor_points[neighbor_points.size() - 1]));
+		Dir x_axis = cgv::math::cross(y_axis, point_normal);
+		plane_reference_matrix.set_row(0, x_axis);
+		plane_reference_matrix.set_row(1, y_axis);
+		plane_reference_matrix.set_row(2, point_normal);
+		Mat inv_plane_reference_matrix = cgv::math::inv(plane_reference_matrix);
+
+		// change reference system, z is distance to plane, and x,y span the tangent space
+		plane_projected_points.clear();
+		for (const Idx& point_idx : neighbor_points) {
+			plane_projected_points.push_back(plane_reference_matrix * (pc.pnt(point_idx) - selected_point));
+		}
+		// fit quadric
+		quadric q = quadric::fit(plane_projected_points);
+
+		// compute first fundamental form of the quadric
+		double inv_sqrt_ab = 1.0 / (sqrt(q.a * q.a + q.b * q.b + 1.0));
+		double E = 1.0 + q.a * q.a;
+		double F = q.a * q.b;
+		double G = 1.0 + q.b * q.b;
+		// compute secound fundamental form
+		double L = (2.0 * q.c) * inv_sqrt_ab;
+		double M = q.d * inv_sqrt_ab;
+		double N = (2.0 * q.e) * inv_sqrt_ab;
+		// reshape
+		cgv::math::mat<double> FFF = cgv::math::mat<double>(2, 2);
+		cgv::math::mat<double> SFF = cgv::math::mat<double>(2, 2);
+		FFF(0, 0) = E;
+		FFF(0, 1) = FFF(1, 0) = F;
+		FFF(1, 1) = G;
+
+		SFF(0, 0) = L;
+		SFF(0, 1) = SFF(1, 0) = M;
+		SFF(1, 1) = N;
+
+		// calculate the shape operator of the quadric
+		cgv::math::mat<double> S = -SFF * cgv::math::inv_22(FFF);
+
+		// compute principal curvatures
+		cgv::math::mat<double> U, V;
+		cgv::math::diag_mat<double> s;
+		cgv::math::svd(S, U, s, V, false);
+
+		std::array<Dir, 2> eigen_vectors;
+		// columns of U contain vectors spanning the eigenspace and sigma contains the eigen values
+		for (int i = 0; i < 2; ++i) {
+			eigen_vectors[i] = Dir(0.0, 0.0, 0.0);
+			for (int j = 0; j < 2; ++j) {
+				eigen_vectors[i](j) = (float)U(j, i);
+			}
+		}
+		// transform back to world coordinates
+		for (auto& v : eigen_vectors) {
+			v = inv_plane_reference_matrix * v;
+		}
+		//evaluate q at point p
+		if (q.duu(0, 0) < 0) {
+			s[0] = -s[0];
+		}
+		if (q.dvv(0, 0) < 0) {
+			s[1] = -s[1];
+		}
+		int min_curv_ix = (s[0] < s[1]) ? 0 : 1;
+		int max_curv_ix = (s[0] < s[1]) ? 1 : 0;
+
+		/*
+			pce[i] = principal_curvature_estimation(s[max_curv_ix], s[min_curv_ix], eigen_vectors[max_curv_ix], eigen_vectors[min_curv_ix]);
+
+			const float& principal_max, const float& principal_min, const Dir& principal_tangent_max, const Dir& principal_tangent_min
+		*/
+
+		// save to structure 
+		principal_curvature tmpcurva;
+		tmpcurva.principal_tangent_vectors_max = eigen_vectors[max_curv_ix]; // 0 is the max 
+		tmpcurva.principal_tangent_vectors_min = eigen_vectors[min_curv_ix];
+		tmpcurva.kmax = s[max_curv_ix];//store the two largest eigenvalues as prinicpal curvature
+		tmpcurva.kmin = s[min_curv_ix];
+		pc.curvature.at(i) = tmpcurva; // pc.curvature already reserved, resized 
 	}
 
 }
@@ -3078,52 +3285,120 @@ void point_cloud_interactable::fill_curvature_structure() {
 }
 
 /// recolor point cloud with curvature
-void point_cloud_interactable::colorize_with_computed_curvature() {
-	// color with normalizing  
-	//// get_factor_mapping_to_0_1
-	//float vmax = std::numeric_limits<float>::min();
-	//float vmin = std::numeric_limits<float>::max();
-	//for (int i = 0; i < pc.get_nr_points(); i++) {
-	//	float tmpv = pc.curvature.at(i).gaussian_curvature;
-	//	if (tmpv < vmin) {
-	//		vmin = tmpv;
-	//	}
-	//	if (tmpv > vmax) {
-	//		vmax = tmpv;
-	//	}
-	//}
-	//float scale_factor_gaussian_curvature = 1.0f / (vmax - vmin);
-	//float translation_factor = vmin; // make sure start from 0 
-	//float normalized_value;
-
-	//// loop over to assign 
-	//for (int i = 0; i < pc.get_nr_points(); i++) {
-	//	normalized_value = pc.curvature.at(i).gaussian_curvature - translation_factor;
-	//	normalized_value /= scale_factor_gaussian_curvature;
-	//	pc.clr(i) = Clr(
-	//		float_to_color_component(normalized_value),
-	//		float_to_color_component(normalized_value),
-	//		float_to_color_component(1- normalized_value)
-	//	);
-	//}
-
-	// color with point class 
+void point_cloud_interactable::colorize_with_computed_curvature_signed() {
 	// loop over to assign 
 	for (int i = 0; i < pc.get_nr_points(); i++) {
-		std::cout << "pc.curvature.at(i).gaussian_curvature: " << pc.curvature.at(i).gaussian_curvature << std::endl;
+		//std::cout << "pc.curvature.at(i).gaussian_curvature: " << pc.curvature.at(i).gaussian_curvature << std::endl;
 		if (pc.curvature.at(i).gaussian_curvature < 0)
 			pc.clr(i) = rgb(1, 0, 0);
 		if (pc.curvature.at(i).gaussian_curvature > 0)
 			pc.clr(i) = rgb(0, 0, 1);
-		if (abs(pc.curvature.at(i).gaussian_curvature) < 1e-7) // == 0, higher priority, overwrite 
+		if (abs(pc.curvature.at(i).gaussian_curvature) < 1e-6) // == 0, higher priority, overwrite 
 			pc.clr(i) = rgb(0, 1, 0);
 	}
 }
 
-/// the entry point 
-void point_cloud_interactable::ep_compute_principal_curvature_and_colorize() {
-	compute_principal_curvature();
-	fill_curvature_structure();
-	colorize_with_computed_curvature(); // vis with gaussian_curvature
+void point_cloud_interactable::print_curvature_computing_info() {
+	max_mean_curvature = std::numeric_limits<float>::min();
+	min_mean_curvature = std::numeric_limits<float>::max();
+	for (int i = 0; i < pc.get_nr_points(); i++) {
+		if (pc.curvature.at(i).mean_curvature > max_mean_curvature)
+			max_mean_curvature = pc.curvature.at(i).mean_curvature;
+		if (pc.curvature.at(i).mean_curvature < min_mean_curvature) 
+			min_mean_curvature = pc.curvature.at(i).mean_curvature;
+	}
+
+	max_gaussian_curvature = std::numeric_limits<float>::min();
+	min_gaussian_curvature = std::numeric_limits<float>::max();
+	for (int i = 0; i < pc.get_nr_points(); i++) {
+		if (pc.curvature.at(i).gaussian_curvature > max_gaussian_curvature)
+			max_gaussian_curvature = pc.curvature.at(i).gaussian_curvature;
+		if (pc.curvature.at(i).gaussian_curvature < min_gaussian_curvature)
+			min_gaussian_curvature = pc.curvature.at(i).gaussian_curvature;
+	}
+
+	std::cout << "max_mean_curvature = " << max_mean_curvature << std::endl;
+	std::cout << "min_mean_curvature = " << min_mean_curvature << std::endl;
+	std::cout << "max_gaussian_curvature = " << max_gaussian_curvature << std::endl;
+	std::cout << "min_gaussian_curvature = " << min_gaussian_curvature << std::endl;
 }
 
+/// just for visualize, computing is no problem now
+/// goal: find a good threshold
+void point_cloud_interactable::auto_cluster_kmeans() {
+	// init centroids
+	float centroid_A = max_mean_curvature;
+	float centroid_B = min_mean_curvature;
+
+	std::vector<int> points_belongs_to_A;
+	std::vector<int> points_belongs_to_B;
+
+	int ounter = 0;
+	std::cout << "auto_cluster_kmeans: starts" << std::endl;
+	while (true) {
+		points_belongs_to_A.clear();
+		points_belongs_to_B.clear();
+
+		// try classify, either A or B 
+		for (int i = 0; i < pc.get_nr_points(); i++) {
+			if (abs(pc.curvature.at(i).mean_curvature - centroid_A) < abs(pc.curvature.at(i).mean_curvature - centroid_B)) {
+				points_belongs_to_A.push_back(i);
+			}
+			else {
+				points_belongs_to_B.push_back(i);
+			}
+		}
+
+		// compute new center 
+		float new_centroid_A = 0;
+		for (auto& pid_A : points_belongs_to_A) {
+			new_centroid_A += pc.curvature.at(pid_A).mean_curvature;
+		}
+		new_centroid_A /= points_belongs_to_A.size();
+
+		float new_centroid_B = 0;
+		for (auto& pid_B : points_belongs_to_B) {
+			new_centroid_B += pc.curvature.at(pid_B).mean_curvature;
+		}
+		new_centroid_B /= points_belongs_to_B.size();
+
+		// break when we can not go any further 
+		if ((abs(new_centroid_A - centroid_A)<1e-6) && (abs(new_centroid_B - centroid_B) < 1e-6)) {
+			break;
+		}
+
+		std::cout << "centroid_A " << centroid_A << std::endl;
+		std::cout << "new_centroid_A " << new_centroid_A << std::endl;
+		std::cout << "centroid_B " << centroid_B << std::endl;
+		std::cout << "new_centroid_B " << new_centroid_B << std::endl;
+
+		// update centroid_A
+		centroid_A = new_centroid_A;
+		centroid_B = new_centroid_B;
+	}
+	std::cout << "auto_cluster_kmeans: done" << std::endl;
+	coloring_threshold_enlarged = (centroid_A + centroid_B) * 0.5f * 1e6;
+	std::cout << "threshold selected by kmeans: " << (coloring_threshold_enlarged * gui2real_scale) << std::endl;
+}
+
+/// the entry point 
+void point_cloud_interactable::ep_compute_principal_curvature_and_colorize_signed() {
+	compute_principal_curvature_signed();
+	fill_curvature_structure();
+	print_curvature_computing_info();
+	colorize_with_computed_curvature_signed(); // vis with gaussian_curvature
+}
+
+/// the entry point 
+void point_cloud_interactable::ep_compute_principal_curvature_and_colorize_unsigned() {
+	compute_principal_curvature_unsigned();
+	fill_curvature_structure();
+	print_curvature_computing_info();
+	auto_cluster_kmeans();
+	colorize_with_computed_curvature_unsigned(); // vis with gaussian_curvature
+}
+
+
+void point_cloud_interactable::ep_force_recolor() {
+	colorize_with_computed_curvature_unsigned();
+}

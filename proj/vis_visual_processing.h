@@ -380,9 +380,11 @@ public:
 
 	void start_reading_pc_parallel();
 	void start_parallel_region_growing();
-	thread* parallel_reading_thread;
-	thread* parallel_writting_thread;
-	thread* parallel_region_growing_thread;
+	void pause_parallel_region_growing();
+	void stop_parallel_region_growing();
+	thread* parallel_reading_thread = nullptr;
+	thread* parallel_writting_thread = nullptr;
+	thread* parallel_region_growing_thread = nullptr;
 	bool parallel_reading = false;
 
 	void read_pc_queue();
@@ -685,9 +687,16 @@ public:
 		std::cout << "dropped!" << std::endl;
 	}
 
-	void ep_compute_principal_curvature_and_colorize() {
-		data_ptr->point_cloud_kit->ep_compute_principal_curvature_and_colorize();
+	void ep_compute_principal_curvature_and_colorize_signed() {
+		data_ptr->point_cloud_kit->ep_compute_principal_curvature_and_colorize_signed();
 		post_redraw();
+	}
+	void ep_compute_principal_curvature_and_colorize_unsigned() {
+		data_ptr->point_cloud_kit->ep_compute_principal_curvature_and_colorize_unsigned();
+		post_redraw();
+	}
+	void ep_force_recolor() {
+		data_ptr->point_cloud_kit->ep_force_recolor();
 	}
 	void compute_feature_points_and_colorize() {
 		data_ptr->point_cloud_kit->compute_feature_points_and_colorize();

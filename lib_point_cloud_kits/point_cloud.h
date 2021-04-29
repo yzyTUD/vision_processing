@@ -216,6 +216,9 @@ struct principal_curvature {
 
 	//principal components of the normals used for computation
 	Dir principal_curvature_vector;
+	//signed version 
+	Dir principal_tangent_vectors_max;
+	Dir principal_tangent_vectors_min;
 	//principal curvatures (eigen values)
 	float kmin;
 	float kmax;

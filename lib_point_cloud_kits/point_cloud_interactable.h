@@ -77,14 +77,14 @@ struct myComp {
 		return a.second > b.second;
 	}
 };
+
 // a wrapper priority queue and use a hash set to keep track of the queue.
 class non_redundant_priority_queue {
-	// the second float value indicates the priority
-	// dequeue points with highest priority first 
+	// the second float value indicates the priority, it can be distance, curvature...
+	// dequeue lowest float value first by default 
 	typedef std::pair<int, float> point_priority_mapping;
 public:
 	non_redundant_priority_queue() {}
-
 
 	void push(int pid, float priority) {
 		if (!contains(pid)) {
@@ -103,6 +103,11 @@ public:
 	point_priority_mapping front() { return pq_.top(); }
 	bool contains(int item) { return set_.find(item) != set_.end(); }
 	bool empty() const { return set_.empty(); }
+	void clear() { 
+		std::priority_queue<point_priority_mapping, std::vector<point_priority_mapping>, myComp> empty_pq_; 
+		pq_ = empty_pq_; 
+		set_.clear(); 
+	}
 
 private:
 	std::priority_queue<point_priority_mapping, std::vector<point_priority_mapping>, myComp> pq_;
@@ -297,6 +302,8 @@ public:
 	bool can_sleep = false;
 	bool add_to_seed = true;
 	bool can_parallel_grow = true;
+	bool pause_growing = false;
+	int growing_latency = 100; // qs 
 	///
 	void prepare_grow(bool read_from_file);
 	///
@@ -550,13 +557,40 @@ public:
 	void on_set(void* member_ptr);
 	/// user interface creation
 	void create_gui();
-	void compute_principal_curvature();
+	///
+	//void compute_principal_curvature();
 	///
 	void fill_curvature_structure();
 	///
-	void colorize_with_computed_curvature();
+	void compute_principal_curvature_signed();
 	///
-	void ep_compute_principal_curvature_and_colorize();
+	void colorize_with_computed_curvature_signed();
+	///
+	void ep_compute_principal_curvature_and_colorize_signed();
+
+	///
+	void compute_principal_curvature_unsigned();
+	///
+	float coloring_threshold_enlarged = 0;
+	///
+	void colorize_with_computed_curvature_unsigned();
+	///
+	void ep_compute_principal_curvature_and_colorize_unsigned();
+	///
+	void ep_force_recolor();
+	///
+	void print_curvature_computing_info();
+	///
+	float max_mean_curvature;
+	float min_mean_curvature;
+
+	float max_gaussian_curvature;
+	float min_gaussian_curvature;
+
+	const float gui2real_scale = 1e-6;
+	const float real2gui_scale = 1e6;
+	///
+	void auto_cluster_kmeans();
 	///
 	void clear_all();
 	//@}
