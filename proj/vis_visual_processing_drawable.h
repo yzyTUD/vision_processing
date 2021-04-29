@@ -1466,7 +1466,7 @@ void visual_processing::create_gui() {
 			rebind(this, &visual_processing::ep_compute_principal_curvature_and_colorize_signed));
 		connect_copy(add_button("unsigned: compute_principal_curvature_and_colorize")->click,
 			rebind(this, &visual_processing::ep_compute_principal_curvature_and_colorize_unsigned));
-		add_member_control(this, "coloring_threshold_enlarged", data_ptr->point_cloud_kit->coloring_threshold_enlarged, 
+		add_member_control(this, "coloring_threshold", data_ptr->point_cloud_kit->coloring_threshold, 
 			"value_slider", "min=0.01;max=100;log=false;ticks=true;");
 		connect_copy(add_button("ep_force_recolor")->click,
 			rebind(this, &visual_processing::ep_force_recolor));

@@ -1459,11 +1459,25 @@ bool point_cloud_interactable::grow_one_step_bfs(bool check_nml, int which_group
 				if (!add_to_queue)
 					continue;
 
-				// property related 
+				// property related, current point is in neighbour of to_visit
 				float dist = (pc.pnt(k) - pc.pnt(to_visit.first)).length(); // smallest distance first
+				float accu_dist = dist + to_visit.second;
+				// float dist_to_seed = (pc.pnt(k) - pc.pnt(to_visit.first)).length(); // we can explicitly store the position of the seed 
+				float max_dist = (pc.box().get_max_pnt() - pc.box().get_min_pnt()).length(); // we can extract max dist value from bbox 
 
 				// add to queue 
-				seeds_for_regions[which_group].push(k,dist + to_visit.second); // pc.curvature.at(k).gaussian_curvature
+				// dist + to_visit.second
+				// pc.curvature.at(k).gaussian_curvature, pc.curvature.at(k).mean_curvature
+				// use threshold instead
+				float range_mean_curvature = max_mean_curvature - min_mean_curvature;
+				float curr_mean_curvature = (pc.curvature.at(k).mean_curvature - min_mean_curvature) / range_mean_curvature + 1;
+					// make sure curr_mean_curvature is larger than 1, map to (1,2)
+
+				//
+				float curr_property = accu_dist + max_dist * curr_mean_curvature;
+
+				//
+				seeds_for_regions[which_group].push(k, curr_property);
 			}
 		}
 		return true;
@@ -3084,12 +3098,10 @@ void point_cloud_interactable::compute_principal_curvature_unsigned() {
 /// recolor point cloud with curvature
 void point_cloud_interactable::colorize_with_computed_curvature_unsigned() {
 
-	float coloring_threshold_enlarged_real = coloring_threshold_enlarged * gui2real_scale;
-
 	// loop over to assign 
 	for (int i = 0; i < pc.get_nr_points(); i++) {
 		//std::cout << "pc.curvature.at(i).gaussian_curvature: " << pc.curvature.at(i).gaussian_curvature << std::endl;
-		if (pc.curvature.at(i).mean_curvature > coloring_threshold_enlarged_real)
+		if (pc.curvature.at(i).mean_curvature > coloring_threshold)
 			pc.clr(i) = rgb(1, 0, 0);
 		else
 			pc.clr(i) = rgb(0, 0, 1);
@@ -3352,15 +3364,20 @@ void point_cloud_interactable::auto_cluster_kmeans() {
 		// compute new center 
 		float new_centroid_A = 0;
 		for (auto& pid_A : points_belongs_to_A) {
-			new_centroid_A += pc.curvature.at(pid_A).mean_curvature;
+			if (!isnan(pc.curvature.at(pid_A).mean_curvature))
+				new_centroid_A += pc.curvature.at(pid_A).mean_curvature;
 		}
-		new_centroid_A /= points_belongs_to_A.size();
+		assert(points_belongs_to_A.size() > 0);
+		new_centroid_A = new_centroid_A / points_belongs_to_A.size();
 
 		float new_centroid_B = 0;
 		for (auto& pid_B : points_belongs_to_B) {
-			new_centroid_B += pc.curvature.at(pid_B).mean_curvature;
+			if(!isnan(pc.curvature.at(pid_B).mean_curvature))
+				new_centroid_B += pc.curvature.at(pid_B).mean_curvature;
 		}
-		new_centroid_B /= points_belongs_to_B.size();
+		assert(points_belongs_to_B.size() > 0);
+		new_centroid_B = new_centroid_B / points_belongs_to_B.size();
+
 
 		// break when we can not go any further 
 		if ((abs(new_centroid_A - centroid_A)<1e-6) && (abs(new_centroid_B - centroid_B) < 1e-6)) {
@@ -3377,8 +3394,8 @@ void point_cloud_interactable::auto_cluster_kmeans() {
 		centroid_B = new_centroid_B;
 	}
 	std::cout << "auto_cluster_kmeans: done" << std::endl;
-	coloring_threshold_enlarged = (centroid_A + centroid_B) * 0.5f * 1e6;
-	std::cout << "threshold selected by kmeans: " << (coloring_threshold_enlarged * gui2real_scale) << std::endl;
+	coloring_threshold = (centroid_A + centroid_B) * 0.5f;
+	std::cout << "threshold selected by kmeans: " << coloring_threshold << std::endl;
 }
 
 /// the entry point 

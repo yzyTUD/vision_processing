@@ -571,7 +571,7 @@ public:
 	///
 	void compute_principal_curvature_unsigned();
 	///
-	float coloring_threshold_enlarged = 0;
+	float coloring_threshold = 0;
 	///
 	void colorize_with_computed_curvature_unsigned();
 	///

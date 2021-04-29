@@ -107,7 +107,7 @@ public:
 	float headset_culling_range = 2;
 	float controller_effect_range = 0.05;
 	bool enable_acloud_effect = true;
-	bool enable_headset_culling = true;
+	bool enable_headset_culling = false;
 	int which_effect_righthand = -1;
 	int which_effect_lefthand = -1;
 	int which_effect_headset = -1;
