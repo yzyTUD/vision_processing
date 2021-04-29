@@ -1399,8 +1399,13 @@ void visual_processing::on_rendering_settings_changed() {
 void visual_processing::download_points_from_gpu_to_memory() {
 	data_ptr->point_cloud_kit->download_points_from_gpu_to_memory();
 }
+///
 void visual_processing::reset_marking() {
 	data_ptr->point_cloud_kit->reset_marking();
+}
+///
+void visual_processing::compute_lods() {
+	data_ptr->point_cloud_kit->compute_lods();
 }
 /*gui */
 ///
@@ -1426,6 +1431,7 @@ void visual_processing::create_gui() {
 	add_member_control(this, "render_nmls", data_ptr->point_cloud_kit->show_nmls, "check");
 	add_member_control(this, "colorize_with_scan_index", data_ptr->point_cloud_kit->colorize_with_scan_index, "check");
 	add_member_control(this, "hmd_culling", data_ptr->point_cloud_kit->enable_headset_culling, "check");
+	add_member_control(this, "compute_normal_after_read", data_ptr->point_cloud_kit->compute_normal_after_read, "check");
 	add_member_control(this, "from_CC_txt", data_ptr->point_cloud_kit->pc.from_CC, "check");
 	add_member_control(this, "parallel_reading", parallel_reading, "check");
 	connect_copy(add_control("render_pc", render_pc, "check")->value_change, rebind(
@@ -1449,6 +1455,8 @@ void visual_processing::create_gui() {
 
 	//
 	if (begin_tree_node("Effecient Point Cloud Marking", direct_write, true, "level=3")) {
+		connect_copy(add_button("compute_lods")->click, rebind(this,
+			&visual_processing::compute_lods));
 		connect_copy(add_button("download_points_from_gpu_to_memory")->click, rebind(this,
 			&visual_processing::download_points_from_gpu_to_memory));
 		add_member_control(this, "enable_marking", data_ptr->point_cloud_kit->cp_renderer.enable_marking, "check");

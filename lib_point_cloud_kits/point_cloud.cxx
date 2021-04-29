@@ -1745,8 +1745,57 @@ enum BPCFlags
 	BPC_HAS_COMPS = 16,
 	BPC_HAS_COMP_CLRS = 32,
 	BPC_HAS_COMP_TRANS = 64,
-	BPC_HAS_BYTE_CLRS = 128
+	BPC_HAS_BYTE_CLRS = 128,
+
+	BPC_HAS_TOPO_SELECTIONS = 256,
+	BPC_HAS_LODS = 512
 };
+
+enum YPCFlags
+{
+	YPC_HAS_CLRS = 1,
+	YPC_HAS_NMLS = 2,
+	YPC_HAS_TCS = 4,
+	YPC_HAS_PIXCRDS = 8,
+
+	YPC_HAS_TOPO_SELECTIONS = 16,
+	YPC_HAS_LODS = 32
+};
+
+bool point_cloud::read_ypc(const std::string& file_name) {
+	FILE* fp = fopen(file_name.c_str(), "rb");
+	if (!fp)
+		return false;
+	Cnt n;
+	cgv::type::uint32_type flags = 0;
+
+	bool success;
+	
+	success = fread(&n, sizeof(Cnt), 1, fp) == 1; // 32 bit uint, points limited to 2000M for now, may use uint64_t
+	success = fread(&flags, sizeof(flags), 1, fp) == 1; // max 32 flags are supported  
+
+	P.resize(n);
+	success = fread(&P[0][0], sizeof(Pnt), n, fp) == n;
+	if (flags & YPC_HAS_CLRS){
+		C.resize(n);
+		success = success && fread(&C[0][0], sizeof(Clr), n, fp) == n; // just make sure the same as writing 
+	}
+	if (flags & YPC_HAS_NMLS){
+		N.resize(n);
+		success = success && (fread(&N[0][0], sizeof(Nml), n, fp) == n);
+	}
+	if (flags & YPC_HAS_TOPO_SELECTIONS) {
+		topo_id.resize(n);
+		success = success && (fread(&topo_id[0], sizeof(int), n, fp) == n);
+	}
+	if (flags & YPC_HAS_LODS) {
+		lods.resize(n);
+		success = success && (fread(&lods[0], sizeof(int), n, fp) == n);
+	}
+
+	return fclose(fp) == 0 && success;
+}
+
 
 bool point_cloud::read_bin(const string& file_name)
 {
@@ -2915,6 +2964,19 @@ bool point_cloud::write_ascii(const std::string& file_name, bool write_nmls) con
 	return !os.fail();
 }
 
+bool point_cloud::write_ypc(const std::string& file_name) {
+	FILE* fp = fopen(file_name.c_str(), "wb");
+	if (!fp)
+		return false;
+	Cnt n = (Cnt)P.size();
+	Cnt flags = has_colors() ? YPC_HAS_CLRS : 0;
+	flags += has_normals() ? YPC_HAS_NMLS : 0;
+	flags += has_texture_coordinates() ? YPC_HAS_TCS : 0;
+	flags += has_pixel_coordinates() ? YPC_HAS_PIXCRDS : 0;
+	flags += has_topo_selections() ? YPC_HAS_TOPO_SELECTIONS : 0;
+	flags += has_lods() ? YPC_HAS_LODS : 0;
+}
+
 bool point_cloud::write_bin(const std::string& file_name) const
 {
 	FILE* fp = fopen(file_name.c_str(), "wb");
@@ -2957,6 +3019,7 @@ bool point_cloud::write_bin(const std::string& file_name) const
 			success = success && (fwrite(&N[0][0], sizeof(Nml), n, fp) == n);
 		if (has_colors() && C.size() == n)
 			success = success && (fwrite(&C[0][0], sizeof(Clr), n, fp) == n);
+		// add here 
 
 		if (has_texture_coordinates()) 
 			success = success && (fwrite(&T[0][0], sizeof(TexCrd), n, fp) == n);

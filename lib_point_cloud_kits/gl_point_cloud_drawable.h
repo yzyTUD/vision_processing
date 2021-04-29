@@ -172,6 +172,7 @@ public:
 	void draw_points_quad(cgv::render::context& ctx); 
 	void switch_to_quad_rendering();
 	void draw_points_point_rendering(cgv::render::context& ctx);
+	void compute_lods();
 	void draw_points_clod(cgv::render::context& ctx);
 	void on_rendering_settings_changed();
 	void draw_normals(cgv::render::context& ctx);

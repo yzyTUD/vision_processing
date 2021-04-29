@@ -2751,7 +2751,7 @@ void point_cloud_interactable::on_point_cloud_change_callback(PointCloudChangeEv
 			for (auto& pc : pc.C) pc = rgba(0.4,0.4,0.4,1);
 		}
 		// reconstruct normals if not present 
-		if (!pc.has_normals()) {
+		if (!pc.has_normals() && compute_normal_after_read) {
 			compute_normals();
 			orient_normals();
 		}

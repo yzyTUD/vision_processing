@@ -286,11 +286,17 @@ public:
 	std::vector<float> point_scan_index; 
 	/// per-vertex attribute: curvature in tangent space, gaussian curvature, mean curvature and principle curvatures can be computed out of it 
 	std::vector<principal_curvature> curvature; // kmin and kmax, not passed to shader directly 
+	/// per point lod information 
+	std::vector<int> lods;
 public:
 
 	/*curvature estimation */ 
 	// ng required, in upper level -> 
 	// compute_principal_curvature()
+
+	/*lod caching */
+	bool has_lod = false;
+	bool has_lods() { return (lods.size() > 0) || has_lod; }
 
 	/*camera positions */
 	std::vector<cgv::math::fvec<float, 3>> cam_posi_list;
@@ -498,6 +504,11 @@ protected:
 	bool read_txt(const std::string& file_name);
 	///
 	bool read_pwitha(const std::string& file_name);
+	/// 
+	bool read_ypc(const std::string& file_name);
+	///
+	bool write_ypc(const std::string& file_name);
+
 
 	/*high lev modeling support */
 	///

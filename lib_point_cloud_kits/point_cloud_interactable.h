@@ -151,6 +151,9 @@ public:
 	/// open a new point cloud
 	bool open(const std::string& fn);
 
+	/// 
+	bool compute_normal_after_read = false;
+
 	/// icp related 
 	void highlight_point_cloud_with_index_0_1();
 

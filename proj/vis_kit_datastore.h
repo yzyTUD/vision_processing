@@ -650,7 +650,7 @@ public:
 
 		// acloud rendering 
 		point_cloud_kit->enable_acloud_effect = false;
-		point_cloud_kit->enable_headset_culling = true;
+		point_cloud_kit->enable_headset_culling = false;
 
 		// initialize a point cloud in your hand 
 		point_cloud_in_hand->surfel_style.point_size = 0.1f;

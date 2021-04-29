@@ -447,6 +447,73 @@ void generate_lods_poisson(std::vector<Point>& input_buffer_data)
 		}
 	}
 }
+
+/// compute lods explicitly 
+void gl_point_cloud_drawable::compute_lods() {
+	std::cout << "gl_point_cloud_drawable: computing lods ..." << std::endl;
+
+	point_cloud* pc_ptr = &pc;
+	pc_ptr->lods.resize(pc.get_nr_points());
+
+	static constexpr int mean = 8;
+	bool run_parralel = (pc.get_nr_points() > 10'000);
+	static cgv::pointcloud::utility::WorkerPool pool(std::thread::hardware_concurrency() - 1);
+
+	if (run_parralel) {
+
+		struct Task {
+			int64_t start_pid;
+			int num_points;
+		};
+		struct Tasks {
+			std::atomic_int next_task = 0;
+			std::vector<Task> task;
+		} tasks;
+
+		int64_t points_distributed = 0;
+		int64_t points_total = pc.get_nr_points();
+		constexpr int64_t batch_size = 500000;
+
+		while (points_distributed < points_total) {
+			int64_t batch = min(batch_size, points_total - points_distributed);
+			tasks.task.push_back({ points_distributed,(int)batch });
+			points_distributed += batch;
+		}
+
+		pool.run([pc_ptr,&tasks](int thread_id) {
+			std::poisson_distribution<int> dist(mean);
+			std::random_device rdev;
+
+			while (true) {
+				//fetch task
+				int tid = tasks.next_task.fetch_add(1, std::memory_order_relaxed);
+				if (tid < tasks.task.size()) {
+					Task& task = tasks.task[tid];
+
+					int64_t end = task.start_pid + task.num_points;
+					for (int64_t pid = task.start_pid; pid < end;pid++) {
+						pc_ptr->lods.at(pid) = min(2 * mean, max(0, mean - abs(dist(rdev) - mean)));
+					}
+				}
+				else {
+					return;
+				}
+			}
+		});
+	}
+	else {
+		std::poisson_distribution<int> dist(8);
+		std::random_device rdev;
+
+		for (int i = 0; i < pc.get_nr_points(); ++i) {
+			pc.lods.at(i) = min(2 * mean, max(0, mean - abs(dist(rdev) - mean)));
+		}
+	}
+
+	pc.has_lod = true; // set after realy computes lods 
+	std::cout << "gl_point_cloud_drawable: done ..." << std::endl;
+}
+
 /// render with clod rendering 
 void gl_point_cloud_drawable::draw_points_clod(context& ctx) {
 	if (pc.get_nr_points() == 0)
@@ -461,17 +528,23 @@ void gl_point_cloud_drawable::draw_points_clod(context& ctx) {
 			V[i].position() = pc.pnt(i);
 			V[i].level() = 0;
 		}
-		int size_of_point_stru = sizeof(LODPoint);
-		std::cout << "draw_points_clod: computing lods ..." << std::endl;
-		if (use_octree_sampling) {
-			std::cout << "computing octree lods ..." << std::endl;
-			points_with_lod = std::move(lod_generator.generate_lods(V));
-		}
-		else {
-			generate_lods_poisson(V);
+		if (pc.has_lods()) {
 			points_with_lod = std::move(V);
 		}
-		std::cout << "draw_points_clod: lods generated" << std::endl;
+		else {
+			std::cout << "no lods in pc, (re)computing lods ..." << std::endl;
+			if (use_octree_sampling) {
+				std::cout << "computing octree lods ..." << std::endl;
+				points_with_lod = std::move(lod_generator.generate_lods(V));
+			}
+			else {
+				generate_lods_poisson(V);
+				points_with_lod = std::move(V);
+			}
+			std::cout << "lods (re)computed" << std::endl;
+		}
+		// state: points_with_lod should be fine 
+		// if pc has lods, V.level will be 0 
 		// state: lods generated 
 		// pass points from points_with_lod to renderer 
 		std::cout << "draw_points_clod: uploading points with lods to renderer" << std::endl;
@@ -491,7 +564,10 @@ void gl_point_cloud_drawable::draw_points_clod(context& ctx) {
 			for (int i = 0; i < num_of_points; ++i) {
 				// input_buffer_data is unordered 
 				input_buffer_data.at(i).position() = *positions;
-				input_buffer_data.at(i).level() = *lods;
+				if (pc.has_lods()) 
+					input_buffer_data.at(i).level() = pc.lods.at(*indices); // fill data from pc with correct index
+				else 
+					input_buffer_data.at(i).level() = *lods;
 
 				// quick test 
 				input_buffer_data.at(i).p_index = *indices; // indicating original index 
@@ -506,7 +582,7 @@ void gl_point_cloud_drawable::draw_points_clod(context& ctx) {
 			// submit to renderer 
 			cp_renderer.set_points_packed(ctx, input_buffer_data.data(), input_buffer_data.size());
 		}
-		if (color_based_on_lod) {
+		//if (color_based_on_lod) {
 			//std::vector<LODPoint> pnts = points_with_lod;
 			//int num_points = pnts.size();
 
@@ -539,7 +615,8 @@ void gl_point_cloud_drawable::draw_points_clod(context& ctx) {
 			//	&pnts.data()->color(), 
 			//	&pnts.data()->level(), 
 			//	pnts.size(), sizeof(LODPoint),pc.N.data());
-		}
+		//}
+
 		std::cout << "draw_points_clod: done." << std::endl;
 		renderer_out_of_date = false;
 	}
