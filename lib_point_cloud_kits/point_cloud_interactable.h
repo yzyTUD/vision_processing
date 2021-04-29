@@ -127,9 +127,7 @@ class CGV_API point_cloud_interactable :
 public:
 	typedef std::pair<int, float> point_priority_mapping;
 
-	/**@name file io */
-	//@{
-	//@name point cloud IO 
+	/*point cloud IO */
 	/// path of last opened or saved file
 	std::string data_path;
 	/// file name without path nor extension of current file
@@ -138,56 +136,16 @@ public:
 	std::string new_file_name;
 	/// directory_name is used to support reading all point clouds from a directory by setting directory_path in the config file
 	std::string directory_name;
-	/// flag that tells whether reading a point cloud will append it to current or replace current
-	bool do_append;
-	/// whether to automatically set the view after reading new points
-	bool do_auto_view;
-	///
+	/// print_pc_information
 	void print_pc_information();
 	/// update data_path and file_name members from full file name
 	void update_file_name(const std::string& ffn, bool append = false);
 	/// save current point cloud to file with name fn
 	bool save(const std::string& fn);
+	///
+	void write_pc_to_file();
 	/// open a new point cloud
 	bool open(const std::string& fn);
-
-	/// 
-	bool compute_normal_after_read = false;
-
-	/// icp related 
-	void highlight_point_cloud_with_index_0_1();
-
-	void scale_points_to_desk();
-
-
-	///
-	bool generate_pc_hemisphere();
-
-	void generate_pc_unit_torus();
-
-	void generate_pc_random_sphere();
-
-	void generate_pc_init_sphere();
-
-	void generate_pc_unit_cylinder();
-
-	void generate_testing_plane();
-
-	void store_original_pc();
-	
-	bool generate_pc_cube();
-	///
-	void downsampling(int step, int num_of_points_wanted, int which_strategy);
-
-	void auto_downsampling();
-
-	void supersampling_within_clips(std::vector<Pnt> positions, std::vector<Dir> dirs);
-
-	void supersampling_with_bbox(box3 range_as_box);
-
-	void restore_supersampling();
-	
-	void render_with_fullpc();
 	/// open a new point cloud by reading all point cloud files in given directory
 	bool open_directory(const std::string& dn);
 	/// open and append a new point cloud by reading file with name fn
@@ -198,15 +156,24 @@ public:
 	bool reading_from_raw_scan = false;
 	///
 	bool read_pc_with_dialog(bool append);
-
+	/// reading options 
 	bool read_cgvcad_with_dialog();
-
+	/// reading options 
 	bool read_pc_with_dialog_queue(bool append);
-
+	/// reading options 
 	bool read_pc_subsampled_with_dialog();
+	/// store a copy of the original point cloud 
+	void store_original_pc();
+	/// flag that tells whether reading a point cloud will append it to current or replace current
+	bool do_append;
+	/// whether to automatically set the view after reading new points
+	bool do_auto_view;
+	/// whether to automatically compute normals after point reading 
+	bool compute_normal_after_read = false;
 
-	/// read .campose file 
-	bool render_camposes = false;
+	/*reading camera positions: .campose file  */
+	///
+	std::vector<vr_kit_image_renderer> image_renderer_list;
 	///
 	bool read_pc_campose(cgv::render::context& ctx, quat initialcamq);
 	///
@@ -215,41 +182,32 @@ public:
 	void apply_further_transformation(int which, quat q, vec3 t);
 	///
 	void align_leica_scans_with_cgv();
-	///
-	void write_pc_to_file();
-	///
+	/// control varibles 
+	bool render_camposes = false;
 
-	/*
-		direct marking supprt 
-	*/
-	/// history recording 
-	std::stack<std::vector<pointHistoryEntry>> point_marking_history;
-	/// history recording 
-	int history_indexer = 0;
-	/// make sure vector size: face_id, point_visited
-	void prepare_marking();
-	/// mark with controllers 
-	void mark_face_id_with_controller(Pnt p, float r, int objctive);
-	/// 
-	void mark_topo_id_with_controller(Pnt p, float r, int objctive);
-	/// marking test 
-	void marking_test_mark_all_points_as_given_group(int objective);
-	/// quick point deletion: with a clipping plane 
-	void mark_points_with_clipping_plane(Pnt p, Nml plane_normal, int objctive);
-	/// support step back 
-	void new_history_recording();
-	///
-	void reset_last_marking_non_processed_part(int which_is_marked_and_not_used);
-	///
-	void reset_last_marked_points();
-	///
-	void step_back_last_selection();
-	///
-	void step_forward_selection();
+	/*point generation */
+	/// generate points
+	bool generate_pc_hemisphere();
+	/// generate points
+	void generate_pc_unit_torus();
+	/// generate points
+	void generate_pc_random_sphere();
+	/// generate points
+	void generate_pc_init_sphere();
+	/// generate points
+	void generate_pc_unit_cylinder();
+	/// generate points
+	void generate_testing_plane();
+	/// generate a cube 
+	bool generate_pc_cube();
 
-	/*
-		support for point copying 
-	*/
+	/*vr point addition */
+	/// generate points with in the quad we are holding 
+	void spawn_points_in_the_handhold_quad(quat controllerq, vec3 controllert, vec3 quadextent);
+	/// hwo many points are expected to be added
+	int num_of_points_to_be_added = 100;
+
+	/* support for point copying */
 	///
 	point_cloud to_be_copied_pointcloud;
 	///
@@ -257,11 +215,178 @@ public:
 	///
 	void mark_points_and_push_to_tmp_pointcloud(Pnt p, float r, int ignore_id);
 
+	/*point scale (M)*/
+	///
+	void scale_points_to_desk();
+	
+	/*point sampling (M) */
+	/// down sample a point cloud 
+	void downsampling(int step, int num_of_points_wanted, int which_strategy);
+	/// down sample a point cloud automatically
+	void auto_downsampling();
+	/// 
+	void supersampling_within_clips(std::vector<Pnt> positions, std::vector<Dir> dirs);
+	///
+	void supersampling_with_bbox(box3 range_as_box);
+	///
+	void restore_supersampling();
+	///
+	void render_with_fullpc();
+	/// selective subsampling within given point type, with a global adjustable ratio 
+	void selective_subsampling_cpu();
+	/// selective_subsampling_radio
+	float selective_subsampling_radio = 0.5;
 
-	/*other operations after marked*/
-	/*
-		connectivity graph extraction 
-	*/
+	/* direct marking, correction (M) */
+	/// make sure vector size: face_id, point_visited
+	void prepare_marking();
+	/// mark with controllers 
+	void mark_face_id_with_controller(Pnt p, float r, int objctive);
+	/// mark with controllers 
+	void mark_topo_id_with_controller(Pnt p, float r, int objctive);
+	/// marking test 
+	void marking_test_mark_all_points_as_given_group(int objective);
+	/// quick point deletion: with a clipping plane 
+	void mark_points_with_clipping_plane(Pnt p, Nml plane_normal, int objctive);
+
+	/*histore support, undo support (M)*/
+	/// history recording 
+	std::stack<std::vector<pointHistoryEntry>> point_marking_history;
+	/// history recording 
+	int history_indexer = 0;
+	/// support step back 
+	void new_history_recording();
+	///
+	void reset_last_marking_non_processed_part(int which_is_marked_and_not_used);
+	///
+	void reset_last_marked_points();
+	/// 
+	void step_back_last_selection();
+	/// 
+	void step_forward_selection();
+
+	/*VR ICP*/
+	/// a quick test 
+	void update_scan_index_visibility_test(); // typically, we update them directly with controller 
+	/// just a test, set src = 1, target = 0
+	void set_src_and_target_scan_idx_as_test();
+	/// extract point clouds, all regions 
+	void extract_point_clouds_for_icp();
+	/// inner function, extract marked regions to point clouds, which will be used for ICP 
+	void extract_point_clouds_for_icp_marked_only();
+	/// inner usage 
+	void perform_icp_and_acquire_matrices();
+	/// entry point
+	void perform_icp_given_four_pair_points();
+	/// apply matrices to the pc varible and move the point cloud, access points 
+	void apply_register_matrices_for_the_original_point_cloud();
+	/// entry point 
+	void perform_icp_manual_clicking();
+	/// step back 
+	void drop_last_registration();
+	/// only render src point cloud and disable others 
+	void render_select_src_cloud_only();
+	/// only render target point cloud and disable others 
+	void render_select_target_cloud_only();
+	/// render both and disable others
+	void render_both_src_target_clouds();
+	/// deprecated 
+	void highlight_last_pc();
+	/// deprecated
+	void reset_highlighted_last_pc();
+	/// perform ICP algo. with given source and target clouds subsampled, deprecated
+	void register_with_subsampled_pcs(point_cloud& _pc);
+	/// perform ICP algo. with given source and target clouds  
+	void register_cur_and_last_pc_if_present();
+
+	/* Master Thesis Related */
+	/*Feature Computation*/	
+	/// signed version 
+	void compute_principal_curvature_signed();
+	///
+	void colorize_with_computed_curvature_signed();
+	///
+	void ep_compute_principal_curvature_and_colorize_signed();
+	/// unsigned version 
+	void compute_principal_curvature_unsigned();
+	///
+	void colorize_with_computed_curvature_unsigned();
+	///
+	void ep_compute_principal_curvature_and_colorize_unsigned();
+	/// used in common 
+	void fill_curvature_structure();
+	/// helper function: recolor for vis 
+	void ep_force_recolor();
+	/// helper function
+	void print_curvature_computing_info();
+	/// helper function: compute a threshold automatically
+	void auto_cluster_kmeans();
+	/// control varibles
+	float coloring_threshold = 0;
+	float max_mean_curvature;
+	float min_mean_curvature;
+	float max_gaussian_curvature;
+	float min_gaussian_curvature;
+	const float gui2real_scale = 1e-6;
+	const float real2gui_scale = 1e6;
+
+	/* Point Classification based on Interactive Region Growing - */
+	/// seed representation 
+	std::vector<non_redundant_priority_queue> seeds_for_regions; // 2d, matrix, idx means region id, queue stores seeds 
+	/// reset seeds, and face_id and topo_id
+	void prepare_grow(bool read_from_file);
+	/// collect marked points to queue, add seeds for the region growing 
+	void init_region_growing_by_collecting_group_and_seeds_vr(int curr_face_selecting_id);
+	/// grow one step, check_nml is not used 
+	bool grow_one_step_bfs(bool check_nml, int which_group);
+	/// deprecated, not good to keep an other thread running 
+	void do_region_growing_timer_event(double t, double dt);
+	/// reset, not used 
+	void reset_all_grows();
+	/// reset, not used 
+	void reset_region_growing_seeds();
+	///  not used 
+	void init_region_growing_by_setting_group_and_seeds(int growing_group, std::queue<int> picked_id_list);
+	/// check if all points growed, deprecated
+	bool all_points_growed();
+	/// ensure that all points are growed, deprecated 
+	void grow_one_step_bfs_ensure();
+	/// not used 
+	void mark_points_inside_selection_tool(Pnt p, float r, bool confirmed, int objctive);
+	/// build tree ds for acc picking of the target and source pc
+	bool assign_pc_and_ensure_source_tree_ds(point_cloud& _pc);
+	/// deprecated, too complex 
+	void ensure_point_selection();
+	/// deprecated
+	void ensure_point_selection_pc();
+	/// deprecated
+	void subsampling_source(Pnt& posi, float& radii, bool confirmed);
+	/// deprecated
+	void collect_to_subsampled_pcs();
+	/// deprecated
+	void fill_subsampled_pcs_with_cur_pc_as_a_test();
+	/// deprecated
+	void subsampling_target(Pnt& posi, float& radii, bool confirmed);
+	/// not used 
+	bool marked = false;
+	/// if allow auto region growing, deprecated 
+	bool do_region_growing_directly = false;
+	/// if check nmls when growing, not used  
+	bool region_grow_check_normals = true;
+	/// not used 
+	bool can_sleep = false;
+	/// if the points marked by controller will be add to growing queue as seed 
+	bool add_to_seed = true;
+	/// critical section start/ stop
+	bool can_parallel_grow = true;
+	/// pause the growing, exit the thread (can not and not good to keep it run )
+	bool pause_growing = false;
+	/// how many points will be growed before sleep, not used, use 100 just 
+	int steps_per_event_as_speed = 200;
+	/// latency after 100 points growed 
+	int growing_latency = 100; // ms
+
+	/* Fine-Grained Point Classification */
 	/// thw quality of the boundaries depends on region growing steps, how good faces are marked 
 	void point_classification();
 	///  quality depends on the prev. steps 
@@ -270,12 +395,13 @@ public:
 	void corner_extraction();
 	/// do some region growing and extract to global ds 
 	void edge_extraction();
-	///
+	/// entry point, batch operation 
 	void extract_all();
 
-	/*
-		points fitting 
-	*/
+	/* Topological Information Extraction*/
+	/// currently done in point_cloud
+
+	/* Model Fitting */
 	/// set points and indices for a demo surface 
 	void fitting_render_control_points_test();
 	///
@@ -286,100 +412,6 @@ public:
 		pc.fit_all();
 	}
 
-	// selective subsampling within given point type, with a global adjustable ratio 
-	void selective_subsampling_cpu();
-	// 
-	float selective_subsampling_radio = 0.5;
-
-	/*point addition */
-	void spawn_points_in_the_handhold_quad(quat controllerq, vec3 controllert,vec3 quadextent);
-	///
-	int num_of_points_to_be_added = 100;
-
-	/*region growing, give group information */
-	/// varibles that used for region growing
-	bool marked = false;
-	bool do_region_growing_directly = false;
-	bool region_grow_check_normals = true;
-	int steps_per_event_as_speed = 200;
-	bool can_sleep = false;
-	bool add_to_seed = true;
-	bool can_parallel_grow = true;
-	bool pause_growing = false;
-	int growing_latency = 100; // qs 
-	///
-	void prepare_grow(bool read_from_file);
-	///
-	bool grow_one_step_bfs(bool check_nml, int which_group);
-	///
-	void do_region_growing_timer_event(double t, double dt);
-	///
-	void reset_all_grows();
-	///
-	void reset_region_growing_seeds();
-	///
-	void init_region_growing_by_collecting_group_and_seeds_vr(int curr_face_selecting_id);
-	///
-	void init_region_growing_by_setting_group_and_seeds(int growing_group, std::queue<int> picked_id_list);
-	///
-	//bool grow_one_step_bfs(bool check_nml, int which_group);
-	///
-	bool all_points_growed();
-	/// ensure that all points are growed 
-	void grow_one_step_bfs_ensure();
-	///
-	void mark_points_inside_selection_tool(Pnt p, float r, bool confirmed, int objctive);
-	/// build tree ds for acc picking of the target and source pc
-	bool assign_pc_and_ensure_source_tree_ds(point_cloud& _pc);
-	///
-	void ensure_point_selection();
-	///
-	void ensure_point_selection_pc();
-	///
-	void subsampling_source(Pnt& posi, float& radii, bool confirmed);
-	/// 
-	void collect_to_subsampled_pcs();
-	///
-	void fill_subsampled_pcs_with_cur_pc_as_a_test();
-	///
-	void subsampling_target(Pnt& posi, float& radii, bool confirmed);
-	std::vector<non_redundant_priority_queue> seeds_for_regions; // 2d, matrix, idx means region id, queue stores seeds 
-	std::vector<vr_kit_image_renderer> image_renderer_list;
-
-	/*VR-ICP related */
-	/// a quick test 
-	void update_scan_index_visibility_test(); // typically, we update them directly with controller 
-	///
-	void set_src_and_target_scan_idx_as_test();
-	///
-	void extract_point_clouds_for_icp();
-	///
-	void extract_point_clouds_for_icp_marked_only();
-	///
-	void perform_icp_and_acquire_matrices();
-	///
-	void perform_icp_given_four_pair_points();
-	///
-	void apply_register_matrices_for_the_original_point_cloud();
-	///
-	void perform_icp_manual_clicking(); // external api 
-	///
-	void drop_last_registration();
-	///
-	void render_select_src_cloud_only();
-	///
-	void render_select_target_cloud_only();
-	///
-	void render_both_src_target_clouds();
-	/// deprecated 
-	void highlight_last_pc();
-	/// deprecated
-	void reset_highlighted_last_pc();
-	/// perform ICP algo. with given source and target clouds subsampled, deprecated
-	void register_with_subsampled_pcs(point_cloud& _pc);
-	/// perform ICP algo. with given source and target clouds  
-	void register_cur_and_last_pc_if_present();
-	///
 public:
 	int src_scan_idx = 1;
 	int target_scan_idx = 0;
@@ -560,40 +592,6 @@ public:
 	void on_set(void* member_ptr);
 	/// user interface creation
 	void create_gui();
-	///
-	//void compute_principal_curvature();
-	///
-	void fill_curvature_structure();
-	///
-	void compute_principal_curvature_signed();
-	///
-	void colorize_with_computed_curvature_signed();
-	///
-	void ep_compute_principal_curvature_and_colorize_signed();
-
-	///
-	void compute_principal_curvature_unsigned();
-	///
-	float coloring_threshold = 0;
-	///
-	void colorize_with_computed_curvature_unsigned();
-	///
-	void ep_compute_principal_curvature_and_colorize_unsigned();
-	///
-	void ep_force_recolor();
-	///
-	void print_curvature_computing_info();
-	///
-	float max_mean_curvature;
-	float min_mean_curvature;
-
-	float max_gaussian_curvature;
-	float min_gaussian_curvature;
-
-	const float gui2real_scale = 1e-6;
-	const float real2gui_scale = 1e6;
-	///
-	void auto_cluster_kmeans();
 	///
 	void clear_all();
 	//@}

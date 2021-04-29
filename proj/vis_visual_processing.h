@@ -437,6 +437,7 @@ public:
 	void switch_rendering_mode_point_based();
 	void switch_rendering_mode_surfel_based();
 	void switch_rendering_mode_clod_based();
+	void single_hit__load_point_cloud_and_render_with_clod();
 	void mark_all_points_as_tobedownsampled();
 	void mark_all_active_points_as_tobedownsampled();
 	void del_clipping_btn_press();

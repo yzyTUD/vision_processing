@@ -1235,6 +1235,11 @@ void visual_processing::switch_rendering_mode_clod_based() {
 	post_redraw();
 }
 ///
+void visual_processing::single_hit__load_point_cloud_and_render_with_clod() {
+	read_pc();
+	switch_rendering_mode_clod_based();
+}
+///
 void visual_processing::mark_all_points_as_tobedownsampled() {
 	data_ptr->point_cloud_kit->marking_test_mark_all_points_as_given_group(
 		(int)point_cloud::TOPOAttribute::TO_BE_SUBSAMPLED);
@@ -1444,6 +1449,7 @@ void visual_processing::create_gui() {
 	
 	if (begin_tree_node("IO", direct_write, true, "level=3")) {
 		connect_copy(add_button("read_pc")->click, rebind(this, &visual_processing::start_reading_pc_parallel));
+		connect_copy(add_button("[S]load_point_cloud_and_render_with_clod")->click, rebind(this, &visual_processing::single_hit__load_point_cloud_and_render_with_clod));
 		connect_copy(add_button("randomize_current_pc")->click, rebind(this, &visual_processing::randomize_current_pc));
 		connect_copy(add_button("read_pc_append(obj raw scan)")->click, rebind(this, &visual_processing::read_pc_append));
 		//connect_copy(add_button("prepare_marking")->click, rebind(this, &visual_processing::prepare_marking));

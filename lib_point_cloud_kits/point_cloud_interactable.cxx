@@ -1364,15 +1364,6 @@ void point_cloud_interactable::reset_region_growing_seeds() {
 }
 /// push to queue operation, as an init to RG 
 void point_cloud_interactable::init_region_growing_by_collecting_group_and_seeds_vr(int curr_face_selecting_id) {
-	// old version:
-		//for (int gi = pc.num_of_topo_selections_rendered; gi< pc.num_of_palette_spheres_rendered; gi++) {
-		//	for (int idx = 0; idx < pc.get_nr_points(); idx++) {
-		//		if (pc.face_id.at(idx) == gi) {
-		//			region_id_and_seeds[gi].push(idx);
-		//		}
-		//	}
-		//	region_id_and_nml[gi] = pc.nml(region_id_and_seeds[gi].front()); // the first nml, ranked in index order
-		//}
 	// collect all related idx and push to queue, ready to grow after this 
 	// only region selection are accepted
 	// unsigned int shoud cast to int! -> only when comparing bet. them 

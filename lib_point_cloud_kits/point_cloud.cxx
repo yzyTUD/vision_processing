@@ -1295,6 +1295,8 @@ bool point_cloud::read(const string& _file_name)
 	bool success = false;
 	if (ext == "bpc")
 		success = read_bin(_file_name);
+	if (ext == "ypc")
+		success = read_ypc(_file_name);
 	if (ext == "xyz")
 		success = read_xyz(_file_name);
 	if (ext == "pct")
@@ -1475,6 +1477,8 @@ bool point_cloud::write(const string& _file_name)
 	string ext = to_lower(get_extension(_file_name));
 	if (ext == "bpc")
 		return write_bin(_file_name);
+	if (ext == "ypc")
+		return write_ypc(_file_name);
 	if (ext == "apc" || ext == "pnt")
 		return write_ascii(_file_name, (ext == "apc") && has_normals());
 	if (ext == "obj" || ext == "pobj")
@@ -1762,6 +1766,9 @@ enum YPCFlags
 	YPC_HAS_LODS = 32
 };
 
+// flexible and minimal dependency, easily ported to any platform 
+// the idea is very simple 
+// quick and friently for adding attributes 
 bool point_cloud::read_ypc(const std::string& file_name) {
 	FILE* fp = fopen(file_name.c_str(), "rb");
 	if (!fp)
@@ -1771,9 +1778,11 @@ bool point_cloud::read_ypc(const std::string& file_name) {
 
 	bool success;
 	
+	// read header 
 	success = fread(&n, sizeof(Cnt), 1, fp) == 1; // 32 bit uint, points limited to 2000M for now, may use uint64_t
 	success = fread(&flags, sizeof(flags), 1, fp) == 1; // max 32 flags are supported  
 
+	// read data 
 	P.resize(n);
 	success = fread(&P[0][0], sizeof(Pnt), n, fp) == n;
 	if (flags & YPC_HAS_CLRS){
@@ -2975,6 +2984,25 @@ bool point_cloud::write_ypc(const std::string& file_name) {
 	flags += has_pixel_coordinates() ? YPC_HAS_PIXCRDS : 0;
 	flags += has_topo_selections() ? YPC_HAS_TOPO_SELECTIONS : 0;
 	flags += has_lods() ? YPC_HAS_LODS : 0;
+
+	bool success; 
+
+	// write header 
+	success = fwrite(&n, sizeof(Cnt), 1, fp) == 1;
+	success = fwrite(&flags, sizeof(Cnt), 1, fp) == 1;
+
+	// write data 
+	success = fwrite(&P[0][0], sizeof(Pnt), n, fp) == n;
+	if (has_colors() && C.size() == n)
+		success = success && (fwrite(&C[0][0], sizeof(Clr), n, fp) == n);
+	if (has_normals())
+		success = success && (fwrite(&N[0][0], sizeof(Nml), n, fp) == n);
+	if (has_topo_selections())
+		success = success && (fwrite(&topo_id[0], sizeof(int), n, fp) == n);
+	if (has_lods())
+		success = success && (fwrite(&lods[0], sizeof(int), n, fp) == n);
+
+	return fclose(fp) == 0 && success;
 }
 
 bool point_cloud::write_bin(const std::string& file_name) const

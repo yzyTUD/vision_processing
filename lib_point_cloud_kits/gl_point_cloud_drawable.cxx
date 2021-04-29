@@ -530,6 +530,7 @@ void gl_point_cloud_drawable::draw_points_clod(context& ctx) {
 		}
 		if (pc.has_lods()) {
 			points_with_lod = std::move(V);
+			std::cout << "reusing lod" << std::endl;
 		}
 		else {
 			std::cout << "no lods in pc, (re)computing lods ..." << std::endl;
@@ -541,6 +542,18 @@ void gl_point_cloud_drawable::draw_points_clod(context& ctx) {
 				generate_lods_poisson(V);
 				points_with_lod = std::move(V);
 			}
+
+			// collect lods once computed 
+			pc.lods.resize(pc.get_nr_points());
+			unsigned stride = sizeof(LODPoint);
+			uint8_t* lods = &points_with_lod.data()->level();
+			int32_t* indices = &points_with_lod.data()->index();
+			for (int i = 0; i < pc.get_nr_points(); ++i) {
+				pc.lods.at(*indices) = *lods; // correct index needed when accessing pc structure
+				indices = (int32_t*)((uint8_t*)indices + stride);
+				lods += stride;
+			}
+			std::cout << "lods saved to pc.lods vector at the same time " << std::endl;
 			std::cout << "lods (re)computed" << std::endl;
 		}
 		// state: points_with_lod should be fine 
