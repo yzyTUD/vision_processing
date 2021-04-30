@@ -149,13 +149,17 @@ void visual_processing::timer_event(double t, double dt) {
 }
 /// timer event executes in an other parallel thread, fixed freq 
 void visual_processing::parallel_region_growing() {
+	// update distances 
+	data_ptr->point_cloud_kit->max_accu_dist = 0;
+	data_ptr->point_cloud_kit->max_dist = (data_ptr->point_cloud_kit->pc.box().get_max_pnt() - data_ptr->point_cloud_kit->pc.box().get_min_pnt()).length();
+	std::cout << "parallel region growing: starts" << std::endl;
 	data_ptr->point_cloud_kit->can_parallel_grow = false; // atomic: stop seleciton when parallel growing 
 								  
 	// check if queues are empty first 
 	bool all_enpty_can_stop = true;
 	for (int gi = 1; gi < data_ptr->point_cloud_kit->pc.num_of_face_selections_rendered; gi++)
 	{
-		all_enpty_can_stop = all_enpty_can_stop && data_ptr->point_cloud_kit->seeds_for_regions[gi].empty();
+		all_enpty_can_stop = all_enpty_can_stop && data_ptr->point_cloud_kit->queue_for_regions[gi].empty();
 	}
 
 	const int points_one_chunk = 100;
@@ -171,7 +175,7 @@ void visual_processing::parallel_region_growing() {
 		all_enpty_can_stop = true; // start to check: reset 
 		for (int gi = 1; gi < data_ptr->point_cloud_kit->pc.num_of_face_selections_rendered; gi++)// iterate all face ids 
 		{
-			all_enpty_can_stop = all_enpty_can_stop && data_ptr->point_cloud_kit->seeds_for_regions[gi].empty();
+			all_enpty_can_stop = all_enpty_can_stop && data_ptr->point_cloud_kit->queue_for_regions[gi].empty();
 		}
 
 		points_growed++;
@@ -184,6 +188,9 @@ void visual_processing::parallel_region_growing() {
 		}
 	}
 	data_ptr->point_cloud_kit->can_parallel_grow = true;
+	std::cout << "parallel region growing: done." << std::endl;
+	std::cout << "max_dist_real: " << data_ptr->point_cloud_kit->max_accu_dist << std::endl;
+	std::cout << "max_dist: " << data_ptr->point_cloud_kit->max_dist << std::endl;
 }
 ///
 visual_processing::~visual_processing() {
@@ -1050,7 +1057,7 @@ void visual_processing::stop_parallel_region_growing() {
 	}
 	for (int gi = 1; gi < data_ptr->point_cloud_kit->pc.num_of_face_selections_rendered; gi++)
 	{
-		data_ptr->point_cloud_kit->seeds_for_regions[gi].clear();
+		data_ptr->point_cloud_kit->queue_for_regions[gi].clear();
 	}
 }
 
@@ -1412,6 +1419,13 @@ void visual_processing::reset_marking() {
 void visual_processing::compute_lods() {
 	data_ptr->point_cloud_kit->compute_lods();
 }
+///
+void visual_processing::single_hit__region_grow() {
+	ep_compute_principal_curvature_and_colorize_unsigned();
+	prepare_marking_clear_face_id();
+	mark_sample_seed();
+	start_parallel_region_growing();
+}
 /*gui */
 ///
 void visual_processing::create_gui() {
@@ -1476,6 +1490,8 @@ void visual_processing::create_gui() {
 
 	//
 	if (begin_tree_node("Region Growing Revisit", data_ptr->point_cloud_kit->show_nmls, true, "level=3")) {
+		connect_copy(add_button("[S]region_grow")->click,
+			rebind(this, &visual_processing::single_hit__region_grow));
 		connect_copy(add_button("signed: compute_principal_curvature_and_colorize")->click,
 			rebind(this, &visual_processing::ep_compute_principal_curvature_and_colorize_signed));
 		connect_copy(add_button("unsigned: compute_principal_curvature_and_colorize")->click,

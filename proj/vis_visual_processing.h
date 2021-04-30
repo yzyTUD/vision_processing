@@ -459,6 +459,7 @@ public:
 	void download_points_from_gpu_to_memory();
 	void reset_marking();
 	void compute_lods();
+	void single_hit__region_grow();
 	void create_gui();
 
 	/// wrappers 

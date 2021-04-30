@@ -65,7 +65,10 @@ public:
 	//
 };
 
-typedef std::pair<int, float> point_priority_mapping;
+// the second float value indicates the priority, it can be distance, curvature...
+// dequeue lowest float value first by default 
+const int ID = 0, DIST = 1, CURVATURE = 2;
+typedef std::tuple<int, float, float> point_priority_mapping;
 // Structure of the operator
 // overloading for comparison
 struct myComp {
@@ -74,28 +77,25 @@ struct myComp {
 		point_priority_mapping const& b)
 		const noexcept
 	{
-		return a.second > b.second;
+		return std::get<DIST>(a) > std::get<DIST>(b); // choose b // impl compare here 
 	}
 };
 
 // a wrapper priority queue and use a hash set to keep track of the queue.
 class non_redundant_priority_queue {
-	// the second float value indicates the priority, it can be distance, curvature...
-	// dequeue lowest float value first by default 
-	typedef std::pair<int, float> point_priority_mapping;
 public:
 	non_redundant_priority_queue() {}
 
-	void push(int pid, float priority) {
+	void push(int pid, float accu_dist, float curr_curvature) {
 		if (!contains(pid)) {
-			pq_.push(std::make_pair(pid, priority));
+			pq_.push(std::make_tuple(pid, accu_dist, curr_curvature));
 			set_.emplace(pid);
 		}
 	}
 	void pop() {
 		if (!empty()) {
 			point_priority_mapping top = pq_.top();
-			set_.erase(top.first); // only the first value of the pair is recorded in a set 
+			set_.erase(std::get<ID>(top)); // only the first value of the pair is recorded in a set 
 			pq_.pop(); 
 		}
 	}
@@ -125,7 +125,6 @@ class CGV_API point_cloud_interactable :
 	public cgv::base::argument_handler   // allows to handle program arguments through the handle_args(args) method
 {
 public:
-	typedef std::pair<int, float> point_priority_mapping;
 
 	/*point cloud IO */
 	/// path of last opened or saved file
@@ -332,7 +331,13 @@ public:
 
 	/* Point Classification based on Interactive Region Growing - */
 	/// seed representation 
-	std::vector<non_redundant_priority_queue> seeds_for_regions; // 2d, matrix, idx means region id, queue stores seeds 
+	std::vector<non_redundant_priority_queue> queue_for_regions; // 2d, matrix, idx means region id, queue stores seeds 
+	/// 
+	std::vector<int> seed_for_regions;
+	///
+	float max_accu_dist = 0;
+	///
+	float max_dist = 0;
 	/// reset seeds, and face_id and topo_id
 	void prepare_grow(bool read_from_file);
 	/// collect marked points to queue, add seeds for the region growing 

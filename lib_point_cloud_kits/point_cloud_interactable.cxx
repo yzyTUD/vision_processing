@@ -1347,8 +1347,11 @@ void point_cloud_interactable::prepare_grow(bool overwrite_face_selection) {
 	for (auto& v : pc.point_visited) v = false;
 
 	// init each region with enmpty queue 
-	seeds_for_regions.clear();
-	seeds_for_regions.resize(pc.num_of_face_selections_rendered, *(new non_redundant_priority_queue)); 
+	queue_for_regions.clear();
+	queue_for_regions.resize(pc.num_of_face_selections_rendered, *(new non_redundant_priority_queue)); 
+	seed_for_regions.clear();
+	seed_for_regions.resize(pc.num_of_face_selections_rendered);
+	for (auto& sid : seed_for_regions) { sid = -1; }
 
 	// enable again  
 	can_parallel_grow = true;
@@ -1359,8 +1362,10 @@ void point_cloud_interactable::reset_all_grows() {
 }
 /// reset the seed lists 
 void point_cloud_interactable::reset_region_growing_seeds() {
-	seeds_for_regions.clear();
-	seeds_for_regions.resize(pc.num_of_face_selections_rendered, *(new non_redundant_priority_queue));
+	queue_for_regions.clear();
+	queue_for_regions.resize(pc.num_of_face_selections_rendered, *(new non_redundant_priority_queue));
+	seed_for_regions.clear();
+	seed_for_regions.resize(pc.num_of_face_selections_rendered);
 }
 /// push to queue operation, as an init to RG 
 void point_cloud_interactable::init_region_growing_by_collecting_group_and_seeds_vr(int curr_face_selecting_id) {
@@ -1369,7 +1374,8 @@ void point_cloud_interactable::init_region_growing_by_collecting_group_and_seeds
 	// unsigned int shoud cast to int! -> only when comparing bet. them 
 	for (int pid = 0; pid < pc.get_nr_points(); pid++) {
 		if (pc.face_id.at(pid) == curr_face_selecting_id) {
-			seeds_for_regions[curr_face_selecting_id].push(pid, 0); // seeds will be added to queue directly, so have a priority of 0
+			queue_for_regions[curr_face_selecting_id].push(pid, 0, 0); // seeds will be added to queue directly, so have a priority of 0
+			seed_for_regions[curr_face_selecting_id] = pid; // record to variable 
 			pc.point_visited[pid] = true; // mark seeds as visited 
 		}
 	}
@@ -1408,24 +1414,24 @@ bool point_cloud_interactable::grow_one_step_bfs(bool check_nml, int which_group
 		return false;
 	if (pc.N.size() == 0)
 		return false;
-	if (seeds_for_regions.size() == 0)
+	if (queue_for_regions.size() == 0)
 		return false;
 
 	std::vector<int> knn;
 	ensure_tree_ds();
-	if (!seeds_for_regions[which_group].empty()) {
+	if (!queue_for_regions[which_group].empty()) {
 		// dequeue 
-		point_priority_mapping to_visit = seeds_for_regions[which_group].front(); // this will query a pid with minimal second value 
-		seeds_for_regions[which_group].pop();
+		point_priority_mapping to_visit = queue_for_regions[which_group].front(); // this will query a pid with minimal second value 
+		queue_for_regions[which_group].pop();
 
 		// visit current 
-		pc.face_id.at(to_visit.first) = which_group;
-		pc.point_visited.at(to_visit.first) = true;
+		pc.face_id.at(std::get<ID>(to_visit)) = which_group;
+		pc.point_visited.at(std::get<ID>(to_visit)) = true;
 
 		// query knn and add to queue conditionally  
-		if (to_visit.first >= 0 && to_visit.first < pc.get_nr_points()) { // check if to_visit.first is within range 
+		if (std::get<ID>(to_visit) >= 0 && std::get<ID>(to_visit) < pc.get_nr_points()) { // check if to_visit.first is within range 
 			// query knn and loop over 
-			tree_ds->find_closest_points(pc.pnt(to_visit.first), 8, knn);
+			tree_ds->find_closest_points(pc.pnt(std::get<ID>(to_visit)), 8, knn);
 			for (auto k : knn) {
 				// ignore visited 
 				if (pc.point_visited.at(k))
@@ -1443,7 +1449,7 @@ bool point_cloud_interactable::grow_one_step_bfs(bool check_nml, int which_group
 				bool add_to_queue = true;
 
 				// drop redundant points in queue
-				if (seeds_for_regions[which_group].contains(k)) // if already exists, drop
+				if (queue_for_regions[which_group].contains(k)) // if already exists, drop
 					add_to_queue = false;
 
 				// 
@@ -1451,24 +1457,28 @@ bool point_cloud_interactable::grow_one_step_bfs(bool check_nml, int which_group
 					continue;
 
 				// property related, current point is in neighbour of to_visit
-				float dist = (pc.pnt(k) - pc.pnt(to_visit.first)).length(); // smallest distance first
-				float accu_dist = dist + to_visit.second;
+				float dist = (pc.pnt(k) - pc.pnt(std::get<ID>(to_visit))).length(); // smallest distance to S set first
+				//float accu_dist = dist + std::get<DIST>(to_visit);
+				if (seed_for_regions[which_group] == -1)
+					break;
+				//float dist_to_seed = (pc.pnt(k) - pc.pnt(seed_for_regions[which_group])).length();
 				// float dist_to_seed = (pc.pnt(k) - pc.pnt(to_visit.first)).length(); // we can explicitly store the position of the seed 
-				float max_dist = (pc.box().get_max_pnt() - pc.box().get_min_pnt()).length(); // we can extract max dist value from bbox 
+				// float max_dist = (pc.box().get_max_pnt() - pc.box().get_min_pnt()).length(); // we can extract max dist value from bbox 
+				// float max_dist = 4; // a test 
 
 				// add to queue 
 				// dist + to_visit.second
 				// pc.curvature.at(k).gaussian_curvature, pc.curvature.at(k).mean_curvature
-				// use threshold instead
+				// pause at the boundaries 
 				float range_mean_curvature = max_mean_curvature - min_mean_curvature;
 				float curr_mean_curvature = (pc.curvature.at(k).mean_curvature - min_mean_curvature) / range_mean_curvature + 1;
 					// make sure curr_mean_curvature is larger than 1, map to (1,2)
 
 				//
-				float curr_property = accu_dist + max_dist * curr_mean_curvature;
+				float curr_property = dist + max_dist * curr_mean_curvature; // how to combine them? 
 
 				//
-				seeds_for_regions[which_group].push(k, curr_property);
+				queue_for_regions[which_group].push(k, curr_property, 0);
 			}
 		}
 		return true;
@@ -2063,7 +2073,7 @@ void point_cloud_interactable::clear_all() {
 	rotation.identity();
 	translation.zeros();
 	icp_filter_type = cgv::pointcloud::ICP::RANDOM_SAMPLING;
-	seeds_for_regions.clear();
+	queue_for_regions.clear();
 
 	// todo: reset vars here ...
 	//use_these_point_colors = 0;
@@ -3385,7 +3395,13 @@ void point_cloud_interactable::auto_cluster_kmeans() {
 		centroid_B = new_centroid_B;
 	}
 	std::cout << "auto_cluster_kmeans: done" << std::endl;
-	coloring_threshold = (centroid_A + centroid_B) * 0.5f;
+	float max_value_in_B = std::numeric_limits<float>::min();
+	for (auto& pid_b: points_belongs_to_B) {
+		if (pc.curvature.at(pid_b).mean_curvature > max_value_in_B) {
+			max_value_in_B = pc.curvature.at(pid_b).mean_curvature;
+		}
+	}
+	coloring_threshold = max_value_in_B;
 	std::cout << "threshold selected by kmeans: " << coloring_threshold << std::endl;
 }
 
