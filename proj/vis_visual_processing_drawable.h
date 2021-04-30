@@ -962,6 +962,7 @@ void visual_processing::read_pc() {
 		data_ptr->point_cloud_kit->read_pc_with_dialog(false);
 		data_ptr->point_cloud_kit->on_rendering_settings_changed();
 		data_ptr->point_cloud_kit->prepare_grow(false); // reading from file, do not overwrite, this will very fast 
+		data_ptr->point_cloud_kit->using_directly_buffer_loading = false;
 	}
 }
 ///  read the whole pc to data_ptr->point_cloud_kit
@@ -1194,7 +1195,6 @@ void visual_processing::switch_rendering_mode_clod_based() {
 	data_ptr->point_cloud_kit->RENDERING_STRATEGY = 4;
 	data_ptr->point_cloud_kit->is_switching = true;
 	data_ptr->point_cloud_kit->on_rendering_settings_changed();
-	post_redraw();
 }
 ///
 void visual_processing::single_hit__load_point_cloud_and_render_with_clod() {
@@ -1468,12 +1468,14 @@ void visual_processing::create_gui() {
 	//
 	if (begin_tree_node("IO", direct_write, true, "level=3")) {
 		connect_copy(add_button("read_pc")->click, rebind(this, &visual_processing::start_reading_pc_parallel));
-		connect_copy(add_button("[S]load_point_cloud_and_render_with_clod")->click, rebind(this, &visual_processing::single_hit__load_point_cloud_and_render_with_clod));
+		connect_copy(add_button("[S,YPC]load_point_cloud_and_render_with_clod")->click, rebind(this, &visual_processing::single_hit__load_point_cloud_and_render_with_clod));
 		connect_copy(add_button("[B]read_pc_append(obj raw scan)")->click, rebind(this, &visual_processing::read_pc_append));
 		add_member_control(this, "Ignore Deleted Points", data_ptr->point_cloud_kit->pc.ignore_deleted_points, "check");
 		connect_copy(add_button("save")->click, rebind(this, &visual_processing::start_writting_pc_parallel));
 		connect_copy(add_button("print_pc_information")->click, rebind(this, &visual_processing::print_pc_information));
 		connect_copy(add_button("clear_all_pcs")->click, rebind(this, &visual_processing::clear_all_pcs));
+		connect_copy(add_button("[Clod,GPC]direct_buffer_loading")->click, rebind(this, &visual_processing::direct_buffer_loading));
+		connect_copy(add_button("[Clod]direct_buffer_saving")->click, rebind(this, &visual_processing::direct_buffer_saving));
 	}
 	//
 	if (begin_tree_node("Region Growing", data_ptr->point_cloud_kit->show_nmls, true, "level=3")) {

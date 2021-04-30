@@ -18,6 +18,7 @@ using namespace cgv::utils::file;
 #include <cgv/base/register.h>
 //#include <point_cloud_shader_inc.h>
 #endif
+#include <cgv/gui/file_dialog.h>
 ///
 gl_point_cloud_drawable::gl_point_cloud_drawable() 
 {
@@ -271,6 +272,10 @@ void gl_point_cloud_drawable::switch_to_quad_rendering() {
 ///
 void gl_point_cloud_drawable::draw(context& ctx)
 {
+	// special case 
+	if(using_directly_buffer_loading)
+		draw_points_clod(ctx);
+
 	// a quick check 
 	if (pc.get_nr_points() == 0)
 		return;
@@ -514,13 +519,41 @@ void gl_point_cloud_drawable::compute_lods() {
 	std::cout << "gl_point_cloud_drawable: done ..." << std::endl;
 }
 
+///
+void gl_point_cloud_drawable::direct_buffer_loading() {
+	std::string fn = cgv::gui::file_open_dialog("Open", "Point Cloud:*");
+	auto start = std::chrono::high_resolution_clock::now();
+	pc.load_buffer_bin(fn, &point_buffer_storage);
+	std::cout << "loaded to memory..." << std::endl;
+	cp_renderer.set_points_buffer_direct(point_buffer_storage.data(), point_buffer_storage.size());
+	std::cout << "uploaded to gpu..." << std::endl;
+	using_directly_buffer_loading = true;
+	auto finish = std::chrono::high_resolution_clock::now();
+	std::chrono::duration<double> d = finish - start;
+	std::cout << "elapsed time: " << d.count() << " s\n";
+}
+
+///
+void gl_point_cloud_drawable::direct_buffer_saving() {
+	std::string fn = cgv::gui::file_save_dialog("Open", "Point Cloud:*");
+	auto start = std::chrono::high_resolution_clock::now();
+	std::vector<cgv::render::clod_point_renderer::Point> downloaded_buffer_data;
+	cp_renderer.download_marking_buffer(&downloaded_buffer_data);
+	std::cout << "downloaded from gpu..." << std::endl;
+	pc.write_buffer_bin(fn, &downloaded_buffer_data);
+	std::cout << "saved!" << std::endl;
+	auto finish = std::chrono::high_resolution_clock::now();
+	std::chrono::duration<double> d = finish - start;
+	std::cout << "elapsed time: " << d.count() << " s\n";
+}
+
 /// render with clod rendering 
 void gl_point_cloud_drawable::draw_points_clod(context& ctx) {
-	if (pc.get_nr_points() == 0)
+	if (pc.get_nr_points() == 0 && !using_directly_buffer_loading)
 		return;
 	if (!show_points)
 		return;
-	if (renderer_out_of_date) {
+	if (renderer_out_of_date && !using_directly_buffer_loading) {
 		// cast points from pc to V, LODPoint is a simpler version of Point in cgv::render::...
 		std::vector<LODPoint> V(pc.get_nr_points());
 		for (int i = 0; i < pc.get_nr_points(); ++i) {
@@ -633,7 +666,37 @@ void gl_point_cloud_drawable::draw_points_clod(context& ctx) {
 		std::cout << "draw_points_clod: done." << std::endl;
 		renderer_out_of_date = false;
 	}
-	if (cp_renderer.enable(ctx)) {
+
+	if (cp_renderer.enable(ctx) && !using_directly_buffer_loading) {
+		// setup uniform varibles that will be used in reduce compute shader 
+		cp_renderer.ref_reduce_prog()->set_uniform(ctx, "enable_headset_culling", enable_headset_culling);
+		cp_renderer.ref_reduce_prog()->set_uniform(ctx, "headset_culling_range", headset_culling_range);
+		cp_renderer.ref_reduce_prog()->set_uniform(ctx, "headset_position", headset_position);
+		cp_renderer.ref_reduce_prog()->set_uniform(ctx, "headset_direction", headset_direction);
+		cp_renderer.ref_reduce_prog()->set_uniform(ctx, "scale", clod_render_scale);
+
+		// setup uniform varibles that will be used in marking compute shader 
+		cp_renderer.ref_marking_prog()->set_uniform(ctx, "enable_headset_culling", enable_headset_culling);
+		cp_renderer.ref_marking_prog()->set_uniform(ctx, "headset_culling_range", headset_culling_range);
+		cp_renderer.ref_marking_prog()->set_uniform(ctx, "headset_position", headset_position);
+		cp_renderer.ref_marking_prog()->set_uniform(ctx, "headset_direction", headset_direction);
+		cp_renderer.ref_marking_prog()->set_uniform(ctx, "rhand_position", right_controller_position);
+		cp_renderer.ref_marking_prog()->set_uniform(ctx, "lhand_position", left_controller_position);
+		cp_renderer.ref_marking_prog()->set_uniform(ctx, "controller_effect_range", controller_effect_range);
+		cp_renderer.ref_marking_prog()->set_uniform(ctx, "is_triggering", is_triggering);
+		cp_renderer.ref_marking_prog()->set_uniform(ctx, "test_shader_selection", test_shader_selection);
+
+
+		//
+		cp_renderer.draw(ctx, 0, pc.get_nr_points());
+	}
+	
+	if (renderer_out_of_date && using_directly_buffer_loading) {
+		cp_renderer.set_points_buffer_direct(point_buffer_storage.data(), point_buffer_storage.size());
+		std::cout << "uploaded to gpu..." << std::endl;
+		renderer_out_of_date = false;
+	}
+	if (cp_renderer.enable(ctx) && using_directly_buffer_loading) {
 		// setup uniform varibles that will be used in reduce compute shader 
 		cp_renderer.ref_reduce_prog()->set_uniform(ctx, "enable_headset_culling", enable_headset_culling);
 		cp_renderer.ref_reduce_prog()->set_uniform(ctx, "headset_culling_range", headset_culling_range);
@@ -654,7 +717,7 @@ void gl_point_cloud_drawable::draw_points_clod(context& ctx) {
 		
 
 		//
-		cp_renderer.draw(ctx, 0, pc.get_nr_points());
+		cp_renderer.draw(ctx, 0, point_buffer_storage.size());
 	}
 }
 /// after this, pc will be changed and we are ready to write pc to disk 

@@ -447,6 +447,9 @@ public:
 		pc.fit_all();
 	}
 
+	/*point cleaning paper */
+	//void direct_buffer_loading();
+
 public:
 	int src_scan_idx = 1;
 	int target_scan_idx = 0;

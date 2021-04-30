@@ -1766,6 +1766,23 @@ enum YPCFlags
 	YPC_HAS_LODS = 32
 };
 
+/// buffer based, gpc format gpu rendering manipulation point cloud 
+bool point_cloud::load_buffer_bin(const std::string& file_name, std::vector<cgv::render::clod_point_renderer::Point>* buffer) {
+	FILE* fp = fopen(file_name.c_str(), "rb");
+	if (!fp)
+		return false;
+	uint64_t n;
+	bool success;
+
+	// read header 
+	success = fread(&n, sizeof(uint64_t), 1, fp) == 1; // 32 bit uint, points limited to 2000M for now, may use uint64_t
+
+	buffer->resize(n);
+	success = success && fread(&buffer[0][0], sizeof(cgv::render::clod_point_renderer::Point), n, fp) == n;
+
+	return fclose(fp) == 0 && success;
+}
+
 // flexible and minimal dependency, easily ported to any platform 
 // the idea is very simple 
 // quick and friently for adding attributes 
@@ -2971,6 +2988,23 @@ bool point_cloud::write_ascii(const std::string& file_name, bool write_nmls) con
 		os << endl;
 	}
 	return !os.fail();
+}
+
+bool point_cloud::write_buffer_bin(const std::string& file_name, std::vector<cgv::render::clod_point_renderer::Point>* buffer) {
+	FILE* fp = fopen(file_name.c_str(), "wb");
+	if (!fp)
+		return false;
+	if (!buffer)
+		return false;
+	uint64_t n = (uint64_t)buffer->size();
+
+	bool success;
+
+	// write header 
+	success = fwrite(&n, sizeof(uint64_t), 1, fp) == 1;
+	success = fwrite(&buffer[0][0], sizeof(cgv::render::clod_point_renderer::Point), n, fp) == n;
+
+	return fclose(fp) == 0 && success;
 }
 
 bool point_cloud::write_ypc(const std::string& file_name) {

@@ -36,6 +36,11 @@ class CGV_API gl_point_cloud_drawable : public cgv::render::drawable, public poi
 public:
 	gl_point_cloud_drawable();
 
+	/*direct buffer storage */
+	std::vector<cgv::render::clod_point_renderer::Point> point_buffer_storage;
+	///
+	bool using_directly_buffer_loading = false;
+
 	/*storage*/
 	point_cloud pc;
 	
@@ -174,6 +179,8 @@ public:
 	void draw_points_point_rendering(cgv::render::context& ctx);
 	void compute_lods();
 	void draw_points_clod(cgv::render::context& ctx);
+	void direct_buffer_loading();
+	void direct_buffer_saving();
 	void on_rendering_settings_changed();
 	void draw_normals(cgv::render::context& ctx);
 	void download_points_from_gpu_to_memory();

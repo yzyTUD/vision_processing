@@ -676,6 +676,12 @@ public:
 		data_ptr->point_cloud_kit->grow_one_step_bfs(false, 1);
 		data_ptr->point_cloud_kit->grow_one_step_bfs(false, 2);
 	}
+	void direct_buffer_loading() { // very special case 
+		data_ptr->point_cloud_kit->direct_buffer_loading();
+	}
+	void direct_buffer_saving() {
+		data_ptr->point_cloud_kit->direct_buffer_saving();
+	}
 };
 
 ///@}

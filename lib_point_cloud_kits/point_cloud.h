@@ -8,6 +8,7 @@
 #include <cgv/media/color.h>
 #include <cgv/media/axis_aligned_box.h>
 #include <libs\cgv_gl\sphere_renderer.h>
+#include <libs/cgv_gl/clod_point_renderer.h>
 
 #include "lib_begin.h"
 
@@ -512,6 +513,10 @@ protected:
 	bool read_ypc(const std::string& file_name);
 	///
 	bool write_ypc(const std::string& file_name);
+	/// 
+	bool load_buffer_bin(const std::string& file_name, std::vector<cgv::render::clod_point_renderer::Point>* buffer);
+	///
+	bool write_buffer_bin(const std::string& file_name, std::vector<cgv::render::clod_point_renderer::Point>* buffer);
 
 
 	/*high lev modeling support */

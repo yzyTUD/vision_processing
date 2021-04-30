@@ -80,6 +80,7 @@ bool point_cloud_interactable::open(const std::string& fn)
 	// manage vars after change of the point cloud 
 	if (pc.get_nr_points() > 0) // sometimes, we are not realy reading point clouds 
 		on_point_cloud_change_callback(PCC_NEW_POINT_CLOUD);
+	using_directly_buffer_loading = false;
 	//update_file_name(fn);
 	//store_original_pc();
 	//auto_downsampling();
@@ -580,6 +581,7 @@ bool point_cloud_interactable::open_or_append(cgv::gui::event& e, const std::str
 /// read point cloud with a dialog 
 bool point_cloud_interactable::read_pc_with_dialog(bool append) {
 	file_name = cgv::gui::file_open_dialog("Open", "Point Cloud:*");
+	auto start = std::chrono::high_resolution_clock::now();
 	data_path = cgv::utils::file::get_path(file_name);
 	reading_from_raw_scan = append;
 	if (!append) 
@@ -587,6 +589,9 @@ bool point_cloud_interactable::read_pc_with_dialog(bool append) {
 	if (!open(file_name))
 		return false;
 	finished_loading_points = true;
+	auto finish = std::chrono::high_resolution_clock::now();
+	std::chrono::duration<double> d = finish - start;
+	std::cout << "elapsed time: " << d.count() << std::endl;
 	std::cout << "read file_name: " << file_name << std::endl;
 	std::cout << "read data_path: " << data_path << std::endl;
 	return true;
@@ -3548,3 +3553,4 @@ void point_cloud_interactable::ep_compute_principal_curvature_and_colorize_unsig
 void point_cloud_interactable::ep_force_recolor() {
 	colorize_with_computed_curvature_unsigned();
 }
+
