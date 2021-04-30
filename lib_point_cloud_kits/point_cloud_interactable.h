@@ -401,6 +401,20 @@ public:
 	int growing_latency = 0; // ms
 	///
 	std::chrono::duration<double> Elapsed_knn;
+	///
+	enum growing_mode {
+		// already implemented
+		ACCU_DISTANCE_BASED,
+		SEED_DISTANCE_BASED,
+		UNSIGNED_MEAN_CURVATURE_BASED,
+		DISTANCE_AND_MEAN_CURVATURE_BASED,
+
+		// todo 
+		NORMAL_BASED
+	}gm;
+	///
+	/*std::string mode_defs = "enums='ACCU_DISTANCE_BASED;SEED_DISTANCE_BASED;
+		NORMAL_BASED;CURVATURE_BASED;UNSIGNED_MEAN_CURVATURE_BASED_0'";*/
 
 	/* Fine-Grained Point Classification */
 	/// thw quality of the boundaries depends on region growing steps, how good faces are marked 

@@ -433,7 +433,12 @@ public:
 	void reset_marking();
 	void compute_lods();
 	void single_hit__prepare_region_grow();
-	void single_hit__regrow();
+
+	void single_hit__regrow_accu_distance_based();
+	void single_hit__regrow_seed_distance_based();
+	void single_hit__regrow_unsigned_mean_curvature_based();
+	void single_hit__regrow_distance_and_curvature_based();
+
 	void create_gui();
 	void write_trajectory() { draw_kit->write_trajectory(); }
 	void read_trajectory() { draw_kit->read_trajectory(); }

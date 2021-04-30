@@ -1491,7 +1491,6 @@ void point_cloud_interactable::region_growing() {
 
 	std::cout << "parallel region growing: done." << std::endl;
 	std::cout << "elapsed time: " << elapsed.count() << " s\n";
-	std::cout << "elapsed knn time: " << Elapsed_knn.count() << " s\n";
 	std::cout << "max_dist_real: " << max_accu_dist << std::endl;
 	std::cout << "max_dist: " << max_dist << std::endl;
 }
@@ -1537,27 +1536,33 @@ bool point_cloud_interactable::grow_one_step_bfs(bool check_nml, int which_group
 		if(pc.point_in_queue.at(k) == true)
 			continue;
 
-		// property related, current point is in neighbour of to_visit
+		// basic computations for property computing 
 		float dist = (pc.pnt(k) - pc.pnt(std::get<ID>(to_visit))).length(); // smallest distance to S set first
 		float accu_dist = dist + std::get<DIST>(to_visit);
-		if (seed_for_regions[which_group] == -1)
-			break;
-		//float dist_to_seed = (pc.pnt(k) - pc.pnt(seed_for_regions[which_group])).length();
-		// float dist_to_seed = (pc.pnt(k) - pc.pnt(to_visit.first)).length(); // we can explicitly store the position of the seed 
-		// float max_dist = (pc.box().get_max_pnt() - pc.box().get_min_pnt()).length(); // we can extract max dist value from bbox 
-		// float max_dist = 4; // a test 
+		if (seed_for_regions[which_group] == -1) break;
+		float dist_to_seed = (pc.pnt(k) - pc.pnt(seed_for_regions[which_group])).length();
+		float curr_property;
 
-		// add to queue 
-		// dist + to_visit.second
-		// pc.curvature.at(k).gaussian_curvature, pc.curvature.at(k).mean_curvature
-		// pause at the boundaries 
-		float range_mean_curvature = max_mean_curvature - min_mean_curvature;
-		//float curr_mean_curvature = (pc.curvature.at(k).mean_curvature - min_mean_curvature) / range_mean_curvature + 1;
-			// make sure curr_mean_curvature is larger than 1, map to (1,2)
+		// accumulated distance based 
+		if (gm == growing_mode::ACCU_DISTANCE_BASED) {
+			curr_property = accu_dist;
+		}
 
-		//
-		float dist_scale = 1.0f + (1000 * max_dist * pc.curvature.at(k).mean_curvature);
-		float curr_property = dist_scale * dist + std::get<DIST>(to_visit);
+		// pure distance based 
+		if (gm == growing_mode::SEED_DISTANCE_BASED) {
+			curr_property = dist_to_seed;
+		}
+
+		// pure curvature based 
+		if (gm == growing_mode::UNSIGNED_MEAN_CURVATURE_BASED) {
+			curr_property = pc.curvature.at(k).mean_curvature;
+		}
+
+		// 
+		if (gm == growing_mode::DISTANCE_AND_MEAN_CURVATURE_BASED) {
+			float dist_scale = 1.0f + (1000 * max_dist * pc.curvature.at(k).mean_curvature);
+			curr_property = dist_scale * dist + std::get<DIST>(to_visit);
+		}
 
 		// float curr_property = curr_mean_curvature; // + max_dist * curr_mean_curvature; // how to combine them? 
 
@@ -2409,6 +2414,7 @@ point_cloud_interactable::point_cloud_interactable() : ne(pc, ng)
 
 	show_neighbor_graph = false;
 	k = 30; // init k to 30 
+	gm = growing_mode::UNSIGNED_MEAN_CURVATURE_BASED;
 	do_symmetrize = false;
 	reorient_normals = true;
 
@@ -2531,9 +2537,6 @@ bool point_cloud_interactable::init(cgv::render::context& ctx)
 {
 	if (!gl_point_cloud_drawable::init(ctx))
 		return false;
-
-	//get_root()->set("bg_index", 4);
-
 	return true;
 }
 /// basic functions

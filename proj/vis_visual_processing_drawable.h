@@ -1380,8 +1380,33 @@ void visual_processing::single_hit__prepare_region_grow() {
 	ep_compute_principal_curvature_and_colorize_unsigned(); // compute unsigned curvature 
 	prepare_grow(); // will take some time for neighbour points extraction 
 }
-/// grow and re-grow 
-void visual_processing::single_hit__regrow() {
+/// 
+void visual_processing::single_hit__regrow_accu_distance_based() {
+	data_ptr->point_cloud_kit->gm = data_ptr->point_cloud_kit->growing_mode::ACCU_DISTANCE_BASED;
+	stop_parallel_region_growing(); // stop if thread is not stopped 
+	data_ptr->point_cloud_kit->reset_all_grows(); // reset growing parameters, faces are marked as unmarked  
+	mark_sample_seed(); // sample seed marked for test 
+	start_parallel_region_growing(); // start 
+}
+///
+void visual_processing::single_hit__regrow_seed_distance_based() {
+	data_ptr->point_cloud_kit->gm = data_ptr->point_cloud_kit->growing_mode::SEED_DISTANCE_BASED;
+	stop_parallel_region_growing(); // stop if thread is not stopped 
+	data_ptr->point_cloud_kit->reset_all_grows(); // reset growing parameters, faces are marked as unmarked  
+	mark_sample_seed(); // sample seed marked for test 
+	start_parallel_region_growing(); // start 
+}
+///
+void visual_processing::single_hit__regrow_unsigned_mean_curvature_based() {
+	data_ptr->point_cloud_kit->gm = data_ptr->point_cloud_kit->growing_mode::UNSIGNED_MEAN_CURVATURE_BASED;
+	stop_parallel_region_growing(); // stop if thread is not stopped 
+	data_ptr->point_cloud_kit->reset_all_grows(); // reset growing parameters, faces are marked as unmarked  
+	mark_sample_seed(); // sample seed marked for test 
+	start_parallel_region_growing(); // start 
+}
+///
+void visual_processing::single_hit__regrow_distance_and_curvature_based() {
+	data_ptr->point_cloud_kit->gm = data_ptr->point_cloud_kit->growing_mode::DISTANCE_AND_MEAN_CURVATURE_BASED;
 	stop_parallel_region_growing(); // stop if thread is not stopped 
 	data_ptr->point_cloud_kit->reset_all_grows(); // reset growing parameters, faces are marked as unmarked  
 	mark_sample_seed(); // sample seed marked for test 
@@ -1399,14 +1424,23 @@ void visual_processing::create_gui() {
 		add_member_control(this, "Ignore Deleted Points", data_ptr->point_cloud_kit->pc.ignore_deleted_points, "check");
 		connect_copy(add_button("save")->click, rebind(this, &visual_processing::start_writting_pc_parallel));
 		connect_copy(add_button("print_pc_information")->click, rebind(this, &visual_processing::print_pc_information));
-		connect_copy(add_button("clear_all_pcs")->click, rebind(this, &visual_processing::clean_all_pcs));
+		connect_copy(add_button("clear_all_pcs")->click, rebind(this, &visual_processing::clear_all_pcs));
 	}
 	//
 	if (begin_tree_node("Region Growing", data_ptr->point_cloud_kit->show_nmls, true, "level=3")) {
-		connect_copy(add_button("[S]prepare_region_grow")->click,
+		connect_copy(add_button("[S,ONCE]prepare_region_grow")->click,
 			rebind(this, &visual_processing::single_hit__prepare_region_grow));
-		connect_copy(add_button("[S]region_grow/ regrow")->click,
-			rebind(this, &visual_processing::single_hit__regrow));
+
+		// region growing variants 
+		connect_copy(add_button("[S]grow_with_accu_distance")->click,
+			rebind(this, &visual_processing::single_hit__regrow_accu_distance_based));
+		connect_copy(add_button("[S]grow_with_seed_distance")->click,
+			rebind(this, &visual_processing::single_hit__regrow_seed_distance_based));
+		connect_copy(add_button("[S]grow_with_unsigned_mean_curvature")->click,
+			rebind(this, &visual_processing::single_hit__regrow_unsigned_mean_curvature_based));
+		connect_copy(add_button("[S]grow_with_distance_and_curvature")->click,
+			rebind(this, &visual_processing::single_hit__regrow_distance_and_curvature_based));
+
 		connect_copy(add_button("signed: compute_principal_curvature_and_colorize")->click,
 			rebind(this, &visual_processing::ep_compute_principal_curvature_and_colorize_signed));
 		connect_copy(add_button("unsigned: compute_principal_curvature_and_colorize")->click,
@@ -1631,7 +1665,7 @@ void visual_processing::create_gui() {
 		connect_copy(add_button("read_campose")->click, rebind(this, &visual_processing::read_campose));
 		connect_copy(add_button("show_camposes")->click, rebind(this, &visual_processing::show_camposes));
 		connect_copy(add_button("auto_conduct_nml_estimation_leica")->click, rebind(this, &visual_processing::auto_conduct_nml_estimation_leica));
-		connect_copy(add_button("clean_all_pcs")->click, rebind(this, &visual_processing::clean_all_pcs));
+		connect_copy(add_button("clean_all_pcs")->click, rebind(this, &visual_processing::clear_all_pcs));
 		connect_copy(add_button("rotate_x")->click, rebind(this, &visual_processing::rotate_x));
 		connect_copy(add_button("rotate_z")->click, rebind(this, &visual_processing::rotate_z));
 		connect_copy(add_button("load_next_shot")->click, rebind(this, &visual_processing::load_next_shot));
