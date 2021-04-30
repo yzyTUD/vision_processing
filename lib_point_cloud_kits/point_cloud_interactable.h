@@ -143,6 +143,8 @@ public:
 	bool save(const std::string& fn);
 	///
 	void write_pc_to_file();
+	///
+	void write_pc_to_file_with_given_dir(const std::string f);
 	/// open a new point cloud
 	bool open(const std::string& fn);
 	/// open a new point cloud by reading all point cloud files in given directory
@@ -353,6 +355,8 @@ public:
 	bool grow_one_step_bfs(bool check_nml, int which_group);
 	///
 	void region_growing();
+	///
+	void grow_one_region(int gi);
 	/// deprecated, not good to keep an other thread running 
 	void do_region_growing_timer_event(double t, double dt);
 	/// reset, not used 
@@ -415,6 +419,7 @@ public:
 	///
 	/*std::string mode_defs = "enums='ACCU_DISTANCE_BASED;SEED_DISTANCE_BASED;
 		NORMAL_BASED;CURVATURE_BASED;UNSIGNED_MEAN_CURVATURE_BASED_0'";*/
+	std::vector<std::thread*> growing_thread_pool;
 
 	/* Fine-Grained Point Classification */
 	/// thw quality of the boundaries depends on region growing steps, how good faces are marked 

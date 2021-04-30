@@ -410,6 +410,8 @@ public:
 	void switch_rendering_mode_point_based();
 	void switch_rendering_mode_surfel_based();
 	void switch_rendering_mode_clod_based();
+	void batch__load_and_convert_add_lod_info();
+	void batch__load_and_convert_add_lod_single_file();
 	void single_hit__load_point_cloud_and_render_with_clod();
 	void mark_all_points_as_tobedownsampled();
 	void mark_all_active_points_as_tobedownsampled();
@@ -433,6 +435,7 @@ public:
 	void reset_marking();
 	void compute_lods();
 	void single_hit__prepare_region_grow();
+	void single_hit__prepare_region_grow_worker();
 
 	void single_hit__regrow_accu_distance_based();
 	void single_hit__regrow_seed_distance_based();

@@ -579,13 +579,16 @@ bool point_cloud_interactable::open_or_append(cgv::gui::event& e, const std::str
 }
 /// read point cloud with a dialog 
 bool point_cloud_interactable::read_pc_with_dialog(bool append) {
-	std::string f = cgv::gui::file_open_dialog("Open", "Point Cloud:*");
+	file_name = cgv::gui::file_open_dialog("Open", "Point Cloud:*");
+	data_path = cgv::utils::file::get_path(file_name);
 	reading_from_raw_scan = append;
 	if (!append) 
 		clear_all();
-	if (!open(f))
+	if (!open(file_name))
 		return false;
 	finished_loading_points = true;
+	std::cout << "read file_name: " << file_name << std::endl;
+	std::cout << "read data_path: " << data_path << std::endl;
 	return true;
 }
 bool point_cloud_interactable::read_cgvcad_with_dialog() {
@@ -620,6 +623,14 @@ void point_cloud_interactable::write_pc_to_file() {
 	std::string filename_base = cgv::base::ref_data_path_list()[0] + "\\object_scanns\\pointcloud_all_" + std::to_string(microsecondsUTC);
 	std::string filename = filename_base + ".obj";*/
 	std::string f = cgv::gui::file_save_dialog("Open", "Save Point Cloud:*");
+	pc.write(f);
+	std::cout << "saved!" << std::endl;
+}
+///
+void point_cloud_interactable::write_pc_to_file_with_given_dir(const std::string f) {
+	/*auto microsecondsUTC = std::chrono::duration_cast<std::chrono::microseconds>(
+		std::chrono::system_clock::now().time_since_epoch()).count();
+	std::to_string(microsecondsUTC)*/
 	pc.write(f);
 	std::cout << "saved!" << std::endl;
 }
@@ -1355,14 +1366,12 @@ void point_cloud_interactable::prepare_grow(bool overwrite_face_selection) {
 	// init number of grown points to 0 
 	pts_grew = 0;
 
-	// pre-computing 
-	extract_neighbours();
-
 	// enable again  
 	can_parallel_edit = true;
 }
 ///
 void point_cloud_interactable::extract_neighbours() {
+	std::cout << "extracting neighbours..." << std::endl;
 	ensure_tree_ds();
 	pc.nearest_neighbour_indices.resize(pc.get_nr_points());
 	for (Idx i= 0; i < pc.get_nr_points(); i++) {
@@ -1371,6 +1380,7 @@ void point_cloud_interactable::extract_neighbours() {
 		for (Idx j = 0; j < k; ++j)
 			pc.nearest_neighbour_indices.at(i).at(j) = knn.at(j);
 	}
+	std::cout << "done..." << std::endl;
 }
 /// reset region growing regions 
 void point_cloud_interactable::reset_all_grows() {
@@ -1445,6 +1455,28 @@ void point_cloud_interactable::do_region_growing_timer_event(double t, double dt
 	//on_point_cloud_change_callback(PCC_COLORS);
 }
 
+/// parallel version 
+void point_cloud_interactable::grow_one_region(int gi) {
+	const int points_one_chunk = 100;
+	int points_grown = 0;
+	// if not all point are grown 
+	while ((pts_grew < pc.get_nr_points()) && !pause_growing) { // thread will exit if pausing 
+		//
+		grow_one_step_bfs(false, gi);
+
+		// sleep for a while 
+		points_grown++;
+
+		// 
+		if (points_grown > points_one_chunk) {
+			// sleep for a while 
+			if (growing_latency != 0)
+				std::this_thread::sleep_for(std::chrono::milliseconds(growing_latency));
+			points_grown = 0; // reset 
+		}
+	}
+}
+
 ///
 void point_cloud_interactable::region_growing() {
 	auto start = std::chrono::high_resolution_clock::now();
@@ -1465,12 +1497,19 @@ void point_cloud_interactable::region_growing() {
 		return;
 	}
 
+	/*growing_thread_pool.resize(pc.num_of_face_selections_rendered);
+
+	for (int gi = 1; gi < pc.num_of_face_selections_rendered; gi++) 
+		growing_thread_pool.at(gi) = new std::thread(&point_cloud_interactable::grow_one_region,this,gi);
+
+	for (int gi = 1; gi < pc.num_of_face_selections_rendered; gi++)
+		growing_thread_pool.at(gi)->join();*/
+
 	const int points_one_chunk = 100;
 	int points_grown = 0;
-
 	// if not all point are grown 
 	while ((pts_grew < pc.get_nr_points()) && !pause_growing) { // thread will exit if pausing 
-		// grow all regions 
+		//
 		for (int gi = 1; gi < pc.num_of_face_selections_rendered; gi++)
 			grow_one_step_bfs(false, gi);
 
@@ -1480,11 +1519,12 @@ void point_cloud_interactable::region_growing() {
 		// 
 		if (points_grown > points_one_chunk) {
 			// sleep for a while 
-			std::this_thread::sleep_for(std::chrono::milliseconds(growing_latency));
+			if (growing_latency != 0)
+				std::this_thread::sleep_for(std::chrono::milliseconds(growing_latency));
 			points_grown = 0; // reset 
 		}
 	}
-	can_parallel_edit = true;
+
 
 	auto finish = std::chrono::high_resolution_clock::now();
 	std::chrono::duration<double> elapsed = finish - start;
@@ -1493,6 +1533,7 @@ void point_cloud_interactable::region_growing() {
 	std::cout << "elapsed time: " << elapsed.count() << " s\n";
 	std::cout << "max_dist_real: " << max_accu_dist << std::endl;
 	std::cout << "max_dist: " << max_dist << std::endl;
+	can_parallel_edit = true;
 }
 
 /// one step growing with bfs 
@@ -2827,6 +2868,7 @@ void point_cloud_interactable::on_point_cloud_change_callback(PointCloudChangeEv
 			surfel_style.illumination_mode = cgv::render::IM_OFF;
 		update_member(&surfel_style.illumination_mode);
 	}
+	// after new points are added, very fast 
 	if (((pcc_event & PCC_POINTS_MASK) == PCC_POINTS_RESIZE) || ((pcc_event & PCC_POINTS_MASK) == PCC_NEW_POINT_CLOUD)) {
 		// reconstruct colors if not present 
 		if (!pc.has_colors()) {
@@ -2838,7 +2880,7 @@ void point_cloud_interactable::on_point_cloud_change_callback(PointCloudChangeEv
 			compute_normals();
 			orient_normals();
 		}
-		// create per-point face id  if not present 
+		// create per-point face id  if not present, fast 
 		if (pc.face_id.size() == 0 || reading_from_raw_scan) {
 			pc.face_id.resize(pc.get_nr_points());
 			for (auto& fi : pc.face_id) fi = 0; // 0 means non-selected faces 
@@ -2862,10 +2904,10 @@ void point_cloud_interactable::on_point_cloud_change_callback(PointCloudChangeEv
 			pc.has_scan_index = true;
 		}
 		reading_from_raw_scan = false;
-		// prepare scan indices visibility, create if not present 
-		pc.scan_index_visibility.resize(pc.num_of_scan_indices);
+		// prepare scan indices visibility, create if not present: not used currently 
+		/*pc.scan_index_visibility.resize(pc.num_of_scan_indices);
 		for (auto& siv : pc.scan_index_visibility) {siv = true;}
-		pc.update_scan_index_visibility();
+		pc.update_scan_index_visibility();*/
 		// box is used to adjust correct size of the normals, surfel size... and for selection estimation 
 		// also used for rendering of the boxes 
 		pc.box_out_of_date = true;

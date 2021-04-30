@@ -961,8 +961,7 @@ void visual_processing::read_pc() {
 		// the original pc will be automatically stored 
 		data_ptr->point_cloud_kit->read_pc_with_dialog(false);
 		data_ptr->point_cloud_kit->on_rendering_settings_changed();
-		data_ptr->point_cloud_kit->prepare_grow(false); // reading from file, do not overwrite
-		post_redraw();
+		data_ptr->point_cloud_kit->prepare_grow(false); // reading from file, do not overwrite, this will very fast 
 	}
 }
 ///  read the whole pc to data_ptr->point_cloud_kit
@@ -1203,6 +1202,50 @@ void visual_processing::single_hit__load_point_cloud_and_render_with_clod() {
 	switch_rendering_mode_clod_based();
 }
 ///
+void visual_processing::batch__load_and_convert_add_lod_single_file() {
+	// disable rendering 
+	render_pc = false;
+
+	// R
+	std::string fn = cgv::gui::file_open_dialog("Open", "Point Cloud:*");	
+	data_ptr->point_cloud_kit->clear_all();
+	if (!data_ptr->point_cloud_kit->open(fn))
+		return;
+
+	// M
+	compute_lods();
+
+	// W
+	std::string fn_without_extension =
+		cgv::utils::file::get_file_name(cgv::utils::file::drop_extension(fn));
+	data_ptr->point_cloud_kit->write_pc_to_file_with_given_dir(fn_without_extension + ".ypc");
+	std::cout << "finished converting: " << fn << std::endl;
+}
+///
+void visual_processing::batch__load_and_convert_add_lod_info() {
+
+	// disable rendering 
+	render_pc = false;
+
+	std::vector<std::string> fnames;
+	cgv::gui::files_open_dialog(fnames, "Open", "Point Cloud:*");
+
+	for (auto& f : fnames) {
+		// R 
+		data_ptr->point_cloud_kit->clear_all();
+		if (!data_ptr->point_cloud_kit->open(f))
+			return;
+		// M 
+		compute_lods();
+
+		// W
+		std::string fn_without_extension = 
+			cgv::utils::file::get_file_name(cgv::utils::file::drop_extension(f));
+		data_ptr->point_cloud_kit->write_pc_to_file_with_given_dir(fn_without_extension + ".ypc");
+		std::cout << "finished converting: " << f << std::endl;
+	}
+}
+///
 void visual_processing::mark_all_points_as_tobedownsampled() {
 	data_ptr->point_cloud_kit->marking_test_mark_all_points_as_given_group(
 		(int)point_cloud::TOPOAttribute::TO_BE_SUBSAMPLED);
@@ -1376,9 +1419,15 @@ void visual_processing::compute_lods() {
 	data_ptr->point_cloud_kit->compute_lods();
 }
 ///
-void visual_processing::single_hit__prepare_region_grow() {
+void visual_processing::single_hit__prepare_region_grow_worker() {
+	// some pre-computing 
 	ep_compute_principal_curvature_and_colorize_unsigned(); // compute unsigned curvature 
-	prepare_grow(); // will take some time for neighbour points extraction 
+	data_ptr->point_cloud_kit->extract_neighbours(); // will take some time for neighbour points extraction 
+	prepare_grow();
+}
+///
+void visual_processing::single_hit__prepare_region_grow() {
+	new thread(&visual_processing::single_hit__prepare_region_grow_worker, this);
 }
 /// 
 void visual_processing::single_hit__regrow_accu_distance_based() {
@@ -1465,7 +1514,11 @@ void visual_processing::create_gui() {
 
 	}
 	//
-	if (begin_tree_node("Effecient Point Cloud Marking", direct_write, true, "level=3")) {
+	if (begin_tree_node("Effecient Point Cloud Rendering And Marking", direct_write, true, "level=3")) {
+		connect_copy(add_button("[B,SingleFile]load and convert, poission lod")->click, rebind(this,
+			&visual_processing::batch__load_and_convert_add_lod_single_file));
+		connect_copy(add_button("[B]load and convert, poission lod")->click, rebind(this,
+			&visual_processing::batch__load_and_convert_add_lod_info));
 		connect_copy(add_button("compute_lods")->click, rebind(this,
 			&visual_processing::compute_lods));
 		connect_copy(add_button("download_points_from_gpu_to_memory")->click, rebind(this,
