@@ -71,7 +71,7 @@ const int ID = 0, DIST = 1, CURVATURE = 2;
 typedef std::tuple<int, float, float> point_priority_mapping;
 // Structure of the operator
 // overloading for comparison
-struct myComp {
+struct lower_second_comp {
 	constexpr bool operator()(
 		point_priority_mapping const& a,
 		point_priority_mapping const& b)
@@ -82,37 +82,37 @@ struct myComp {
 };
 
 // a wrapper priority queue and use a hash set to keep track of the queue.
-class non_redundant_priority_queue {
-public:
-	non_redundant_priority_queue() {}
-
-	void push(int pid, float accu_dist, float curr_curvature) {
-		if (!contains(pid)) {
-			pq_.push(std::make_tuple(pid, accu_dist, curr_curvature));
-			set_.emplace(pid);
-		}
-	}
-	void pop() {
-		if (!empty()) {
-			point_priority_mapping top = pq_.top();
-			set_.erase(std::get<ID>(top)); // only the first value of the pair is recorded in a set 
-			pq_.pop(); 
-		}
-	}
-	point_priority_mapping top() { return pq_.top(); }
-	point_priority_mapping front() { return pq_.top(); }
-	bool contains(int item) { return set_.find(item) != set_.end(); }
-	bool empty() const { return set_.empty(); }
-	void clear() { 
-		std::priority_queue<point_priority_mapping, std::vector<point_priority_mapping>, myComp> empty_pq_; 
-		pq_ = empty_pq_; 
-		set_.clear(); 
-	}
-
-private:
-	std::priority_queue<point_priority_mapping, std::vector<point_priority_mapping>, myComp> pq_;
-	std::set<int> set_;
-};
+//class non_redundant_priority_queue {
+//public:
+//	non_redundant_priority_queue() {}
+//
+//	void push(int pid, float accu_dist, float curr_curvature) {
+//		if (!contains(pid)) {
+//			pq_.push(std::make_tuple(pid, accu_dist, curr_curvature));
+//			set_.emplace(pid);
+//		}
+//	}
+//	void pop() {
+//		if (!empty()) {
+//			point_priority_mapping top = pq_.top();
+//			set_.erase(std::get<ID>(top)); // only the first value of the pair is recorded in a set 
+//			pq_.pop(); 
+//		}
+//	}
+//	point_priority_mapping top() { return pq_.top(); }
+//	point_priority_mapping front() { return pq_.top(); }
+//	bool contains(int item) { return set_.find(item) != set_.end(); }
+//	bool empty() const { return set_.empty(); }
+//	void clear() { 
+//		std::priority_queue<point_priority_mapping, std::vector<point_priority_mapping>, lower_second_comp> empty_pq_; 
+//		pq_ = empty_pq_; 
+//		set_.clear(); 
+//	}
+//
+//private:
+//	std::priority_queue<point_priority_mapping, std::vector<point_priority_mapping>, lower_second_comp> pq_;
+//	std::set<int> set_;
+//};
 
 /** the point cloud view adds a gui to the gl_point_cloud_drawable_base and adds
     some basic processing like normal computation as well as some debug rendering
@@ -331,19 +331,28 @@ public:
 
 	/* Point Classification based on Interactive Region Growing - */
 	/// seed representation 
-	std::vector<non_redundant_priority_queue> queue_for_regions; // 2d, matrix, idx means region id, queue stores seeds 
+	std::vector<std::priority_queue<point_priority_mapping, 
+		std::vector<point_priority_mapping>, lower_second_comp>> queue_for_regions; // 2d, matrix, idx means region id, queue stores seeds 
 	/// 
 	std::vector<int> seed_for_regions;
 	///
 	float max_accu_dist = 0;
 	///
 	float max_dist = 0;
+	///
+	int pts_grew = 0;
+	///
+	std::vector<int> knn;
 	/// reset seeds, and face_id and topo_id
 	void prepare_grow(bool read_from_file);
+	/// 
+	void extract_neighbours();
 	/// collect marked points to queue, add seeds for the region growing 
 	void init_region_growing_by_collecting_group_and_seeds_vr(int curr_face_selecting_id);
 	/// grow one step, check_nml is not used 
 	bool grow_one_step_bfs(bool check_nml, int which_group);
+	///
+	void region_growing();
 	/// deprecated, not good to keep an other thread running 
 	void do_region_growing_timer_event(double t, double dt);
 	/// reset, not used 
@@ -383,13 +392,15 @@ public:
 	/// if the points marked by controller will be add to growing queue as seed 
 	bool add_to_seed = true;
 	/// critical section start/ stop
-	bool can_parallel_grow = true;
+	bool can_parallel_edit = true;
 	/// pause the growing, exit the thread (can not and not good to keep it run )
 	bool pause_growing = false;
 	/// how many points will be growed before sleep, not used, use 100 just 
 	int steps_per_event_as_speed = 200;
 	/// latency after 100 points growed 
-	int growing_latency = 100; // ms
+	int growing_latency = 0; // ms
+	///
+	std::chrono::duration<double> Elapsed_knn;
 
 	/* Fine-Grained Point Classification */
 	/// thw quality of the boundaries depends on region growing steps, how good faces are marked 

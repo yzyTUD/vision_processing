@@ -31,7 +31,7 @@ public:
 	Idx find_closest(const Pnt& p) const;
 	float find_closest_and_its_dist(const Pnt& p) const;
 	/// knn query that returns pointers to points
-	void find_closest_points(const Pnt& p, Idx k, std::vector<int>& knn) const;
+	void find_closest_points(const Pnt& p, Idx k, std::vector<int>* knn) const;
 	///
 	void find_closest_points(const Pnt& p, Idx k, std::vector<int>& knn, std::vector<float>& dist) const;
 };

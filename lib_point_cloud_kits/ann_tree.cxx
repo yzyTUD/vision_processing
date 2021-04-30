@@ -135,19 +135,19 @@ float ann_tree::find_closest_and_its_dist(const Pnt& p) const
 	return dist;
 }
 
-void ann_tree::find_closest_points(const Pnt& p, Idx k, std::vector<int>& knn) const
+void ann_tree::find_closest_points(const Pnt& p, Idx k, std::vector<int>* knn) const
 {
 	ann_struct* ann = static_cast<ann_struct*>(ann_impl);
 	if (!ann) {
 		std::cerr << "no ann_tree built" << std::endl;
 		return;
 	}
-	knn.resize(k);
+	knn->resize(k);
 	ANNdistArray dist_array = new ANNdist[k];
 	ANNidxArray index_array = new ANNidx[k];
 	ann->ps->annkSearch(const_cast<ANNpoint>(&p[0]), k, index_array, dist_array);
 	for (Idx i = 0; i < k; ++i)
-		knn[i] = index_array[i];
+		knn->at(i) = index_array[i];
 	delete[] dist_array;
 	delete[] index_array;
 }

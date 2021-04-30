@@ -329,20 +329,20 @@ public:
 					if (v > 0) {
 						// topo selection with controller, it is on upper side in rendering
 						if (curr_active_selection == 0 && curr_topo_selecting_id != -1) {
-							if (data_ptr->point_cloud_kit->can_parallel_grow == true) {
-								data_ptr->point_cloud_kit->can_parallel_grow = false;
+							if (data_ptr->point_cloud_kit->can_parallel_edit == true) {
+								data_ptr->point_cloud_kit->can_parallel_edit = false;
 								vec3 right_hand_ball_posi = data_ptr->cur_right_hand_posi + data_ptr->cur_off_right;
 								data_ptr->point_cloud_kit->mark_topo_id_with_controller(
 									right_hand_ball_posi, marking_style.radius, curr_topo_selecting_id);
 								// does not support grow on topo regions visually 
-								data_ptr->point_cloud_kit->can_parallel_grow = true;
+								data_ptr->point_cloud_kit->can_parallel_edit = true;
 							}
 						}
 						
 						// face selection with controller, on lower side  
 						if (curr_active_selection == 1 && curr_face_selecting_id != -1) { 
-							if (data_ptr->point_cloud_kit->can_parallel_grow == true) { 
-								data_ptr->point_cloud_kit->can_parallel_grow = false;
+							if (data_ptr->point_cloud_kit->can_parallel_edit == true) { 
+								data_ptr->point_cloud_kit->can_parallel_edit = false;
 								vec3 right_hand_ball_posi = data_ptr->cur_right_hand_posi + data_ptr->cur_off_right;
 								data_ptr->point_cloud_kit->mark_face_id_with_controller(
 									right_hand_ball_posi, marking_style.radius, curr_face_selecting_id);
@@ -351,30 +351,30 @@ public:
 									// then, grow on a separate thread, sleep optionally 
 									data_ptr->point_cloud_kit->init_region_growing_by_collecting_group_and_seeds_vr(curr_face_selecting_id);
 								}
-								data_ptr->point_cloud_kit->can_parallel_grow = true;
+								data_ptr->point_cloud_kit->can_parallel_edit = true;
 							}
 						}
 					}
 				}
 				if (data_ptr->check_roulette_selection(data_ptr->get_id_with_name("PointCloud\nDelPoints\nTouchTo\nActivate"))) { // hold throttle to mark
 					if (v > 0 && curr_face_selecting_id != -1) {
-						if (data_ptr->point_cloud_kit->can_parallel_grow == true) {
-							data_ptr->point_cloud_kit->can_parallel_grow = false;
+						if (data_ptr->point_cloud_kit->can_parallel_edit == true) {
+							data_ptr->point_cloud_kit->can_parallel_edit = false;
 							data_ptr->point_cloud_kit->mark_face_id_with_controller(
 								data_ptr->cur_right_hand_posi + data_ptr->cur_off_right,
 									marking_style.radius,curr_face_selecting_id);
-							data_ptr->point_cloud_kit->can_parallel_grow = true;
+							data_ptr->point_cloud_kit->can_parallel_edit = true;
 						}
 					}
 				}
 				if (data_ptr->check_roulette_selection(data_ptr->get_id_with_name("PointCloud\nMarkAs\nOrig"))) { // hold throttle to mark
 					if (v > 0 && curr_face_selecting_id != -1) {
-						if (data_ptr->point_cloud_kit->can_parallel_grow == true) {
-							data_ptr->point_cloud_kit->can_parallel_grow = false;
+						if (data_ptr->point_cloud_kit->can_parallel_edit == true) {
+							data_ptr->point_cloud_kit->can_parallel_edit = false;
 							data_ptr->point_cloud_kit->mark_face_id_with_controller(
 								data_ptr->cur_right_hand_posi + data_ptr->cur_off_right,
 									marking_style.radius, curr_face_selecting_id);
-							data_ptr->point_cloud_kit->can_parallel_grow = true;
+							data_ptr->point_cloud_kit->can_parallel_edit = true;
 						}
 					}
 				}

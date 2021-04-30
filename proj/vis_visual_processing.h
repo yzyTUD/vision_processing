@@ -188,7 +188,6 @@ protected:
 	vr_kit_tmpfixed_gui* tmpfixed_gui_kit = new vr_kit_tmpfixed_gui();
 	vr_kit_light* light_kit = new vr_kit_light();
 	vr_kit_teleportation* teleportation_kit = new vr_kit_teleportation();
-
 	// optional kits 
 		//= new boxgui_interactable();
 		//= new vr_kit_handhold_near_gui();
@@ -205,15 +204,13 @@ protected:
 	vr_kit_imagebox* imagebox_kit = nullptr;
 	vis_kit_selection* selection_kit = nullptr;
 	parametric_surface* parametric_surface_kit = nullptr;
-
 public:
-
+	///
 	void init_cameras(vr::vr_kit* kit_ptr);
-
+	///
 	void start_camera();
-
+	///
 	void stop_camera();
-
 	/// compute intersection points of controller ray with movable boxes
 	void compute_intersections(const vec3& origin, const vec3& direction, int ci, const rgb& color);
 	/// keep track of status changes
@@ -225,19 +222,19 @@ public:
 public:
 	visual_processing();
 	~visual_processing();
-
+	///
 	std::string get_type_name() { return "visual_processing"; }
-
+	///
 	void stream_help(std::ostream& os);
-
+	///
 	void on_set(void* member_ptr);
-
+	///
 	bool self_reflect(cgv::reflect::reflection_handler& rh)
 	{
 		return
 			rh.reflect_member("pick_point_index", pick_point_index);
 	}
-
+	///
 	void init_6_points_picking() {
 		data_ptr->pick_points.push_back(vec3(1));
 		data_ptr->pick_colors.push_back(rgb(0, 1, 0));
@@ -336,7 +333,7 @@ public:
 		return false;
 
 	}
-	// some prob. with the depth information, TODO 
+	/// some prob. with the depth information, TODO 
 	bool on_drag(const cgv::gui::mouse_event& me)
 	{
 		if (!view_ptr)
@@ -359,79 +356,55 @@ public:
 		post_redraw();
 		return true;
 	}
-
-	bool init(cgv::render::context& ctx);
-
-	void clear(cgv::render::context& ctx);
-
-	//
-	bool handle(cgv::gui::event& e);
-
-	void init_frame(cgv::render::context& ctx);
-
-	void draw(cgv::render::context& ctx);
-
-	void finish_draw(cgv::render::context& ctx);
-
 	///
-	void read_pc();
-
-	void read_pc_parallel();
-
-	void start_reading_pc_parallel();
-	void start_parallel_region_growing();
-	void pause_parallel_region_growing();
-	void stop_parallel_region_growing();
+	bool init(cgv::render::context& ctx);
+	///
+	void clear(cgv::render::context& ctx);
+	///
+	bool handle(cgv::gui::event& e);
+	///
+	void init_frame(cgv::render::context& ctx);
+	///
+	void draw(cgv::render::context& ctx);
+	///
+	void finish_draw(cgv::render::context& ctx);
+	///
 	thread* parallel_reading_thread = nullptr;
 	thread* parallel_writting_thread = nullptr;
 	thread* parallel_region_growing_thread = nullptr;
 	bool parallel_reading = false;
-
+	/// wrappers 
+	void read_pc();
+	void read_pc_parallel();
+	void start_reading_pc_parallel();
+	void start_parallel_region_growing();
+	void pause_parallel_region_growing();
+	void stop_parallel_region_growing();
 	void read_pc_queue();
-
 	void read_pc_append();
-
-	///
 	void downsampling();
-
 	void add_reflectance();
-
 	void write_pc_parallel();
-
 	void start_writting_pc_parallel();
-
 	void read_campose();
-
 	void show_camposes();
-
 	void apply_further_transformation();
-
 	void align_leica_scans_with_cgv();
-
 	void rotate_x();
-
 	void rotate_z();
-
 	bool load_next_shot();
-
 	void compute_nmls_if_is_required();
-
 	void force_nml_computing();
-
 	void append_current_shot_to_stored_cloud();
-
 	void write_stored_pc_to_file();
-
 	void write_stored_pc_to_file_direct();
-	///
 	void print_cloud_info();
-	///
 	void auto_conduct_nml_estimation_leica();
 	void add_to_file_list();
 	void clean_file_list();
 	bool batch_compute_nmls_given_file_list();
 	bool batch_read_pc_queue_and_downsampling();
-	void clean_all_pcs();
+	void clear_all_pcs();
 	void load_image_from_bin_files();
 	void switch_rendering_mode_quad_based();
 	void switch_rendering_mode_point_based();
@@ -459,14 +432,12 @@ public:
 	void download_points_from_gpu_to_memory();
 	void reset_marking();
 	void compute_lods();
-	void single_hit__region_grow();
+	void single_hit__prepare_region_grow();
+	void single_hit__regrow();
 	void create_gui();
-
-	/// wrappers 
 	void write_trajectory() { draw_kit->write_trajectory(); }
 	void read_trajectory() { draw_kit->read_trajectory(); }
 	void clear_drawing() { draw_kit->clear_drawing(); }
-
 	void start_replay_all() { motioncap_kit->start_replay_all(); }
 	void save_to_tj_file() { motioncap_kit->save_to_tj_file(); }
 	void stop_and_clear_mocap_data() { motioncap_kit->stop_and_clear_mocap_data(); }
@@ -542,21 +513,15 @@ public:
 		//initial_cam_alinmentq
 		mesh_kit->compute_coordinates_with_rot_correction(rotq, translation_vec);
 	}
-
 	void compute_feature_points() { 
 		//data_ptr->point_cloud_kit->compute_feature_points(); post_redraw(); 
 	}
-
 	void render_with_fullpc() { data_ptr->point_cloud_kit->render_with_fullpc(); }
 	void auto_downsampling() { data_ptr->point_cloud_kit->auto_downsampling(); }
 	void supersampling_with_bbox() { data_ptr->point_cloud_kit->supersampling_with_bbox(data_ptr->supersampling_bbox); }
 	void restore_supersampling() { data_ptr->point_cloud_kit->restore_supersampling(); }
-
-	void prepare_marking() { 
+	void prepare_grow() {
 		data_ptr->point_cloud_kit->prepare_grow(false);
-	}
-	void prepare_marking_clear_face_id() {
-		data_ptr->point_cloud_kit->prepare_grow(true);
 	}
 	void clear_face_id_and_topo_id() {
 		for (auto& fi : data_ptr->point_cloud_kit->pc.face_id) fi = 0; // 0 reserved
@@ -566,8 +531,8 @@ public:
 		data_ptr->point_cloud_kit->pc.convert_to_int_face_selection_representation();
 	}
 	void mark_sample_seed() {
-		if (data_ptr->point_cloud_kit->can_parallel_grow == true) {
-			data_ptr->point_cloud_kit->can_parallel_grow = false;
+		if (data_ptr->point_cloud_kit->can_parallel_edit == true) {
+			data_ptr->point_cloud_kit->can_parallel_edit = false;
 			
 			data_ptr->point_cloud_kit->pc.face_id.at(0) = 1; // mark index 0 as face 1 
 			data_ptr->point_cloud_kit->init_region_growing_by_collecting_group_and_seeds_vr(1); // collect face seed with index 
@@ -575,21 +540,19 @@ public:
 			data_ptr->point_cloud_kit->pc.face_id.at(data_ptr->point_cloud_kit->pc.get_nr_points()-1) = 2; // mark index 0 as face 1 
 			data_ptr->point_cloud_kit->init_region_growing_by_collecting_group_and_seeds_vr(2); // collect face seed with index 
 
-			data_ptr->point_cloud_kit->can_parallel_grow = true;
+			data_ptr->point_cloud_kit->can_parallel_edit = true;
 		}
 	}
-
-	// point cloud generation 
 	void generate_pc_hemisphere() { 
 		data_ptr->point_cloud_kit->generate_pc_hemisphere();
 		force_nml_computing();
-		prepare_marking();
+		prepare_grow();
 		post_redraw();
 	}
 	void generate_pc_cube() { 
 		data_ptr->point_cloud_kit->generate_pc_cube(); 
 		force_nml_computing(); 
-		prepare_marking(); 
+		prepare_grow();
 		post_redraw(); 
 	}
 	void generate_testing_plane() {
@@ -689,21 +652,17 @@ public:
 		data_ptr->point_cloud_kit->pc.point_scan_index.clear();
 		std::cout << "dropped!" << std::endl;
 	}
-
 	void ep_compute_principal_curvature_and_colorize_signed() {
 		data_ptr->point_cloud_kit->ep_compute_principal_curvature_and_colorize_signed();
-		post_redraw();
 	}
 	void ep_compute_principal_curvature_and_colorize_unsigned() {
 		data_ptr->point_cloud_kit->ep_compute_principal_curvature_and_colorize_unsigned();
-		post_redraw();
 	}
 	void ep_force_recolor() {
 		data_ptr->point_cloud_kit->ep_force_recolor();
 	}
 	void compute_feature_points_and_colorize() {
 		data_ptr->point_cloud_kit->compute_feature_points_and_colorize();
-		post_redraw();
 	}
 	void debug_region_growing_step_by_step_test() {
 		data_ptr->point_cloud_kit->grow_one_step_bfs(false, 1);

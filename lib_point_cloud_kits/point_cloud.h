@@ -278,6 +278,10 @@ public:
 	std::vector<Dir> F;
 	/// per-vertex attribute: used for region growing, used internally, wont be passed to gpu 
 	std::vector<bool> point_visited; // point_visited
+	///
+	std::vector<bool> point_in_queue;
+	/// 
+	std::vector<std::vector<int>> nearest_neighbour_indices;
 	/// per-vertex attribute: used for marking faces, the first step, region growing 
 	std::vector<int> face_id; // from point_selection, write to .scan file  
 	/// per-vertex attribute: used for marking edges/ vertices/ faces... subsampled... 
