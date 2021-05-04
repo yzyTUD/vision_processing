@@ -2590,7 +2590,7 @@ bool point_cloud_interactable::init(cgv::render::context& ctx)
 /// basic functions
 void point_cloud_interactable::init_frame(cgv::render::context& ctx)
 {
-	static bool my_tab_selected = false;
+	/*static bool my_tab_selected = false;
 	if (!my_tab_selected) {
 		my_tab_selected = true;
 		cgv::gui::gui_group_ptr gg = ((provider*)this)->get_parent_group();
@@ -2601,7 +2601,7 @@ void point_cloud_interactable::init_frame(cgv::render::context& ctx)
 				tab_group->select_child(c, true);
 			}
 		}
-	}
+	}*/
 	gl_point_cloud_drawable::init_frame(ctx);
 }
 /// draw call
@@ -2662,7 +2662,7 @@ void point_cloud_interactable::draw(cgv::render::context& ctx)
 	}
 
 	// 
-	if (icp_clicking_points_src.size() > 0) {
+	/*if (icp_clicking_points_src.size() > 0) {
 		auto& sr = cgv::render::ref_sphere_renderer(ctx);
 		sr.set_render_style(srs_icp_feature_points);
 		sr.set_position_array(ctx, icp_clicking_points_src);
@@ -2675,7 +2675,7 @@ void point_cloud_interactable::draw(cgv::render::context& ctx)
 		sr.set_position_array(ctx, icp_clicking_points_target);
 		sr.set_color_array(ctx, icp_clicking_point_colors_target);
 		sr.render(ctx, 0, icp_clicking_points_target.size());
-	}
+	}*/
 }
 ///
 void point_cloud_interactable::configure_subsample_controls()

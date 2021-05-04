@@ -167,8 +167,10 @@ protected:
 	quat initial_cam_alinmentq = quat(vec3(0, 1, 0), -115 * M_PI / 180);
 	quat addi_alignq = quat();
 
-	point_cloud_interactable* one_shot_360pc = new point_cloud_interactable();
-	point_cloud_interactable* stored_cloud = new point_cloud_interactable();
+	point_cloud_interactable* one_shot_360pc = nullptr;
+		//= new point_cloud_interactable();
+	point_cloud_interactable* stored_cloud = nullptr;
+		//= new point_cloud_interactable();
 	bool render_pc = true;
 	bool render_skybox = true;
 	bool render_handhold_gui = true;

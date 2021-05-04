@@ -183,14 +183,16 @@ public:
 	/// download control points to local representation 
 	void fetch_from_point_cloud_kit_demo() {
 		int num_of_patches = data_ptr->point_cloud_kit->pc.demo_model.size();
-		surface_patches.resize(num_of_patches);
-		std::vector<vec3>* control_points_g_ptr = &data_ptr->point_cloud_kit->pc.control_points;
-		std::vector<rgb>* control_point_colors_ptr = &data_ptr->point_cloud_kit->pc.control_point_colors;
-		for (int i = 0; i < num_of_patches; i++) {
-			std::vector<int>* control_point_indices_ptr = 
-				&data_ptr->point_cloud_kit->pc.demo_model.at(i);
-			surface_patches.at(i).update(control_points_g_ptr,
-				control_point_colors_ptr, control_point_indices_ptr, i);
+		if (num_of_patches > 0) {
+			surface_patches.resize(num_of_patches);
+			std::vector<vec3>* control_points_g_ptr = &data_ptr->point_cloud_kit->pc.control_points;
+			std::vector<rgb>* control_point_colors_ptr = &data_ptr->point_cloud_kit->pc.control_point_colors;
+			for (int i = 0; i < num_of_patches; i++) {
+				std::vector<int>* control_point_indices_ptr = 
+					&data_ptr->point_cloud_kit->pc.demo_model.at(i);
+				surface_patches.at(i).update(control_points_g_ptr,
+					control_point_colors_ptr, control_point_indices_ptr, i);
+			}
 		}
 	}
 		
