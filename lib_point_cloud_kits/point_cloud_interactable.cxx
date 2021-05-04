@@ -36,7 +36,9 @@ void point_cloud_interactable::print_pc_information() {
 	std::cout << "pc.I.size: " << pc.I.size() << std::endl;
 	std::cout << "pc.F.size: " << pc.F.size() << std::endl;
 	std::cout << "pc.face_id.size: " << pc.face_id.size() << std::endl;
+	std::cout << "pc.topo_id.size: " << pc.topo_id.size() << std::endl;
 	std::cout << "pc.point_scan_index.size: " << pc.point_scan_index.size() << std::endl;
+	std::cout << "pc.lods.size: " << pc.lods.size() << std::endl;
 	std::cout << "pc.F_conn.size(): " << pc.F_conn.size() << std::endl;
 	//for (auto f : pc.F_conn) {
 	//	std::cout << "current f.size(): " << f.size() << std::endl;

@@ -616,9 +616,9 @@ void gl_point_cloud_drawable::draw_points_clod(context& ctx) {
 					input_buffer_data.at(i).level() = *lods;
 
 				// quick test 
-				input_buffer_data.at(i).p_index = *indices; // indicating original index 
+				//input_buffer_data.at(i).p_index = *indices; // indicating original index 
 				input_buffer_data.at(i).color() = pc.clr(*indices); //pc.clr(points_with_lod.at(i).index()); //pc.clr(i);// 
-				input_buffer_data.at(i).p_selection_index = pc.topo_id.at(*indices); // pre was unordered
+				//input_buffer_data.at(i).p_selection_index = pc.topo_id.at(*indices); // pre was unordered
 				//input_buffer_data.at(i).p_normal = pc.nml(*indices); // pre was unordered //
 
 				positions = (vec3*)((uint8_t*)positions + stride);
@@ -669,22 +669,22 @@ void gl_point_cloud_drawable::draw_points_clod(context& ctx) {
 
 	if (cp_renderer.enable(ctx) && !using_directly_buffer_loading) {
 		// setup uniform varibles that will be used in reduce compute shader 
-		cp_renderer.ref_reduce_prog()->set_uniform(ctx, "enable_headset_culling", enable_headset_culling);
+		/*cp_renderer.ref_reduce_prog()->set_uniform(ctx, "enable_headset_culling", enable_headset_culling);
 		cp_renderer.ref_reduce_prog()->set_uniform(ctx, "headset_culling_range", headset_culling_range);
 		cp_renderer.ref_reduce_prog()->set_uniform(ctx, "headset_position", headset_position);
-		cp_renderer.ref_reduce_prog()->set_uniform(ctx, "headset_direction", headset_direction);
+		cp_renderer.ref_reduce_prog()->set_uniform(ctx, "headset_direction", headset_direction);*/
 		cp_renderer.ref_reduce_prog()->set_uniform(ctx, "scale", clod_render_scale);
 
 		// setup uniform varibles that will be used in marking compute shader 
-		cp_renderer.ref_marking_prog()->set_uniform(ctx, "enable_headset_culling", enable_headset_culling);
+		/*cp_renderer.ref_marking_prog()->set_uniform(ctx, "enable_headset_culling", enable_headset_culling);
 		cp_renderer.ref_marking_prog()->set_uniform(ctx, "headset_culling_range", headset_culling_range);
 		cp_renderer.ref_marking_prog()->set_uniform(ctx, "headset_position", headset_position);
 		cp_renderer.ref_marking_prog()->set_uniform(ctx, "headset_direction", headset_direction);
 		cp_renderer.ref_marking_prog()->set_uniform(ctx, "rhand_position", right_controller_position);
 		cp_renderer.ref_marking_prog()->set_uniform(ctx, "lhand_position", left_controller_position);
-		cp_renderer.ref_marking_prog()->set_uniform(ctx, "controller_effect_range", controller_effect_range);
-		cp_renderer.ref_marking_prog()->set_uniform(ctx, "is_triggering", is_triggering);
-		cp_renderer.ref_marking_prog()->set_uniform(ctx, "test_shader_selection", test_shader_selection);
+		cp_renderer.ref_marking_prog()->set_uniform(ctx, "controller_effect_range", controller_effect_range);*/
+		//cp_renderer.ref_marking_prog()->set_uniform(ctx, "is_triggering", is_triggering);
+		//cp_renderer.ref_marking_prog()->set_uniform(ctx, "test_shader_selection", test_shader_selection);
 
 
 		//
@@ -696,6 +696,7 @@ void gl_point_cloud_drawable::draw_points_clod(context& ctx) {
 		std::cout << "uploaded to gpu..." << std::endl;
 		renderer_out_of_date = false;
 	}
+
 	if (cp_renderer.enable(ctx) && using_directly_buffer_loading) {
 		// setup uniform varibles that will be used in reduce compute shader 
 		cp_renderer.ref_reduce_prog()->set_uniform(ctx, "enable_headset_culling", enable_headset_culling);
@@ -736,7 +737,7 @@ void gl_point_cloud_drawable::download_points_from_gpu_to_memory() {
 		//	// do nothing 
 		//}
 
-		pc.topo_id.at(bd.p_index) = bd.p_selection_index;
+		//pc.topo_id.at(bd.p_index) = bd.p_selection_index;
 	}
 }
 

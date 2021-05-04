@@ -1461,10 +1461,51 @@ void visual_processing::single_hit__regrow_distance_and_curvature_based() {
 	mark_sample_seed(); // sample seed marked for test 
 	start_parallel_region_growing(); // start 
 }
+///
+void visual_processing::find_pointcloud()
+{
+	cgv::render::view* view_ptr = find_view_as_node();
+	if (view_ptr) {
+		const point_cloud_types::Box& sb = data_ptr->point_cloud_kit->pc.box();
+		point_cloud_types::Box aabb(sb);
+		view_ptr->set_focus(aabb.get_center());
+		view_ptr->move(view_ptr->get_depth_of_focus() - 1.0);
+	}
+}
 /*gui */
 ///
 void visual_processing::create_gui() {
 	add_decorator("visual_computing", "heading", "level=2");
+	//
+	/*connect_copy(add_button("rotate_right")->click,
+		rebind(this, &visual_processing::rotate_right));
+	connect_copy(add_button("rotate_left")->click,
+		rebind(this, &visual_processing::rotate_left));
+	add_member_control(this, "active_group", data_ptr->active_group, "value_slider", "min=0;max=10;log=false;ticks=true;");
+	add_member_control(this, "paratone_2", data_ptr->paratone_2, "value_slider", "min=-1;max=1;log=false;ticks=true;");
+	add_member_control(this, "paratone_3", data_ptr->paratone_3, "value_slider", "min=-1;max=1;log=false;ticks=true;");
+	add_member_control(this, "paratone_4", data_ptr->paratone_4, "value_slider", "min=-1;max=1;log=false;ticks=true;");
+	add_member_control(this, "paratone_5", data_ptr->paratone_5, "value_slider", "min=-1;max=1;log=false;ticks=true;");*/
+	add_member_control(this, "render skybox", render_skybox, "check");
+	add_member_control(this, "render_handhold_gui", render_handhold_gui, "check");
+	add_member_control(this, "render_parametric_surface", data_ptr->render_parametric_surface, "check");
+	add_member_control(this, "render_control_points", data_ptr->render_control_points, "check");
+	add_member_control(this, "render_with_functional_ids_only", data_ptr->point_cloud_kit->render_with_functional_ids_only, "check");
+	add_member_control(this, "force_render_with_original_color", data_ptr->point_cloud_kit->force_render_with_original_color, "check");
+	add_member_control(this, "highlight_unmarked_points", data_ptr->point_cloud_kit->highlight_unmarked_points, "check");
+	add_member_control(this, "render_nmls", data_ptr->point_cloud_kit->show_nmls, "check");
+	add_member_control(this, "colorize_with_scan_index", data_ptr->point_cloud_kit->colorize_with_scan_index, "check");
+	add_member_control(this, "hmd_culling", data_ptr->point_cloud_kit->enable_headset_culling, "check");
+	add_member_control(this, "compute_normal_after_read", data_ptr->point_cloud_kit->compute_normal_after_read, "check");
+	add_member_control(this, "from_CC_txt", data_ptr->point_cloud_kit->pc.from_CC, "check");
+	add_member_control(this, "parallel_reading", parallel_reading, "check");
+	connect_copy(add_control("render_pc", render_pc, "check")->value_change, rebind(
+		static_cast<drawable*>(this), &visual_processing::post_redraw));
+	add_member_control(this, "surfel point size", data_ptr->point_cloud_kit->surfel_style.point_size,
+		"value_slider", "min=0.01;max=5;log=false;ticks=false;");
+	connect_copy(add_button("render_with_clod")->click, rebind(this,
+		&visual_processing::switch_rendering_mode_clod_based));
+	add_member_control(this, "use_octree_sampling", data_ptr->point_cloud_kit->use_octree_sampling, "check");
 	//
 	if (begin_tree_node("IO", direct_write, true, "level=3")) {
 		connect_copy(add_button("read_pc")->click, rebind(this, &visual_processing::start_reading_pc_parallel));
@@ -1532,6 +1573,8 @@ void visual_processing::create_gui() {
 		add_member_control(this, "color_based_on_lod", data_ptr->point_cloud_kit->color_based_on_lod, "check");
 		connect_copy(add_button("on_rendering_settings_changed")->click, rebind(this,
 			&visual_processing::on_rendering_settings_changed));
+		connect_copy(add_button("find_pointcloud")->click, rebind(this, &visual_processing::find_pointcloud));
+		
 	}
 	//
 	if (begin_tree_node("Point Cloud Rendering Style", direct_write, true, "level=3")) {
@@ -1809,36 +1852,6 @@ void visual_processing::create_gui() {
 	if (begin_tree_node("Selection kit", pick_point_index, true, "level=3")) {
 		add_member_control(this, "pick_point_index", pick_point_index, "value_slider", "min=0;max=5;log=false;ticks=true;");
 	}
-	//
-	/*connect_copy(add_button("rotate_right")->click,
-		rebind(this, &visual_processing::rotate_right));
-	connect_copy(add_button("rotate_left")->click,
-		rebind(this, &visual_processing::rotate_left));
-	add_member_control(this, "active_group", data_ptr->active_group, "value_slider", "min=0;max=10;log=false;ticks=true;");
-	add_member_control(this, "paratone_2", data_ptr->paratone_2, "value_slider", "min=-1;max=1;log=false;ticks=true;");
-	add_member_control(this, "paratone_3", data_ptr->paratone_3, "value_slider", "min=-1;max=1;log=false;ticks=true;");
-	add_member_control(this, "paratone_4", data_ptr->paratone_4, "value_slider", "min=-1;max=1;log=false;ticks=true;");
-	add_member_control(this, "paratone_5", data_ptr->paratone_5, "value_slider", "min=-1;max=1;log=false;ticks=true;");*/
-	add_member_control(this, "render skybox", render_skybox, "check");
-	add_member_control(this, "render_handhold_gui", render_handhold_gui, "check");
-	add_member_control(this, "render_parametric_surface", data_ptr->render_parametric_surface, "check");
-	add_member_control(this, "render_control_points", data_ptr->render_control_points, "check");
-	add_member_control(this, "render_with_functional_ids_only", data_ptr->point_cloud_kit->render_with_functional_ids_only, "check");
-	add_member_control(this, "force_render_with_original_color", data_ptr->point_cloud_kit->force_render_with_original_color, "check");
-	add_member_control(this, "highlight_unmarked_points", data_ptr->point_cloud_kit->highlight_unmarked_points, "check");
-	add_member_control(this, "render_nmls", data_ptr->point_cloud_kit->show_nmls, "check");
-	add_member_control(this, "colorize_with_scan_index", data_ptr->point_cloud_kit->colorize_with_scan_index, "check");
-	add_member_control(this, "hmd_culling", data_ptr->point_cloud_kit->enable_headset_culling, "check");
-	add_member_control(this, "compute_normal_after_read", data_ptr->point_cloud_kit->compute_normal_after_read, "check");
-	add_member_control(this, "from_CC_txt", data_ptr->point_cloud_kit->pc.from_CC, "check");
-	add_member_control(this, "parallel_reading", parallel_reading, "check");
-	connect_copy(add_control("render_pc", render_pc, "check")->value_change, rebind(
-		static_cast<drawable*>(this), &visual_processing::post_redraw));
-	add_member_control(this, "surfel point size", data_ptr->point_cloud_kit->surfel_style.point_size,
-		"value_slider", "min=0.01;max=5;log=false;ticks=false;");
-	connect_copy(add_button("render_with_clod")->click, rebind(this,
-		&visual_processing::switch_rendering_mode_clod_based));
-	add_member_control(this, "use_octree_sampling", data_ptr->point_cloud_kit->use_octree_sampling, "check");
 }
 ///
 #include <cgv/base/register.h>

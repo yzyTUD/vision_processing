@@ -441,6 +441,7 @@ public:
 	void single_hit__regrow_seed_distance_based();
 	void single_hit__regrow_unsigned_mean_curvature_based();
 	void single_hit__regrow_distance_and_curvature_based();
+	void find_pointcloud();
 
 	void create_gui();
 	void write_trajectory() { draw_kit->write_trajectory(); }
@@ -655,6 +656,7 @@ public:
 	void rotate_left() { data_ptr->active_off_rotation += 30; }
 	void drop_other_info_points_only() {
 		data_ptr->point_cloud_kit->pc.N.clear();
+		data_ptr->point_cloud_kit->pc.has_nmls = false;
 		data_ptr->point_cloud_kit->pc.point_visited.clear();
 		data_ptr->point_cloud_kit->pc.face_id.clear();
 		data_ptr->point_cloud_kit->pc.point_scan_index.clear();

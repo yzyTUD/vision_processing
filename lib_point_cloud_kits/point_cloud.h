@@ -458,7 +458,7 @@ private:
 	mutable bool box_out_of_date;
 	/// flag to remember whether pixel coordinate range is out of date and will be recomputed in the pixel_range() method
 	mutable bool pixel_range_out_of_date;
-protected:
+public:
 	/// when true, second vector is interpreted as normals when reading an ascii format
 	bool no_normals_contained;
 	/// flag that tells whether normals are allocated
