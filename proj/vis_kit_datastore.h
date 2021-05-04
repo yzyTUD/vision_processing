@@ -278,7 +278,7 @@ public:
 	float paratone_7;
 	// parametric surface rendering 
 	bool render_parametric_surface = false;
-	bool render_control_points = true;
+	bool render_control_points = false;
 	float ctrlpoint_size = 0.01;
 
 	/// @external api 

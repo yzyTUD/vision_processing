@@ -87,11 +87,11 @@ public:
 	static constexpr float min_level_hue = 230.0 / 360.0;
 	static constexpr float max_level_hue = 1.0;
 	cgv::render::clod_point_render_style cp_style; 
-	//cgv::render::clod_point_renderer* cp_renderer;
+	cgv::render::clod_point_renderer cp_renderer;
 	cgv::pointcloud::octree_lod_generator<LODPoint> lod_generator;
 	std::vector<LODPoint> points_with_lod; // pass points from main mem to here, then send to shader 
 	bool is_triggering = false;
-	float clod_render_scale = 1;
+	float clod_render_scale = 0.3;
 	bool test_shader_selection = false;
 
 	/*normal rendering*/ 

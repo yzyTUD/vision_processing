@@ -2627,39 +2627,39 @@ void point_cloud_interactable::draw(cgv::render::context& ctx)
 	//	interact_state = IS_FULL_FRAME;
 
 	// render the cameras with information read from .campose file 
-	if (pc.render_cams) {
-		for (auto render_kit : image_renderer_list) {
-			render_kit.draw(ctx);
-		}
-	}
+	//if (pc.render_cams) {
+	//	for (auto render_kit : image_renderer_list) {
+	//		render_kit.draw(ctx);
+	//	}
+	//}
 
-	// render feature points 
-	if (feature_points.size() > 0 && fea_box.size() > 0) {
-		cgv::render::box_renderer& renderer = cgv::render::ref_box_renderer(ctx);
-		renderer.set_render_style(fea_style);
-		renderer.set_box_array(ctx, fea_box);
-		renderer.set_color_array(ctx, fea_box_color);
-		renderer.set_translation_array(ctx, fea_box_trans);
-		renderer.set_rotation_array(ctx, fea_box_rot);
-		renderer.render(ctx, 0, fea_box.size());
-	}
+	//// render feature points 
+	//if (feature_points.size() > 0 && fea_box.size() > 0) {
+	//	cgv::render::box_renderer& renderer = cgv::render::ref_box_renderer(ctx);
+	//	renderer.set_render_style(fea_style);
+	//	renderer.set_box_array(ctx, fea_box);
+	//	renderer.set_color_array(ctx, fea_box_color);
+	//	renderer.set_translation_array(ctx, fea_box_trans);
+	//	renderer.set_rotation_array(ctx, fea_box_rot);
+	//	renderer.render(ctx, 0, fea_box.size());
+	//}
 
-	// render feature points for ICP 
-	srs_icp_feature_points.radius = surfel_style.point_size / 100.0f;
-	if (feature_points_src.size() > 0) {
-		auto& sr = cgv::render::ref_sphere_renderer(ctx);
-		sr.set_render_style(srs_icp_feature_points);
-		sr.set_position_array(ctx, feature_points_src);
-		sr.set_color_array(ctx, feature_point_colors_src);
-		sr.render(ctx, 0, feature_points_src.size());
-	}
-	if (feature_points_target.size() > 0) {
-		auto& sr = cgv::render::ref_sphere_renderer(ctx);
-		sr.set_render_style(srs_icp_feature_points);
-		sr.set_position_array(ctx, feature_points_target);
-		sr.set_color_array(ctx, feature_point_colors_target);
-		sr.render(ctx, 0, feature_points_target.size());
-	}
+	//// render feature points for ICP 
+	//srs_icp_feature_points.radius = surfel_style.point_size / 100.0f;
+	//if (feature_points_src.size() > 0) {
+	//	auto& sr = cgv::render::ref_sphere_renderer(ctx);
+	//	sr.set_render_style(srs_icp_feature_points);
+	//	sr.set_position_array(ctx, feature_points_src);
+	//	sr.set_color_array(ctx, feature_point_colors_src);
+	//	sr.render(ctx, 0, feature_points_src.size());
+	//}
+	//if (feature_points_target.size() > 0) {
+	//	auto& sr = cgv::render::ref_sphere_renderer(ctx);
+	//	sr.set_render_style(srs_icp_feature_points);
+	//	sr.set_position_array(ctx, feature_points_target);
+	//	sr.set_color_array(ctx, feature_point_colors_target);
+	//	sr.render(ctx, 0, feature_points_target.size());
+	//}
 
 	// 
 	/*if (icp_clicking_points_src.size() > 0) {
@@ -2676,6 +2676,29 @@ void point_cloud_interactable::draw(cgv::render::context& ctx)
 		sr.set_color_array(ctx, icp_clicking_point_colors_target);
 		sr.render(ctx, 0, icp_clicking_points_target.size());
 	}*/
+
+	// quick test, higher effecency rendering 
+	//cgv::render::clod_point_renderer& cp_renderer = ref_clod_point_renderer(ctx);
+	//cp_renderer.set_render_style(cp_style);
+
+	//if (pc.get_nr_points() > 0) {
+	//	if (renderer_out_of_date) {
+	//		std::vector<LODPoint> V(pc.get_nr_points());
+	//		for (int i = 0; i < pc.get_nr_points(); ++i) {
+	//			V[i].position() = pc.pnt(i);
+	//			V[i].color() = pc.clr(i);
+	//		}
+	//		points_with_lod = std::move(lod_generator.generate_lods(V));
+
+	//		cp_renderer.set_points(ctx, &points_with_lod.data()->position(),
+	//			&points_with_lod.data()->color(), &points_with_lod.data()->level(), points_with_lod.size(), sizeof(LODPoint));
+	//		
+	//		renderer_out_of_date = false;
+	//	}
+
+	//	if (cp_renderer.enable(ctx))
+	//		cp_renderer.draw(ctx, 0, (size_t)pc.get_nr_points());
+	//}
 }
 ///
 void point_cloud_interactable::configure_subsample_controls()
