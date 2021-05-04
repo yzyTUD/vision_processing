@@ -1045,7 +1045,6 @@ void visual_processing::start_writting_pc_parallel() {
 ///
 void  visual_processing::align_leica_scans_with_cgv() {
 	data_ptr->point_cloud_kit->align_leica_scans_with_cgv();
-	stored_cloud->align_leica_scans_with_cgv();
 }
 ///
 void  visual_processing::rotate_x() {
