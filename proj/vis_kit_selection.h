@@ -341,18 +341,36 @@ public:
 						
 						// face selection with controller, on lower side  
 						if (curr_active_selection == 1 && curr_face_selecting_id != -1) { 
-							if (data_ptr->point_cloud_kit->can_parallel_edit == true) { 
-								data_ptr->point_cloud_kit->can_parallel_edit = false;
+							//if (data_ptr->point_cloud_kit->can_parallel_edit == true) { 
+								//data_ptr->point_cloud_kit->can_parallel_edit = false;
+
 								vec3 right_hand_ball_posi = data_ptr->cur_right_hand_posi + data_ptr->cur_off_right;
-								data_ptr->point_cloud_kit->mark_face_id_with_controller(
-									right_hand_ball_posi, marking_style.radius, curr_face_selecting_id);
-								if (data_ptr->point_cloud_kit->add_to_seed) {
-									// collect seeds
-									// then, grow on a separate thread, sleep optionally 
-									data_ptr->point_cloud_kit->init_region_growing_by_collecting_group_and_seeds_vr(curr_face_selecting_id);
+								bool full_marking = false;
+								if (full_marking) {
+									// mark all points within range 
+									data_ptr->point_cloud_kit->mark_face_id_with_controller(
+										right_hand_ball_posi, marking_style.radius, curr_face_selecting_id);
+									if (data_ptr->point_cloud_kit->add_to_seed) {
+										// collect seeds
+										// then, grow on a separate thread, sleep optionally 
+										data_ptr->point_cloud_kit->init_region_growing_by_collecting_group_and_seeds_vr(curr_face_selecting_id);
+									}
 								}
-								data_ptr->point_cloud_kit->can_parallel_edit = true;
-							}
+								else {
+									// only mark one point within controller range 
+									data_ptr->point_cloud_kit->ensure_tree_ds();
+									float closest_dist = -1;
+									int closest_idx = -1;
+									data_ptr->point_cloud_kit->tree_ds->find_closest_and_its_dist(
+										right_hand_ball_posi, closest_dist, closest_idx);
+									if (closest_dist < marking_style.radius) {
+										data_ptr->point_cloud_kit->seed_for_regions[curr_face_selecting_id] = closest_idx;
+										// state: seed_for_regions updated 
+										data_ptr->point_cloud_kit->update_seed_to_queue(); // and face_id
+									}
+								}
+								//data_ptr->point_cloud_kit->can_parallel_edit = true;
+							//}
 						}
 					}
 				}

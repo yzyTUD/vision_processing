@@ -844,68 +844,70 @@ void point_cloud_interactable::mark_face_id_with_controller(Pnt p, float r, int 
 	new_history_recording();
 	if (pc.get_nr_points()) {
 		ensure_tree_ds();
-		float closest_dist = tree_ds->find_closest_and_its_dist(p);
+		float closest_dist = -1;
+		int closest_idx = -1;
+		tree_ds->find_closest_and_its_dist(p, closest_dist, closest_idx);
 		//std::cout << "closest_dist = "<< closest_dist << std::endl;
 		if (closest_dist > r) {
 			// do nothing 
 		}
 		else {
-			//std::cout << "some points inside the sphere!" << std::endl;
-			// point estimation, todo 
-			Box pc_bbox = pc.box();
-			float vol_pc = pc_bbox.get_extent().x() * pc_bbox.get_extent().y() * pc_bbox.get_extent().z();
-			int max_points_estimated;
-			if (vol_pc > 0)
-				max_points_estimated = pc.get_nr_points() * pow((2 * r), 3) / vol_pc;
-			else
-				max_points_estimated = 100;
-			std::vector<int> knn;
-			std::vector<float> dist_list;
-			tree_ds->find_closest_points(p, max_points_estimated, knn, dist_list);
-			// if the last point is in outside of the ball on hand, 
-			// all wanted points are included
-			// if knn is not present, quit, todo  
-			if (dist_list.size() == 0)
-				return;
-			if (dist_list.back() > r) { // enough points estimated 
-				// start at minimal dist 
-				for (int i = 0; i < knn.size(); i++) {
-					// check if is smaller than r 
-					if (dist_list.at(i) < r) {
-						// ignore deleted points 
-						if (pc.topo_id.at(knn.at(i)) == point_cloud::TOPOAttribute::DEL) {
-							continue;
-						}
-						// ignore marked points if is highlighting unmarked points 
-						if (highlight_unmarked_points) {
-							if (pc.face_id.at(knn.at(i)) > 0) { // ignore already marked, 0 means unmarked  
-								continue;
-							}
-						}
-						//// ignore points that are not having correct scaning index 
-						//if (objctive == point_cloud::TOPOAttribute::ICP_SOURCE_A) {
-						//	if (pc.point_scan_index.at(knn.at(i)) != src_scan_idx) {
-						//		continue;
-						//	}
-						//}
-						//// ignore points that are not having correct scaning index 
-						//if (objctive == point_cloud::TOPOAttribute::ICP_TARGET_A) {
-						//	if (pc.point_scan_index.at(knn.at(i)) != target_scan_idx) {
-						//		continue;
-						//	}
-						//}
-						// record tracing information
-						pointHistoryEntry phe;
-						phe.point_index = knn.at(i);
-						phe.from_face_id = pc.face_id.at(knn.at(i));
-						phe.to_face_id = objctive;
-						point_marking_history.top().push_back(phe);
-						// perform real operations 
-						pc.face_id.at(knn.at(i)) = objctive;
-						pc.has_face_selection = true;
-					}
-				}
-			}else {
+			////std::cout << "some points inside the sphere!" << std::endl;
+			//// point estimation, todo 
+			//Box pc_bbox = pc.box();
+			//float vol_pc = pc_bbox.get_extent().x() * pc_bbox.get_extent().y() * pc_bbox.get_extent().z();
+			//int max_points_estimated;
+			//if (vol_pc > 0)
+			//	max_points_estimated = pc.get_nr_points() * pow((2 * r), 3) / vol_pc;
+			//else
+			//	max_points_estimated = 100;
+			//std::vector<int> knn;
+			//std::vector<float> dist_list;
+			//tree_ds->find_closest_points(p, max_points_estimated, knn, dist_list);
+			//// if the last point is in outside of the ball on hand, 
+			//// all wanted points are included
+			//// if knn is not present, quit, todo  
+			//if (dist_list.size() == 0)
+			//	return;
+			//if (dist_list.back() > r) { // enough points estimated 
+			//	// start at minimal dist 
+			//	for (int i = 0; i < knn.size(); i++) {
+			//		// check if is smaller than r 
+			//		if (dist_list.at(i) < r) {
+			//			// ignore deleted points 
+			//			if (pc.topo_id.at(knn.at(i)) == point_cloud::TOPOAttribute::DEL) {
+			//				continue;
+			//			}
+			//			// ignore marked points if is highlighting unmarked points 
+			//			if (highlight_unmarked_points) {
+			//				if (pc.face_id.at(knn.at(i)) > 0) { // ignore already marked, 0 means unmarked  
+			//					continue;
+			//				}
+			//			}
+			//			//// ignore points that are not having correct scaning index 
+			//			//if (objctive == point_cloud::TOPOAttribute::ICP_SOURCE_A) {
+			//			//	if (pc.point_scan_index.at(knn.at(i)) != src_scan_idx) {
+			//			//		continue;
+			//			//	}
+			//			//}
+			//			//// ignore points that are not having correct scaning index 
+			//			//if (objctive == point_cloud::TOPOAttribute::ICP_TARGET_A) {
+			//			//	if (pc.point_scan_index.at(knn.at(i)) != target_scan_idx) {
+			//			//		continue;
+			//			//	}
+			//			//}
+			//			// record tracing information
+			//			pointHistoryEntry phe;
+			//			phe.point_index = knn.at(i);
+			//			phe.from_face_id = pc.face_id.at(knn.at(i));
+			//			phe.to_face_id = objctive;
+			//			point_marking_history.top().push_back(phe);
+			//			// perform real operations 
+			//			pc.face_id.at(knn.at(i)) = objctive;
+			//			pc.has_face_selection = true;
+			//		}
+			//	}
+			//}else {
 				// too few points are estimated, iter the entire cloud 
 				for (Idx i = 0; i < (Idx)pc.get_nr_points(); ++i) {
 					if ((pc.pnt(i) - p).length() < r) {
@@ -942,7 +944,7 @@ void point_cloud_interactable::mark_face_id_with_controller(Pnt p, float r, int 
 						pc.has_face_selection = true;
 					}
 				}
-			}
+			//}
 		}
 		on_point_cloud_change_callback(PCC_COLORS);
 	}
@@ -1344,7 +1346,7 @@ void point_cloud_interactable::spawn_points_in_the_handhold_quad(quat controller
 	on_point_cloud_change_callback(PCC_POINTS_RESIZE);
 }
 /*region growing after marked*/
-/// max_num_regions is not used 
+/// prepare/ reset region grow 
 void point_cloud_interactable::prepare_grow(bool overwrite_face_selection) {
 	// atomic operation 
 	can_parallel_edit = false;
@@ -1352,9 +1354,9 @@ void point_cloud_interactable::prepare_grow(bool overwrite_face_selection) {
 	// reconstruct face id if not present for proper growing  
 	if (!pc.has_face_selections() || overwrite_face_selection) {
 		pc.face_id.resize(pc.get_nr_points());
-		pc.topo_id.resize(pc.get_nr_points());
 		for (auto& v : pc.face_id) v = 0; // 0 means unmarked 
-		for (auto& v : pc.topo_id) v = 0; // 0 means unmarked 
+		//pc.topo_id.resize(pc.get_nr_points());
+		//for (auto& v : pc.topo_id) v = 0; // 0 means unmarked 
 	}
 
 	// reset visiting infos 
@@ -1390,8 +1392,21 @@ void point_cloud_interactable::extract_neighbours() {
 	}
 	std::cout << "done..." << std::endl;
 }
+///
+void point_cloud_interactable::rerender_seeds() {
+	//// reset face ids 
+	//for (int i = 0; i < pc.get_nr_points(); i++) 
+	//	pc.face_id.at(i) = 0;
+	//for (int curr_face_selecting_id = 0; curr_face_selecting_id < seed_for_regions.size(); curr_face_selecting_id++) {
+	//	int pid = seed_for_regions[curr_face_selecting_id];
+	//	if (pid != -1) {
+	//		pc.face_id.at(pid) = curr_face_selecting_id;
+	//	}
+	//}
+}
 /// reset region growing regions 
-void point_cloud_interactable::reset_all_grows() {
+void point_cloud_interactable::update_seed_to_queue() {
+	// delete all marked and redo the marking, iterate all points, less effecient for now 
 	// reset face id 
 	pc.face_id.resize(pc.get_nr_points());
 	for (auto& v : pc.face_id) v = 0; // 0 means unmarked s
@@ -1411,6 +1426,7 @@ void point_cloud_interactable::reset_all_grows() {
 	for (int curr_face_selecting_id = 0; curr_face_selecting_id < seed_for_regions.size(); curr_face_selecting_id++) {
 		int pid = seed_for_regions[curr_face_selecting_id];
 		if (pid != -1) {
+			pc.face_id.at(pid) = curr_face_selecting_id;
 			queue_for_regions[curr_face_selecting_id].push(std::make_tuple(pid, 0, 0));
 			pc.point_visited[pid] = true; // mark seeds as visited 
 			pc.point_in_queue[pid] = true;		
@@ -1437,7 +1453,7 @@ void point_cloud_interactable::record_seed_for_regions(std::string fn) {
 	//
 	success = fwrite(&n, sizeof(uint64_t), 1, fp) == 1; // write header, number of points 
 	//
-	success = fwrite(&seed_for_regions, sizeof(int), n, fp) == n;
+	success = fwrite(&seed_for_regions[0], sizeof(int), n, fp) == n;
 	
 	fclose(fp);
 	if(success)
@@ -1453,7 +1469,7 @@ void point_cloud_interactable::recover_seed_for_regions(std::string fn) {
 	//
 	success = fread(&n, sizeof(uint64_t), 1, fp) == 1; // write header, number of points 
 	//
-	success = fread(&seed_for_regions, sizeof(int), n, fp) == n;
+	seed_for_regions.resize(n); success = fread(&seed_for_regions[0], sizeof(int), n, fp) == n;
 
 	fclose(fp);
 	if (success)
@@ -1464,17 +1480,23 @@ void point_cloud_interactable::recover_seed_for_regions(std::string fn) {
 		std::cout << "number of regions doesn't match, return!" << std::endl;
 		return;
 	}
+
+	// state: seed_for_regions updated 
 	
-	// recover queue_for_regions and visit information from seed_for_regions, can grow after this step 
-	queue_for_regions.clear();
-	queue_for_regions.resize(seed_for_regions.size(), std::priority_queue<point_priority_mapping,
-		std::vector<point_priority_mapping>, lower_second_comp>());
-	for (int curr_face_selecting_id = 0; curr_face_selecting_id < seed_for_regions.size(); curr_face_selecting_id++) {
-		int pid = seed_for_regions[curr_face_selecting_id]; 
-		queue_for_regions[curr_face_selecting_id].push(std::make_tuple(pid, 0, 0)); 
-		pc.point_visited[pid] = true; // mark seeds as visited 
-		pc.point_in_queue[pid] = true;
-	}
+	update_seed_to_queue();
+	//// recover queue_for_regions and visit information from seed_for_regions, can grow after this step 
+	//queue_for_regions.clear();
+	//queue_for_regions.resize(seed_for_regions.size(), std::priority_queue<point_priority_mapping,
+	//	std::vector<point_priority_mapping>, lower_second_comp>());
+	//for (int curr_face_selecting_id = 0; curr_face_selecting_id < seed_for_regions.size(); curr_face_selecting_id++) {
+	//	int pid = seed_for_regions[curr_face_selecting_id]; 
+	//	if (pid != -1) {
+	//		pc.face_id.at(pid) = curr_face_selecting_id;
+	//		queue_for_regions[curr_face_selecting_id].push(std::make_tuple(pid, 0, 0)); 
+	//		pc.point_visited[pid] = true; // mark seeds as visited 
+	//		pc.point_in_queue[pid] = true;
+	//	}
+	//}
 }
 /// push to queue operation, as an init to RG 
 void point_cloud_interactable::init_region_growing_by_collecting_group_and_seeds_vr(int curr_face_selecting_id) {

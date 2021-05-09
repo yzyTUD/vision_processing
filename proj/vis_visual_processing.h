@@ -549,12 +549,14 @@ public:
 		data_ptr->point_cloud_kit->pc.convert_to_int_face_selection_representation();
 	}
 	void mark_sample_seed() {
-		data_ptr->point_cloud_kit->pc.face_id.at(0) = 1; // mark index 0 as face 1 
-		data_ptr->point_cloud_kit->init_region_growing_by_collecting_group_and_seeds_vr(1); // collect face seed with index 
+		//data_ptr->point_cloud_kit->pc.face_id.at(0) = 1; // mark index 0 as face 1 
+		//data_ptr->point_cloud_kit->init_region_growing_by_collecting_group_and_seeds_vr(1); // collect face seed with index 
 
-		data_ptr->point_cloud_kit->pc.face_id.at(data_ptr->point_cloud_kit->pc.get_nr_points()-1) = 2; // mark index 0 as face 1 
-		data_ptr->point_cloud_kit->init_region_growing_by_collecting_group_and_seeds_vr(2); // collect face seed with index 
-		std::cout << "marked!" << std::endl;
+		//data_ptr->point_cloud_kit->pc.face_id.at(data_ptr->point_cloud_kit->pc.get_nr_points()-1) = 2; // mark index 0 as face 1 
+		//data_ptr->point_cloud_kit->init_region_growing_by_collecting_group_and_seeds_vr(2); // collect face seed with index 
+		data_ptr->point_cloud_kit->seed_for_regions[1] = 0; // face_id -> pid 
+		data_ptr->point_cloud_kit->seed_for_regions[2] = data_ptr->point_cloud_kit->pc.get_nr_points() - 1; // face_id -> pid 
+		std::cout << "marked! seed_for_regions updated" << std::endl;
 	}
 	void generate_pc_hemisphere() { 
 		data_ptr->point_cloud_kit->generate_pc_hemisphere();

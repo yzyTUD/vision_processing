@@ -1429,7 +1429,7 @@ void visual_processing::compute_lods() {
 void visual_processing::load_sample_seeds_default() {
 	/*std::string fn = cgv::gui::file_save_dialog("Open", "Region Growing Seeds:*");
 	std::string fn = cgv::gui::file_open_dialog("Open", "Region Growing Seeds:*");*/
-	std::string seed_file = data_ptr->point_cloud_kit->file_dir + "/" + data_ptr->point_cloud_kit->file_name + ".seed";
+	std::string seed_file = data_ptr->point_cloud_kit->data_path + "/" + data_ptr->point_cloud_kit->file_name + ".seed";
 	data_ptr->point_cloud_kit->recover_seed_for_regions(seed_file);
 	std::cout << "load_sample_seeds_default: loaded!" << std::endl;
 }
@@ -1441,7 +1441,7 @@ void visual_processing::load_sample_seeds_with_dialog() {
 }
 ///
 void visual_processing::save_sample_seeds_default() {
-	std::string seed_file = data_ptr->point_cloud_kit->file_dir + "/" + data_ptr->point_cloud_kit->file_name + ".seed";
+	std::string seed_file = data_ptr->point_cloud_kit->data_path + "/" + data_ptr->point_cloud_kit->file_name + ".seed";
 	data_ptr->point_cloud_kit->record_seed_for_regions(seed_file);
 	std::cout << "save_sample_seeds_default: saved!" << std::endl;
 }
@@ -1466,28 +1466,28 @@ void visual_processing::single_hit__prepare_region_grow(bool overwrite_face_id) 
 /// 
 void visual_processing::single_hit__regrow_accu_distance_based() {
 	data_ptr->point_cloud_kit->gm = data_ptr->point_cloud_kit->growing_mode::ACCU_DISTANCE_BASED;
-	data_ptr->point_cloud_kit->reset_all_grows(); // reset growing parameters, faces are marked as unmarked  
+	data_ptr->point_cloud_kit->update_seed_to_queue(); // reset growing parameters, faces are marked as unmarked  
 	stop_parallel_region_growing(); // stop if thread is not stopped 
 	start_parallel_region_growing(); // start 
 }
 ///
 void visual_processing::single_hit__regrow_seed_distance_based() {
 	data_ptr->point_cloud_kit->gm = data_ptr->point_cloud_kit->growing_mode::SEED_DISTANCE_BASED;
-	data_ptr->point_cloud_kit->reset_all_grows(); // reset growing parameters, faces are marked as unmarked  
+	data_ptr->point_cloud_kit->update_seed_to_queue(); // reset growing parameters, faces are marked as unmarked  
 	stop_parallel_region_growing(); // stop if thread is not stopped 
 	start_parallel_region_growing(); // start 
 }
 ///
 void visual_processing::single_hit__regrow_unsigned_mean_curvature_based() {
 	data_ptr->point_cloud_kit->gm = data_ptr->point_cloud_kit->growing_mode::UNSIGNED_MEAN_CURVATURE_BASED;
-	data_ptr->point_cloud_kit->reset_all_grows(); // reset growing parameters, faces are marked as unmarked, recover from seed_for_regions
+	data_ptr->point_cloud_kit->update_seed_to_queue(); // reset growing parameters, faces are marked as unmarked, recover from seed_for_regions
 	stop_parallel_region_growing(); // stop if thread is not stopped  
 	start_parallel_region_growing(); // start 
 }
 ///
 void visual_processing::single_hit__regrow_distance_and_curvature_based() {
 	data_ptr->point_cloud_kit->gm = data_ptr->point_cloud_kit->growing_mode::DISTANCE_AND_MEAN_CURVATURE_BASED;
-	data_ptr->point_cloud_kit->reset_all_grows(); // reset growing parameters, faces are marked as unmarked  
+	data_ptr->point_cloud_kit->update_seed_to_queue(); // reset growing parameters, faces are marked as unmarked  
 	stop_parallel_region_growing(); // stop if thread is not stopped 	s
 	start_parallel_region_growing(); // start 
 }
@@ -1586,13 +1586,19 @@ void visual_processing::create_gui() {
 	if (begin_tree_node("Region Growing", gui_rg, gui_rg, "level=3")) {
 		// prepare computing, extract neighbour graphs, commpute cuavature, compute knn 
 		//connect_copy(add_button("[S,ONCE]prepare_region_grow")->click, rebind(this, &visual_processing::single_hit__prepare_region_grow));
-
+		// reset 
+		connect_copy(add_button("reset grow, delete seeds")->click, rebind(data_ptr->point_cloud_kit, &point_cloud_interactable::prepare_grow, true)); // overwrite face ids 
+		
+		add_decorator("//", "heading", "level=3");
 		// seed selection 
 		connect_copy(add_button("mark_sample_seed")->click, rebind(this, &visual_processing::mark_sample_seed));
 		connect_copy(add_button("load_sample_seeds_default")->click, rebind(this, &visual_processing::load_sample_seeds_default));
 		connect_copy(add_button("save_sample_seeds_default")->click, rebind(this, &visual_processing::save_sample_seeds_default));
 		connect_copy(add_button("load_sample_seeds_with_dialog")->click, rebind(this, &visual_processing::load_sample_seeds_with_dialog));
 		connect_copy(add_button("save_sample_seeds_with_dialog")->click, rebind(this, &visual_processing::save_sample_seeds_with_dialog));
+
+		//
+		connect_copy(add_button("update_seed_to_queue")->click, rebind(data_ptr->point_cloud_kit, &point_cloud_interactable::update_seed_to_queue));
 		// mark with controller possible 
 
 		add_decorator("//", "heading", "level=3");

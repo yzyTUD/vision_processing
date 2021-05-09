@@ -29,7 +29,8 @@ public:
 	void extract_neighbors(Idx i, Idx k, std::vector<Idx>& N) const;
 	/// addition query method to find the closest neighbor
 	Idx find_closest(const Pnt& p) const;
-	float find_closest_and_its_dist(const Pnt& p) const;
+	///
+	void find_closest_and_its_dist(const Pnt& p, float& dist, int& result);
 	/// knn query that returns pointers to points
 	void find_closest_points(const Pnt& p, Idx k, std::vector<int>* knn) const;
 	///

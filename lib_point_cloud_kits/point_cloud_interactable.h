@@ -351,6 +351,7 @@ public:
 	void prepare_grow(bool read_from_file);
 	/// 
 	void extract_neighbours();
+	void rerender_seeds();
 	/// collect marked points to queue, add seeds for the region growing 
 	void init_region_growing_by_collecting_group_and_seeds_vr(int curr_face_selecting_id);
 	/// grow one step, check_nml is not used 
@@ -362,7 +363,7 @@ public:
 	/// deprecated, not good to keep an other thread running 
 	void do_region_growing_timer_event(double t, double dt);
 	/// reset, not used 
-	void reset_all_grows();
+	void update_seed_to_queue();
 	/// reset, not used 
 	void reset_region_growing_seeds();
 	/// save to file 

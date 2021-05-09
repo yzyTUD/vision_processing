@@ -123,17 +123,14 @@ ann_tree::Idx ann_tree::find_closest(const Pnt& p) const
 	return result;
 }
 
-float ann_tree::find_closest_and_its_dist(const Pnt& p) const
+void ann_tree::find_closest_and_its_dist(const Pnt& p, float& dist, int& result)
 {
 	ann_struct* ann = static_cast<ann_struct*>(ann_impl);
 	if (!ann) {
 		std::cerr << "no ann_tree built" << std::endl;
-		return -1;
+		return;
 	}
-	float dist;
-	unsigned int result;
 	ann->ps->annkSearch(const_cast<ANNpoint>(&p[0]), 1, (ANNidxArray)&result, &dist);
-	return dist;
 }
 
 void ann_tree::find_closest_points(const Pnt& p, Idx k, std::vector<int>* knn) const
