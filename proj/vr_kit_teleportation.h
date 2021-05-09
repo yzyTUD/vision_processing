@@ -550,7 +550,8 @@ public:
 		vec3 startingdir = vec3(0, 0, -0.2);
 		data_ptr->cur_right_hand_rot_quat.rotate(startingdir);
 		vec3 endposi = data_ptr->cur_right_hand_posi + startingdir;
-
+		if ((endposi- data_ptr->cur_right_hand_posi).length() < 1e-6)
+			return;
 		auto& prog = ctx.ref_surface_shader_program();
 		prog.set_uniform(ctx, "map_color_to_material", 3);
 		prog.enable(ctx);

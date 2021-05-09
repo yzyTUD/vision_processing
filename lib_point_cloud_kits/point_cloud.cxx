@@ -1822,7 +1822,6 @@ bool point_cloud::read_ypc(const std::string& file_name) {
 	return fclose(fp) == 0 && success;
 }
 
-
 bool point_cloud::read_bin(const string& file_name)
 {
 	FILE* fp = fopen(file_name.c_str(), "rb");

@@ -129,6 +129,8 @@ public:
 	/*point cloud IO */
 	/// path of last opened or saved file
 	std::string data_path;
+	///
+	std::string file_dir;
 	/// file name without path nor extension of current file
 	std::string file_name;
 	/// helper member for updating the file name without overwriting the current one. This is needed for concatenation of file names when appending them
@@ -363,6 +365,10 @@ public:
 	void reset_all_grows();
 	/// reset, not used 
 	void reset_region_growing_seeds();
+	/// save to file 
+	void record_seed_for_regions(std::string fn);
+	/// read back from file with the following file format: size of the vector, content 
+	void recover_seed_for_regions(std::string fn);
 	///  not used 
 	void init_region_growing_by_setting_group_and_seeds(int growing_group, std::queue<int> picked_id_list);
 	/// check if all points growed, deprecated

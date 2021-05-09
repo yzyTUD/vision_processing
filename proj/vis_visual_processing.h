@@ -180,6 +180,9 @@ protected:
 	int step = 1;
 	int num_of_points_wanted = 1;
 	int strategy = 1;
+	bool auto_growing_prepare_thesis = true;
+	bool overwrite_face_id = true;
+	bool instance_redraw = true;
 
 	// cam rendering 
 	std::vector<vec3> point_and_cam;
@@ -436,8 +439,12 @@ public:
 	void download_points_from_gpu_to_memory();
 	void reset_marking();
 	void compute_lods();
-	void single_hit__prepare_region_grow();
-	void single_hit__prepare_region_grow_worker();
+	void load_sample_seeds_default();
+	void load_sample_seeds_with_dialog();
+	void save_sample_seeds_with_dialog();
+	void save_sample_seeds_default();
+	void single_hit__prepare_region_grow(bool overwrite_face_id);
+	void single_hit__prepare_region_grow_worker(bool overwrite_face_id);
 
 	void single_hit__regrow_accu_distance_based();
 	void single_hit__regrow_seed_distance_based();
@@ -542,17 +549,12 @@ public:
 		data_ptr->point_cloud_kit->pc.convert_to_int_face_selection_representation();
 	}
 	void mark_sample_seed() {
-		if (data_ptr->point_cloud_kit->can_parallel_edit == true) {
-			data_ptr->point_cloud_kit->can_parallel_edit = false;
-			
-			data_ptr->point_cloud_kit->pc.face_id.at(0) = 1; // mark index 0 as face 1 
-			data_ptr->point_cloud_kit->init_region_growing_by_collecting_group_and_seeds_vr(1); // collect face seed with index 
+		data_ptr->point_cloud_kit->pc.face_id.at(0) = 1; // mark index 0 as face 1 
+		data_ptr->point_cloud_kit->init_region_growing_by_collecting_group_and_seeds_vr(1); // collect face seed with index 
 
-			data_ptr->point_cloud_kit->pc.face_id.at(data_ptr->point_cloud_kit->pc.get_nr_points()-1) = 2; // mark index 0 as face 1 
-			data_ptr->point_cloud_kit->init_region_growing_by_collecting_group_and_seeds_vr(2); // collect face seed with index 
-
-			data_ptr->point_cloud_kit->can_parallel_edit = true;
-		}
+		data_ptr->point_cloud_kit->pc.face_id.at(data_ptr->point_cloud_kit->pc.get_nr_points()-1) = 2; // mark index 0 as face 1 
+		data_ptr->point_cloud_kit->init_region_growing_by_collecting_group_and_seeds_vr(2); // collect face seed with index 
+		std::cout << "marked!" << std::endl;
 	}
 	void generate_pc_hemisphere() { 
 		data_ptr->point_cloud_kit->generate_pc_hemisphere();

@@ -41,6 +41,7 @@ bool ann_tree::is_empty() const
 
 void ann_tree::build(const point_cloud& _pc)
 {
+	std::cout << "building tree structure..." << std::endl;
 	//
 	clear();
 	// store pointer to points in point cloud

@@ -48,7 +48,7 @@ void point_cloud_interactable::print_pc_information() {
 
 void point_cloud_interactable::update_file_name(const std::string& ffn, bool append)
 {
-	std::string new_path = cgv::utils::file::get_path(ffn);
+	/*std::string new_path = cgv::utils::file::get_path(ffn);
 	if (!new_path.empty()) {
 		data_path = new_path;
 		update_member(&data_path);
@@ -60,7 +60,7 @@ void point_cloud_interactable::update_file_name(const std::string& ffn, bool app
 	else
 		file_name = new_name;
 	new_file_name = file_name;
-	update_member(&new_file_name);
+	update_member(&new_file_name);*/
 }
 /// file io
 bool point_cloud_interactable::save(const std::string& fn)
@@ -582,20 +582,21 @@ bool point_cloud_interactable::open_or_append(cgv::gui::event& e, const std::str
 }
 /// read point cloud with a dialog 
 bool point_cloud_interactable::read_pc_with_dialog(bool append) {
-	file_name = cgv::gui::file_open_dialog("Open", "Point Cloud:*");
+	file_dir = cgv::gui::file_open_dialog("Open", "Point Cloud:*");
 	auto start = std::chrono::high_resolution_clock::now();
-	data_path = cgv::utils::file::get_path(file_name);
+	data_path = cgv::utils::file::get_path(file_dir);
+	file_name = cgv::utils::file::drop_extension(cgv::utils::file::get_file_name(file_dir));
 	reading_from_raw_scan = append;
 	if (!append) 
 		clear_all();
-	if (!open(file_name))
+	if (!open(file_dir))
 		return false;
 	finished_loading_points = true;
 	auto finish = std::chrono::high_resolution_clock::now();
 	std::chrono::duration<double> d = finish - start;
 	std::cout << "elapsed time: " << d.count() << std::endl;
-	std::cout << "read file_name: " << file_name << std::endl;
-	std::cout << "read data_path: " << data_path << std::endl;
+	//std::cout << "read file_name: " << file_name << std::endl;
+	//std::cout << "read data_path: " << data_path << std::endl;
 	return true;
 }
 bool point_cloud_interactable::read_cgvcad_with_dialog() {
@@ -1393,9 +1394,9 @@ void point_cloud_interactable::extract_neighbours() {
 void point_cloud_interactable::reset_all_grows() {
 	// reset face id 
 	pc.face_id.resize(pc.get_nr_points());
-	pc.topo_id.resize(pc.get_nr_points());
-	for (auto& v : pc.face_id) v = 0; // 0 means unmarked 
-	for (auto& v : pc.topo_id) v = 0; // 0 means unmarked 
+	for (auto& v : pc.face_id) v = 0; // 0 means unmarked s
+	//pc.topo_id.resize(pc.get_nr_points()); // not used for growing 
+	//for (auto& v : pc.topo_id) v = 0; // 0 means unmarked // not used for growing 
 
 	// reset visiting infos 
 	pc.point_visited.resize(pc.get_nr_points());
@@ -1403,13 +1404,18 @@ void point_cloud_interactable::reset_all_grows() {
 	for (auto& v : pc.point_visited) v = false;
 	for (auto& v : pc.point_in_queue) v = false;
 
-	// reset queue and seed tracking 
+	// recover queue from seeds 
 	queue_for_regions.clear();
-	queue_for_regions.resize(pc.num_of_face_selections_rendered, std::priority_queue<point_priority_mapping,
+	queue_for_regions.resize(seed_for_regions.size(), std::priority_queue<point_priority_mapping,
 		std::vector<point_priority_mapping>, lower_second_comp>());
-	seed_for_regions.clear();
-	seed_for_regions.resize(pc.num_of_face_selections_rendered);
-	for (auto& sid : seed_for_regions) { sid = -1; }
+	for (int curr_face_selecting_id = 0; curr_face_selecting_id < seed_for_regions.size(); curr_face_selecting_id++) {
+		int pid = seed_for_regions[curr_face_selecting_id];
+		if (pid != -1) {
+			queue_for_regions[curr_face_selecting_id].push(std::make_tuple(pid, 0, 0));
+			pc.point_visited[pid] = true; // mark seeds as visited 
+			pc.point_in_queue[pid] = true;		
+		}
+	}
 
 	// reset number of grown points to 0 
 	pts_grew = 0;
@@ -1421,6 +1427,55 @@ void point_cloud_interactable::reset_region_growing_seeds() {
 	seed_for_regions.clear();
 	seed_for_regions.resize(pc.num_of_face_selections_rendered);*/
 }
+/// size of the vector(int64_t), content
+void point_cloud_interactable::record_seed_for_regions(std::string fn) {
+	std::cout << "writting file: " << fn << std::endl;
+	FILE* fp = fopen(fn.c_str(), "wb");
+	uint64_t n = (uint64_t)seed_for_regions.size(); 
+	bool success;
+
+	//
+	success = fwrite(&n, sizeof(uint64_t), 1, fp) == 1; // write header, number of points 
+	//
+	success = fwrite(&seed_for_regions, sizeof(int), n, fp) == n;
+	
+	fclose(fp);
+	if(success)
+		std::cout << "saved!" << std::endl;
+}
+/// recover to seed for regions and queue for regions 
+void point_cloud_interactable::recover_seed_for_regions(std::string fn) {
+	FILE* fp = fopen(fn.c_str(), "rb");
+	seed_for_regions.clear();
+	uint64_t n;
+	bool success;
+
+	//
+	success = fread(&n, sizeof(uint64_t), 1, fp) == 1; // write header, number of points 
+	//
+	success = fread(&seed_for_regions, sizeof(int), n, fp) == n;
+
+	fclose(fp);
+	if (success)
+		std::cout << "seeds read successfully!" << std::endl;
+
+	// recover to queue_for_regions as below 
+	if (seed_for_regions.size() != pc.num_of_face_selections_rendered) {
+		std::cout << "number of regions doesn't match, return!" << std::endl;
+		return;
+	}
+	
+	// recover queue_for_regions and visit information from seed_for_regions, can grow after this step 
+	queue_for_regions.clear();
+	queue_for_regions.resize(seed_for_regions.size(), std::priority_queue<point_priority_mapping,
+		std::vector<point_priority_mapping>, lower_second_comp>());
+	for (int curr_face_selecting_id = 0; curr_face_selecting_id < seed_for_regions.size(); curr_face_selecting_id++) {
+		int pid = seed_for_regions[curr_face_selecting_id]; 
+		queue_for_regions[curr_face_selecting_id].push(std::make_tuple(pid, 0, 0)); 
+		pc.point_visited[pid] = true; // mark seeds as visited 
+		pc.point_in_queue[pid] = true;
+	}
+}
 /// push to queue operation, as an init to RG 
 void point_cloud_interactable::init_region_growing_by_collecting_group_and_seeds_vr(int curr_face_selecting_id) {
 	// collect all related idx and push to queue, ready to grow after this 
@@ -1428,6 +1483,7 @@ void point_cloud_interactable::init_region_growing_by_collecting_group_and_seeds
 	// unsigned int shoud cast to int! -> only when comparing bet. them 
 	for (int pid = 0; pid < pc.get_nr_points(); pid++) {
 		if (pc.face_id.at(pid) == curr_face_selecting_id) {
+			// these two can be recorded and recovered 
 			queue_for_regions[curr_face_selecting_id].push(std::make_tuple(pid, 0, 0)); // seeds will be added to queue directly, so have a priority of 0
 			seed_for_regions[curr_face_selecting_id] = pid; // record to variable 
 			pc.point_visited[pid] = true; // mark seeds as visited 
@@ -1500,11 +1556,12 @@ void point_cloud_interactable::region_growing() {
 		all_enpty_can_stop = all_enpty_can_stop && queue_for_regions[gi].empty();
 	}
 	if (all_enpty_can_stop) {
-		std::cout << "all queues are empty, quit" << std::endl;
+		std::cout << "all queues are empty, quit! Have you marked any seeds?" << std::endl;
 		return;
 	}
 
-	/*growing_thread_pool.resize(pc.num_of_face_selections_rendered);
+	/* parallel: one thread for each group 
+	growing_thread_pool.resize(pc.num_of_face_selections_rendered);
 
 	for (int gi = 1; gi < pc.num_of_face_selections_rendered; gi++) 
 		growing_thread_pool.at(gi) = new std::thread(&point_cloud_interactable::grow_one_region,this,gi);
@@ -2247,6 +2304,7 @@ void point_cloud_interactable::ensure_neighbor_graph() {
 ///
 void point_cloud_interactable::build_neighbor_graph()
 {
+	std::cout << "building neighbor graph..." << std::endl;
 	// use component wise implementation if we do have more than one component 
 	if (pc.has_components() && pc.get_nr_components() > 1) {
 		build_neighbor_graph_componentwise();
@@ -3567,11 +3625,13 @@ void point_cloud_interactable::ep_compute_principal_curvature_and_colorize_signe
 
 /// the entry point 
 void point_cloud_interactable::ep_compute_principal_curvature_and_colorize_unsigned() {
+	std::cout << "computing principal curvature..." << std::endl;
 	compute_principal_curvature_unsigned();
 	fill_curvature_structure();
 	print_curvature_computing_info();
 	auto_cluster_kmeans();
 	colorize_with_computed_curvature_unsigned(); // vis with gaussian_curvature
+	std::cout << "done!" << std::endl;
 }
 
 
