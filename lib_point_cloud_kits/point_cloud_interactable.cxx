@@ -1639,6 +1639,11 @@ bool point_cloud_interactable::grow_one_step_bfs(bool check_nml, int which_group
 			return false;
 		}
 	}
+	if (gm == growing_mode::DISTANCE_AND_MEAN_CURVATURE_BASED) {
+		/*if (std::get<CURVATURE>(to_visit) > pc.curvinfo.coloring_threshold) {
+			return false;
+		}*/
+	}
 	queue_for_regions[which_group].pop();
 	pc.point_in_queue.at(std::get<ID>(to_visit)) = false;
 
@@ -1674,15 +1679,16 @@ bool point_cloud_interactable::grow_one_step_bfs(bool check_nml, int which_group
 		if (seed_for_regions[which_group] == -1) break;
 		float dist_to_seed = (pc.pnt(k) - pc.pnt(seed_for_regions[which_group])).length();
 		float curr_property = 0;
-
-		// accumulated distance based 
-		if (gm == growing_mode::ACCU_DISTANCE_BASED) {
-			curr_property = accu_dist;
-		}
+		float curr_curvature = 0;
 
 		// pure distance based 
 		if (gm == growing_mode::SEED_DISTANCE_BASED) {
 			curr_property = dist_to_seed;
+		}
+
+		// accumulated distance based 
+		if (gm == growing_mode::ACCU_DISTANCE_BASED) {
+			curr_property = accu_dist;
 		}
 
 		// pure curvature based 
@@ -1690,20 +1696,23 @@ bool point_cloud_interactable::grow_one_step_bfs(bool check_nml, int which_group
 			curr_property = pc.curvature.at(k).mean_curvature;
 		}
 
+		// stop with bounary condition
 		if (gm == growing_mode::STOP_ON_BOUNDARY) {
 			curr_property = pc.curvature.at(k).mean_curvature;
 		}
 
-		// 
+		// dequeue first in low distance and low curvature regions. Just like fill water to a pool.
 		if (gm == growing_mode::DISTANCE_AND_MEAN_CURVATURE_BASED) {
-			float dist_scale = 1.0f + (1000 * max_dist * pc.curvature.at(k).mean_curvature);
+			curr_curvature = pc.curvature.at(k).mean_curvature;
+			float dist_scale = 1.0f + (10000 * max_dist * pc.curvature.at(k).mean_curvature); // todo: find a upper bound 
 			curr_property = dist_scale * dist + std::get<DIST>(to_visit);
 		}
 
-		// float curr_property = curr_mean_curvature; // + max_dist * curr_mean_curvature; // how to combine them? 
+		// queue visualization 
+		pc.face_id.at(k) = 25;
 
 		//
-		queue_for_regions[which_group].push(std::make_tuple(k, curr_property, 0));
+		queue_for_regions[which_group].push(std::make_tuple(k, curr_property, curr_curvature)); // store addtional value, can be quired when dequeue 
 		pc.point_in_queue.at(k) = true;
 	}
 	return true;

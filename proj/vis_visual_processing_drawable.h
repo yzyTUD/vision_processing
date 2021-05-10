@@ -1009,10 +1009,13 @@ void visual_processing::start_parallel_region_growing() {
 
 ///
 void visual_processing::pause_parallel_region_growing() {
-	data_ptr->point_cloud_kit->pause_growing = true;
 	if (parallel_region_growing_thread != nullptr) {
+		data_ptr->point_cloud_kit->pause_growing = true;
 		parallel_region_growing_thread->join();
 		parallel_region_growing_thread = nullptr;
+	}else{
+		data_ptr->point_cloud_kit->pause_growing = false;
+		parallel_region_growing_thread = new thread(&visual_processing::parallel_region_growing, this);
 	}
 }
 
@@ -1629,8 +1632,8 @@ void visual_processing::create_gui() {
 
 		add_member_control(this, "growing_latency", data_ptr->point_cloud_kit->growing_latency, 
 			"value_slider", "min=1;max=100;log=false;ticks=true;");
-		connect_copy(add_button("start/continue")->click, rebind(this, &visual_processing::start_parallel_region_growing));
-		connect_copy(add_button("pause")->click, rebind(this, &visual_processing::pause_parallel_region_growing));
+		connect_copy(add_button("pause/continue")->click, rebind(this, &visual_processing::pause_parallel_region_growing));
+		connect_copy(add_button("start")->click, rebind(this, &visual_processing::start_parallel_region_growing));
 		connect_copy(add_button("terminate")->click, rebind(this, &visual_processing::stop_parallel_region_growing));
 		connect_copy(add_button("debug_region_growing_step_by_step_test")->click, 
 			rebind(this, &visual_processing::debug_region_growing_step_by_step_test));

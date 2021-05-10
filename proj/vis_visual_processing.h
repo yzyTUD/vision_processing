@@ -556,7 +556,7 @@ public:
 		//data_ptr->point_cloud_kit->pc.face_id.at(data_ptr->point_cloud_kit->pc.get_nr_points()-1) = 2; // mark index 0 as face 1 
 		//data_ptr->point_cloud_kit->init_region_growing_by_collecting_group_and_seeds_vr(2); // collect face seed with index 
 		data_ptr->point_cloud_kit->seed_for_regions[1] = 0; // face_id -> pid 
-		data_ptr->point_cloud_kit->seed_for_regions[2] = data_ptr->point_cloud_kit->pc.get_nr_points() - 1; // face_id -> pid 
+		//data_ptr->point_cloud_kit->seed_for_regions[2] = data_ptr->point_cloud_kit->pc.get_nr_points() - 1; // face_id -> pid 
 		std::cout << "marked! seed_for_regions updated" << std::endl;
 	}
 	void generate_pc_hemisphere() { 
@@ -682,6 +682,7 @@ public:
 		data_ptr->point_cloud_kit->compute_feature_points_and_colorize();
 	}
 	void debug_region_growing_step_by_step_test() {
+		data_ptr->point_cloud_kit->gm = data_ptr->point_cloud_kit->growing_mode::ACCU_DISTANCE_BASED;
 		data_ptr->point_cloud_kit->grow_one_step_bfs(false, 1);
 		data_ptr->point_cloud_kit->grow_one_step_bfs(false, 2);
 	}
