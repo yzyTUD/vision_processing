@@ -423,6 +423,14 @@ public:
 	/*std::string mode_defs = "enums='ACCU_DISTANCE_BASED;SEED_DISTANCE_BASED;
 		NORMAL_BASED;CURVATURE_BASED;UNSIGNED_MEAN_CURVATURE_BASED_0'";*/
 	std::vector<std::thread*> growing_thread_pool;
+	/// loop all points to check is too slow 
+	bool check_the_queue_and_stop = false;
+	/// ignore high curvature points, sometime searching radius is too large 
+	bool check_curr_visit_and_stop = true;
+	/// 
+	std::vector<int> num_of_knn_used_for_each_group;
+	///
+	bool decrease_searching_radius_on_high_curvature = false;
 
 	/* Fine-Grained Point Classification */
 	/// thw quality of the boundaries depends on region growing steps, how good faces are marked 

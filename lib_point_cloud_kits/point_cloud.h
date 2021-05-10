@@ -291,6 +291,8 @@ public:
 	///
 	std::vector<bool> point_in_queue;
 	/// 
+	std::vector<int> point_in_queue_which_group;
+	/// 
 	std::vector<std::vector<int>> nearest_neighbour_indices;
 	/// per-vertex attribute: used for marking faces, the first step, region growing 
 	std::vector<int> face_id; // from point_selection, write to .scan file  
