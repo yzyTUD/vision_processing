@@ -1625,7 +1625,7 @@ void visual_processing::create_gui() {
 		connect_copy(add_button("[S]grow_with_distance_and_curvature")->click,
 			rebind(this, &visual_processing::single_hit__regrow_distance_and_curvature_based));
 		add_member_control(this, "check_the_queue_and_stop", data_ptr->point_cloud_kit->check_the_queue_and_stop, "check");
-		add_member_control(this, "check_curr_visit_and_stop", data_ptr->point_cloud_kit->check_curr_visit_and_stop, "check");
+		add_member_control(this, "ignore_high_curvature_regions", data_ptr->point_cloud_kit->ignore_high_curvature_regions, "check");
 		add_member_control(this, "final_grow", data_ptr->point_cloud_kit->final_grow, "check");
 		add_member_control(this, "minimum_searching_neighbor_points", data_ptr->point_cloud_kit->minimum_searching_neighbor_points,
 			"value_slider", "min=1;max=50;log=false;ticks=true;");
@@ -1634,7 +1634,8 @@ void visual_processing::create_gui() {
 		
 
 		add_decorator("// debug the growing process", "heading", "level=3");
-
+		add_member_control(this, "knn", data_ptr->point_cloud_kit->k,
+			"value_slider", "min=1;max=50;log=false;ticks=true;");
 		add_member_control(this, "growing_latency", data_ptr->point_cloud_kit->growing_latency, 
 			"value_slider", "min=1;max=100;log=false;ticks=true;");
 		connect_copy(add_button("pause/continue")->click, rebind(this, &visual_processing::pause_parallel_region_growing));

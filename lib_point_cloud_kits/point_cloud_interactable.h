@@ -429,7 +429,7 @@ public:
 	/// loop all points to check is too slow 
 	bool check_the_queue_and_stop = false;
 	/// ignore high curvature points, sometime searching radius is too large 
-	bool check_curr_visit_and_stop = true;
+	bool ignore_high_curvature_regions = true;
 	/// 
 	std::vector<int> num_of_knn_used_for_each_group;
 	///

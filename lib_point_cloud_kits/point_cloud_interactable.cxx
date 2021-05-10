@@ -1697,9 +1697,9 @@ bool point_cloud_interactable::grow_one_step_bfs(bool final_grow, int which_grou
 		// minimum_searching_radius
 		// ignore high curvature regions and decrease searching radius, to be careful later on 
 		to_visit = queue_for_regions[which_group].top(); // this will query a pid with minimal second value 
-		if (check_curr_visit_and_stop) {
+		if (ignore_high_curvature_regions) {
 			while (std::get<CURVATURE>(to_visit) > pc.curvinfo.coloring_threshold) { // just ignore, do not visit  
-				pc.face_id.at(std::get<ID>(to_visit)) = 0; // reset color 
+				pc.face_id.at(std::get<ID>(to_visit)) = 19; // reset color 
 				final_queue_for_regions[which_group].push(to_visit); // save to an other queue, for final growing process 
 				// mark as in queue 
 				pc.point_in_queue.at(std::get<ID>(to_visit)) = true;
@@ -1741,7 +1741,7 @@ bool point_cloud_interactable::grow_one_step_bfs(bool final_grow, int which_grou
 		num_of_children_expanded++;
 
 		// with variable searching radius 
-		if (num_of_children_expanded > num_of_knn_used_for_each_group[which_group])
+		if (num_of_children_expanded > std::min(k, num_of_knn_used_for_each_group[which_group]))
 			continue;
 
 		// init varibles 
@@ -1796,7 +1796,8 @@ bool point_cloud_interactable::grow_one_step_bfs(bool final_grow, int which_grou
 
 		// dequeue first in low distance and low curvature regions. Just like fill water to a pool.
 		if (gm == growing_mode::DISTANCE_AND_MEAN_CURVATURE_BASED) {
-			float dist_scale = 1.0f + (10000 * max_dist * pc.curvature.at(k).mean_curvature); // todo: find a upper bound 
+			float accumulated_distance_upperbound = pc.get_nr_points() * max_dist;
+			float dist_scale = 1.0f + accumulated_distance_upperbound * pc.curvature.at(k).mean_curvature; // ok-todo: find a upper bound 
 			curr_property = dist_scale * dist + std::get<DIST>(to_visit);
 		}
 
@@ -1809,8 +1810,8 @@ bool point_cloud_interactable::grow_one_step_bfs(bool final_grow, int which_grou
 				<< num_of_knn_used_for_each_group[which_group] << std::endl;*/
 			if (num_of_knn_used_for_each_group[which_group] > minimum_searching_neighbor_points)
 				num_of_knn_used_for_each_group[which_group]--; // lower searching redius, more careful 
-			growing_latency++;
-			std::cout << "growing_latency " << growing_latency << std::endl;
+			//growing_latency++;
+			//std::cout << "growing_latency " << growing_latency << std::endl;
 		}
 
 		// push to queue. store addtional value, can be quired when dequeue 
