@@ -324,12 +324,7 @@ public:
 	void print_curvature_computing_info();
 	/// helper function: compute a threshold automatically
 	void auto_cluster_kmeans();
-	/// control varibles
-	float coloring_threshold = 0;
-	float max_mean_curvature;
-	float min_mean_curvature;
-	float max_gaussian_curvature;
-	float min_gaussian_curvature;
+
 	const float gui2real_scale = 1e-6;
 	const float real2gui_scale = 1e6;
 

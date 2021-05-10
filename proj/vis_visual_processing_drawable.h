@@ -1598,7 +1598,7 @@ void visual_processing::create_gui() {
 		// reset 
 		connect_copy(add_button("reset grow, delete seeds")->click, rebind(data_ptr->point_cloud_kit, &point_cloud_interactable::prepare_grow, true)); // overwrite face ids 
 		
-		add_decorator("//", "heading", "level=3");
+		add_decorator("// seed selection ", "heading", "level=3");
 		// seed selection 
 		connect_copy(add_button("mark_sample_seed")->click, rebind(this, &visual_processing::mark_sample_seed));
 		connect_copy(add_button("load_sample_seeds_default")->click, rebind(this, &visual_processing::load_sample_seeds_default));
@@ -1610,7 +1610,7 @@ void visual_processing::create_gui() {
 		connect_copy(add_button("update_seed_to_queue")->click, rebind(data_ptr->point_cloud_kit, &point_cloud_interactable::update_seed_to_queue));
 		// mark with controller possible 
 
-		add_decorator("//", "heading", "level=3");
+		add_decorator("// growing variants", "heading", "level=3");
 
 		// region growing variants 
 		connect_copy(add_button("[S]grow_with_accu_distance")->click,
@@ -1625,28 +1625,30 @@ void visual_processing::create_gui() {
 			rebind(this, &visual_processing::single_hit__regrow_stop_at_high_curvature));
 		
 
-		add_decorator("//", "heading", "level=3");
+		add_decorator("// debug the growing process", "heading", "level=3");
+
+		add_member_control(this, "growing_latency", data_ptr->point_cloud_kit->growing_latency, 
+			"value_slider", "min=1;max=100;log=false;ticks=true;");
+		connect_copy(add_button("start/continue")->click, rebind(this, &visual_processing::start_parallel_region_growing));
+		connect_copy(add_button("pause")->click, rebind(this, &visual_processing::pause_parallel_region_growing));
+		connect_copy(add_button("terminate")->click, rebind(this, &visual_processing::stop_parallel_region_growing));
+		connect_copy(add_button("debug_region_growing_step_by_step_test")->click, 
+			rebind(this, &visual_processing::debug_region_growing_step_by_step_test));
+
+		add_decorator("// curvature computing ", "heading", "level=3");
 
 		connect_copy(add_button("signed: compute_principal_curvature_and_colorize")->click,
 			rebind(this, &visual_processing::ep_compute_principal_curvature_and_colorize_signed));
 		connect_copy(add_button("unsigned: compute_principal_curvature_and_colorize")->click,
 			rebind(this, &visual_processing::ep_compute_principal_curvature_and_colorize_unsigned));
-		add_member_control(this, "coloring_threshold", data_ptr->point_cloud_kit->coloring_threshold,
+		add_member_control(this, "coloring_threshold", data_ptr->point_cloud_kit->pc.curvinfo.coloring_threshold,
 			"value_slider", "min=0.01;max=100;log=false;ticks=true;");
 		connect_copy(add_button("ep_force_recolor")->click,
 			rebind(this, &visual_processing::ep_force_recolor));
 		connect_copy(add_button("compute_feature_points_and_colorize")->click,
 			rebind(this, &visual_processing::compute_feature_points_and_colorize));
-		connect_copy(add_button("convert_uint_to_int_face_selection_representation")->click,
-			rebind(this, &visual_processing::convert_to_int_face_selection_representation));
-		add_member_control(this, "enable continues region growing", data_ptr->point_cloud_kit->do_region_growing_directly, "check");
-		connect_copy(add_button("prepare_grow")->click, rebind(this, &visual_processing::prepare_grow));
-		connect_copy(add_button("clear_face_id_and_topo_id")->click, rebind(this, &visual_processing::clear_face_id_and_topo_id));
-		add_member_control(this, "growing_latency", data_ptr->point_cloud_kit->growing_latency, "value_slider", "min=1;max=100;log=false;ticks=true;");
-		connect_copy(add_button("start_parallel_region_growing")->click, rebind(this, &visual_processing::start_parallel_region_growing));
-		connect_copy(add_button("pause_parallel_region_growing")->click, rebind(this, &visual_processing::pause_parallel_region_growing));
-		connect_copy(add_button("stop_region_growing")->click, rebind(this, &visual_processing::stop_parallel_region_growing));
-		connect_copy(add_button("debug_region_growing_step_by_step_test")->click, rebind(this, &visual_processing::debug_region_growing_step_by_step_test));
+		/*connect_copy(add_button("convert_uint_to_int_face_selection_representation")->click,
+			rebind(this, &visual_processing::convert_to_int_face_selection_representation));*/
 
 	}
 	//

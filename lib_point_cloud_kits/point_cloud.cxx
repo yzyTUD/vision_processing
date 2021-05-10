@@ -1766,7 +1766,8 @@ enum YPCFlags
 	YPC_HAS_LODS = 32,
 
 	YPC_HAS_NEIGHBORS = 64,
-	YPC_HAS_CURVATURE = 128
+	YPC_HAS_CURVATURE = 128,
+	YPC_HAS_CURVINFO = 256
 };
 
 /// buffer based, gpc format gpu rendering manipulation point cloud 
@@ -1822,6 +1823,10 @@ bool point_cloud::read_ypc(const std::string& file_name) {
 		success = success && (fread(&lods[0], sizeof(int), n, fp) == n);
 	}
 
+	// 10.05.2021
+	if (flags & YPC_HAS_CURVINFO) {
+		success = success && (fread(&curvinfo, sizeof(curvature_info), 1, fp) == 1);
+	}
 	if (flags & YPC_HAS_CURVATURE) {
 		curvature.resize(n);
 		success = success && (fread(&curvature[0], sizeof(principal_curvature), n, fp) == n);
@@ -3035,6 +3040,7 @@ bool point_cloud::write_ypc(const std::string& file_name) {
 	flags += has_pixel_coordinates() ? YPC_HAS_PIXCRDS : 0;
 	flags += has_topo_selections() ? YPC_HAS_TOPO_SELECTIONS : 0;
 	flags += has_lods() ? YPC_HAS_LODS : 0;
+	flags += has_curvinfo() ? YPC_HAS_CURVINFO : 0;
 	flags += has_curvatures() ? YPC_HAS_CURVATURE : 0;
 	flags += has_neighbors() ? YPC_HAS_NEIGHBORS : 0;
 
@@ -3054,6 +3060,11 @@ bool point_cloud::write_ypc(const std::string& file_name) {
 		success = success && (fwrite(&topo_id[0], sizeof(int), n, fp) == n);
 	if (has_lods())
 		success = success && (fwrite(&lods[0], sizeof(int), n, fp) == n);
+
+	// 10.05.2021
+	if (has_curvinfo()) {
+		success = success && (fwrite(&curvinfo, sizeof(curvature_info), 1, fp) == 1);
+	}
 	//std::vector<principal_curvature> curvature;
 	if (has_curvatures()) 
 		success = success && (fwrite(&curvature[0], sizeof(principal_curvature), n, fp) == n);

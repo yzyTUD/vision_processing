@@ -1635,7 +1635,7 @@ bool point_cloud_interactable::grow_one_step_bfs(bool check_nml, int which_group
 	// dequeue 
 	point_priority_mapping to_visit = queue_for_regions[which_group].top(); // this will query a pid with minimal second value 
 	if (gm == growing_mode::STOP_ON_BOUNDARY) {
-		if (std::get<DIST>(to_visit) > coloring_threshold) {
+		if (std::get<DIST>(to_visit) > pc.curvinfo.coloring_threshold) {
 			return false;
 		}
 	}
@@ -3345,7 +3345,7 @@ void point_cloud_interactable::colorize_with_computed_curvature_unsigned() {
 	// loop over to assign 
 	for (int i = 0; i < pc.get_nr_points(); i++) {
 		//std::cout << "pc.curvature.at(i).gaussian_curvature: " << pc.curvature.at(i).gaussian_curvature << std::endl;
-		if (pc.curvature.at(i).mean_curvature > coloring_threshold)
+		if (pc.curvature.at(i).mean_curvature > pc.curvinfo.coloring_threshold)
 			pc.clr(i) = rgb(1, 0, 0);
 		else
 			pc.clr(i) = rgb(0, 0, 1);
@@ -3553,36 +3553,36 @@ void point_cloud_interactable::colorize_with_computed_curvature_signed() {
 }
 
 void point_cloud_interactable::print_curvature_computing_info() {
-	max_mean_curvature = std::numeric_limits<float>::min();
-	min_mean_curvature = std::numeric_limits<float>::max();
+	pc.curvinfo.max_mean_curvature = std::numeric_limits<float>::min();
+	pc.curvinfo.min_mean_curvature = std::numeric_limits<float>::max();
 	for (int i = 0; i < pc.get_nr_points(); i++) {
-		if (pc.curvature.at(i).mean_curvature > max_mean_curvature)
-			max_mean_curvature = pc.curvature.at(i).mean_curvature;
-		if (pc.curvature.at(i).mean_curvature < min_mean_curvature) 
-			min_mean_curvature = pc.curvature.at(i).mean_curvature;
+		if (pc.curvature.at(i).mean_curvature > pc.curvinfo.max_mean_curvature)
+			pc.curvinfo.max_mean_curvature = pc.curvature.at(i).mean_curvature;
+		if (pc.curvature.at(i).mean_curvature < pc.curvinfo.min_mean_curvature) 
+			pc.curvinfo.min_mean_curvature = pc.curvature.at(i).mean_curvature;
 	}
 
-	max_gaussian_curvature = std::numeric_limits<float>::min();
-	min_gaussian_curvature = std::numeric_limits<float>::max();
+	pc.curvinfo.max_gaussian_curvature = std::numeric_limits<float>::min();
+	pc.curvinfo.min_gaussian_curvature = std::numeric_limits<float>::max();
 	for (int i = 0; i < pc.get_nr_points(); i++) {
-		if (pc.curvature.at(i).gaussian_curvature > max_gaussian_curvature)
-			max_gaussian_curvature = pc.curvature.at(i).gaussian_curvature;
-		if (pc.curvature.at(i).gaussian_curvature < min_gaussian_curvature)
-			min_gaussian_curvature = pc.curvature.at(i).gaussian_curvature;
+		if (pc.curvature.at(i).gaussian_curvature > pc.curvinfo.max_gaussian_curvature)
+			pc.curvinfo.max_gaussian_curvature = pc.curvature.at(i).gaussian_curvature;
+		if (pc.curvature.at(i).gaussian_curvature < pc.curvinfo.min_gaussian_curvature)
+			pc.curvinfo.min_gaussian_curvature = pc.curvature.at(i).gaussian_curvature;
 	}
 
-	std::cout << "max_mean_curvature = " << max_mean_curvature << std::endl;
-	std::cout << "min_mean_curvature = " << min_mean_curvature << std::endl;
-	std::cout << "max_gaussian_curvature = " << max_gaussian_curvature << std::endl;
-	std::cout << "min_gaussian_curvature = " << min_gaussian_curvature << std::endl;
+	std::cout << "pc.curvinfo.max_mean_curvature = " << pc.curvinfo.max_mean_curvature << std::endl;
+	std::cout << "pc.curvinfo.min_mean_curvature = " << pc.curvinfo.min_mean_curvature << std::endl;
+	std::cout << "pc.curvinfo.max_gaussian_curvature = " << pc.curvinfo.max_gaussian_curvature << std::endl;
+	std::cout << "pc.curvinfo.min_gaussian_curvature = " << pc.curvinfo.min_gaussian_curvature << std::endl;
 }
 
 /// just for visualize, computing is no problem now
 /// goal: find a good threshold
 void point_cloud_interactable::auto_cluster_kmeans() {
 	// init centroids
-	float centroid_A = max_mean_curvature;
-	float centroid_B = min_mean_curvature;
+	float centroid_A = pc.curvinfo.max_mean_curvature;
+	float centroid_B = pc.curvinfo.min_mean_curvature;
 
 	std::vector<int> points_belongs_to_A;
 	std::vector<int> points_belongs_to_B;
@@ -3642,8 +3642,9 @@ void point_cloud_interactable::auto_cluster_kmeans() {
 			max_value_in_B = pc.curvature.at(pid_b).mean_curvature;
 		}
 	}
-	coloring_threshold = max_value_in_B;
-	std::cout << "threshold selected by kmeans: " << coloring_threshold << std::endl;
+	pc.curvinfo.coloring_threshold = max_value_in_B;
+	std::cout << "threshold selected by kmeans: " << pc.curvinfo.coloring_threshold << std::endl;
+	pc.has_curv_information = true;
 }
 
 /// the entry point 

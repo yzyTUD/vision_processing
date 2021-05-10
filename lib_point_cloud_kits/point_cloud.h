@@ -229,6 +229,15 @@ struct principal_curvature {
 	float mean_curvature;
 };
 
+struct curvature_info {
+	/// control varibles
+	float coloring_threshold = 0;
+	float max_mean_curvature;
+	float min_mean_curvature;
+	float max_gaussian_curvature;
+	float min_gaussian_curvature;
+};
+
 /** simple point cloud data structure with dynamic containers for positions, normals and colors.
 	Normals and colors are optional and can be dynamically allocated and deallocated. */
 class CGV_API point_cloud : public point_cloud_types
@@ -298,12 +307,15 @@ public:
 	/*curvature estimation */ 
 	// ng required, in upper level -> 
 	// compute_principal_curvature()
+	curvature_info curvinfo;
 
 	/*lod caching */
 	bool has_lod = false;
+	bool has_curv_information = false;
 	bool has_lods() { return (lods.size() > 0) || has_lod; }
 	bool has_curvatures() { return curvature.size() > 0; }
 	bool has_neighbors() { return nearest_neighbour_indices.size() > 0; }
+	bool has_curvinfo() { return has_curv_information; }
 
 	/*camera positions */
 	std::vector<cgv::math::fvec<float, 3>> cam_posi_list;
