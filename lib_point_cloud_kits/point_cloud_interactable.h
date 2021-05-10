@@ -438,6 +438,8 @@ public:
 	bool final_grow = false;
 	///
 	bool use_property_scale = false;
+	///
+	int minimum_searching_neighbor_points = 10;
 
 	/* Fine-Grained Point Classification */
 	/// thw quality of the boundaries depends on region growing steps, how good faces are marked 

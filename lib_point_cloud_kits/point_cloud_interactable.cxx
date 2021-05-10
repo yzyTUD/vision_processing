@@ -1693,6 +1693,8 @@ bool point_cloud_interactable::grow_one_step_bfs(bool final_grow, int which_grou
 				return false;
 		}
 
+		// success stop: 1. ignore high curvature regions, 2. approperate searching radius 3. correct boundary touch (distance)
+		// minimum_searching_radius
 		// ignore high curvature regions and decrease searching radius, to be careful later on 
 		to_visit = queue_for_regions[which_group].top(); // this will query a pid with minimal second value 
 		if (check_curr_visit_and_stop) {
@@ -1805,8 +1807,10 @@ bool point_cloud_interactable::grow_one_step_bfs(bool final_grow, int which_grou
 		if (curr_curvature > pc.curvinfo.coloring_threshold && !final_grow && decrease_searching_radius_on_high_curvature) {
 			/*std::cout << "num_of_knn_used_for_each_group of " << which_group << " is: " 
 				<< num_of_knn_used_for_each_group[which_group] << std::endl;*/
-			if (num_of_knn_used_for_each_group[which_group] > 10)
+			if (num_of_knn_used_for_each_group[which_group] > minimum_searching_neighbor_points)
 				num_of_knn_used_for_each_group[which_group]--; // lower searching redius, more careful 
+			growing_latency++;
+			std::cout << "growing_latency " << growing_latency << std::endl;
 		}
 
 		// push to queue. store addtional value, can be quired when dequeue 
