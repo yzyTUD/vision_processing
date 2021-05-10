@@ -1435,7 +1435,7 @@ void visual_processing::load_sample_seeds_default() {
 }
 ///
 void visual_processing::load_sample_seeds_with_dialog() {
-	std::string fn = cgv::gui::file_open_dialog("Open", "Region Growing Seeds:*");
+	std::string fn = cgv::gui::file_open_dialog("Open", "Region Growing Seeds:*.seed");
 	data_ptr->point_cloud_kit->recover_seed_for_regions(fn);
 	std::cout << "load_sample_seeds_with_dialog: loaded!" << std::endl;
 }
@@ -1447,7 +1447,7 @@ void visual_processing::save_sample_seeds_default() {
 }
 /// this may overwrite! 
 void visual_processing::save_sample_seeds_with_dialog() {
-	std::string fn = cgv::gui::file_save_dialog("Open", "Region Growing Seeds:*");
+	std::string fn = cgv::gui::file_save_dialog("Open", "Region Growing Seeds:*.seed");
 	data_ptr->point_cloud_kit->record_seed_for_regions(fn);
 	std::cout << "save_sample_seeds_with_dialog: saved!" << std::endl;
 }
@@ -1458,8 +1458,10 @@ void visual_processing::single_hit__prepare_region_grow_worker(bool overwrite_fa
 /// single thread, some pre-computing 
 void visual_processing::single_hit__prepare_region_grow(bool overwrite_face_id) {
 	std::cout << "preparing everything for region growing!" << std::endl;
-	data_ptr->point_cloud_kit->ep_compute_principal_curvature_and_colorize_unsigned(); // compute unsigned curvature 
-	data_ptr->point_cloud_kit->extract_neighbours(); // will take some time for neighbour points extraction 
+	if (data_ptr->point_cloud_kit->pc.curvature.size() == 0)
+		data_ptr->point_cloud_kit->ep_compute_principal_curvature_and_colorize_unsigned(); // compute unsigned curvature 
+	if (data_ptr->point_cloud_kit->pc.nearest_neighbour_indices.size() == 0)
+		data_ptr->point_cloud_kit->extract_neighbours(); // will take some time for neighbour points extraction 
 	data_ptr->point_cloud_kit->prepare_grow(overwrite_face_id);
 	std::cout << "prepared! " << std::endl;
 }
@@ -1487,6 +1489,13 @@ void visual_processing::single_hit__regrow_unsigned_mean_curvature_based() {
 ///
 void visual_processing::single_hit__regrow_distance_and_curvature_based() {
 	data_ptr->point_cloud_kit->gm = data_ptr->point_cloud_kit->growing_mode::DISTANCE_AND_MEAN_CURVATURE_BASED;
+	data_ptr->point_cloud_kit->update_seed_to_queue(); // reset growing parameters, faces are marked as unmarked  
+	stop_parallel_region_growing(); // stop if thread is not stopped 	s
+	start_parallel_region_growing(); // start 
+}
+///
+void visual_processing::single_hit__regrow_stop_at_high_curvature() {
+	data_ptr->point_cloud_kit->gm = data_ptr->point_cloud_kit->growing_mode::STOP_ON_BOUNDARY;
 	data_ptr->point_cloud_kit->update_seed_to_queue(); // reset growing parameters, faces are marked as unmarked  
 	stop_parallel_region_growing(); // stop if thread is not stopped 	s
 	start_parallel_region_growing(); // start 
@@ -1612,6 +1621,9 @@ void visual_processing::create_gui() {
 			rebind(this, &visual_processing::single_hit__regrow_unsigned_mean_curvature_based));
 		connect_copy(add_button("[S]grow_with_distance_and_curvature")->click,
 			rebind(this, &visual_processing::single_hit__regrow_distance_and_curvature_based));
+		connect_copy(add_button("[S]grow_stop_on_boundaries")->click,
+			rebind(this, &visual_processing::single_hit__regrow_stop_at_high_curvature));
+		
 
 		add_decorator("//", "heading", "level=3");
 

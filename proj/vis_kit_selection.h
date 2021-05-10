@@ -544,15 +544,15 @@ public:
 						// ok-todo: update picking group information 
 						// but topo_id = id + 1, face_id = id - 9 (make sure starting from 1, 0 is reserved )
 						if (smallestpalleteIdx < 10) {
-							curr_topo_selecting_id = smallestpalleteIdx + 1; // make sure starting from 1
+							curr_topo_selecting_id = smallestpalleteIdx; // make sure starting from 0
 							curr_active_selection = 0; // we have just updated topo selection, make it active 
 						}
 						else {
-							curr_face_selecting_id = smallestpalleteIdx - 9; // make sure starting from 1
+							curr_face_selecting_id = smallestpalleteIdx - 10; // make sure starting from 0
 							curr_active_selection = 1; // make it active 
 						}
-						//std::cout << "current face selecting index = " << curr_face_selecting_id << std::endl;
-						//std::cout << "current topo selecting index = " << curr_topo_selecting_id << std::endl;
+						std::cout << "current face selecting index = " << curr_face_selecting_id << std::endl;
+						std::cout << "current topo selecting index = " << curr_topo_selecting_id << std::endl;
 					}
 
 					// update headset information in drawbale for shading effects, enable selection effects 

@@ -1763,7 +1763,10 @@ enum YPCFlags
 	YPC_HAS_PIXCRDS = 8,
 
 	YPC_HAS_TOPO_SELECTIONS = 16,
-	YPC_HAS_LODS = 32
+	YPC_HAS_LODS = 32,
+
+	YPC_HAS_NEIGHBORS = 64,
+	YPC_HAS_CURVATURE = 128
 };
 
 /// buffer based, gpc format gpu rendering manipulation point cloud 
@@ -1817,6 +1820,21 @@ bool point_cloud::read_ypc(const std::string& file_name) {
 	if (flags & YPC_HAS_LODS) {
 		lods.resize(n);
 		success = success && (fread(&lods[0], sizeof(int), n, fp) == n);
+	}
+
+	if (flags & YPC_HAS_CURVATURE) {
+		curvature.resize(n);
+		success = success && (fread(&curvature[0], sizeof(principal_curvature), n, fp) == n);
+	}
+	if (flags & YPC_HAS_NEIGHBORS) {
+		nearest_neighbour_indices.resize(n);
+		for (int i = 0; i < n; i++) {
+			nearest_neighbour_indices[i].resize(30);
+		}
+		for (int i = 0; i < nearest_neighbour_indices.size(); i++) {
+			int read_bytes = fread(&nearest_neighbour_indices[i][0], sizeof(int), nearest_neighbour_indices[i].size(), fp);
+			success = success && (read_bytes == 30);
+		}
 	}
 
 	return fclose(fp) == 0 && success;
@@ -3017,6 +3035,8 @@ bool point_cloud::write_ypc(const std::string& file_name) {
 	flags += has_pixel_coordinates() ? YPC_HAS_PIXCRDS : 0;
 	flags += has_topo_selections() ? YPC_HAS_TOPO_SELECTIONS : 0;
 	flags += has_lods() ? YPC_HAS_LODS : 0;
+	flags += has_curvatures() ? YPC_HAS_CURVATURE : 0;
+	flags += has_neighbors() ? YPC_HAS_NEIGHBORS : 0;
 
 	bool success; 
 
@@ -3034,7 +3054,17 @@ bool point_cloud::write_ypc(const std::string& file_name) {
 		success = success && (fwrite(&topo_id[0], sizeof(int), n, fp) == n);
 	if (has_lods())
 		success = success && (fwrite(&lods[0], sizeof(int), n, fp) == n);
-
+	//std::vector<principal_curvature> curvature;
+	if (has_curvatures()) 
+		success = success && (fwrite(&curvature[0], sizeof(principal_curvature), n, fp) == n);
+	//std::vector<std::vector<int>> nearest_neighbour_indices; // fixed 30 neighbors for now 
+	if (has_neighbors())
+	{
+		for (int i = 0; i < nearest_neighbour_indices.size(); i++) {
+			int write_bytes = fwrite(&nearest_neighbour_indices[i][0], sizeof(int), nearest_neighbour_indices[i].size(), fp);
+			success = success && (write_bytes == 30);
+		}
+	}
 	return fclose(fp) == 0 && success;
 }
 

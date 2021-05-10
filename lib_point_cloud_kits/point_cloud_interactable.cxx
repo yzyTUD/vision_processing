@@ -582,7 +582,7 @@ bool point_cloud_interactable::open_or_append(cgv::gui::event& e, const std::str
 }
 /// read point cloud with a dialog 
 bool point_cloud_interactable::read_pc_with_dialog(bool append) {
-	file_dir = cgv::gui::file_open_dialog("Open", "Point Cloud:*");
+	file_dir = cgv::gui::file_open_dialog("Open", "Point Cloud:*.*");
 	auto start = std::chrono::high_resolution_clock::now();
 	data_path = cgv::utils::file::get_path(file_dir);
 	file_name = cgv::utils::file::drop_extension(cgv::utils::file::get_file_name(file_dir));
@@ -1634,6 +1634,11 @@ bool point_cloud_interactable::grow_one_step_bfs(bool check_nml, int which_group
 
 	// dequeue 
 	point_priority_mapping to_visit = queue_for_regions[which_group].top(); // this will query a pid with minimal second value 
+	if (gm == growing_mode::STOP_ON_BOUNDARY) {
+		if (std::get<DIST>(to_visit) > coloring_threshold) {
+			return false;
+		}
+	}
 	queue_for_regions[which_group].pop();
 	pc.point_in_queue.at(std::get<ID>(to_visit)) = false;
 
@@ -1668,7 +1673,7 @@ bool point_cloud_interactable::grow_one_step_bfs(bool check_nml, int which_group
 		float accu_dist = dist + std::get<DIST>(to_visit);
 		if (seed_for_regions[which_group] == -1) break;
 		float dist_to_seed = (pc.pnt(k) - pc.pnt(seed_for_regions[which_group])).length();
-		float curr_property;
+		float curr_property = 0;
 
 		// accumulated distance based 
 		if (gm == growing_mode::ACCU_DISTANCE_BASED) {
@@ -1682,6 +1687,10 @@ bool point_cloud_interactable::grow_one_step_bfs(bool check_nml, int which_group
 
 		// pure curvature based 
 		if (gm == growing_mode::UNSIGNED_MEAN_CURVATURE_BASED) {
+			curr_property = pc.curvature.at(k).mean_curvature;
+		}
+
+		if (gm == growing_mode::STOP_ON_BOUNDARY) {
 			curr_property = pc.curvature.at(k).mean_curvature;
 		}
 

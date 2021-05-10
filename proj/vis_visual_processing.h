@@ -450,6 +450,7 @@ public:
 	void single_hit__regrow_seed_distance_based();
 	void single_hit__regrow_unsigned_mean_curvature_based();
 	void single_hit__regrow_distance_and_curvature_based();
+	void single_hit__regrow_stop_at_high_curvature();
 	void find_pointcloud();
 
 	void create_gui();

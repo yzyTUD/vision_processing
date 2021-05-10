@@ -302,6 +302,8 @@ public:
 	/*lod caching */
 	bool has_lod = false;
 	bool has_lods() { return (lods.size() > 0) || has_lod; }
+	bool has_curvatures() { return curvature.size() > 0; }
+	bool has_neighbors() { return nearest_neighbour_indices.size() > 0; }
 
 	/*camera positions */
 	std::vector<cgv::math::fvec<float, 3>> cam_posi_list;
