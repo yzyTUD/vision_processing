@@ -1626,6 +1626,7 @@ void visual_processing::create_gui() {
 			rebind(this, &visual_processing::single_hit__regrow_distance_and_curvature_based));
 		add_member_control(this, "check_the_queue_and_stop", data_ptr->point_cloud_kit->check_the_queue_and_stop, "check");
 		add_member_control(this, "check_curr_visit_and_stop", data_ptr->point_cloud_kit->check_curr_visit_and_stop, "check");
+		add_member_control(this, "final_grow", data_ptr->point_cloud_kit->final_grow, "check");
 		connect_copy(add_button("[S]grow_stop_on_boundaries")->click,
 			rebind(this, &visual_processing::single_hit__regrow_stop_at_high_curvature));
 		

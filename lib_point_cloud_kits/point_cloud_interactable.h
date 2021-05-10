@@ -332,6 +332,9 @@ public:
 	/// seed representation 
 	std::vector<std::priority_queue<point_priority_mapping, 
 		std::vector<point_priority_mapping>, lower_second_comp>> queue_for_regions; // 2d, matrix, idx means region id, queue stores seeds 
+	///
+	std::vector<std::priority_queue<point_priority_mapping,
+		std::vector<point_priority_mapping>, lower_second_comp>> final_queue_for_regions;
 	/// 
 	std::vector<int> seed_for_regions;
 	///
@@ -350,7 +353,7 @@ public:
 	/// collect marked points to queue, add seeds for the region growing 
 	void init_region_growing_by_collecting_group_and_seeds_vr(int curr_face_selecting_id);
 	/// grow one step, check_nml is not used 
-	bool grow_one_step_bfs(bool check_nml, int which_group);
+	bool grow_one_step_bfs(bool final_grow, int which_group);
 	///
 	void region_growing();
 	///
@@ -430,7 +433,11 @@ public:
 	/// 
 	std::vector<int> num_of_knn_used_for_each_group;
 	///
-	bool decrease_searching_radius_on_high_curvature = false;
+	bool decrease_searching_radius_on_high_curvature = true;
+	///
+	bool final_grow = false;
+	///
+	bool use_property_scale = false;
 
 	/* Fine-Grained Point Classification */
 	/// thw quality of the boundaries depends on region growing steps, how good faces are marked 
