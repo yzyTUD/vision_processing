@@ -450,6 +450,60 @@ bool visual_processing::handle(cgv::gui::event& e)
 				}
 			}
 		}
+
+		// press them clockwise 
+		// 1 // prepare curr growing 
+		if (vrke.get_key() == vr::VR_DPAD_UP) {
+			if (vrke.get_action() == cgv::gui::KA_PRESS)
+			{
+				if (vrke.get_controller_index() == data_ptr->right_rgbd_controller_index)
+				{
+					if (data_ptr->check_roulette_selection(data_ptr->get_id_with_name("RegionGrowing\nOurMethod"))) {
+						data_ptr->point_cloud_kit->gm = data_ptr->point_cloud_kit->growing_mode::DISTANCE_AND_MEAN_CURVATURE_BASED;
+						data_ptr->point_cloud_kit->update_seed_to_queue(); // reset growing parameters, faces are marked as origin  
+					}
+				}
+			}
+		}
+
+		// 2 // start/pause/continue current growing 
+		if (vrke.get_key() == vr::VR_DPAD_RIGHT) {
+			if (vrke.get_action() == cgv::gui::KA_PRESS)
+			{
+				if (vrke.get_controller_index() == data_ptr->right_rgbd_controller_index)
+				{
+					if (data_ptr->check_roulette_selection(data_ptr->get_id_with_name("RegionGrowing\nOurMethod"))) {
+						pause_continue_parallel_region_growing(); 
+					}
+				}
+			}
+		}
+
+		// 3 // submit face: pop current queue to a final queue, reset some vars 
+		if (vrke.get_key() == vr::VR_DPAD_DOWN) {
+			if (vrke.get_action() == cgv::gui::KA_PRESS)
+			{
+				if (vrke.get_controller_index() == data_ptr->right_rgbd_controller_index)
+				{
+					if (data_ptr->check_roulette_selection(data_ptr->get_id_with_name("RegionGrowing\nOurMethod"))) {
+						
+					}
+				}
+			}
+		}
+
+		// 4 // finalize boundaries: similar to final_grow, automatic stop
+		if (vrke.get_key() == vr::VR_DPAD_LEFT) {
+			if (vrke.get_action() == cgv::gui::KA_PRESS)
+			{
+				if (vrke.get_controller_index() == data_ptr->right_rgbd_controller_index)
+				{
+					if (data_ptr->check_roulette_selection(data_ptr->get_id_with_name("RegionGrowing\nOurMethod"))) {
+						
+					}
+				}
+			}
+		}
 		
 		if (data_ptr->check_roulette_selection(data_ptr->get_id_with_name("VRICP\nClickPoints\nDpd\nSrc"))) {
 			if (vrke.get_key() == vr::VR_DPAD_LEFT)
@@ -700,6 +754,12 @@ bool visual_processing::handle(cgv::gui::event& e)
 						data_ptr->point_cloud_kit->surfel_style.point_size -= 0.1f;
 						data_ptr->point_cloud_kit->point_size -= 0.1f;
 					}
+				}
+				/*region grow */
+				if (data_ptr->check_roulette_selection(data_ptr->get_id_with_name("RegionGrowing\nOurMethod"))) {
+					// vrse.get_y() : -1, 1 ... -vrse.get_y()+1 : 0 , 2 ... (-vrse.get_y()+1) * 100 : 200,0
+					data_ptr->point_cloud_kit->growing_latency = int((-vrse.get_y() + 1) * 100);
+					// UPPER means faster 
 				}
 				/*vr icp */ 
 				if (data_ptr->check_roulette_selection(data_ptr->get_id_with_name("VRICP\nPerformICP_1Iter"))) {
@@ -1008,7 +1068,7 @@ void visual_processing::start_parallel_region_growing() {
 }
 
 ///
-void visual_processing::pause_parallel_region_growing() {
+void visual_processing::pause_continue_parallel_region_growing() {
 	if (parallel_region_growing_thread != nullptr) {
 		data_ptr->point_cloud_kit->pause_growing = true;
 		parallel_region_growing_thread->join();
@@ -1021,8 +1081,8 @@ void visual_processing::pause_parallel_region_growing() {
 
 ///
 void visual_processing::stop_parallel_region_growing() {
-	data_ptr->point_cloud_kit->pause_growing = true;
 	if (parallel_region_growing_thread != nullptr) {
+		data_ptr->point_cloud_kit->pause_growing = true;
 		parallel_region_growing_thread->join();
 		parallel_region_growing_thread = nullptr;
 	}
@@ -1492,7 +1552,7 @@ void visual_processing::single_hit__regrow_unsigned_mean_curvature_based() {
 ///
 void visual_processing::single_hit__regrow_distance_and_curvature_based() {
 	data_ptr->point_cloud_kit->gm = data_ptr->point_cloud_kit->growing_mode::DISTANCE_AND_MEAN_CURVATURE_BASED;
-	data_ptr->point_cloud_kit->update_seed_to_queue(); // reset growing parameters, faces are marked as unmarked  
+	data_ptr->point_cloud_kit->update_seed_to_queue(); // reset growing parameters, faces are marked as origin  
 	stop_parallel_region_growing(); // stop if thread is not stopped 	s
 	start_parallel_region_growing(); // start 
 }
@@ -1636,9 +1696,9 @@ void visual_processing::create_gui() {
 		add_decorator("// debug the growing process", "heading", "level=3");
 		add_member_control(this, "knn", data_ptr->point_cloud_kit->k,
 			"value_slider", "min=1;max=50;log=false;ticks=true;");
-		add_member_control(this, "growing_latency", data_ptr->point_cloud_kit->growing_latency, 
-			"value_slider", "min=1;max=100;log=false;ticks=true;");
-		connect_copy(add_button("pause/continue")->click, rebind(this, &visual_processing::pause_parallel_region_growing));
+		add_member_control(this, "growing_latency", data_ptr->point_cloud_kit->growing_latency, // per point? 
+			"value_slider", "min=1;max=500;log=false;ticks=true;");
+		connect_copy(add_button("pause/continue")->click, rebind(this, &visual_processing::pause_continue_parallel_region_growing));
 		connect_copy(add_button("start")->click, rebind(this, &visual_processing::start_parallel_region_growing));
 		connect_copy(add_button("terminate")->click, rebind(this, &visual_processing::stop_parallel_region_growing));
 		connect_copy(add_button("debug_region_growing_step_by_step_test")->click, 

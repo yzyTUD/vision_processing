@@ -357,6 +357,10 @@ public:
 	///
 	void region_growing();
 	///
+	void submit_face();
+	///
+	void finalize_boundaries();
+	///
 	void grow_one_region(int gi);
 	/// deprecated, not good to keep an other thread running 
 	void do_region_growing_timer_event(double t, double dt);
@@ -407,7 +411,7 @@ public:
 	/// how many points will be growed before sleep, not used, use 100 just 
 	int steps_per_event_as_speed = 200;
 	/// latency after 100 points growed 
-	int growing_latency = 0; // ms
+	int growing_latency = 100; // ms
 	///
 	std::chrono::duration<double> Elapsed_knn;
 	///

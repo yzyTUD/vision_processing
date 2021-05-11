@@ -1578,7 +1578,19 @@ void point_cloud_interactable::grow_one_region(int gi) {
 	}
 }
 
-///
+/*interactive region growing */
+/// 
+void point_cloud_interactable::submit_face() {
+	while (!queue_for_regions.empty()) {
+
+	}
+}
+/// 
+void point_cloud_interactable::finalize_boundaries() {
+
+}
+
+/// entry function 
 void point_cloud_interactable::region_growing() {
 	auto start = std::chrono::high_resolution_clock::now();
 	// update distances 

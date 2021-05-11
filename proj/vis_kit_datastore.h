@@ -350,6 +350,12 @@ public:
 		gp_btn_tmp.clear();
 		gp_btn_tmp.push_back("RegionGrowing\nPrepare\nMarking");
 		gp_btn_tmp.push_back("RegionGrowing\nGroupPicker");
+
+		gp_btn_tmp.push_back("RegionGrowing\nOurMethod");
+		gp_btn_tmp.push_back("RegionGrowing\nAccuDistanceBased");
+		gp_btn_tmp.push_back("RegionGrowing\nSeedDistanceBased");
+		gp_btn_tmp.push_back("RegionGrowing\nUnsignedMeanCurvature");
+
 		gp_btn_tmp.push_back("RegionGrowing\nAutoRegion\nGrowing");
 		gp_btn_tmp.push_back("RegionGrowing\nToggle\nCheckNmls");
 		gp_btn_tmp.push_back("RegionGrowing\nHighlightUnmarked");
