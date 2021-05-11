@@ -1411,8 +1411,19 @@ void point_cloud_interactable::rerender_seeds() {
 	//	}
 	//}
 }
-/// reset region growing regions 
-void point_cloud_interactable::update_seed_to_queue() {
+/// do not modify others. will be expend. interactive region growing  
+void point_cloud_interactable::add_seed_to_queue(int which_group) {
+	int pid = seed_for_regions[which_group]; // Wrote before 
+	if (pid != -1) {
+		pc.face_id.at(pid) = which_group; // visual feedback 
+		pc.point_in_queue[pid] = true; // mark 
+		pc.point_in_queue_which_group[pid] = which_group;
+		pc.point_visited[pid] = false; // not visited for now
+		queue_for_regions[which_group].push(std::make_tuple(pid, 0, 0));
+	}
+}
+/// reset_queue_with_seeds
+void point_cloud_interactable::reset_queue_with_seeds() {
 	// delete all marked and redo the marking, iterate all points, less effecient for now 
 	// reset face id 
 	pc.face_id.resize(pc.get_nr_points());
@@ -1438,10 +1449,10 @@ void point_cloud_interactable::update_seed_to_queue() {
 		int pid = seed_for_regions[curr_face_selecting_id];
 		if (pid != -1) {
 			pc.face_id.at(pid) = curr_face_selecting_id;
-			queue_for_regions[curr_face_selecting_id].push(std::make_tuple(pid, 0, 0));
-			//pc.point_visited[pid] = true; // do not update this 
+			pc.point_visited[pid] = false; 
 			pc.point_in_queue[pid] = true;		
 			pc.point_in_queue_which_group[pid] = curr_face_selecting_id;
+			queue_for_regions[curr_face_selecting_id].push(std::make_tuple(pid, 0, 0));
 		}
 	}
 	final_queue_for_regions.clear();
@@ -1474,6 +1485,28 @@ void point_cloud_interactable::record_seed_for_regions(std::string fn) {
 	if(success)
 		std::cout << "saved!" << std::endl;
 }
+/// load only, not modify directly 
+void point_cloud_interactable::load_seed_for_regions(std::string fn) {
+	FILE* fp = fopen(fn.c_str(), "rb");
+	loaded_seeds_for_regions.clear();
+	uint64_t n;
+	bool success;
+
+	//
+	success = fread(&n, sizeof(uint64_t), 1, fp) == 1; // write header, number of points 
+	//
+	loaded_seeds_for_regions.resize(n); success = fread(&loaded_seeds_for_regions[0], sizeof(int), n, fp) == n;
+
+	fclose(fp);
+	if (success)
+		std::cout << "seeds read successfully!" << std::endl;
+
+	// recover to queue_for_regions as below 
+	if (loaded_seeds_for_regions.size() != pc.num_of_face_selections_rendered) {
+		std::cout << "number of regions doesn't match, return!" << std::endl;
+		return;
+	}
+}
 /// recover to seed for regions and queue for regions 
 void point_cloud_interactable::recover_seed_for_regions(std::string fn) {
 	FILE* fp = fopen(fn.c_str(), "rb");
@@ -1497,21 +1530,7 @@ void point_cloud_interactable::recover_seed_for_regions(std::string fn) {
 	}
 
 	// state: seed_for_regions updated 
-	
-	update_seed_to_queue();
-	//// recover queue_for_regions and visit information from seed_for_regions, can grow after this step 
-	//queue_for_regions.clear();
-	//queue_for_regions.resize(seed_for_regions.size(), std::priority_queue<point_priority_mapping,
-	//	std::vector<point_priority_mapping>, lower_second_comp>());
-	//for (int curr_face_selecting_id = 0; curr_face_selecting_id < seed_for_regions.size(); curr_face_selecting_id++) {
-	//	int pid = seed_for_regions[curr_face_selecting_id]; 
-	//	if (pid != -1) {
-	//		pc.face_id.at(pid) = curr_face_selecting_id;
-	//		queue_for_regions[curr_face_selecting_id].push(std::make_tuple(pid, 0, 0)); 
-	//		pc.point_visited[pid] = true; // mark seeds as visited 
-	//		pc.point_in_queue[pid] = true;
-	//	}
-	//}
+	reset_queue_with_seeds();
 }
 /// push to queue operation, as an init to RG 
 void point_cloud_interactable::init_region_growing_by_collecting_group_and_seeds_vr(int curr_face_selecting_id) {
@@ -1579,11 +1598,24 @@ void point_cloud_interactable::grow_one_region(int gi) {
 }
 
 /*interactive region growing */
-/// 
+/// current face_id will be fixed. queue for current group will be empty, will not grow any more.
+/// do not ahve to do this explicitly if auto. stops 
 void point_cloud_interactable::submit_face() {
-	while (!queue_for_regions.empty()) {
-
+	point_priority_mapping curr_top;
+	for (int curr_group = 1; curr_group < pc.num_of_face_selections_rendered; curr_group++) {
+		while (!queue_for_regions[curr_group].empty()) {
+			curr_top = queue_for_regions[curr_group].top();
+			pc.face_id.at(std::get<ID>(curr_top)) = 19; // reset color 
+			final_queue_for_regions[curr_group].push(curr_top); // save to an other queue, for final growing process 
+			// mark as in queue 
+			pc.point_in_queue.at(std::get<ID>(curr_top)) = true;
+			pc.point_in_queue_which_group.at(std::get<ID>(curr_top)) = curr_group;
+			// pop 
+			queue_for_regions[curr_group].pop();
+		}
+		// state: queue_for_regions[curr_group] is empty 
 	}
+	// state: all queue empty, everything in queue pushed to final_queue_for_regions
 }
 /// 
 void point_cloud_interactable::finalize_boundaries() {
@@ -1711,7 +1743,7 @@ bool point_cloud_interactable::grow_one_step_bfs(bool final_grow, int which_grou
 		to_visit = queue_for_regions[which_group].top(); // this will query a pid with minimal second value 
 		if (ignore_high_curvature_regions) {
 			while (std::get<CURVATURE>(to_visit) > pc.curvinfo.coloring_threshold) { // just ignore, do not visit  
-				pc.face_id.at(std::get<ID>(to_visit)) = 19; // reset color 
+				pc.face_id.at(std::get<ID>(to_visit)) = 19; // visual mark 
 				final_queue_for_regions[which_group].push(to_visit); // save to an other queue, for final growing process 
 				// mark as in queue 
 				pc.point_in_queue.at(std::get<ID>(to_visit)) = true;
@@ -1749,42 +1781,48 @@ bool point_cloud_interactable::grow_one_step_bfs(bool final_grow, int which_grou
 	// not everything in queue in the final growing step 
 	// query knn and add to queue conditionally  
 	int num_of_children_expanded = 0;
-	for (auto k: pc.nearest_neighbour_indices.at(std::get<ID>(to_visit))) {
+	for (auto kid: pc.nearest_neighbour_indices.at(std::get<ID>(to_visit))) {
 		num_of_children_expanded++;
 
 		// with variable searching radius 
-		if (num_of_children_expanded > std::min(k, num_of_knn_used_for_each_group[which_group]))
-			continue;
+		if (decrease_searching_radius_on_high_curvature) {
+			if (num_of_children_expanded > num_of_knn_used_for_each_group[which_group])
+				continue;
+		}
+		else {
+			if (num_of_children_expanded > k) // oin case k may adjusted to be smaller than 30
+				continue;
+		}
 
 		// init varibles 
 		bool add_to_queue = true;
 		float property_scale = 1;
 
 		// ignore visited 
-		if (pc.point_visited.at(k))
+		if (pc.point_visited.at(kid))
 			continue;
 
 		// ignore deleted, topo_id and face_id should work together 
-		if (pc.topo_id.at(k) == point_cloud::TOPOAttribute::DEL) 
+		if (pc.topo_id.at(kid) == point_cloud::TOPOAttribute::DEL) 
 			continue;
 
 		// drop redundant points in queue, must belongs to current group 
 		// points may be shared by diff. group queue? 
-		if (pc.point_in_queue.at(k) == true && pc.point_in_queue_which_group.at(k) == which_group)
+		if (pc.point_in_queue.at(kid) == true && pc.point_in_queue_which_group.at(kid) == which_group)
 			if(use_property_scale)
 				property_scale = 0.5f;
 			else
 				continue; // ok-todo: decrease property instead of just ignore 
 
 		// basic computations for property computing 
-		float dist = (pc.pnt(k) - pc.pnt(std::get<ID>(to_visit))).length(); // smallest distance to S set first
+		float dist = (pc.pnt(kid) - pc.pnt(std::get<ID>(to_visit))).length(); // smallest distance to S set first
 		float accu_dist = dist + std::get<DIST>(to_visit);
 		if (seed_for_regions[which_group] == -1) break;
-		float dist_to_seed = (pc.pnt(k) - pc.pnt(seed_for_regions[which_group])).length();
+		float dist_to_seed = (pc.pnt(kid) - pc.pnt(seed_for_regions[which_group])).length();
 
 		//
 		float curr_property = 0;
-		float curr_curvature = pc.curvature.at(k).mean_curvature;
+		float curr_curvature = pc.curvature.at(kid).mean_curvature;
 
 		// pure distance based 
 		if (gm == growing_mode::SEED_DISTANCE_BASED) {
@@ -1798,23 +1836,23 @@ bool point_cloud_interactable::grow_one_step_bfs(bool final_grow, int which_grou
 
 		// pure curvature based 
 		if (gm == growing_mode::UNSIGNED_MEAN_CURVATURE_BASED) {
-			curr_property = pc.curvature.at(k).mean_curvature;
+			curr_property = pc.curvature.at(kid).mean_curvature;
 		}
 
 		// stop with bounary condition
 		if (gm == growing_mode::STOP_ON_BOUNDARY) {
-			curr_property = pc.curvature.at(k).mean_curvature;
+			curr_property = pc.curvature.at(kid).mean_curvature;
 		}
 
 		// dequeue first in low distance and low curvature regions. Just like fill water to a pool.
 		if (gm == growing_mode::DISTANCE_AND_MEAN_CURVATURE_BASED) {
 			float accumulated_distance_upperbound = pc.get_nr_points() * max_dist;
-			float dist_scale = 1.0f + accumulated_distance_upperbound * pc.curvature.at(k).mean_curvature; // ok-todo: find a upper bound 
+			float dist_scale = 1.0f + accumulated_distance_upperbound * pc.curvature.at(kid).mean_curvature; // ok-todo: find a upper bound 
 			curr_property = dist_scale * dist + std::get<DIST>(to_visit);
 		}
 
 		// queue visualization, diff color for diff groups 
-		pc.face_id.at(k) = 26 - which_group;
+		pc.face_id.at(kid) = 26 - which_group;
 
 		//
 		if (curr_curvature > pc.curvinfo.coloring_threshold && !final_grow && decrease_searching_radius_on_high_curvature) {
@@ -1828,11 +1866,11 @@ bool point_cloud_interactable::grow_one_step_bfs(bool final_grow, int which_grou
 
 		// push to queue. store addtional value, can be quired when dequeue 
 		if (!final_grow) 
-			queue_for_regions[which_group].push(std::make_tuple(k, property_scale * curr_property, curr_curvature));
+			queue_for_regions[which_group].push(std::make_tuple(kid, property_scale * curr_property, curr_curvature));
 		else 
-			final_queue_for_regions[which_group].push(std::make_tuple(k, property_scale * curr_property, curr_curvature));
-		pc.point_in_queue.at(k) = true;
-		pc.point_in_queue_which_group.at(k) = which_group;
+			final_queue_for_regions[which_group].push(std::make_tuple(kid, property_scale * curr_property, curr_curvature));
+		pc.point_in_queue.at(kid) = true;
+		pc.point_in_queue_which_group.at(kid) = which_group;
 	}
 	
 	return true;

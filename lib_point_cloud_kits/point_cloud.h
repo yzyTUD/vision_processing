@@ -286,13 +286,7 @@ public:
 	std::vector<PixCrd> I;
 	/// container for local features 
 	std::vector<Dir> F;
-	/// per-vertex attribute: used for region growing, used internally, wont be passed to gpu 
-	std::vector<bool> point_visited; // point_visited
-	///
-	std::vector<bool> point_in_queue;
-	/// 
-	std::vector<int> point_in_queue_which_group;
-	/// 
+	/// cache knn 
 	std::vector<std::vector<int>> nearest_neighbour_indices;
 	/// per-vertex attribute: used for marking faces, the first step, region growing 
 	std::vector<int> face_id; // from point_selection, write to .scan file  
@@ -304,6 +298,14 @@ public:
 	std::vector<principal_curvature> curvature; // kmin and kmax, not passed to shader directly 
 	/// per point lod information 
 	std::vector<int> lods;
+
+	/*per vertex info, used for region growing, continuely changing */
+	/// mark if current point already visited 
+	std::vector<bool> point_visited; // point_visited
+	/// mark if current point in queue 
+	std::vector<bool> point_in_queue;
+	/// binded with the above one, indicates which group it belongs to 
+	std::vector<int> point_in_queue_which_group;
 public:
 
 	/*curvature estimation */ 

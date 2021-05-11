@@ -337,6 +337,8 @@ public:
 		std::vector<point_priority_mapping>, lower_second_comp>> final_queue_for_regions;
 	/// 
 	std::vector<int> seed_for_regions;
+	/// 
+	std::vector<int> loaded_seeds_for_regions;
 	///
 	float max_accu_dist = 0;
 	///
@@ -350,6 +352,8 @@ public:
 	/// 
 	void extract_neighbours();
 	void rerender_seeds();
+	/// add seed to queue given group, others are not changed 
+	void add_seed_to_queue(int which_group);
 	/// collect marked points to queue, add seeds for the region growing 
 	void init_region_growing_by_collecting_group_and_seeds_vr(int curr_face_selecting_id);
 	/// grow one step, check_nml is not used 
@@ -365,11 +369,13 @@ public:
 	/// deprecated, not good to keep an other thread running 
 	void do_region_growing_timer_event(double t, double dt);
 	/// reset, not used 
-	void update_seed_to_queue();
+	void reset_queue_with_seeds();
 	/// reset, not used 
 	void reset_region_growing_seeds();
 	/// save to file 
 	void record_seed_for_regions(std::string fn);
+	/// load only 
+	void load_seed_for_regions(std::string fn);
 	/// read back from file with the following file format: size of the vector, content 
 	void recover_seed_for_regions(std::string fn);
 	///  not used 

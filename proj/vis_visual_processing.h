@@ -379,11 +379,14 @@ public:
 	thread* parallel_region_growing_thread = nullptr;
 	bool parallel_reading = false;
 	/// wrappers 
+	void prepare_grow_ourmethod();
 	void read_pc();
 	void read_pc_parallel();
 	void start_reading_pc_parallel();
 	void start_parallel_region_growing();
-	void pause_parallel_region_growing();
+	void final_grow();
+	void force_start_grow();
+	void pause_continue_parallel_region_growing();
 	void stop_parallel_region_growing();
 	void read_pc_queue();
 	void read_pc_append();
@@ -441,6 +444,7 @@ public:
 	void compute_lods();
 	void load_sample_seeds_default();
 	void load_sample_seeds_with_dialog();
+	void load_seeds_with_dialog_without_recover(); 
 	void save_sample_seeds_with_dialog();
 	void save_sample_seeds_default();
 	void single_hit__prepare_region_grow(bool overwrite_face_id);
@@ -556,8 +560,21 @@ public:
 		//data_ptr->point_cloud_kit->pc.face_id.at(data_ptr->point_cloud_kit->pc.get_nr_points()-1) = 2; // mark index 0 as face 1 
 		//data_ptr->point_cloud_kit->init_region_growing_by_collecting_group_and_seeds_vr(2); // collect face seed with index 
 		data_ptr->point_cloud_kit->seed_for_regions[1] = 0; // face_id -> pid 
+		data_ptr->point_cloud_kit->add_seed_to_queue(1);
 		//data_ptr->point_cloud_kit->seed_for_regions[2] = data_ptr->point_cloud_kit->pc.get_nr_points() - 1; // face_id -> pid 
 		std::cout << "marked! seed_for_regions updated" << std::endl;
+	}
+	int current_seed_group = 1;
+	void mark_next_seed() {
+		if (data_ptr->point_cloud_kit->loaded_seeds_for_regions.empty()) {
+			std::cout << "empty seed list! have you loaded them? " << std::endl;
+			return;
+		}
+		std::cout << "loading seed group: "<< current_seed_group << std::endl;
+		data_ptr->point_cloud_kit->seed_for_regions[current_seed_group] = 
+			data_ptr->point_cloud_kit->loaded_seeds_for_regions[current_seed_group]; 
+		data_ptr->point_cloud_kit->add_seed_to_queue(current_seed_group);
+		current_seed_group++;
 	}
 	void generate_pc_hemisphere() { 
 		data_ptr->point_cloud_kit->generate_pc_hemisphere();

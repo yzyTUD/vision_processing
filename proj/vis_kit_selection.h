@@ -363,10 +363,18 @@ public:
 									int closest_idx = -1;
 									data_ptr->point_cloud_kit->tree_ds->find_closest_and_its_dist(
 										right_hand_ball_posi, closest_dist, closest_idx);
-									if (closest_dist < marking_style.radius) {
+									bool can_mark = true;
+									if (data_ptr->point_cloud_kit->pc.point_visited.at(closest_idx) == true)
+										can_mark = false;
+									if (data_ptr->point_cloud_kit->pc.point_in_queue.at(closest_idx) == true)
+										can_mark = false;
+									if (closest_dist > marking_style.radius)
+										can_mark = false;
+									if (can_mark) {
 										data_ptr->point_cloud_kit->seed_for_regions[curr_face_selecting_id] = closest_idx;
 										// state: seed_for_regions updated 
-										data_ptr->point_cloud_kit->update_seed_to_queue(); // and face_id
+										data_ptr->point_cloud_kit->add_seed_to_queue(curr_face_selecting_id);
+										//data_ptr->point_cloud_kit->reset_queue_with_seeds(); // and face_id
 									}
 								}
 								//data_ptr->point_cloud_kit->can_parallel_edit = true;

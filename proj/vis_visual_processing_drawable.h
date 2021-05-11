@@ -317,6 +317,12 @@ bool visual_processing::init(cgv::render::context& ctx)
 
 	return true;
 }
+/*interactive grow, test before using vr */
+///
+void visual_processing::prepare_grow_ourmethod() {
+	data_ptr->point_cloud_kit->gm = data_ptr->point_cloud_kit->growing_mode::DISTANCE_AND_MEAN_CURVATURE_BASED;
+	//data_ptr->point_cloud_kit->reset_queue_with_seeds(); // reset growing parameters, faces are marked as origin 
+}
 ///	
 bool visual_processing::handle(cgv::gui::event& e)
 {
@@ -459,8 +465,7 @@ bool visual_processing::handle(cgv::gui::event& e)
 				if (vrke.get_controller_index() == data_ptr->right_rgbd_controller_index)
 				{
 					if (data_ptr->check_roulette_selection(data_ptr->get_id_with_name("RegionGrowing\nOurMethod"))) {
-						data_ptr->point_cloud_kit->gm = data_ptr->point_cloud_kit->growing_mode::DISTANCE_AND_MEAN_CURVATURE_BASED;
-						data_ptr->point_cloud_kit->update_seed_to_queue(); // reset growing parameters, faces are marked as origin  
+						prepare_grow_ourmethod();
 					}
 				}
 			}
@@ -1068,6 +1073,23 @@ void visual_processing::start_parallel_region_growing() {
 }
 
 ///
+void visual_processing::final_grow() {
+	data_ptr->point_cloud_kit->final_grow = true;
+	force_start_grow();
+}
+
+void visual_processing::force_start_grow() {
+	if (parallel_region_growing_thread != nullptr) {
+		data_ptr->point_cloud_kit->pause_growing = true;
+		parallel_region_growing_thread->join();
+		parallel_region_growing_thread = nullptr;
+	}
+
+	data_ptr->point_cloud_kit->pause_growing = false;
+	parallel_region_growing_thread = new thread(&visual_processing::parallel_region_growing, this);
+}
+
+///
 void visual_processing::pause_continue_parallel_region_growing() {
 	if (parallel_region_growing_thread != nullptr) {
 		data_ptr->point_cloud_kit->pause_growing = true;
@@ -1502,6 +1524,11 @@ void visual_processing::load_sample_seeds_with_dialog() {
 	data_ptr->point_cloud_kit->recover_seed_for_regions(fn);
 	std::cout << "load_sample_seeds_with_dialog: loaded!" << std::endl;
 }
+void visual_processing::load_seeds_with_dialog_without_recover() {
+	std::string fn = cgv::gui::file_open_dialog("Open", "Region Growing Seeds:*.seed");
+	data_ptr->point_cloud_kit->load_seed_for_regions(fn);
+	std::cout << "load_seeds_with_dialog_without_recover: loaded!" << std::endl;
+}
 ///
 void visual_processing::save_sample_seeds_default() {
 	std::string seed_file = data_ptr->point_cloud_kit->data_path + "/" + data_ptr->point_cloud_kit->file_name + ".seed";
@@ -1531,35 +1558,35 @@ void visual_processing::single_hit__prepare_region_grow(bool overwrite_face_id) 
 /// 
 void visual_processing::single_hit__regrow_accu_distance_based() {
 	data_ptr->point_cloud_kit->gm = data_ptr->point_cloud_kit->growing_mode::ACCU_DISTANCE_BASED;
-	data_ptr->point_cloud_kit->update_seed_to_queue(); // reset growing parameters, faces are marked as unmarked  
+	data_ptr->point_cloud_kit->reset_queue_with_seeds(); // reset growing parameters, faces are marked as unmarked  
 	stop_parallel_region_growing(); // stop if thread is not stopped 
 	start_parallel_region_growing(); // start 
 }
 ///
 void visual_processing::single_hit__regrow_seed_distance_based() {
 	data_ptr->point_cloud_kit->gm = data_ptr->point_cloud_kit->growing_mode::SEED_DISTANCE_BASED;
-	data_ptr->point_cloud_kit->update_seed_to_queue(); // reset growing parameters, faces are marked as unmarked  
+	data_ptr->point_cloud_kit->reset_queue_with_seeds(); // reset growing parameters, faces are marked as unmarked  
 	stop_parallel_region_growing(); // stop if thread is not stopped 
 	start_parallel_region_growing(); // start 
 }
 ///
 void visual_processing::single_hit__regrow_unsigned_mean_curvature_based() {
 	data_ptr->point_cloud_kit->gm = data_ptr->point_cloud_kit->growing_mode::UNSIGNED_MEAN_CURVATURE_BASED;
-	data_ptr->point_cloud_kit->update_seed_to_queue(); // reset growing parameters, faces are marked as unmarked, recover from seed_for_regions
+	data_ptr->point_cloud_kit->reset_queue_with_seeds(); // reset growing parameters, faces are marked as unmarked, recover from seed_for_regions
 	stop_parallel_region_growing(); // stop if thread is not stopped  
 	start_parallel_region_growing(); // start 
 }
 ///
 void visual_processing::single_hit__regrow_distance_and_curvature_based() {
 	data_ptr->point_cloud_kit->gm = data_ptr->point_cloud_kit->growing_mode::DISTANCE_AND_MEAN_CURVATURE_BASED;
-	data_ptr->point_cloud_kit->update_seed_to_queue(); // reset growing parameters, faces are marked as origin  
+	data_ptr->point_cloud_kit->reset_queue_with_seeds(); // reset growing parameters, faces are marked as origin  
 	stop_parallel_region_growing(); // stop if thread is not stopped 	s
 	start_parallel_region_growing(); // start 
 }
 ///
 void visual_processing::single_hit__regrow_stop_at_high_curvature() {
 	data_ptr->point_cloud_kit->gm = data_ptr->point_cloud_kit->growing_mode::STOP_ON_BOUNDARY;
-	data_ptr->point_cloud_kit->update_seed_to_queue(); // reset growing parameters, faces are marked as unmarked  
+	data_ptr->point_cloud_kit->reset_queue_with_seeds(); // reset growing parameters, faces are marked as unmarked  
 	stop_parallel_region_growing(); // stop if thread is not stopped 	s
 	start_parallel_region_growing(); // start 
 }
@@ -1581,7 +1608,8 @@ void visual_processing::create_gui() {
 	
 	//
 	bool gui_io = true;
-	bool gui_rg = true;
+	bool gui_rg = false;
+	bool gui_irg = true;
 	bool gui_pc_cleaning = true;
 	bool gui_pc_rendering_style = true;
 	bool gui_Fitting = true;
@@ -1655,6 +1683,38 @@ void visual_processing::create_gui() {
 		connect_copy(add_button("[Clod]direct_buffer_saving")->click, rebind(this, &visual_processing::direct_buffer_saving));
 	}
 	//
+	if (begin_tree_node("Interactive Region Growing", gui_irg, gui_irg, "level=3")) {
+		//
+		add_member_control(this, "check_the_queue_and_stop", data_ptr->point_cloud_kit->check_the_queue_and_stop, "check");
+		add_member_control(this, "ignore_high_curvature_regions", data_ptr->point_cloud_kit->ignore_high_curvature_regions, "check");
+		add_member_control(this, "final_grow", data_ptr->point_cloud_kit->final_grow, "check");
+		add_member_control(this, "minimum_searching_neighbor_points", data_ptr->point_cloud_kit->minimum_searching_neighbor_points,
+			"value_slider", "min=1;max=50;log=false;ticks=true;");
+		add_member_control(this, "growing_latency", data_ptr->point_cloud_kit->growing_latency, // per point? 
+			"value_slider", "min=1;max=500;log=false;ticks=true;");
+		connect_copy(add_button("pause_continue_parallel_region_growing")->click,
+			rebind(this, &visual_processing::pause_continue_parallel_region_growing));
+		add_member_control(this, "check_the_queue_and_stop", data_ptr->point_cloud_kit->use_property_scale, "check");
+		add_member_control(this, "use_property_scale", data_ptr->point_cloud_kit->use_property_scale, "check");
+
+		//
+		connect_copy(add_button("prepare_grow_ourmethod")->click,
+			rebind(this, &visual_processing::prepare_grow_ourmethod));
+		connect_copy(add_button("load_seeds_with_dialog_without_recover")->click, 
+			rebind(this, &visual_processing::load_seeds_with_dialog_without_recover));
+		
+		add_decorator("// iterative interaction ", "heading", "level=3");
+
+		// 
+		connect_copy(add_button("mark_next_seed")->click, rebind(this, &visual_processing::mark_next_seed));
+		connect_copy(add_button("force_start_grow")->click,
+			rebind(this, &visual_processing::force_start_grow));
+		connect_copy(add_button("submit_face")->click,
+			rebind(data_ptr->point_cloud_kit, &point_cloud_interactable::submit_face));
+		connect_copy(add_button("final_grow")->click,
+			rebind(this, &visual_processing::final_grow));
+	}
+	//
 	if (begin_tree_node("Region Growing", gui_rg, gui_rg, "level=3")) {
 		// prepare computing, extract neighbour graphs, commpute cuavature, compute knn 
 		//connect_copy(add_button("[S,ONCE]prepare_region_grow")->click, rebind(this, &visual_processing::single_hit__prepare_region_grow));
@@ -1663,14 +1723,15 @@ void visual_processing::create_gui() {
 		
 		add_decorator("// seed selection ", "heading", "level=3");
 		// seed selection 
-		connect_copy(add_button("mark_sample_seed")->click, rebind(this, &visual_processing::mark_sample_seed));
 		connect_copy(add_button("load_sample_seeds_default")->click, rebind(this, &visual_processing::load_sample_seeds_default));
 		connect_copy(add_button("save_sample_seeds_default")->click, rebind(this, &visual_processing::save_sample_seeds_default));
 		connect_copy(add_button("load_sample_seeds_with_dialog")->click, rebind(this, &visual_processing::load_sample_seeds_with_dialog));
 		connect_copy(add_button("save_sample_seeds_with_dialog")->click, rebind(this, &visual_processing::save_sample_seeds_with_dialog));
-
+		connect_copy(add_button("reset_queue_with_seeds")->click, rebind(data_ptr->point_cloud_kit, 
+			&point_cloud_interactable::reset_queue_with_seeds));
 		//
-		connect_copy(add_button("update_seed_to_queue")->click, rebind(data_ptr->point_cloud_kit, &point_cloud_interactable::update_seed_to_queue));
+		connect_copy(add_button("mark_sample_seed")->click, rebind(this, &visual_processing::mark_sample_seed));
+		connect_copy(add_button("mark_next_seed")->click, rebind(this, &visual_processing::mark_next_seed));
 		// mark with controller possible 
 
 		add_decorator("// growing variants", "heading", "level=3");
@@ -1691,9 +1752,11 @@ void visual_processing::create_gui() {
 			"value_slider", "min=1;max=50;log=false;ticks=true;");
 		connect_copy(add_button("[S]grow_stop_on_boundaries")->click,
 			rebind(this, &visual_processing::single_hit__regrow_stop_at_high_curvature));
+		connect_copy(add_button("mark_sample_seed")->click, rebind(this, &visual_processing::mark_sample_seed));
 		
 
 		add_decorator("// debug the growing process", "heading", "level=3");
+		add_member_control(this, "use_property_scale", data_ptr->point_cloud_kit->use_property_scale, "check");
 		add_member_control(this, "knn", data_ptr->point_cloud_kit->k,
 			"value_slider", "min=1;max=50;log=false;ticks=true;");
 		add_member_control(this, "growing_latency", data_ptr->point_cloud_kit->growing_latency, // per point? 
