@@ -249,7 +249,7 @@ bool visual_processing::init(cgv::render::context& ctx)
 	mesh_kit->cull_mode = CM_OFF;*/
 
 	// config data_ptr->point_cloud_kit
-	data_ptr->point_cloud_kit->surfel_style.point_size = 1.0f;
+	data_ptr->point_cloud_kit->surfel_style.point_size = 0.2f;
 	data_ptr->point_cloud_kit->surfel_style.halo_color_strength = 0.0f;
 	data_ptr->point_cloud_kit->surfel_style.percentual_halo_width = 25.0f;
 	data_ptr->point_cloud_kit->surfel_style.blend_points = true;
