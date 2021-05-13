@@ -348,19 +348,19 @@ public:
 		// point cloud: region growing 
 		//////////////////////////////////////////////////////////////////
 		gp_btn_tmp.clear();
-		gp_btn_tmp.push_back("RegionGrowing\nGroupPicker");
+		//gp_btn_tmp.push_back("RegionGrowing\nGroupPicker");
+		gp_btn_tmp.push_back("RegionGrowing\nReset\nMarking");
+		gp_btn_tmp.push_back("RegionGrowing\nHighlightUnmarked");
 
 		gp_btn_tmp.push_back("RegionGrowing\nOurMethod");
-		gp_btn_tmp.push_back("RegionGrowing\nOurMethod\nFinalizeGrow");
-		gp_btn_tmp.push_back("RegionGrowing\nOurMethod\nUndoCurrRegion");// typically, we do not have to delete seeds 
+		//gp_btn_tmp.push_back("RegionGrowing\nOurMethod\nUndoCurrRegion"); // integrated to left press. typically, we do not have to delete seeds 
+		//gp_btn_tmp.push_back("RegionGrowing\nOurMethod\nFinalizeGrow"); // menu press 
 		gp_btn_tmp.push_back("RegionGrowing\nAccuDistanceBased");
 		gp_btn_tmp.push_back("RegionGrowing\nSeedDistanceBased");
 		gp_btn_tmp.push_back("RegionGrowing\nUnsignedMeanCurvature");
 
 		//gp_btn_tmp.push_back("RegionGrowing\nAutoRegion\nGrowing");
 		//gp_btn_tmp.push_back("RegionGrowing\nToggle\nCheckNmls");
-		gp_btn_tmp.push_back("RegionGrowing\nReset\nMarking");
-		gp_btn_tmp.push_back("RegionGrowing\nHighlightUnmarked");
 		gp_btn_tmp.push_back("RegionGrowing\nSaveToFile"); 
 		gps.push_back(gp_btn_tmp);
 

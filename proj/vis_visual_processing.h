@@ -174,7 +174,7 @@ protected:
 	bool render_pc = true;
 	bool render_skybox = true;
 	bool camera_ready = false;
-	bool render_handhold_gui = true;
+	bool render_handhold_gui = false;
 	bool force_correct_num_pcs = true;
 	bool direct_write = false;
 	bool render_img = false;

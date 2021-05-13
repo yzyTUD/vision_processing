@@ -149,7 +149,12 @@ void visual_processing::timer_event(double t, double dt) {
 }
 /// timer event executes in an other parallel thread, fixed freq 
 void visual_processing::parallel_region_growing() {
-	data_ptr->point_cloud_kit->region_growing();
+	if (data_ptr->point_cloud_kit->final_grow) {
+		data_ptr->point_cloud_kit->finalize_grow();
+	}
+	else {
+		data_ptr->point_cloud_kit->grow_curr_region(selection_kit->curr_face_selecting_id);
+	}
 }
 ///
 visual_processing::~visual_processing() {
@@ -435,6 +440,10 @@ bool visual_processing::handle(cgv::gui::event& e)
 							point_cloud::TOPOAttribute::ICP_TARGET_A
 						);
 					}
+					// final_grow can be done with menu key press 
+					if (data_ptr->check_roulette_selection(data_ptr->get_id_with_name("RegionGrowing\nOurMethod"))) {
+						final_grow();
+					}
 				}
 			}
 			if (vrke.get_action() == cgv::gui::KA_RELEASE) { //
@@ -472,7 +481,7 @@ bool visual_processing::handle(cgv::gui::event& e)
 			}
 		}
 
-		// 2 // force_start_grow current growing 
+		// right: start growing 
 		if (vrke.get_key() == vr::VR_DPAD_RIGHT) {
 			if (vrke.get_action() == cgv::gui::KA_PRESS)
 			{
@@ -486,27 +495,28 @@ bool visual_processing::handle(cgv::gui::event& e)
 			}
 		}
 
-		// 3 // submit face: pop current queue to a final queue, reset some vars 
+		// down: pause, continue 
 		if (vrke.get_key() == vr::VR_DPAD_DOWN) {
 			if (vrke.get_action() == cgv::gui::KA_PRESS)
 			{
 				if (vrke.get_controller_index() == data_ptr->right_rgbd_controller_index)
 				{
 					if (data_ptr->check_roulette_selection(data_ptr->get_id_with_name("RegionGrowing\nOurMethod"))) {
-						data_ptr->point_cloud_kit->submit_face();
+						//data_ptr->point_cloud_kit->submit_face();
+						pause_continue_parallel_region_growing();
 					}
 				}
 			}
 		}
 
-		// 4 // finalize boundaries: similar to final_grow, automatic stop
+		// left: undo_curr_region
 		if (vrke.get_key() == vr::VR_DPAD_LEFT) {
 			if (vrke.get_action() == cgv::gui::KA_PRESS)
 			{
 				if (vrke.get_controller_index() == data_ptr->right_rgbd_controller_index)
 				{
 					if (data_ptr->check_roulette_selection(data_ptr->get_id_with_name("RegionGrowing\nOurMethod"))) {
-						pause_continue_parallel_region_growing();
+						data_ptr->point_cloud_kit->undo_curr_region(selection_kit->curr_face_selecting_id);
 					}
 				}
 			}
@@ -1087,6 +1097,7 @@ void visual_processing::start_parallel_region_growing() {
 }
 ///
 void visual_processing::final_grow() {
+	data_ptr->point_cloud_kit->submit_face(); // move points from queue to final queue, all faces 
 	data_ptr->point_cloud_kit->final_grow = true;
 	force_start_grow();
 }
@@ -1716,26 +1727,32 @@ void visual_processing::create_gui() {
 		//
 		/*connect_copy(add_button("prepare_grow_ourmethod")->click,
 			rebind(this, &visual_processing::prepare_grow_ourmethod));*/
+		connect_copy(add_button("mark_sample_seed")->click, rebind(this, &visual_processing::mark_sample_seed));
 		connect_copy(add_button("load_seeds_with_dialog_without_recover")->click, 
 			rebind(this, &visual_processing::load_seeds_with_dialog_without_recover));
-		connect_copy(add_button("mark_sample_seed")->click, rebind(this, &visual_processing::mark_sample_seed));
+		connect_copy(add_button("mark_next_seed")->click, rebind(this, &visual_processing::mark_next_seed));
+		connect_copy(add_button("load_sample_seeds_default")->click, rebind(this, &visual_processing::load_sample_seeds_default));
+		connect_copy(add_button("save_sample_seeds_default")->click, rebind(this, &visual_processing::save_sample_seeds_default));
+		connect_copy(add_button("load_sample_seeds_with_dialog")->click, rebind(this, &visual_processing::load_sample_seeds_with_dialog));
+		connect_copy(add_button("save_sample_seeds_with_dialog")->click, rebind(this, &visual_processing::save_sample_seeds_with_dialog));
 		
 		add_decorator("// iterative interaction ", "heading", "level=3");
 
-		// 
-		connect_copy(add_button("mark_next_seed")->click, rebind(this, &visual_processing::mark_next_seed));
-		connect_copy(add_button("force_start_grow")->click,
-			rebind(this, &visual_processing::force_start_grow));
+		// seed selection 
+		connect_copy(add_button("reset grow, delete seeds")->click, rebind(data_ptr->point_cloud_kit, 
+			&point_cloud_interactable::prepare_grow, true)); // overwrite face ids 
+		// todo: find_next_region: select seed points automatically from low curvature regions 
+		add_member_control(this, "curr_region", selection_kit->curr_face_selecting_id,
+			"value_slider", "min=1;max=50;log=false;ticks=true;");
+		connect_copy(add_button("grow_curr_region_parallel")->click,
+			rebind(this, &visual_processing::force_start_grow)); // calls grow_curr_region in actual 
 		connect_copy(add_button("pause_continue_parallel_region_growing")->click,
 			rebind(this, &visual_processing::pause_continue_parallel_region_growing));
-		connect_copy(add_button("undo region 1")->click,
-			rebind(data_ptr->point_cloud_kit, &point_cloud_interactable::undo_curr_region, 1));
-		connect_copy(add_button("undo region 2")->click,
-			rebind(data_ptr->point_cloud_kit, &point_cloud_interactable::undo_curr_region, 2));
-		connect_copy(add_button("undo region 3")->click,
-			rebind(data_ptr->point_cloud_kit, &point_cloud_interactable::undo_curr_region, 3));
-		connect_copy(add_button("submit_face")->click,
-			rebind(data_ptr->point_cloud_kit, &point_cloud_interactable::submit_face));
+		connect_copy(add_button("undo curr region")->click,
+			rebind(data_ptr->point_cloud_kit, &point_cloud_interactable::undo_curr_region, 
+				selection_kit->curr_face_selecting_id));
+		/*connect_copy(add_button("submit_face")->click,
+			rebind(data_ptr->point_cloud_kit, &point_cloud_interactable::submit_face));*/
 		connect_copy(add_button("final_grow")->click,
 			rebind(this, &visual_processing::final_grow));
 	}

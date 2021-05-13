@@ -221,7 +221,7 @@ public:
 			cgv::gui::vr_stick_event& vrse = static_cast<cgv::gui::vr_stick_event&>(e);
 			if (vrse.get_action() == cgv::gui::SA_MOVE) { // event 
 				if (vrse.get_controller_index() == data_ptr->right_rgbd_controller_index) { // controller 
-					if (data_ptr->check_roulette_selection(data_ptr->get_id_with_name("RegionGrowing\nGroupPicker"))) { // selection 
+					if (data_ptr->check_roulette_selection(data_ptr->get_id_with_name("RegionGrowing\nOurMethod"))) { // selection 
 						if (vrse.get_y() > 0) {
 							marking_style.radius += 0.001f;
 						}
@@ -325,7 +325,7 @@ public:
 				//				marking_style.radius, true, curr_face_selecting_id);
 				//	}
 				//}
-				if (data_ptr->check_roulette_selection(data_ptr->get_id_with_name("RegionGrowing\nGroupPicker"))) { // hold throttle to mark
+				if (data_ptr->check_roulette_selection(data_ptr->get_id_with_name("RegionGrowing\nOurMethod"))) { // hold throttle to mark
 					if (v > 0) {
 						// topo selection with controller, it is on upper side in rendering
 						if (curr_active_selection == 0 && curr_topo_selecting_id != -1) {
@@ -544,38 +544,40 @@ public:
 					}*/
 				}
 				if (ci != -1) {
-					// check and update current point group selection -> which color are we using 
-					int smallestpalleteIdx = -1;
-					bool hasOverlaping = false;
-					float dist = std::numeric_limits<float>::max();
-					for (int i = 0; i < data_ptr->palette_lefthand_object_positions.size();i++) {
-						// just take the first one, righthand_object_positions has only one element
-						float cur_dist = (data_ptr->palette_lefthand_object_positions[i] 
-							- data_ptr->righthand_object_positions[0]).length();
-						if (cur_dist < dist) {
-							dist = cur_dist;
-							smallestpalleteIdx = i;
+					if (data_ptr->check_roulette_selection(data_ptr->get_id_with_name("RegionGrowing\nOurMethod"))) {
+						// check and update current point group selection -> which color are we using 
+						int smallestpalleteIdx = -1;
+						bool hasOverlaping = false;
+						float dist = std::numeric_limits<float>::max();
+						for (int i = 0; i < data_ptr->palette_lefthand_object_positions.size();i++) {
+							// just take the first one, righthand_object_positions has only one element
+							float cur_dist = (data_ptr->palette_lefthand_object_positions[i] 
+								- data_ptr->righthand_object_positions[0]).length();
+							if (cur_dist < dist) {
+								dist = cur_dist;
+								smallestpalleteIdx = i;
+							}
 						}
-					}
-					// update color with the one has minimal dist to the RC 
-					// check the position on rigth hand, if it is close enough to palette balls, we change the current index 
-					// the ball's size on right hand doesnt matter 
-					if (dist < palette_style.radius) {
-						hasOverlaping = true;
-						data_ptr->palette_righthand_object_colors[0] = 
-							data_ptr->palette_lefthand_object_colors[smallestpalleteIdx];
-						// ok-todo: update picking group information 
-						// but topo_id = id + 1, face_id = id - 9 (make sure starting from 1, 0 is reserved )
-						if (smallestpalleteIdx < 10) {
-							curr_topo_selecting_id = smallestpalleteIdx; // make sure starting from 0
-							curr_active_selection = 0; // we have just updated topo selection, make it active 
+						// update color with the one has minimal dist to the RC 
+						// check the position on rigth hand, if it is close enough to palette balls, we change the current index 
+						// the ball's size on right hand doesnt matter 
+						if (dist < palette_style.radius) {
+							hasOverlaping = true;
+							data_ptr->palette_righthand_object_colors[0] = 
+								data_ptr->palette_lefthand_object_colors[smallestpalleteIdx];
+							// ok-todo: update picking group information 
+							// but topo_id = id + 1, face_id = id - 9 (make sure starting from 1, 0 is reserved )
+							if (smallestpalleteIdx < 10) {
+								curr_topo_selecting_id = smallestpalleteIdx; // make sure starting from 0
+								curr_active_selection = 0; // we have just updated topo selection, make it active 
+							}
+							else {
+								curr_face_selecting_id = smallestpalleteIdx - 10; // make sure starting from 0
+								curr_active_selection = 1; // make it active 
+							}
+							std::cout << "current face selecting index = " << curr_face_selecting_id << std::endl;
+							std::cout << "current topo selecting index = " << curr_topo_selecting_id << std::endl;
 						}
-						else {
-							curr_face_selecting_id = smallestpalleteIdx - 10; // make sure starting from 0
-							curr_active_selection = 1; // make it active 
-						}
-						std::cout << "current face selecting index = " << curr_face_selecting_id << std::endl;
-						std::cout << "current topo selecting index = " << curr_topo_selecting_id << std::endl;
 					}
 
 					// update headset information in drawbale for shading effects, enable selection effects 
@@ -698,6 +700,10 @@ public:
 			data_ptr->righthand_object_colors[0] = data_ptr->FACE_ID_COLOR_MAPPING[2];
 		}
 		if (data_ptr->check_roulette_selection(data_ptr->get_id_with_name("RegionGrowing\nGroupPicker"))) {
+			render_palette_on_left_hand(ctx);
+			render_palette_sphere_on_righthand(ctx);
+		}
+		if (data_ptr->check_roulette_selection(data_ptr->get_id_with_name("RegionGrowing\nOurMethod"))) {
 			render_palette_on_left_hand(ctx);
 			render_palette_sphere_on_righthand(ctx);
 		}

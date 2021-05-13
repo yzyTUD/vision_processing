@@ -369,7 +369,9 @@ public:
 	///
 	void scale_model();
 	///
-	void finalize_boundaries();
+	void grow_curr_region(int curr_region);
+	///
+	void finalize_grow();
 	///
 	void grow_one_region(int gi);
 	/// deprecated, not good to keep an other thread running 
