@@ -173,6 +173,7 @@ protected:
 		//= new point_cloud_interactable();
 	bool render_pc = true;
 	bool render_skybox = true;
+	bool camera_ready = false;
 	bool render_handhold_gui = true;
 	bool force_correct_num_pcs = true;
 	bool direct_write = false;

@@ -352,6 +352,8 @@ public:
 	/// 
 	void extract_neighbours();
 	void rerender_seeds();
+	/// clear prev seed 
+	void clear_previous_queue(int prev_pid, int which_group);
 	/// add seed to queue given group, others are not changed 
 	void add_seed_to_queue(int which_group);
 	/// collect marked points to queue, add seeds for the region growing 
@@ -362,6 +364,10 @@ public:
 	void region_growing();
 	///
 	void submit_face();
+	/// opposite to submit face, we may want to undo current grow 
+	void undo_curr_region(int curr_region);
+	///
+	void scale_model();
 	///
 	void finalize_boundaries();
 	///
@@ -374,6 +380,8 @@ public:
 	void reset_region_growing_seeds();
 	/// save to file 
 	void record_seed_for_regions(std::string fn);
+	///
+	void clear_seed_for_regions();
 	/// load only 
 	void load_seed_for_regions(std::string fn);
 	/// read back from file with the following file format: size of the vector, content 
@@ -439,7 +447,7 @@ public:
 	/// loop all points to check is too slow 
 	bool check_the_queue_and_stop = false;
 	/// ignore high curvature points, sometime searching radius is too large 
-	bool ignore_high_curvature_regions = true;
+	bool ignore_high_curvature_regions = false;
 	/// 
 	std::vector<int> num_of_knn_used_for_each_group;
 	///
@@ -450,6 +458,13 @@ public:
 	bool use_property_scale = false;
 	///
 	int minimum_searching_neighbor_points = 10;
+	///
+	float model_scale = 1;
+	///
+	float accu_model_scale = 1;
+	///
+	float last_model_scale = 1;
+
 
 	/* Fine-Grained Point Classification */
 	/// thw quality of the boundaries depends on region growing steps, how good faces are marked 

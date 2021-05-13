@@ -1762,12 +1762,18 @@ enum YPCFlags
 	YPC_HAS_TCS = 4,
 	YPC_HAS_PIXCRDS = 8,
 
+	// quick test for point cleaning 
 	YPC_HAS_TOPO_SELECTIONS = 16,
 	YPC_HAS_LODS = 32,
 
+	// 10-05-2021
 	YPC_HAS_NEIGHBORS = 64,
 	YPC_HAS_CURVATURE = 128,
-	YPC_HAS_CURVINFO = 256
+	YPC_HAS_CURVINFO = 256,
+
+	// 12-05-2021
+	YPC_HAS_FACE_SELECTIONS = 512,
+	YPC_HAS_SCAN_INDICES = 1024
 };
 
 /// buffer based, gpc format gpu rendering manipulation point cloud 

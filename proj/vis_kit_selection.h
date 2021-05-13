@@ -272,7 +272,7 @@ public:
 					if (vrke.get_controller_index() == data_ptr->right_rgbd_controller_index) { //
 						if (data_ptr->check_roulette_selection(data_ptr->get_id_with_name("RegionGrowing\nPrepare\nMarking"))) { //
 							// this will overwrite face segmentations 
-							data_ptr->point_cloud_kit->prepare_grow(false); // not read from file 
+							data_ptr->point_cloud_kit->prepare_grow(true); // not read from file 
 						}
 					}
 				}
@@ -371,10 +371,25 @@ public:
 									if (closest_dist > marking_style.radius)
 										can_mark = false;
 									if (can_mark) {
-										data_ptr->point_cloud_kit->seed_for_regions[curr_face_selecting_id] = closest_idx;
-										// state: seed_for_regions updated 
-										data_ptr->point_cloud_kit->add_seed_to_queue(curr_face_selecting_id);
-										//data_ptr->point_cloud_kit->reset_queue_with_seeds(); // and face_id
+										std::cout << "curr radius= " << marking_style.radius << std::endl;
+										std::cout << "closest_dist= (should be smaller )" << closest_dist << std::endl;
+
+										std::cout << "error=" << marking_style.radius-closest_dist << std::endl;
+										bool reset_all_queue = false;
+										if (reset_all_queue) {
+											data_ptr->point_cloud_kit->reset_queue_with_seeds(); // and face_id
+										}
+										else {
+											// clear idx before  
+											int prev_pid = data_ptr->point_cloud_kit->seed_for_regions[curr_face_selecting_id];
+											if (prev_pid != -1) { // [-1] will overflow 
+												data_ptr->point_cloud_kit->clear_previous_queue(prev_pid, curr_face_selecting_id);
+											}
+											// update seed array 
+											data_ptr->point_cloud_kit->seed_for_regions[curr_face_selecting_id] = closest_idx;
+											// insert to queue 
+											data_ptr->point_cloud_kit->add_seed_to_queue(curr_face_selecting_id);
+										}
 									}
 								}
 								//data_ptr->point_cloud_kit->can_parallel_edit = true;

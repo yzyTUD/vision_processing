@@ -1411,6 +1411,14 @@ void point_cloud_interactable::rerender_seeds() {
 	//	}
 	//}
 }
+///
+void point_cloud_interactable::clear_previous_queue(int prev_pid, int which_group) {
+	pc.face_id.at(prev_pid) = 0; // reset face selection 
+	pc.point_in_queue[prev_pid] = false; // reset
+	pc.point_in_queue_which_group[prev_pid] = 0;
+	pc.point_visited[prev_pid] = false; // not visited
+	queue_for_regions[which_group].pop();
+}
 /// do not modify others. will be expend. interactive region growing  
 void point_cloud_interactable::add_seed_to_queue(int which_group) {
 	int pid = seed_for_regions[which_group]; // Wrote before 
@@ -1484,6 +1492,24 @@ void point_cloud_interactable::record_seed_for_regions(std::string fn) {
 	fclose(fp);
 	if(success)
 		std::cout << "saved!" << std::endl;
+}
+///
+void point_cloud_interactable::clear_seed_for_regions() {
+	// reset seed array 
+	for (auto& s : seed_for_regions)
+		s = -1;
+
+	// reset queue 
+	for (int curr_region = 0; curr_region < pc.num_of_face_selections_rendered; curr_region++) {
+		if (!queue_for_regions[curr_region].empty()) {
+			point_priority_mapping curr_top = queue_for_regions[curr_region].top();
+			pc.face_id.at(std::get<ID>(curr_top)) = 0; // reset color 
+			pc.point_in_queue.at(std::get<ID>(curr_top)) = false;
+			pc.point_in_queue_which_group.at(std::get<ID>(curr_top)) = 0;
+			pc.point_visited.at(std::get<ID>(curr_top)) = false;
+			queue_for_regions[curr_region].pop();
+		}
+	}
 }
 /// load only, not modify directly 
 void point_cloud_interactable::load_seed_for_regions(std::string fn) {
@@ -1605,7 +1631,7 @@ void point_cloud_interactable::submit_face() {
 	for (int curr_group = 1; curr_group < pc.num_of_face_selections_rendered; curr_group++) {
 		while (!queue_for_regions[curr_group].empty()) {
 			curr_top = queue_for_regions[curr_group].top();
-			pc.face_id.at(std::get<ID>(curr_top)) = 19; // reset color 
+			pc.face_id.at(std::get<ID>(curr_top)) = 18; // set color for high curvature regions 
 			final_queue_for_regions[curr_group].push(curr_top); // save to an other queue, for final growing process 
 			// mark as in queue 
 			pc.point_in_queue.at(std::get<ID>(curr_top)) = true;
@@ -1617,11 +1643,58 @@ void point_cloud_interactable::submit_face() {
 	}
 	// state: all queue empty, everything in queue pushed to final_queue_for_regions
 }
+///
+void point_cloud_interactable::undo_curr_region(int curr_region) {
+	// face_id, in_queue,point_in_queue_which_group , point_visited
+	// clear current queue and final queue for the selected region  
+
+	// recover points in queue if present
+	while (!queue_for_regions[curr_region].empty()) {
+		point_priority_mapping curr_top = queue_for_regions[curr_region].top();
+		pc.face_id.at(std::get<ID>(curr_top)) = 0; // reset color 
+		pc.point_in_queue.at(std::get<ID>(curr_top)) = false;
+		pc.point_in_queue_which_group.at(std::get<ID>(curr_top)) = 0;
+		pc.point_visited.at(std::get<ID>(curr_top)) = false;
+		queue_for_regions[curr_region].pop();
+	}
+
+	// recover point in final queue if present
+	while (!final_queue_for_regions[curr_region].empty()) { 
+		point_priority_mapping curr_top = final_queue_for_regions[curr_region].top();
+		pc.face_id.at(std::get<ID>(curr_top)) = 0; // reset color 
+		pc.point_in_queue.at(std::get<ID>(curr_top)) = false;
+		pc.point_in_queue_which_group.at(std::get<ID>(curr_top)) = 0;
+		pc.point_visited.at(std::get<ID>(curr_top)) = false;
+		final_queue_for_regions[curr_region].pop(); 
+	}
+
+	// loop over to reset point face id, just one time  
+	for (int i = 0; i < pc.get_nr_points(); i++) {
+		if (pc.face_id.at(i) == curr_region) {
+			pc.face_id.at(i) = 0; // reset color 
+			pc.point_in_queue.at(i) = false; // should already been false 
+			pc.point_in_queue_which_group.at(i) = 0; // optional, just make it safe 
+			pc.point_visited.at(i) = false; // must have 
+		}
+	}
+
+	// re-add seed to queue 
+	add_seed_to_queue(curr_region);
+}
 /// 
 void point_cloud_interactable::finalize_boundaries() {
 
 }
-
+/// apply model scalling 
+void point_cloud_interactable::scale_model() {
+	float tmp = model_scale;
+	model_scale *= 1.0f / last_model_scale; // recover last scale first 
+	mat3 scale_matrix = cgv::math::scale3(vec3(model_scale, model_scale, model_scale));
+	for (int i = 0; i < pc.get_nr_points(); i++) {
+		pc.pnt(i) = scale_matrix * pc.pnt(i);
+	}
+	last_model_scale = tmp;
+}
 /// entry function 
 void point_cloud_interactable::region_growing() {
 	auto start = std::chrono::high_resolution_clock::now();
@@ -1685,6 +1758,8 @@ void point_cloud_interactable::region_growing() {
 		}
 	}
 
+	if (final_grow) 
+		final_grow = false;
 
 	auto finish = std::chrono::high_resolution_clock::now();
 	std::chrono::duration<double> elapsed = finish - start;
