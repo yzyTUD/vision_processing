@@ -368,7 +368,21 @@ void point_cloud::update_scan_index_visibility() {
 	//}
 		
 }
+/*
+	algorithm:
+		collect points from F_conn to modelFace, 
+            fill corresponding fields at the same time 
+        collect points from V_conn to modelV, 
+            fill corresponding fields at the same time 
+        collect points from E_conn to modelEdges, 
+            fill corresponding fields at the same time
 
+        loop over modelFace list, find adjacent 
+			edges and add their ids to a set  
+        loop over modelEdge list, find adjacent 
+			corners and add their ids to a set 
+
+*/
 /// collect point_indices/ compute he 
 void point_cloud::make_explicit() {
 	// collect faces 
@@ -382,7 +396,7 @@ void point_cloud::make_explicit() {
 		}
 		modelFace.push_back(tmp_mFace);
 	}
-	// collect corners 
+	// collect vertices 
 	for (int i = 0; i < num_corner_ids; i++) {
 		mV tmp_mV;
 		tmp_mV.corner_id = i;
@@ -452,7 +466,7 @@ void point_cloud::make_explicit() {
 void point_cloud::vertex_fitting() {
 	// goal: fit one vertex for each corner
 	for (auto& mv : modelV) {
-		Pnt fitted_center_point = Pnt(0,0,0); // for corner i 
+		Pnt fitted_center_point = Pnt(0, 0, 0); // for corner i 
 		// goal: collect points belones to this corner and compute 
 		for (int i: mv.point_indices)
 			fitted_center_point += pnt(i);
@@ -1773,7 +1787,8 @@ enum YPCFlags
 
 	// 12-05-2021
 	YPC_HAS_FACE_SELECTIONS = 512,
-	YPC_HAS_SCAN_INDICES = 1024
+	YPC_HAS_SCAN_INDICES = 1024,
+	YPC_HAS_POINT_SIZE = 2048
 };
 
 /// buffer based, gpc format gpu rendering manipulation point cloud 
@@ -1847,6 +1862,18 @@ bool point_cloud::read_ypc(const std::string& file_name) {
 			success = success && (read_bytes == 30);
 		}
 	}
+
+	// 14-05-2021
+	if (flags & YPC_HAS_FACE_SELECTIONS) {
+		face_id.resize(n);
+		success = success && (fread(&face_id[0], sizeof(int), n, fp) == n);
+	}
+	if (flags & YPC_HAS_SCAN_INDICES) {
+		point_scan_index.resize(n);
+		success = success && (fread(&point_scan_index[0], sizeof(float), n, fp) == n);
+	}
+	if(flags & YPC_HAS_POINT_SIZE)
+		success = success && (fread(&suggested_point_size, sizeof(float), 1, fp) == 1);
 
 	return fclose(fp) == 0 && success;
 }
@@ -3034,7 +3061,11 @@ bool point_cloud::write_buffer_bin(const std::string& file_name, std::vector<cgv
 
 	return fclose(fp) == 0 && success;
 }
-
+/// <summary>
+///  remenber to keep the order! 
+/// </summary>
+/// <param name="file_name"></param>
+/// <returns></returns>
 bool point_cloud::write_ypc(const std::string& file_name) {
 	FILE* fp = fopen(file_name.c_str(), "wb");
 	if (!fp)
@@ -3049,6 +3080,9 @@ bool point_cloud::write_ypc(const std::string& file_name) {
 	flags += has_curvinfo() ? YPC_HAS_CURVINFO : 0;
 	flags += has_curvatures() ? YPC_HAS_CURVATURE : 0;
 	flags += has_neighbors() ? YPC_HAS_NEIGHBORS : 0;
+	flags += has_face_selections() ? YPC_HAS_FACE_SELECTIONS : 0;
+	flags += has_scan_indices() ? YPC_HAS_SCAN_INDICES : 0;
+	flags += (suggested_point_size > 0) ? YPC_HAS_POINT_SIZE : 0;
 
 	bool success; 
 
@@ -3082,6 +3116,15 @@ bool point_cloud::write_ypc(const std::string& file_name) {
 			success = success && (write_bytes == 30);
 		}
 	}
+
+	// 14-05-2021
+	if(has_face_selections())
+		success = success && (fwrite(&face_id[0], sizeof(int), n, fp) == n);
+	if(has_scan_indices())
+		success = success && (fwrite(&point_scan_index[0], sizeof(float), n, fp) == n);
+	if (suggested_point_size > 0)
+		success = success && (fwrite(&suggested_point_size, sizeof(float), 1, fp) == 1);
+
 	return fclose(fp) == 0 && success;
 }
 

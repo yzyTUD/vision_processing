@@ -15,10 +15,7 @@
 #define BYTE_COLORS
 
 // implicit connectivity 
-/*
-	this will be saved to file as:
-	vc point_id valence incident_ids corner_id
-*/
+/*this will be saved to file as: vc point_id valence incident_ids corner_id*/
 struct V_conn_info {
 	int point_id; // this index can be used to retrieve points in point list
 	int valence;
@@ -26,11 +23,7 @@ struct V_conn_info {
 	int corner_id; // to which corner it belones to 
 	bool visited;
 };
-/*
-	this will be saved to file as:
-	ec point_id valence incident_ids edge_id
-*/
-// this is stored per point 
+/*this will be saved to file as:ec point_id valence incident_ids edge_id*/
 struct E_conn_info {
 	int point_id; // this index can be used to retrieve points in point list
 	int valence;
@@ -38,10 +31,7 @@ struct E_conn_info {
 	int edge_id; // to which edge it belones to 
 	bool visited;
 };
-/*
-	this will be saved to file as: 
-	fc point_id face_id angle_in_neighbor_graph
-*/
+/*this will be saved to file as: fc point_id face_id angle_in_neighbor_graph*/
 struct F_conn_info {
 	int point_id; // this index can be used to retrieve points in point list
 	// surrounded by points with the same id 
@@ -69,15 +59,15 @@ struct mV { // "model vertex "
 	int corner_id; // to which corner it belones to 
 
 	// point based representation 
-	std::vector<int> point_indices; // ok
-	int valence; // ok
+	std::vector<int> point_indices; // done
+	int valence; // done
 
 	// he 
 	std::set<int> incident_edges;
-	std::set<int> incident_faces; // ok
+	std::set<int> incident_faces; // done
 
 	// fitting
-	int control_point_index; // implicit fitted position // ok 
+	int control_point_index; // implicit fitted position // done 
 
 };
 struct mHEdge {
@@ -271,9 +261,7 @@ public:
 	int num_of_palette_spheres_rendered = num_of_topo_selections_rendered + num_of_face_selections_rendered;
 	float currentScanIdx_Recon = 0; // for scan index re-construction 
 
-	/*
-		per vertex info, can be stored externally in a .cgvscan file 
-	*/
+	/*per vertex info*/
 	/// container for point positions
 	std::vector<Pnt> P;
 	/// container for point normals
@@ -286,7 +274,7 @@ public:
 	std::vector<PixCrd> I;
 	/// container for local features 
 	std::vector<Dir> F;
-	/// cache knn 
+	/// cache neighbour points 
 	std::vector<std::vector<int>> nearest_neighbour_indices;
 	/// per-vertex attribute: used for marking faces, the first step, region growing 
 	std::vector<int> face_id; // from point_selection, write to .scan file  
@@ -308,6 +296,9 @@ public:
 	std::vector<int> point_in_queue_which_group;
 public:
 
+	// read from file 
+	float suggested_point_size = -1; // check with larger than 0
+
 	/*curvature estimation */ 
 	// ng required, in upper level -> 
 	// compute_principal_curvature()
@@ -319,7 +310,7 @@ public:
 	bool has_lods() { return (lods.size() > 0) || has_lod; }
 	bool has_curvatures() { return curvature.size() > 0; }
 	bool has_neighbors() { return nearest_neighbour_indices.size() > 0; }
-	bool has_curvinfo() { return has_curv_information; }
+	bool has_curvinfo() { return curvature.size() > 0; }
 
 	/*camera positions */
 	std::vector<cgv::math::fvec<float, 3>> cam_posi_list;
@@ -343,7 +334,8 @@ public:
 	std::vector<F_conn_info> F_conn; int num_face_ids;
 	/// edges in connectivity graph
 	std::vector<E_conn_info> E_conn; int num_edge_ids;
-	/// vertices in connectivity graph, one vertex V consists of a list of points 
+	/// vertices in connectivity graph, 
+	/// one vertex V consists of a list of points 
 	std::vector<V_conn_info> V_conn;  int num_corner_ids;
 	/// convenient structures for fast retrivel 
 	std::map<int, V_conn_info> pid_to_V_conn_info_map; // from point_id, find V_conn_info
@@ -373,7 +365,7 @@ public:
 	/*
 		explicit storage of topological information 
 	*/
-	/// a list of corners 
+	/// a list of vertices 
 	std::vector<mV> modelV;
 	/// a list of edges
 	std::vector<mEdge> modelEdge;

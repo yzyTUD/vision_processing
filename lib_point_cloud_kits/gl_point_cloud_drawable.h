@@ -70,9 +70,13 @@ public:
 	cgv::render::surfel_renderer s_renderer;
 	cgv::render::surfel_render_style surfel_style;
 	cgv::render::attribute_array_manager sl_manager;
-	bool render_with_functional_ids_only = false;
 	bool highlight_unmarked_points = false;
 	bool force_render_with_original_color = false;
+
+	bool render_with_topo_selction = false;
+	bool render_with_topo_selctions_only = false;
+	bool colorize_with_face_selection = true;
+	bool colorize_with_face_selection_only = false;
 
 	/*point rendering */
 	

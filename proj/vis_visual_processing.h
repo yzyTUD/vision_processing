@@ -44,6 +44,7 @@
 #include <vr_kit_tmpfixed_gui.h>
 #include <vis_kit_meshes.h>
 #include "vis_parametric_surface_kit.h"
+#include "vr_kit_env_renderer.h"
 
 class visual_processing :
 	public cgv::base::node,
@@ -175,6 +176,7 @@ protected:
 	bool render_skybox = true;
 	bool camera_ready = false;
 	bool render_handhold_gui = false;
+	bool render_env = true;
 	bool force_correct_num_pcs = true;
 	bool direct_write = false;
 	bool render_img = false;
@@ -182,8 +184,9 @@ protected:
 	int num_of_points_wanted = 1;
 	int strategy = 1;
 	bool auto_growing_prepare_thesis = true;
-	bool overwrite_face_id = true;
+	bool overwrite_face_id = false;
 	bool instance_redraw = true;
+	bool put_points_to_table = true;
 
 	// cam rendering 
 	std::vector<vec3> point_and_cam;
@@ -199,6 +202,7 @@ protected:
 		//= new vr_kit_handhold_near_gui();
 		//= nullptr;
 	vr_kit_skybox* skybox_kit = new vr_kit_skybox();
+	env_renderer* env_render_kit = new env_renderer();
 	boxgui_interactable* b_interactable = nullptr;
 	vis_kit_meshes* mesh_kit = nullptr;
 	vis_kit_meshes* mesh_kit_2 = nullptr;
@@ -385,7 +389,10 @@ public:
 	void read_pc_parallel();
 	void start_reading_pc_parallel();
 	void start_parallel_region_growing();
-	void final_grow();
+	void final_grow_dist_and_curvature_based();
+	void final_grow_accu_dist();
+	void grow_with_dist_and_curvature();
+	void grow_with_accu_dist();
 	void force_start_grow();
 	void pause_continue_parallel_region_growing();
 	void stop_parallel_region_growing();
@@ -450,13 +457,18 @@ public:
 	void save_sample_seeds_default();
 	void single_hit__prepare_region_grow(bool overwrite_face_id);
 	void single_hit__prepare_region_grow_worker(bool overwrite_face_id);
-
 	void single_hit__regrow_accu_distance_based();
 	void single_hit__regrow_seed_distance_based();
 	void single_hit__regrow_unsigned_mean_curvature_based();
 	void single_hit__regrow_distance_and_curvature_based();
 	void single_hit__regrow_stop_at_high_curvature();
 	void find_pointcloud();
+	void find_next_and_increase_curr_region();
+	/// embeded for vr handlers 
+	void down_scale_model_one_step();
+	/// embeded for vr handlers 
+	void upscale_model_one_step();
+	void undo_curr_region();
 
 	void create_gui();
 	void write_trajectory() { draw_kit->write_trajectory(); }

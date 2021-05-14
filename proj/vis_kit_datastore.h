@@ -351,8 +351,11 @@ public:
 		//gp_btn_tmp.push_back("RegionGrowing\nGroupPicker");
 		gp_btn_tmp.push_back("RegionGrowing\nReset\nMarking");
 		gp_btn_tmp.push_back("RegionGrowing\nHighlightUnmarked");
+		gp_btn_tmp.push_back("RegionGrowing\nScaleModel");
 
+		gp_btn_tmp.push_back("RegionGrowing\nSeedPicker");
 		gp_btn_tmp.push_back("RegionGrowing\nOurMethod");
+		gp_btn_tmp.push_back("RegionGrowing\nOurMethod\nToggleIgnore\nHighCurvatureRegions");
 		//gp_btn_tmp.push_back("RegionGrowing\nOurMethod\nUndoCurrRegion"); // integrated to left press. typically, we do not have to delete seeds 
 		//gp_btn_tmp.push_back("RegionGrowing\nOurMethod\nFinalizeGrow"); // menu press 
 		gp_btn_tmp.push_back("RegionGrowing\nAccuDistanceBased");

@@ -207,6 +207,8 @@ public:
 	/*vr point addition */
 	/// generate points with in the quad we are holding 
 	void spawn_points_in_the_handhold_quad(quat controllerq, vec3 controllert, vec3 quadextent);
+	/// put point cloud to table 
+	void auto_scale_after_read_points();
 	/// hwo many points are expected to be added
 	int num_of_points_to_be_added = 100;
 
@@ -370,8 +372,8 @@ public:
 	void scale_model();
 	///
 	void grow_curr_region(int curr_region);
-	///
-	void finalize_grow();
+	/// 
+	void finalize_grow(int which_region);
 	///
 	void grow_one_region(int gi);
 	/// deprecated, not good to keep an other thread running 
@@ -388,6 +390,8 @@ public:
 	void load_seed_for_regions(std::string fn);
 	/// read back from file with the following file format: size of the vector, content 
 	void recover_seed_for_regions(std::string fn);
+	/// automatic seed finding 
+	int find_next_seed_in_low_curvature_area();
 	///  not used 
 	void init_region_growing_by_setting_group_and_seeds(int growing_group, std::queue<int> picked_id_list);
 	/// check if all points growed, deprecated
@@ -466,6 +470,10 @@ public:
 	float accu_model_scale = 1;
 	///
 	float last_model_scale = 1;
+	///
+	mat4 model_translation;
+	/// 
+	mat4 inv_model_translation;
 
 
 	/* Fine-Grained Point Classification */

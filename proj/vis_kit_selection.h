@@ -221,7 +221,7 @@ public:
 			cgv::gui::vr_stick_event& vrse = static_cast<cgv::gui::vr_stick_event&>(e);
 			if (vrse.get_action() == cgv::gui::SA_MOVE) { // event 
 				if (vrse.get_controller_index() == data_ptr->right_rgbd_controller_index) { // controller 
-					if (data_ptr->check_roulette_selection(data_ptr->get_id_with_name("RegionGrowing\nOurMethod"))) { // selection 
+					if (data_ptr->check_roulette_selection(data_ptr->get_id_with_name("RegionGrowing\nSeedPicker"))) { // selection 
 						if (vrse.get_y() > 0) {
 							marking_style.radius += 0.001f;
 						}
@@ -232,10 +232,10 @@ public:
 					// shading effects 
 					if (data_ptr->check_roulette_selection(data_ptr->get_id_with_name("PCCleaning\nFake\nDel"))) { // selection 
 						if (vrse.get_y() > 0) {
-							data_ptr->point_cloud_kit->controller_effect_range += 0.001f;
+							data_ptr->point_cloud_kit->controller_effect_range += 0.00001f;
 						}
 						else {
-							data_ptr->point_cloud_kit->controller_effect_range -= 0.001f;
+							data_ptr->point_cloud_kit->controller_effect_range -= 0.00001f;
 						}
 					}
 					if (data_ptr->check_roulette_selection(data_ptr->get_id_with_name("PCCleaning\nFake\nSeleciton"))) { // selection 
@@ -325,7 +325,7 @@ public:
 				//				marking_style.radius, true, curr_face_selecting_id);
 				//	}
 				//}
-				if (data_ptr->check_roulette_selection(data_ptr->get_id_with_name("RegionGrowing\nOurMethod"))) { // hold throttle to mark
+				if (data_ptr->check_roulette_selection(data_ptr->get_id_with_name("RegionGrowing\nSeedPicker"))) { // hold throttle to mark
 					if (v > 0) {
 						// topo selection with controller, it is on upper side in rendering
 						if (curr_active_selection == 0 && curr_topo_selecting_id != -1) {
@@ -544,7 +544,7 @@ public:
 					}*/
 				}
 				if (ci != -1) {
-					if (data_ptr->check_roulette_selection(data_ptr->get_id_with_name("RegionGrowing\nOurMethod"))) {
+					if (data_ptr->check_roulette_selection(data_ptr->get_id_with_name("RegionGrowing\nSeedPicker"))) {
 						// check and update current point group selection -> which color are we using 
 						int smallestpalleteIdx = -1;
 						bool hasOverlaping = false;
@@ -703,7 +703,7 @@ public:
 			render_palette_on_left_hand(ctx);
 			render_palette_sphere_on_righthand(ctx);
 		}
-		if (data_ptr->check_roulette_selection(data_ptr->get_id_with_name("RegionGrowing\nOurMethod"))) {
+		if (data_ptr->check_roulette_selection(data_ptr->get_id_with_name("RegionGrowing\nSeedPicker"))) {
 			render_palette_on_left_hand(ctx);
 			render_palette_sphere_on_righthand(ctx);
 		}

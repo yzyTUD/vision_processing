@@ -252,10 +252,7 @@ void main()
 	vec2 min_p2D = ctr_p2D;
 	vec2 max_p2D = ctr_p2D + vec2(quad_extent);
 
-	color = vec4(
-				float(i)/nr_quads_per_row,
-				float(j)/nr_quads_per_row,
-				1-float(i)/nr_quads_per_row, 1);
+	color = vec4( float(i)/nr_quads_per_row, float(j)/nr_quads_per_row, 1-float(i)/nr_quads_per_row, 1);
 
 	// generate quad
 	generate_vertex(min_p2D, min_tcd);

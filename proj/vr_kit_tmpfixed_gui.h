@@ -468,11 +468,12 @@ public:
 					offset.y() = 0;*/
 				// pressing effect for individual btns 
 				// todo: support additional visual feedbacks
-				if (btn.labeltex->label_text.compare("RegionGrowing\nAutoRegion\nGrowing") == 0) {
-					if (data_ptr->point_cloud_kit->do_region_growing_directly) {
+				if (btn.labeltex->label_text.compare("RegionGrowing\nAutoRegion\nGrowing") == 0) 
+					if (data_ptr->point_cloud_kit->do_region_growing_directly) 
 						offset.y() = 0;
-					}
-				}
+				if (btn.labeltex->label_text.compare("RegionGrowing\nOurMethod\nToggleIgnore\nHighCurvatureRegions") == 0)
+					if(data_ptr->point_cloud_kit->ignore_high_curvature_regions)
+						offset.y() = 0;
 				// ...
 				// local to global 
 				data_ptr->cur_left_hand_rot_quat.rotate(offset);

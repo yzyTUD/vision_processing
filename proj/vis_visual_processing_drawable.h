@@ -150,7 +150,7 @@ void visual_processing::timer_event(double t, double dt) {
 /// timer event executes in an other parallel thread, fixed freq 
 void visual_processing::parallel_region_growing() {
 	if (data_ptr->point_cloud_kit->final_grow) {
-		data_ptr->point_cloud_kit->finalize_grow();
+		data_ptr->point_cloud_kit->finalize_grow(selection_kit->curr_face_selecting_id);
 	}
 	else {
 		data_ptr->point_cloud_kit->grow_curr_region(selection_kit->curr_face_selecting_id);
@@ -312,6 +312,7 @@ bool visual_processing::init(cgv::render::context& ctx)
 	if (draw_kit != nullptr) draw_kit->init(ctx);
 	if (imagebox_kit != nullptr) imagebox_kit->init(ctx);
 
+	if(env_render_kit!=nullptr) env_render_kit->setup_scene();
 
 	// light sources are not ava. now 
 	//ctx.disable_light_source(ctx.get_enabled_light_source_handle(0));
@@ -442,8 +443,13 @@ bool visual_processing::handle(cgv::gui::event& e)
 					}
 					// final_grow can be done with menu key press 
 					if (data_ptr->check_roulette_selection(data_ptr->get_id_with_name("RegionGrowing\nOurMethod"))) {
-						final_grow();
+						final_grow_accu_dist();
 					}
+				}
+			}
+			if (vrke.get_action() == cgv::gui::KA_PRESS) { //
+				if (vrke.get_controller_index() == data_ptr->left_rgbd_controller_index) { //
+					render_handhold_gui = !render_handhold_gui;
 				}
 			}
 			if (vrke.get_action() == cgv::gui::KA_RELEASE) { //
@@ -467,6 +473,42 @@ bool visual_processing::handle(cgv::gui::event& e)
 			}
 		}
 
+		if (data_ptr->check_roulette_selection(data_ptr->get_id_with_name("RegionGrowing\nScaleModel"))) {
+			if (vrke.get_key() == vr::VR_DPAD_UP) {
+				if (vrke.get_action() == cgv::gui::KA_PRESS)
+				{
+					if (vrke.get_controller_index() == data_ptr->right_rgbd_controller_index)
+					{
+						upscale_model_one_step();
+					}
+				}
+			}
+			if (vrke.get_key() == vr::VR_DPAD_DOWN) {
+				if (vrke.get_action() == cgv::gui::KA_PRESS)
+				{
+					if (vrke.get_controller_index() == data_ptr->right_rgbd_controller_index)
+					{
+						down_scale_model_one_step();
+					}
+				}
+			}
+		}
+
+		if (data_ptr->check_roulette_selection(data_ptr->get_id_with_name("PCCleaning\nFake\nDel"))) { // selection 
+			if (vrke.get_controller_index() == data_ptr->right_rgbd_controller_index)
+			{
+				if (vrke.get_key() == vr::VR_DPAD_UP) {
+					if (vrke.get_action() == cgv::gui::KA_PRESS) {
+						data_ptr->point_cloud_kit->controller_effect_range += 0.001f;
+					}
+				}
+				if (vrke.get_key() == vr::VR_DPAD_DOWN) {
+					if (vrke.get_action() == cgv::gui::KA_PRESS) {
+						data_ptr->point_cloud_kit->controller_effect_range -= 0.001f;
+					}
+				}
+			}
+		}
 		/*press them clockwise */ 
 		// 1 // prepare curr growing 
 		if (vrke.get_key() == vr::VR_DPAD_UP) {
@@ -699,11 +741,9 @@ bool visual_processing::handle(cgv::gui::event& e)
 				if (data_ptr->check_roulette_selection(data_ptr->get_id_with_name("RegionGrowing\nGroupPicker"))) { 
 					//data_ptr->point_cloud_kit->show_nmls = !data_ptr->point_cloud_kit->show_nmls;
 				}
-				if (data_ptr->check_roulette_selection(data_ptr->get_id_with_name("RegionGrowing\nOurMethod\nFinalizeGrow"))) {
-					final_grow();
-				}
-				if (data_ptr->check_roulette_selection(data_ptr->get_id_with_name("RegionGrowing\nOurMethod\nUndoCurrRegion"))) {
-					data_ptr->point_cloud_kit->undo_curr_region(selection_kit->curr_face_selecting_id);
+				if (data_ptr->check_roulette_selection(data_ptr->get_id_with_name("RegionGrowing\nOurMethod\nToggleIgnore\nHighCurvatureRegions"))) {
+					//data_ptr->point_cloud_kit->undo_curr_region(selection_kit->curr_face_selecting_id);
+					data_ptr->point_cloud_kit->ignore_high_curvature_regions = !data_ptr->point_cloud_kit->ignore_high_curvature_regions;
 				}
 				if (data_ptr->check_roulette_selection(data_ptr->get_id_with_name("RegionGrowing\nReset\nMarking"))) {
 					data_ptr->point_cloud_kit->prepare_grow(true);
@@ -727,7 +767,7 @@ bool visual_processing::handle(cgv::gui::event& e)
 					data_ptr->point_cloud_kit->step_back_last_selection();
 				}
 				if (data_ptr->check_roulette_selection(data_ptr->get_id_with_name("TopologyExtraction\nToggle\nOnlyRender\nFunctionIdx"))) {
-					data_ptr->point_cloud_kit->render_with_functional_ids_only = !data_ptr->point_cloud_kit->render_with_functional_ids_only;
+					//data_ptr->point_cloud_kit->render_with_functional_ids_only = !data_ptr->point_cloud_kit->render_with_functional_ids_only;
 				}
 				if (data_ptr->check_roulette_selection(data_ptr->get_id_with_name("TopologyExtraction\nTopology\nExtraction"))) {
 					//data_ptr->point_cloud_kit->extract_connectivity_graph();
@@ -831,13 +871,13 @@ bool visual_processing::handle(cgv::gui::event& e)
 					}
 				}
 				if (data_ptr->check_roulette_selection(data_ptr->get_id_with_name("PCCleaning\nFake\nDel"))) {
-					if (vrse.get_y() > 0) {
-						// larger point size 
-						data_ptr->point_cloud_kit->controller_effect_range += 0.01f;
-					}
-					else {
-						data_ptr->point_cloud_kit->controller_effect_range -= 0.01f;
-					}
+					//if (vrse.get_y() > 0) {
+					//	// larger point size 
+					//	data_ptr->point_cloud_kit->controller_effect_range += 0.01f;
+					//}
+					//else {
+					//	data_ptr->point_cloud_kit->controller_effect_range -= 0.01f;
+					//}
 				}
 				if (data_ptr->check_roulette_selection(data_ptr->get_id_with_name("PCCleaning\nAddition\nQuad"))) {
 					if (vrse.get_y() > 0 && abs(vrse.get_x()) < 0.1) {
@@ -936,14 +976,20 @@ void visual_processing::init_frame(cgv::render::context& ctx)
 ///	
 void visual_processing::draw(cgv::render::context& ctx)
 {
-	if(render_skybox)
-		if (skybox_kit != nullptr)skybox_kit->draw(ctx);
-	if (camera_ready)
+	
+	if (camera_ready) {
 		ctx.set_bg_color(1, 1, 1, 1);
-	else
-		ctx.set_bg_color(0, 0, 0, 1);
-	if(render_handhold_gui)
-		if (tmpfixed_gui_kit != nullptr) tmpfixed_gui_kit->draw(ctx);
+	}
+	else {
+		if (render_skybox) {
+			if (skybox_kit != nullptr)skybox_kit->draw(ctx);
+		}
+		else {
+			ctx.set_bg_color(0, 0, 0, 1);
+		}
+	}
+	if (render_env) if (env_render_kit != nullptr) env_render_kit->draw(ctx);
+	if (render_handhold_gui) if (tmpfixed_gui_kit != nullptr) tmpfixed_gui_kit->draw(ctx);
 	if (render_pc) data_ptr->point_cloud_kit->draw(ctx);
 	if (data_ptr->render_handhold_pc) data_ptr->point_cloud_in_hand->draw(ctx);
 	if (roller_coaster_kit_1) roller_coaster_kit_1->draw(ctx);
@@ -1060,7 +1106,10 @@ void visual_processing::read_pc() {
 	if(auto_growing_prepare_thesis)
 		single_hit__prepare_region_grow(overwrite_face_id);
 	else
-		data_ptr->point_cloud_kit->prepare_grow(false); // reading from file, do not overwrite, this will very fast 
+		data_ptr->point_cloud_kit->prepare_grow(overwrite_face_id); // reading from file, do not overwrite, this will very fast 
+	
+	if(put_points_to_table)
+		data_ptr->point_cloud_kit->auto_scale_after_read_points();
 }
 ///  read the whole pc to data_ptr->point_cloud_kit
 void visual_processing::read_pc_parallel() {
@@ -1096,14 +1145,31 @@ void visual_processing::start_parallel_region_growing() {
 	//parallel_region_growing();
 }
 ///
-void visual_processing::final_grow() {
-	data_ptr->point_cloud_kit->submit_face(); // move points from queue to final queue, all faces 
+void visual_processing::final_grow_dist_and_curvature_based() {
+	data_ptr->point_cloud_kit->gm = data_ptr->point_cloud_kit->growing_mode::DISTANCE_AND_MEAN_CURVATURE_BASED;
 	data_ptr->point_cloud_kit->final_grow = true;
+	//data_ptr->point_cloud_kit->submit_face(); // move points from queue to final queue, all faces 
+	force_start_grow(); // but, only curr region now 
+}
+///
+void visual_processing::final_grow_accu_dist() {
+	data_ptr->point_cloud_kit->gm = data_ptr->point_cloud_kit->growing_mode::ACCU_DISTANCE_BASED;
+	data_ptr->point_cloud_kit->final_grow = true;
+	data_ptr->point_cloud_kit->submit_face(); // move points from queue to final queue, all faces 
+	force_start_grow();
+}
+///
+void visual_processing::grow_with_dist_and_curvature() {
+	data_ptr->point_cloud_kit->gm = data_ptr->point_cloud_kit->growing_mode::DISTANCE_AND_MEAN_CURVATURE_BASED;
+	force_start_grow();
+}
+///
+void visual_processing::grow_with_accu_dist() {
+	data_ptr->point_cloud_kit->gm = data_ptr->point_cloud_kit->growing_mode::ACCU_DISTANCE_BASED;
 	force_start_grow();
 }
 ///
 void visual_processing::force_start_grow() {
-	data_ptr->point_cloud_kit->gm = data_ptr->point_cloud_kit->growing_mode::DISTANCE_AND_MEAN_CURVATURE_BASED;
 	if (parallel_region_growing_thread != nullptr) {
 		data_ptr->point_cloud_kit->pause_growing = true;
 		parallel_region_growing_thread->join();
@@ -1391,7 +1457,7 @@ void visual_processing::del_clipping_btn_press() {
 ///
 void visual_processing::del_menu_btn_press() {
 	// marking on cpu side, mark as deleted 
-	data_ptr->point_cloud_kit->mark_face_id_with_controller(
+	data_ptr->point_cloud_kit->mark_topo_id_with_controller(
 		data_ptr->cur_right_hand_posi + data_ptr->cur_off_right,
 		data_ptr->point_cloud_kit->controller_effect_range, point_cloud::TOPOAttribute::DEL);
 }
@@ -1624,6 +1690,30 @@ void visual_processing::find_pointcloud()
 		view_ptr->move(view_ptr->get_depth_of_focus() - 1.0);
 	}
 }
+///
+void visual_processing::find_next_and_increase_curr_region() {
+	if (selection_kit->curr_face_selecting_id == -1)
+		selection_kit->curr_face_selecting_id = 1;
+	else
+		selection_kit->curr_face_selecting_id++;
+	int pid_next = data_ptr->point_cloud_kit->find_next_seed_in_low_curvature_area();
+	data_ptr->point_cloud_kit->seed_for_regions[selection_kit->curr_face_selecting_id] = pid_next;
+	data_ptr->point_cloud_kit->add_seed_to_queue(selection_kit->curr_face_selecting_id);
+}
+/// 
+void visual_processing::down_scale_model_one_step() {
+	data_ptr->point_cloud_kit->model_scale = data_ptr->point_cloud_kit->model_scale - 0.1f;
+	data_ptr->point_cloud_kit->scale_model();
+}
+///
+void visual_processing::upscale_model_one_step() {
+	data_ptr->point_cloud_kit->model_scale = data_ptr->point_cloud_kit->model_scale + 0.1f;
+	data_ptr->point_cloud_kit->scale_model();
+}
+///
+void visual_processing::undo_curr_region() {
+	data_ptr->point_cloud_kit->undo_curr_region(selection_kit->curr_face_selecting_id);
+}
 /*gui */
 ///
 void visual_processing::create_gui() {
@@ -1658,6 +1748,7 @@ void visual_processing::create_gui() {
 	bool gui_mocap = true;
 	bool gui_selection = true;
 	bool gui_render_control = true;
+
 	if (begin_tree_node("Render Control", gui_render_control, gui_render_control, "level=3")) {
 		//
 			/*connect_copy(add_button("rotate_right")->click,
@@ -1669,12 +1760,19 @@ void visual_processing::create_gui() {
 			add_member_control(this, "paratone_3", data_ptr->paratone_3, "value_slider", "min=-1;max=1;log=false;ticks=true;");
 			add_member_control(this, "paratone_4", data_ptr->paratone_4, "value_slider", "min=-1;max=1;log=false;ticks=true;");
 			add_member_control(this, "paratone_5", data_ptr->paratone_5, "value_slider", "min=-1;max=1;log=false;ticks=true;");*/
-		add_member_control(this, "render skybox", render_skybox, "check");
+		add_member_control(this, "render_skybox", render_skybox, "check");
+		add_member_control(this, "render_env", render_env, "check");
+		add_member_control(this, "put_points_to_table", put_points_to_table, "check");
 		add_member_control(this, "camera_ready", camera_ready, "check");
 		add_member_control(this, "render_handhold_gui", render_handhold_gui, "check");
 		add_member_control(this, "render_parametric_surface", data_ptr->render_parametric_surface, "check");
 		add_member_control(this, "render_control_points", data_ptr->render_control_points, "check");
-		add_member_control(this, "render_with_functional_ids_only", data_ptr->point_cloud_kit->render_with_functional_ids_only, "check");
+		
+		add_member_control(this, "render_with_topo_selction", data_ptr->point_cloud_kit->render_with_topo_selction, "check");
+		add_member_control(this, "render_with_topo_selction_only", data_ptr->point_cloud_kit->render_with_topo_selctions_only, "check");
+		add_member_control(this, "colorize_with_face_selection", data_ptr->point_cloud_kit->colorize_with_face_selection, "check");
+		add_member_control(this, "colorize_with_face_selection_only", data_ptr->point_cloud_kit->colorize_with_face_selection_only, "check");
+
 		add_member_control(this, "force_render_with_original_color", data_ptr->point_cloud_kit->force_render_with_original_color, "check");
 		add_member_control(this, "highlight_unmarked_points", data_ptr->point_cloud_kit->highlight_unmarked_points, "check");
 		add_member_control(this, "render_nmls", data_ptr->point_cloud_kit->show_nmls, "check");
@@ -1686,6 +1784,9 @@ void visual_processing::create_gui() {
 		add_member_control(this, "auto_growing_prepare_thesis", auto_growing_prepare_thesis, "check");
 		add_member_control(this, "overwrite_face_id", overwrite_face_id, "check");
 		add_member_control(this, "instance_redraw", instance_redraw, "check");
+		add_member_control(this, "show_neighbor_graph", data_ptr->point_cloud_kit->show_neighbor_graph, "check");
+		add_member_control(this, "knn", data_ptr->point_cloud_kit->k,
+			"value_slider", "min=1;max=50;log=false;ticks=true;");
 		
 		connect_copy(add_control("render_pc", render_pc, "check")->value_change, rebind(
 			static_cast<drawable*>(this), &visual_processing::post_redraw));
@@ -1738,23 +1839,47 @@ void visual_processing::create_gui() {
 		
 		add_decorator("// iterative interaction ", "heading", "level=3");
 
+		/*
+			usage: 
+				pick and trigger to select a seed 
+				press right to start, down to pause/ continue. left to undo 
+		*/
 		// seed selection 
 		connect_copy(add_button("reset grow, delete seeds")->click, rebind(data_ptr->point_cloud_kit, 
 			&point_cloud_interactable::prepare_grow, true)); // overwrite face ids 
 		// todo: find_next_region: select seed points automatically from low curvature regions 
 		add_member_control(this, "curr_region", selection_kit->curr_face_selecting_id,
 			"value_slider", "min=1;max=50;log=false;ticks=true;");
-		connect_copy(add_button("grow_curr_region_parallel")->click,
-			rebind(this, &visual_processing::force_start_grow)); // calls grow_curr_region in actual 
+		connect_copy(add_button("find_next_and_increase_curr_region")->click,
+			rebind(this, &visual_processing::find_next_and_increase_curr_region));
+
+		// grow only current region 
+		connect_copy(add_button("grow_with_dist_and_curvature")->click,
+			rebind(this, &visual_processing::grow_with_dist_and_curvature));
+		// grow only current region 
+		connect_copy(add_button("grow_with_accu_dist")->click,
+			rebind(this, &visual_processing::grow_with_accu_dist)); 
+
 		connect_copy(add_button("pause_continue_parallel_region_growing")->click,
 			rebind(this, &visual_processing::pause_continue_parallel_region_growing));
 		connect_copy(add_button("undo curr region")->click,
-			rebind(data_ptr->point_cloud_kit, &point_cloud_interactable::undo_curr_region, 
-				selection_kit->curr_face_selecting_id));
-		/*connect_copy(add_button("submit_face")->click,
-			rebind(data_ptr->point_cloud_kit, &point_cloud_interactable::submit_face));*/
-		connect_copy(add_button("final_grow")->click,
-			rebind(this, &visual_processing::final_grow));
+			rebind(this, &visual_processing::undo_curr_region));
+
+		// final grow options 
+		/*connect_copy(add_button("final_grow_accu_dist")->click,
+			rebind(this, &visual_processing::final_grow_accu_dist));*/
+		connect_copy(add_button("submit_face")->click, // all faces will be pushed to final queue
+			rebind(data_ptr->point_cloud_kit, &point_cloud_interactable::submit_face));  
+		// final grow options 
+		connect_copy(add_button("final_grow_dist_and_curvature_based")->click,
+			rebind(this, &visual_processing::final_grow_dist_and_curvature_based));
+	}
+	// 
+	if (begin_tree_node("Model Fitting (Connectivity )", gui_Fitting, gui_Fitting, "level=3")) {
+		connect_copy(add_button("fitting_render_control_points_test")->click,
+			rebind(this, &visual_processing::fitting_render_control_points_test));
+		connect_copy(add_button("build_connectivity_graph_fitting_and_render_control_points")->click,
+			rebind(this, &visual_processing::build_connectivity_graph_fitting_and_render_control_points));
 	}
 	//
 	if (begin_tree_node("Region Growing", gui_rg, gui_rg, "level=3")) {
@@ -1858,15 +1983,6 @@ void visual_processing::create_gui() {
 			&visual_processing::switch_rendering_mode_surfel_based));
 		connect_copy(add_button("render_with_clod")->click, rebind(this,
 			&visual_processing::switch_rendering_mode_clod_based));
-	}
-	// 
-	if (begin_tree_node("Model Fitting (Connectivity )", gui_Fitting, false, "level=3")) {
-		connect_copy(add_button("fitting_render_control_points_test")->click,
-			rebind(this, &visual_processing::fitting_render_control_points_test));
-		connect_copy(add_button("build_connectivity_graph_fitting_and_render_control_points")->click,
-			rebind(this, &visual_processing::build_connectivity_graph_fitting_and_render_control_points));
-		connect_copy(add_button("read_cgvcad")->click,
-			rebind(this, &visual_processing::read_cgvcad_with_dialog));
 	}
 	//
 	if (begin_tree_node("Point Scale", gui_point_Scale, false, "level=3")) {
