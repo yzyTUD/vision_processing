@@ -90,7 +90,6 @@ protected:
 
 private:
 	bool label_outofdate; // whether label texture is out of date
-	bool region_grow_check_normals = true;
 protected:
 	unsigned label_resolution; // resolution of label texture
 	cgv::render::texture label_tex; // texture used for offline rendering of label
@@ -228,6 +227,7 @@ public:
 	/// register on device change events
 	void on_device_change(void* kit_handle, bool attach);
 	void parallel_region_growing();
+	void parallel_region_growing_finialize_grow();
 	void timer_event(double t, double dt);
 public:
 	visual_processing();
@@ -237,13 +237,15 @@ public:
 	///
 	void stream_help(std::ostream& os);
 	///
+	bool self_reflect(cgv::reflect::reflection_handler& rh);
+	///
 	void on_set(void* member_ptr);
 	///
-	bool self_reflect(cgv::reflect::reflection_handler& rh)
+	/*bool self_reflect(cgv::reflect::reflection_handler& rh)
 	{
 		return
 			rh.reflect_member("pick_point_index", pick_point_index);
-	}
+	}*/
 	///
 	void init_6_points_picking() {
 		data_ptr->pick_points.push_back(vec3(1));
@@ -389,6 +391,10 @@ public:
 	void read_pc_parallel();
 	void start_reading_pc_parallel();
 	void start_parallel_region_growing();
+	void residual_grow_dist_and_curvature_based();
+	void sync_grow_dist_curvature_based();
+	void sync_grow_dist_based();
+	void undo_sync_grow();
 	void residual_grow_curvature_based();
 	void grow_with_dist_and_curvature();
 	void grow_with_accu_dist();
@@ -462,7 +468,9 @@ public:
 	void single_hit__regrow_distance_and_curvature_based();
 	void single_hit__regrow_stop_at_high_curvature();
 	void find_pointcloud();
-	void find_next_and_increase_curr_region();
+	bool find_next_and_increase_curr_region();
+	void drop_unwanted_regions();
+	void automatic_region_extraction();
 	/// embeded for vr handlers 
 	void down_scale_model_one_step();
 	/// embeded for vr handlers 

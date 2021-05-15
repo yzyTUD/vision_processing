@@ -346,7 +346,9 @@ public:
 	///
 	float max_dist = 0;
 	///
-	int pts_grew = 0;
+	int points_grown = 0;
+	///
+	int bkp_points_grown = 0;
 	///
 	std::vector<int> knn;
 	/// reset seeds, and face_id and topo_id
@@ -365,17 +367,23 @@ public:
 	///
 	void region_growing();
 	///
+	void show_num_of_points_per_region();
+	///
 	void submit_face();
 	///
 	void resume_queue();
+	///	
+	void record_current_state_before_sync_grow();
+	///
+	void undo_sync_grow();
 	/// opposite to submit face, we may want to undo current grow 
 	void undo_curr_region(int curr_region);
 	///
 	void scale_model();
 	///
 	void grow_curr_region(int curr_region);
-	/// 
-	void finalize_grow(int which_region);
+	///
+	void sync_grow();
 	///
 	void grow_one_region(int gi);
 	/// deprecated, not good to keep an other thread running 
@@ -422,6 +430,8 @@ public:
 	bool do_region_growing_directly = false;
 	/// if check nmls when growing, not used  
 	bool region_grow_check_normals = true;
+	///
+	float normal_threshold = 0.6;
 	/// not used 
 	bool can_sleep = false;
 	/// if the points marked by controller will be add to growing queue as seed 
@@ -433,7 +443,7 @@ public:
 	/// how many points will be growed before sleep, not used, use 100 just 
 	int steps_per_event_as_speed = 200;
 	/// latency after 100 points growed 
-	int growing_latency = 100; // ms
+	int growing_latency = 0; // ms
 	///
 	std::chrono::duration<double> Elapsed_knn;
 	///
@@ -455,15 +465,19 @@ public:
 	/// loop all points to check is too slow 
 	bool check_the_queue_and_stop = false;
 	/// ignore high curvature points, sometime searching radius is too large 
-	bool ignore_high_curvature_regions = false;
+	bool ignore_high_curvature_regions = true;
 	/// 
 	std::vector<int> num_of_knn_used_for_each_group;
+	///
+	std::vector<int> num_of_points_curr_region;
 	///
 	bool decrease_searching_radius_on_high_curvature = true;
 	///
 	//bool final_grow = false;
 	///
 	bool is_residual_grow = false;
+	///
+	bool is_synchronous_growth = false;
 	///
 	bool use_property_scale = false;
 	///
@@ -478,6 +492,17 @@ public:
 	mat4 model_translation;
 	/// 
 	mat4 inv_model_translation;
+	///
+	/*backup grow parameters */
+	std::vector<int> bkp_face_id; // from point_selection, write to .scan file  
+	/// mark if current point already visited 
+	std::vector<bool> bkp_point_visited; // point_visited
+	/// mark if current point in queue 
+	std::vector<bool> bkp_point_in_queue;
+	/// binded with the above one, indicates which group it belongs to 
+	std::vector<int> bkp_point_in_queue_which_group;
+	/// 
+	//additionally, queue should be restored, but it is easy 
 
 
 	/* Fine-Grained Point Classification */

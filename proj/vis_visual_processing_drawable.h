@@ -149,12 +149,7 @@ void visual_processing::timer_event(double t, double dt) {
 }
 /// timer event executes in an other parallel thread, fixed freq 
 void visual_processing::parallel_region_growing() {
-	/*if (data_ptr->point_cloud_kit->final_grow) {
-		data_ptr->point_cloud_kit->finalize_grow(selection_kit->curr_face_selecting_id);
-	}
-	else {*/
-		data_ptr->point_cloud_kit->grow_curr_region(selection_kit->curr_face_selecting_id);
-	//}
+	data_ptr->point_cloud_kit->grow_curr_region(selection_kit->curr_face_selecting_id);
 }
 ///
 visual_processing::~visual_processing() {
@@ -204,6 +199,12 @@ visual_processing::visual_processing()
 ///	
 void visual_processing::stream_help(std::ostream& os) {
 	os << "visual_processing: no shortcuts defined" << std::endl;
+}
+///
+bool visual_processing::self_reflect(cgv::reflect::reflection_handler& rh)
+{
+	return
+		rh.reflect_member("curr_region", selection_kit->curr_face_selecting_id);
 }
 ///		
 void visual_processing::on_set(void* member_ptr)
@@ -1145,10 +1146,47 @@ void visual_processing::start_parallel_region_growing() {
 	//parallel_region_growing();
 }
 ///
-void visual_processing::residual_grow_curvature_based() {
+void visual_processing::residual_grow_dist_and_curvature_based() {
+	// re-set some parameters, flexible for switching between 
 	data_ptr->point_cloud_kit->gm = data_ptr->point_cloud_kit->growing_mode::DISTANCE_AND_MEAN_CURVATURE_BASED;
+	data_ptr->point_cloud_kit->growing_latency = 200;
+	data_ptr->point_cloud_kit->ignore_high_curvature_regions = false;
 	data_ptr->point_cloud_kit->is_residual_grow = true;
 	force_start_grow();
+}
+///
+void visual_processing::residual_grow_curvature_based() {
+	// re-set some parameters, flexible for switching between 
+	data_ptr->point_cloud_kit->gm = data_ptr->point_cloud_kit->growing_mode::UNSIGNED_MEAN_CURVATURE_BASED;
+	data_ptr->point_cloud_kit->growing_latency = 200;
+	data_ptr->point_cloud_kit->ignore_high_curvature_regions = false;
+	data_ptr->point_cloud_kit->is_residual_grow = true;
+	force_start_grow();
+}
+///
+void visual_processing::sync_grow_dist_curvature_based() {
+	data_ptr->point_cloud_kit->record_current_state_before_sync_grow();
+	data_ptr->point_cloud_kit->gm = data_ptr->point_cloud_kit->growing_mode::DISTANCE_AND_MEAN_CURVATURE_BASED;
+	data_ptr->point_cloud_kit->ignore_high_curvature_regions = false;
+	data_ptr->point_cloud_kit->growing_latency = 0;
+	data_ptr->point_cloud_kit->is_synchronous_growth = true;
+	data_ptr->point_cloud_kit->region_grow_check_normals = true;
+	force_start_grow();
+}
+///
+void visual_processing::sync_grow_dist_based() {
+	data_ptr->point_cloud_kit->record_current_state_before_sync_grow();
+	data_ptr->point_cloud_kit->gm = data_ptr->point_cloud_kit->growing_mode::ACCU_DISTANCE_BASED;
+	data_ptr->point_cloud_kit->ignore_high_curvature_regions = false;
+	data_ptr->point_cloud_kit->growing_latency = 0;
+	data_ptr->point_cloud_kit->is_synchronous_growth = true;
+	data_ptr->point_cloud_kit->region_grow_check_normals = true;
+	force_start_grow();
+}
+/// check, for it will access queue 
+void visual_processing::undo_sync_grow() {
+	stop_parallel_region_growing(); // stop to avoid conflict visiting queue 
+	data_ptr->point_cloud_kit->undo_sync_grow();
 }
 ///
 //void visual_processing::final_grow_dist_and_curvature_based() {
@@ -1164,14 +1202,22 @@ void visual_processing::residual_grow_curvature_based() {
 //	data_ptr->point_cloud_kit->submit_face(); // move points from queue to final queue, all faces 
 //	force_start_grow();
 //}
-///
+/// will grow after hitting this button
 void visual_processing::grow_with_dist_and_curvature() {
+	// re-set some parameters, flexible for switching between 
 	data_ptr->point_cloud_kit->gm = data_ptr->point_cloud_kit->growing_mode::DISTANCE_AND_MEAN_CURVATURE_BASED;
+	//data_ptr->point_cloud_kit->growing_latency = 0;
+	//data_ptr->point_cloud_kit->ignore_high_curvature_regions = true;
+	data_ptr->point_cloud_kit->is_residual_grow = false;
 	force_start_grow();
 }
 ///
 void visual_processing::grow_with_accu_dist() {
+	// re-set some parameters, flexible for switching between 
 	data_ptr->point_cloud_kit->gm = data_ptr->point_cloud_kit->growing_mode::ACCU_DISTANCE_BASED;
+	//data_ptr->point_cloud_kit->growing_latency = 0;
+	//data_ptr->point_cloud_kit->ignore_high_curvature_regions = true;
+	data_ptr->point_cloud_kit->is_residual_grow = false;
 	force_start_grow();
 }
 ///
@@ -1697,14 +1743,78 @@ void visual_processing::find_pointcloud()
 	}
 }
 ///
-void visual_processing::find_next_and_increase_curr_region() {
+bool visual_processing::find_next_and_increase_curr_region() {
 	if (selection_kit->curr_face_selecting_id == -1)
 		selection_kit->curr_face_selecting_id = 1;
 	else
 		selection_kit->curr_face_selecting_id++;
 	int pid_next = data_ptr->point_cloud_kit->find_next_seed_in_low_curvature_area();
+	if (pid_next == -1)
+		return false;
+	if (selection_kit->curr_face_selecting_id > 24) // extract up to 24 regions 
+		return false;
 	data_ptr->point_cloud_kit->seed_for_regions[selection_kit->curr_face_selecting_id] = pid_next;
 	data_ptr->point_cloud_kit->add_seed_to_queue(selection_kit->curr_face_selecting_id);
+	return true;
+}
+/// delete seed, clear queue, and mark the points as raw if no enough number of points found 
+/// x5 things should be restored 
+void visual_processing::drop_unwanted_regions() {
+	for (int i = 0; i < data_ptr->point_cloud_kit->pc.num_of_face_selections_rendered; i++) {
+		if (data_ptr->point_cloud_kit->num_of_points_curr_region[i] < 10) { // too few points 
+			if (data_ptr->point_cloud_kit->num_of_points_curr_region[i] < 1)
+				continue;
+			data_ptr->point_cloud_kit->seed_for_regions[i] = -1;
+			std::priority_queue<point_priority_mapping, std::vector<point_priority_mapping>, LowSecComp>* q;
+			// pop queue and restore attributes 
+			q = &data_ptr->point_cloud_kit->queue_for_regions[i];
+			while (!q->empty()) {
+				point_priority_mapping curr_top = q->top();
+				data_ptr->point_cloud_kit->pc.point_in_queue.at(std::get<ID>(curr_top)) = false;
+				data_ptr->point_cloud_kit->pc.point_in_queue_which_group.at(std::get<ID>(curr_top)) = false;
+				q->pop();
+			}
+			// pop queue and restore attributes 
+			q = &data_ptr->point_cloud_kit->suspend_queue_for_regions[i];
+			while (!q->empty()) {
+				point_priority_mapping curr_top = q->top();
+				data_ptr->point_cloud_kit->pc.point_in_queue.at(std::get<ID>(curr_top)) = false;
+				data_ptr->point_cloud_kit->pc.point_in_queue_which_group.at(std::get<ID>(curr_top)) = false;
+				q->pop();
+			}
+			for (int pid = 0; pid < data_ptr->point_cloud_kit->pc.get_nr_points(); pid++) {
+				if (data_ptr->point_cloud_kit->pc.face_id.at(pid) == i && !data_ptr->point_cloud_kit->pc.point_in_queue.at(pid)) {
+					data_ptr->point_cloud_kit->pc.face_id.at(pid) = 0;
+					data_ptr->point_cloud_kit->pc.point_visited.at(pid) = 0;
+					data_ptr->point_cloud_kit->points_grown--; // x5 things should be restored 
+					data_ptr->point_cloud_kit->num_of_points_curr_region[i]--;
+				}
+			}
+		}
+	}
+}
+///
+void visual_processing::automatic_region_extraction() {
+	selection_kit->curr_face_selecting_id = -1;
+	while (find_next_and_increase_curr_region()) {
+		data_ptr->point_cloud_kit->gm = data_ptr->point_cloud_kit->growing_mode::DISTANCE_AND_MEAN_CURVATURE_BASED;
+		data_ptr->point_cloud_kit->growing_latency = 0;
+		data_ptr->point_cloud_kit->ignore_high_curvature_regions = true;
+		data_ptr->point_cloud_kit->is_residual_grow = false;
+		data_ptr->point_cloud_kit->is_synchronous_growth = false;
+		parallel_region_growing(); // not parallel here
+	}
+	int points = 0;
+	for (int i = 0; i < data_ptr->point_cloud_kit->pc.num_of_face_selections_rendered; i++) {
+		points += data_ptr->point_cloud_kit->num_of_points_curr_region[i];
+	}
+	std::cout << "points_grown, visited = " << points << std::endl;
+	std::cout << "points_grown = " << data_ptr->point_cloud_kit->points_grown << std::endl;
+	drop_unwanted_regions(); // drop if num points too few 
+	std::cout << "points_grown after dropping = " << data_ptr->point_cloud_kit->points_grown << std::endl;
+	data_ptr->point_cloud_kit->resume_queue();
+	data_ptr->point_cloud_kit->show_num_of_points_per_region();
+	std::cout << "num of regions extracted = " << selection_kit->curr_face_selecting_id - 1 << std::endl;
 }
 /// 
 void visual_processing::down_scale_model_one_step() {
@@ -1857,6 +1967,8 @@ void visual_processing::create_gui() {
 			"value_slider", "min=1;max=50;log=false;ticks=true;");
 		connect_copy(add_button("find_next_and_increase_curr_region")->click,
 			rebind(this, &visual_processing::find_next_and_increase_curr_region));
+		connect_copy(add_button("[S]automatic_region_extraction")->click,
+			rebind(this, &visual_processing::automatic_region_extraction));
 
 		// grow only current region 
 		connect_copy(add_button("grow_with_dist_and_curvature")->click,
@@ -1864,13 +1976,12 @@ void visual_processing::create_gui() {
 		// grow only current region 
 		connect_copy(add_button("grow_with_accu_dist")->click,
 			rebind(this, &visual_processing::grow_with_accu_dist)); 
-
 		connect_copy(add_button("pause_continue_parallel_region_growing")->click,
 			rebind(this, &visual_processing::pause_continue_parallel_region_growing));
 		connect_copy(add_button("undo curr region")->click,
 			rebind(this, &visual_processing::undo_curr_region));
 
-		// final grow options 
+		// final grow options: fill the gap
 		/*connect_copy(add_button("final_grow_accu_dist")->click,
 			rebind(this, &visual_processing::final_grow_accu_dist));*/
 		connect_copy(add_button("submit_face")->click, // all faces will be pushed to final queue
@@ -1882,7 +1993,19 @@ void visual_processing::create_gui() {
 		//add_member_control(this, "is_residual_grow", data_ptr->point_cloud_kit->is_residual_grow, "check");
 		connect_copy(add_button("residual_grow_curvature_based")->click,
 			rebind(this, &visual_processing::residual_grow_curvature_based));
+		connect_copy(add_button("residual_grow_dist_and_curvature_based")->click,
+			rebind(this, &visual_processing::residual_grow_dist_and_curvature_based));
+		connect_copy(add_button("sync_grow_dist_curvature_based")->click,
+			rebind(this, &visual_processing::sync_grow_dist_curvature_based));
+		connect_copy(add_button("sync_grow_dist_based")->click,
+			rebind(this, &visual_processing::sync_grow_dist_based));
 		
+		connect_copy(add_button("undo_sync_grow")->click,
+			rebind(this, &visual_processing::undo_sync_grow));
+		add_member_control(this, "normal_threshold", data_ptr->point_cloud_kit->normal_threshold,
+			"value_slider", "min=0;max=1;log=false;ticks=true;");
+		add_member_control(this, "region_grow_check_normals", 
+			data_ptr->point_cloud_kit->region_grow_check_normals, "check");
 	}
 	// 
 	if (begin_tree_node("Model Fitting (Connectivity )", gui_Fitting, gui_Fitting, "level=3")) {
