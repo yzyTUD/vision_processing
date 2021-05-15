@@ -1170,7 +1170,7 @@ void visual_processing::sync_grow_dist_curvature_based() {
 	data_ptr->point_cloud_kit->ignore_high_curvature_regions = false;
 	data_ptr->point_cloud_kit->growing_latency = 0;
 	data_ptr->point_cloud_kit->is_synchronous_growth = true;
-	data_ptr->point_cloud_kit->region_grow_check_normals = true;
+	//data_ptr->point_cloud_kit->region_grow_check_normals = true;
 	force_start_grow();
 }
 ///
@@ -1180,7 +1180,7 @@ void visual_processing::sync_grow_dist_based() {
 	data_ptr->point_cloud_kit->ignore_high_curvature_regions = false;
 	data_ptr->point_cloud_kit->growing_latency = 0;
 	data_ptr->point_cloud_kit->is_synchronous_growth = true;
-	data_ptr->point_cloud_kit->region_grow_check_normals = true;
+	//data_ptr->point_cloud_kit->region_grow_check_normals = true;
 	force_start_grow();
 }
 /// check, for it will access queue 
