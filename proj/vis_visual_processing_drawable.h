@@ -149,12 +149,12 @@ void visual_processing::timer_event(double t, double dt) {
 }
 /// timer event executes in an other parallel thread, fixed freq 
 void visual_processing::parallel_region_growing() {
-	if (data_ptr->point_cloud_kit->final_grow) {
+	/*if (data_ptr->point_cloud_kit->final_grow) {
 		data_ptr->point_cloud_kit->finalize_grow(selection_kit->curr_face_selecting_id);
 	}
-	else {
+	else {*/
 		data_ptr->point_cloud_kit->grow_curr_region(selection_kit->curr_face_selecting_id);
-	}
+	//}
 }
 ///
 visual_processing::~visual_processing() {
@@ -443,7 +443,7 @@ bool visual_processing::handle(cgv::gui::event& e)
 					}
 					// final_grow can be done with menu key press 
 					if (data_ptr->check_roulette_selection(data_ptr->get_id_with_name("RegionGrowing\nOurMethod"))) {
-						final_grow_accu_dist();
+						//final_grow_accu_dist();
 					}
 				}
 			}
@@ -1145,19 +1145,25 @@ void visual_processing::start_parallel_region_growing() {
 	//parallel_region_growing();
 }
 ///
-void visual_processing::final_grow_dist_and_curvature_based() {
+void visual_processing::residual_grow_curvature_based() {
 	data_ptr->point_cloud_kit->gm = data_ptr->point_cloud_kit->growing_mode::DISTANCE_AND_MEAN_CURVATURE_BASED;
-	data_ptr->point_cloud_kit->final_grow = true;
-	//data_ptr->point_cloud_kit->submit_face(); // move points from queue to final queue, all faces 
-	force_start_grow(); // but, only curr region now 
-}
-///
-void visual_processing::final_grow_accu_dist() {
-	data_ptr->point_cloud_kit->gm = data_ptr->point_cloud_kit->growing_mode::ACCU_DISTANCE_BASED;
-	data_ptr->point_cloud_kit->final_grow = true;
-	data_ptr->point_cloud_kit->submit_face(); // move points from queue to final queue, all faces 
+	data_ptr->point_cloud_kit->is_residual_grow = true;
 	force_start_grow();
 }
+///
+//void visual_processing::final_grow_dist_and_curvature_based() {
+//	data_ptr->point_cloud_kit->gm = data_ptr->point_cloud_kit->growing_mode::DISTANCE_AND_MEAN_CURVATURE_BASED;
+//	data_ptr->point_cloud_kit->final_grow = true;
+//	//data_ptr->point_cloud_kit->submit_face(); // move points from queue to final queue, all faces 
+//	force_start_grow(); // but, only curr region now 
+//}
+///
+//void visual_processing::final_grow_accu_dist() {
+//	data_ptr->point_cloud_kit->gm = data_ptr->point_cloud_kit->growing_mode::ACCU_DISTANCE_BASED;
+//	data_ptr->point_cloud_kit->final_grow = true;
+//	data_ptr->point_cloud_kit->submit_face(); // move points from queue to final queue, all faces 
+//	force_start_grow();
+//}
 ///
 void visual_processing::grow_with_dist_and_curvature() {
 	data_ptr->point_cloud_kit->gm = data_ptr->point_cloud_kit->growing_mode::DISTANCE_AND_MEAN_CURVATURE_BASED;
@@ -1816,11 +1822,10 @@ void visual_processing::create_gui() {
 		//
 		add_member_control(this, "check_the_queue_and_stop", data_ptr->point_cloud_kit->check_the_queue_and_stop, "check");
 		add_member_control(this, "ignore_high_curvature_regions", data_ptr->point_cloud_kit->ignore_high_curvature_regions, "check");
-		add_member_control(this, "final_grow", data_ptr->point_cloud_kit->final_grow, "check");
 		add_member_control(this, "minimum_searching_neighbor_points", data_ptr->point_cloud_kit->minimum_searching_neighbor_points,
 			"value_slider", "min=1;max=50;log=false;ticks=true;");
 		add_member_control(this, "growing_latency", data_ptr->point_cloud_kit->growing_latency, // per point? 
-			"value_slider", "min=1;max=500;log=false;ticks=true;");
+			"value_slider", "min=1;max=2000;log=false;ticks=true;");
 		//add_member_control(this, "check_the_queue_and_stop", data_ptr->point_cloud_kit->use_property_scale, "check");
 		add_member_control(this, "use_property_scale", data_ptr->point_cloud_kit->use_property_scale, "check");
 		connect_copy(add_button("clear_seed_for_regions")->click,
@@ -1869,10 +1874,15 @@ void visual_processing::create_gui() {
 		/*connect_copy(add_button("final_grow_accu_dist")->click,
 			rebind(this, &visual_processing::final_grow_accu_dist));*/
 		connect_copy(add_button("submit_face")->click, // all faces will be pushed to final queue
-			rebind(data_ptr->point_cloud_kit, &point_cloud_interactable::submit_face));  
-		// final grow options 
-		connect_copy(add_button("final_grow_dist_and_curvature_based")->click,
-			rebind(this, &visual_processing::final_grow_dist_and_curvature_based));
+			rebind(data_ptr->point_cloud_kit, &point_cloud_interactable::submit_face));
+
+		// an other option is residual growing, lower speed, undo support 
+		connect_copy(add_button("resume_queue")->click, // all faces will be pushed to final queue
+			rebind(data_ptr->point_cloud_kit, &point_cloud_interactable::resume_queue));
+		//add_member_control(this, "is_residual_grow", data_ptr->point_cloud_kit->is_residual_grow, "check");
+		connect_copy(add_button("residual_grow_curvature_based")->click,
+			rebind(this, &visual_processing::residual_grow_curvature_based));
+		
 	}
 	// 
 	if (begin_tree_node("Model Fitting (Connectivity )", gui_Fitting, gui_Fitting, "level=3")) {
@@ -1914,7 +1924,6 @@ void visual_processing::create_gui() {
 			rebind(this, &visual_processing::single_hit__regrow_distance_and_curvature_based));
 		add_member_control(this, "check_the_queue_and_stop", data_ptr->point_cloud_kit->check_the_queue_and_stop, "check");
 		add_member_control(this, "ignore_high_curvature_regions", data_ptr->point_cloud_kit->ignore_high_curvature_regions, "check");
-		add_member_control(this, "final_grow", data_ptr->point_cloud_kit->final_grow, "check");
 		add_member_control(this, "minimum_searching_neighbor_points", data_ptr->point_cloud_kit->minimum_searching_neighbor_points,
 			"value_slider", "min=1;max=50;log=false;ticks=true;");
 		connect_copy(add_button("[S]grow_stop_on_boundaries")->click,

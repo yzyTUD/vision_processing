@@ -71,7 +71,7 @@ const int ID = 0, DIST = 1, CURVATURE = 2;
 typedef std::tuple<int, float, float> point_priority_mapping;
 // Structure of the operator
 // overloading for comparison
-struct lower_second_comp {
+struct LowSecComp {
 	constexpr bool operator()(
 		point_priority_mapping const& a,
 		point_priority_mapping const& b)
@@ -104,13 +104,13 @@ struct lower_second_comp {
 //	bool contains(int item) { return set_.find(item) != set_.end(); }
 //	bool empty() const { return set_.empty(); }
 //	void clear() { 
-//		std::priority_queue<point_priority_mapping, std::vector<point_priority_mapping>, lower_second_comp> empty_pq_; 
+//		std::priority_queue<point_priority_mapping, std::vector<point_priority_mapping>, LowSecComp> empty_pq_; 
 //		pq_ = empty_pq_; 
 //		set_.clear(); 
 //	}
 //
 //private:
-//	std::priority_queue<point_priority_mapping, std::vector<point_priority_mapping>, lower_second_comp> pq_;
+//	std::priority_queue<point_priority_mapping, std::vector<point_priority_mapping>, LowSecComp> pq_;
 //	std::set<int> set_;
 //};
 
@@ -333,10 +333,10 @@ public:
 	/* Point Classification based on Interactive Region Growing - */
 	/// seed representation 
 	std::vector<std::priority_queue<point_priority_mapping, 
-		std::vector<point_priority_mapping>, lower_second_comp>> queue_for_regions; // 2d, matrix, idx means region id, queue stores seeds 
+		std::vector<point_priority_mapping>, LowSecComp>> queue_for_regions; 
 	///
 	std::vector<std::priority_queue<point_priority_mapping,
-		std::vector<point_priority_mapping>, lower_second_comp>> final_queue_for_regions;
+		std::vector<point_priority_mapping>, LowSecComp>> suspend_queue_for_regions;
 	/// 
 	std::vector<int> seed_for_regions;
 	/// 
@@ -366,6 +366,8 @@ public:
 	void region_growing();
 	///
 	void submit_face();
+	///
+	void resume_queue();
 	/// opposite to submit face, we may want to undo current grow 
 	void undo_curr_region(int curr_region);
 	///
@@ -459,7 +461,9 @@ public:
 	///
 	bool decrease_searching_radius_on_high_curvature = true;
 	///
-	bool final_grow = false;
+	//bool final_grow = false;
+	///
+	bool is_residual_grow = false;
 	///
 	bool use_property_scale = false;
 	///

@@ -389,8 +389,7 @@ public:
 	void read_pc_parallel();
 	void start_reading_pc_parallel();
 	void start_parallel_region_growing();
-	void final_grow_dist_and_curvature_based();
-	void final_grow_accu_dist();
+	void residual_grow_curvature_based();
 	void grow_with_dist_and_curvature();
 	void grow_with_accu_dist();
 	void force_start_grow();
