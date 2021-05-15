@@ -2192,6 +2192,13 @@ bool point_cloud_interactable::grow_one_step_bfs(bool grow_with_queue, int which
 			curr_property = scale_dist_by_curva * dist + std::get<DIST>(to_visit);
 		}
 
+		// lower normal dist will be dequeued first 
+		if (gm == growing_mode::NORMAL_BASED) {
+			float a_very_large_factor = pc.get_nr_points() * pc.get_nr_points();
+			float scale_dist_by_nml_diff = 1.0f + a_very_large_factor * (1 - dot(pc.nml(kid), pc.nml(seed_for_regions[which_group]))) / 2.0f;
+			curr_property = scale_dist_by_nml_diff * dist + std::get<DIST>(to_visit);
+		}
+
 		// queue visualization, diff color for diff groups 
 		pc.face_id.at(kid) = 26 - which_group;
 

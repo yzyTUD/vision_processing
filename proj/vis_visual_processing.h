@@ -394,6 +394,7 @@ public:
 	void residual_grow_dist_and_curvature_based();
 	void sync_grow_dist_curvature_based();
 	void sync_grow_dist_based();
+	void sync_grow_curv_based();
 	void undo_sync_grow();
 	void residual_grow_curvature_based();
 	void grow_with_dist_and_curvature();
