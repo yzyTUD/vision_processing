@@ -1803,6 +1803,13 @@ void visual_processing::drop_unwanted_regions() {
 		}
 	}
 }
+/*
+	algorithm:
+		a. while still possible to find an acceptable seed:
+			b. grow current region (with any growing method)
+		c. drop unwanted regions (e.g. too few points) 
+
+*/
 ///
 void visual_processing::automatic_region_extraction() {
 	selection_kit->curr_face_selecting_id = -1;

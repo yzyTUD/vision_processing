@@ -1818,6 +1818,32 @@ void point_cloud_interactable::scale_model() {
 			f. else, delete and recover all growing parameters, goto b. 
 		g. perform a final grow to fill the gaps between different regions.
 
+	v2: 
+		interactive point cloud segmentation:
+			a. curvature computation and clustering
+			b. observe the curvature of the points, adjust the threshold.  
+			if the high-curvature region (boundary) is contiguous and obvious, perform an automatic segmentation:
+				c. automatic extraction 
+				d. automatic final grow to fill the gap
+			else, perform an interactive region growing:
+				e. coarse level segmentation
+					option1: (dequeue to prevent from leaks)
+						while not all faces are grown:
+							f. select one seed per region
+							g. start to grow 
+							h. control the growing
+								iterate all points found within the range
+									if a point is marked as "in queue":
+										save points to a suspend_queue 
+										dequeue current point 
+					option2: (setup protection area directly on boundaries)
+						i. mark protection areas to prevent leaks 
+						j. automatic extraction, just as b.
+						k. fill the boundary gap in final grow, just as c.
+					option3: over-grow and correct the boundary manually.
+				l. restore queue (push points from suspend_queue back to queue)
+				m. automatic final grow to fill the gap, just as c.
+
 */
 /// curr_region is ignored when growing in sync mode 
 void point_cloud_interactable::grow_curr_region(int curr_region) {
