@@ -397,7 +397,8 @@ public:
 	void sync_grow_curv_based();
 	void undo_sync_grow();
 	void residual_grow_curvature_based();
-	void grow_with_dist_and_curvature();
+	void grow_with_dist_and_lowest_curvature();
+	void grow_with_dist_and_highest_curvature();
 	void grow_with_accu_dist();
 	void force_start_grow();
 	void pause_continue_parallel_region_growing();

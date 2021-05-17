@@ -1245,15 +1245,13 @@ void point_cloud_interactable::edge_extraction() {
 		<< " or, curr_edge_id = " << curr_edge_id  << std::endl;
 	pc.num_edge_ids = regions.size();
 }
-
-
 ///
 void point_cloud_interactable::extract_all() {
 	face_extraction();
 	corner_extraction();
 	edge_extraction();
 }
-
+///
 void point_cloud_interactable::fitting_render_control_points_test() {
 	/*pc.control_points.push_back(pc.pnt(78673));
 	pc.control_point_colors.push_back(rgb(1, 1, 0));
@@ -1299,7 +1297,6 @@ void point_cloud_interactable::fitting_render_control_points_test() {
 	for (int i = 0; i < 16; i++)
 		pc.demo_surface.at(i) = i;
 }
-
 /// 
 void point_cloud_interactable::selective_subsampling_cpu() {
 	std::default_random_engine g;
@@ -1384,9 +1381,12 @@ void point_cloud_interactable::auto_scale_after_read_points() {
 	// perform actual transforms 
 	pc.transform(m); // move to 0,0,0
 	scale_model();
-	pc.transform(table_offset * buttom_offset); // move to desired position 
-	model_translation = table_offset * buttom_offset; // record current model traslation and inverse 
+	vec3 new_center_offset = pc.box().get_center();
+	mat4 new_center_offmat = cgv::math::translate4(-new_center_offset);
+	model_translation = table_offset * buttom_offset * new_center_offmat; // record current model traslation and inverse 
+	pc.transform(model_translation); // move to desired position 
 	inv_model_translation = inv(model_translation);
+
 }
 /*region growing after marked*/
 /// prepare/ reset region grow 
@@ -1586,7 +1586,6 @@ void point_cloud_interactable::do_region_growing_timer_event(double t, double dt
 	//}
 	//on_point_cloud_change_callback(PCC_COLORS);
 }
-
 /// parallel version 
 void point_cloud_interactable::grow_one_region(int gi) {
 	//const int points_one_chunk = 100;
@@ -1608,7 +1607,6 @@ void point_cloud_interactable::grow_one_region(int gi) {
 	//	}
 	//}
 }
-
 /*interactive region growing */
 ///
 void point_cloud_interactable::clear_seed_for_regions() {
@@ -1822,27 +1820,18 @@ void point_cloud_interactable::scale_model() {
 		interactive point cloud segmentation:
 			a. curvature computation and clustering
 			b. observe the curvature of the points, adjust the threshold.  
-			if the high-curvature region (boundary) is contiguous and obvious, perform an automatic segmentation:
-				c. automatic extraction 
-				d. automatic final grow to fill the gap
-			else, perform an interactive region growing:
-				e. coarse level segmentation
-					option1: (dequeue to prevent from leaks)
-						while not all faces are grown:
-							f. select one seed per region
-							g. start to grow 
-							h. control the growing
-								iterate all points found within the range
-									if a point is marked as "in queue":
-										save points to a suspend_queue 
-										dequeue current point 
-					option2: (setup protection area directly on boundaries)
-						i. mark protection areas to prevent leaks 
-						j. automatic extraction, just as b.
-						k. fill the boundary gap in final grow, just as c.
-					option3: over-grow and correct the boundary manually.
-				l. restore queue (push points from suspend_queue back to queue)
-				m. automatic final grow to fill the gap, just as c.
+			c. coarse level segmentation
+				dequeue to prevent from leaks
+					while not all faces are grown:
+						d. select one seed per region
+						e. start to grow 
+						f. control the growing
+							iterate all points found within the range
+								if a point is marked as "in queue":
+									save points to a suspend_queue 
+									dequeue current point 
+			j. restore queue (push points from suspend_queue back to queue)
+			k. final grow to fill the gap.
 
 */
 /// curr_region is ignored when growing in sync mode 
@@ -2208,13 +2197,22 @@ bool point_cloud_interactable::grow_one_step_bfs(bool grow_with_queue, int which
 		}
 
 		// dequeue first in low distance and low curvature regions. Just like fill water to a pool.
-		if (gm == growing_mode::DISTANCE_AND_MEAN_CURVATURE_BASED) {
+		if (gm == growing_mode::DISTANCE_AND_MEAN_CURVATURE_BASED_LOWERFIRST) {
 			float a_very_large_factor = pc.get_nr_points() * pc.get_nr_points();
-			float scale_dist_by_curva = 1.0f + a_very_large_factor * pc.curvature.at(kid).mean_curvature; // ok-todo: find a upper bound 
-			normalize(pc.nml(kid));
-			normalize(pc.nml(seed_for_regions[which_group]));
-			float scale_dist_by_nml_diff = 1.0f + a_very_large_factor * (1 - dot(pc.nml(kid), pc.nml(seed_for_regions[which_group]))) / 2.0f;
-			//scale_dist_by_nml_diff * dist
+			float scaled_mean_curvature =
+				(pc.curvature.at(kid).mean_curvature - pc.curvinfo.min_mean_curvature)
+				/ pc.curvinfo.max_mean_curvature;
+			float scale_dist_by_curva = 1.0f + a_very_large_factor * scaled_mean_curvature; // ok-todo: find a upper bound 
+			curr_property = scale_dist_by_curva * dist + std::get<DIST>(to_visit);
+		}
+
+		// dequeue first in low distance and high curvature regions.
+		if (gm == growing_mode::DISTANCE_AND_MEAN_CURVATURE_BASED_HIGHERFIRST) {
+			float a_very_large_factor = pc.get_nr_points() * pc.get_nr_points();
+			float scaled_mean_curvature = 
+				(pc.curvature.at(kid).mean_curvature - pc.curvinfo.min_mean_curvature) 
+					/ pc.curvinfo.max_mean_curvature;
+			float scale_dist_by_curva = 1.0f + a_very_large_factor * (1 - scaled_mean_curvature);
 			curr_property = scale_dist_by_curva * dist + std::get<DIST>(to_visit);
 		}
 
@@ -2296,7 +2294,6 @@ void point_cloud_interactable::subsampling_source(Pnt& p, float& r, bool confirm
 /// 
 void point_cloud_interactable::collect_to_subsampled_pcs() {
 }
-
 ///
 void point_cloud_interactable::scale_points_to_desk() {
 	vec3 point_center = pc.box().get_center();
@@ -2316,7 +2313,6 @@ void point_cloud_interactable::scale_points_to_desk() {
 	scale_matrix(2, 2) = factor;
 	pc.transform(scale_matrix);
 }
-
 ///
 void point_cloud_interactable::update_scan_index_visibility_test() {
 	for (int i = 0; i < pc.scan_index_visibility.size(); i++) {
@@ -2327,12 +2323,12 @@ void point_cloud_interactable::update_scan_index_visibility_test() {
 	}
 	pc.update_scan_index_visibility();
 }
-
+///
 void point_cloud_interactable::set_src_and_target_scan_idx_as_test() {
 	src_scan_idx = 1;
 	target_scan_idx = 0;
 }
-
+///
 void point_cloud_interactable::render_select_src_cloud_only() {
 	for (int i = 0; i < pc.scan_index_visibility.size(); i++) {
 		if (i == src_scan_idx)
@@ -2342,7 +2338,7 @@ void point_cloud_interactable::render_select_src_cloud_only() {
 	}
 	pc.update_scan_index_visibility();
 }
-
+///
 void point_cloud_interactable::render_select_target_cloud_only() {
 	for (int i = 0; i < pc.scan_index_visibility.size(); i++) {
 		if (i == target_scan_idx)
@@ -2352,7 +2348,7 @@ void point_cloud_interactable::render_select_target_cloud_only() {
 	}
 	pc.update_scan_index_visibility();
 }
-
+///
 void point_cloud_interactable::render_both_src_target_clouds() {
 	for (int i = 0; i < pc.scan_index_visibility.size(); i++) {
 		if ((i == src_scan_idx)||(i == target_scan_idx))
@@ -2362,7 +2358,6 @@ void point_cloud_interactable::render_both_src_target_clouds() {
 	}
 	pc.update_scan_index_visibility();
 }
-
 /// extract to pc_src and pc_target
 void point_cloud_interactable::extract_point_clouds_for_icp() {
 	pc_src.clear_all();
@@ -2378,7 +2373,6 @@ void point_cloud_interactable::extract_point_clouds_for_icp() {
 	pc_target.box_out_of_date = true;
 	// state: tree ds not build
 }
-
 /// support for feature selection and icp just within feature points 
 void point_cloud_interactable::extract_point_clouds_for_icp_marked_only() {
 	pc_src.clear_all();
@@ -2396,7 +2390,6 @@ void point_cloud_interactable::extract_point_clouds_for_icp_marked_only() {
 	pc_target.box_out_of_date = true;
 	// state: tree ds not build
 }
-
 /// register 
 void point_cloud_interactable::perform_icp_and_acquire_matrices() {
 	// align pc_src to pc_target, target is fixed 
@@ -2431,15 +2424,14 @@ void point_cloud_interactable::perform_icp_and_acquire_matrices() {
 	}
 	else { std::cout << "icp: error point cloud size" << std::endl; }
 }
-
+///
 void point_cloud_interactable::perform_icp_given_four_pair_points() {
 	icp.reg_icp_get_matrices_from_4pair_points(&icp_clicking_points_src, &icp_clicking_points_target, rmat, tvec);
 }
-
+///
 void perform_icp_1Iter() { // impl. outside 
 
 }
-
 // manually clicking bring the point clouds closer and perfrom traditional ICP with ease 
 void point_cloud_interactable::perform_icp_manual_clicking() {
 	perform_icp_given_four_pair_points();
@@ -2448,7 +2440,6 @@ void point_cloud_interactable::perform_icp_manual_clicking() {
 	for (auto& cps : icp_clicking_points_src)
 		cps = rmat * cps + tvec;
 }
-
 /// apply transformations to the global pc 
 void point_cloud_interactable::apply_register_matrices_for_the_original_point_cloud() {
 	for (int Idx = 0; Idx < pc.get_nr_points(); Idx++) {
@@ -2458,7 +2449,6 @@ void point_cloud_interactable::apply_register_matrices_for_the_original_point_cl
 	}
 	// state: point position updated, will be passed to gpu with set_array() in pc drawable automatically 
 }
-
 /// register without subsampling 
 void point_cloud_interactable::register_cur_and_last_pc_if_present() {
 	// align pc_src to pc_target, target is fixed 
@@ -2479,7 +2469,6 @@ void point_cloud_interactable::register_cur_and_last_pc_if_present() {
 	}
 	else { std::cout << "icp: error point cloud size" << std::endl; }
 }
-
 ///
 void point_cloud_interactable::register_with_subsampled_pcs(point_cloud& _pc) {
 	if(!pc_last_subsampled.get_nr_points())
@@ -2508,7 +2497,6 @@ void point_cloud_interactable::register_with_subsampled_pcs(point_cloud& _pc) {
 		_pc.translate(translation);
 	}
 }
-
 ///
 void point_cloud_interactable::highlight_last_pc() {
 	//if (num_of_pcs > 0) {
@@ -2623,7 +2611,7 @@ void point_cloud_interactable::ensure_tree_ds()
 		tree_ds_out_of_date = false;
 	}
 }
-
+///
 void point_cloud_interactable::ensure_neighbor_graph() {
 	if (ng.empty())
 		build_neighbor_graph();
@@ -3533,8 +3521,6 @@ void point_cloud_interactable::create_gui()
 		end_tree_node(show_box);
 	}
 }
-
-
 ///
 void point_cloud_interactable::compute_feature_points_and_colorize()
 {
@@ -3575,7 +3561,6 @@ void point_cloud_interactable::compute_feature_points_and_colorize()
 	}
 	on_point_cloud_change_callback(PCC_COLORS);
 }
-
 ///
 void point_cloud_interactable::compute_principal_curvature_unsigned() {
 	// ensure point structures and properties 
@@ -3634,7 +3619,39 @@ void point_cloud_interactable::compute_principal_curvature_unsigned() {
 	}
 
 }
-
+/// and recolor at the same time, one can observe from colors 
+void point_cloud_interactable::smooth_curvature_and_recolor() {
+	compute_smoothed_curvature();
+	apply_smoothed_curvature();
+	print_curvature_computing_info();
+	auto_cluster_kmeans();
+	colorize_with_computed_curvature_unsigned();
+}
+///
+void point_cloud_interactable::compute_smoothed_curvature() {
+	pc.smoothed_mean_curvature.resize(pc.get_nr_points());
+	for (int i = 0; i < pc.get_nr_points(); i++) {
+		pc.smoothed_mean_curvature.at(i) = 0;
+		// compute for each point a new curvature 
+		float weighted_average_curvature = 0;
+		float sum_dist = 0;
+		for (int j = 1; j < pc.nearest_neighbour_indices.at(i).size(); j++) { // 0 is the poitn itself 
+			int neighbor_index = pc.nearest_neighbour_indices.at(i).at(j);
+			float curr_dist = (pc.pnt(i) - pc.pnt(neighbor_index)).length();
+			weighted_average_curvature += 
+				pc.curvature.at(neighbor_index).mean_curvature * curr_dist;
+			sum_dist += curr_dist;
+		}
+		if (sum_dist > 0)
+			weighted_average_curvature = weighted_average_curvature / sum_dist;
+		pc.smoothed_mean_curvature.at(i) = weighted_average_curvature;
+	}
+}
+///
+void point_cloud_interactable::apply_smoothed_curvature() {
+	for (int i = 0; i < pc.get_nr_points(); i++) 
+		pc.curvature.at(i).mean_curvature = pc.smoothed_mean_curvature.at(i);
+}
 /// recolor point cloud with curvature
 void point_cloud_interactable::colorize_with_computed_curvature_unsigned() {
 
@@ -3642,12 +3659,11 @@ void point_cloud_interactable::colorize_with_computed_curvature_unsigned() {
 	for (int i = 0; i < pc.get_nr_points(); i++) {
 		//std::cout << "pc.curvature.at(i).gaussian_curvature: " << pc.curvature.at(i).gaussian_curvature << std::endl;
 		if (pc.curvature.at(i).mean_curvature > pc.curvinfo.coloring_threshold)
-			pc.clr(i) = rgb(1, 0, 0);
+			pc.clr(i) = rgb(102.0f / 255, 0, 102.0f / 255);
 		else
-			pc.clr(i) = rgb(0, 0, 1);
+			pc.clr(i) = rgb(153.0f / 255, 204.0f / 255, 255.0f / 255);
 	}
 }
-
 // describes a surface defined by a quadratic equation with two parameters
 struct quadric {
 	using vec3 = cgv::math::fvec<float, 3>;
@@ -3717,7 +3733,7 @@ struct quadric {
 		return quadric(x(0, 0), x(1, 0), x(2, 0), x(3, 0), x(4, 0));
 	}
 };
-
+///
 void point_cloud_interactable::compute_principal_curvature_signed() {
 	// ensure point structures and properties 
 	ensure_tree_ds();
@@ -3825,7 +3841,7 @@ void point_cloud_interactable::compute_principal_curvature_signed() {
 	}
 
 }
-
+///
 void point_cloud_interactable::fill_curvature_structure() {
 	// loop over to compute 
 	for (auto& c: pc.curvature) {
@@ -3833,7 +3849,6 @@ void point_cloud_interactable::fill_curvature_structure() {
 		c.mean_curvature = (c.kmax + c.kmin) * 0.5f;
 	}
 }
-
 /// recolor point cloud with curvature
 void point_cloud_interactable::colorize_with_computed_curvature_signed() {
 	// loop over to assign 
@@ -3847,7 +3862,7 @@ void point_cloud_interactable::colorize_with_computed_curvature_signed() {
 			pc.clr(i) = rgb(0, 1, 0);
 	}
 }
-
+///
 void point_cloud_interactable::print_curvature_computing_info() {
 	pc.curvinfo.max_mean_curvature = std::numeric_limits<float>::min();
 	pc.curvinfo.min_mean_curvature = std::numeric_limits<float>::max();
@@ -3950,7 +3965,6 @@ void point_cloud_interactable::auto_cluster_kmeans() {
 	std::cout << "threshold selected by kmeans: " << pc.curvinfo.coloring_threshold << std::endl;
 	pc.has_curv_information = true;
 }
-
 /// the entry point 
 void point_cloud_interactable::ep_compute_principal_curvature_and_colorize_signed() {
 	compute_principal_curvature_signed();
@@ -3958,19 +3972,18 @@ void point_cloud_interactable::ep_compute_principal_curvature_and_colorize_signe
 	print_curvature_computing_info();
 	colorize_with_computed_curvature_signed(); // vis with gaussian_curvature
 }
-
 /// the entry point 
 void point_cloud_interactable::ep_compute_principal_curvature_and_colorize_unsigned() {
 	std::cout << "computing principal curvature..." << std::endl;
 	compute_principal_curvature_unsigned();
 	fill_curvature_structure();
-	print_curvature_computing_info();
-	auto_cluster_kmeans();
-	colorize_with_computed_curvature_unsigned(); // vis with gaussian_curvature
+	smooth_curvature_and_recolor();
+	//print_curvature_computing_info();
+	//auto_cluster_kmeans();
+	//colorize_with_computed_curvature_unsigned(); 
 	std::cout << "done!" << std::endl;
 }
-
-
+///
 void point_cloud_interactable::ep_force_recolor() {
 	colorize_with_computed_curvature_unsigned();
 }

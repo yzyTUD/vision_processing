@@ -328,7 +328,7 @@ bool visual_processing::init(cgv::render::context& ctx)
 /*interactive grow, test before using vr */
 ///
 void visual_processing::prepare_grow_ourmethod() {
-	data_ptr->point_cloud_kit->gm = data_ptr->point_cloud_kit->growing_mode::DISTANCE_AND_MEAN_CURVATURE_BASED;
+	data_ptr->point_cloud_kit->gm = data_ptr->point_cloud_kit->growing_mode::DISTANCE_AND_MEAN_CURVATURE_BASED_LOWERFIRST;
 	//data_ptr->point_cloud_kit->reset_queue_with_seeds(); // reset growing parameters, faces are marked as origin 
 }
 ///	
@@ -1148,7 +1148,7 @@ void visual_processing::start_parallel_region_growing() {
 ///
 void visual_processing::residual_grow_dist_and_curvature_based() {
 	// re-set some parameters, flexible for switching between 
-	data_ptr->point_cloud_kit->gm = data_ptr->point_cloud_kit->growing_mode::DISTANCE_AND_MEAN_CURVATURE_BASED;
+	data_ptr->point_cloud_kit->gm = data_ptr->point_cloud_kit->growing_mode::DISTANCE_AND_MEAN_CURVATURE_BASED_LOWERFIRST;
 	data_ptr->point_cloud_kit->growing_latency = 200;
 	data_ptr->point_cloud_kit->ignore_high_curvature_regions = false;
 	data_ptr->point_cloud_kit->is_residual_grow = true;
@@ -1166,7 +1166,7 @@ void visual_processing::residual_grow_curvature_based() {
 ///
 void visual_processing::sync_grow_dist_curvature_based() {
 	data_ptr->point_cloud_kit->record_current_state_before_sync_grow();
-	data_ptr->point_cloud_kit->gm = data_ptr->point_cloud_kit->growing_mode::DISTANCE_AND_MEAN_CURVATURE_BASED;
+	data_ptr->point_cloud_kit->gm = data_ptr->point_cloud_kit->growing_mode::DISTANCE_AND_MEAN_CURVATURE_BASED_LOWERFIRST;
 	data_ptr->point_cloud_kit->ignore_high_curvature_regions = false;
 	data_ptr->point_cloud_kit->is_synchronous_growth = true;
 	//data_ptr->point_cloud_kit->growing_latency = 0;
@@ -1194,9 +1194,18 @@ void visual_processing::sync_grow_curv_based() {
 	force_start_grow();
 }
 /// will grow after hitting this button
-void visual_processing::grow_with_dist_and_curvature() {
+void visual_processing::grow_with_dist_and_lowest_curvature() {
 	// re-set some parameters, flexible for switching between 
-	data_ptr->point_cloud_kit->gm = data_ptr->point_cloud_kit->growing_mode::DISTANCE_AND_MEAN_CURVATURE_BASED;
+	data_ptr->point_cloud_kit->gm = data_ptr->point_cloud_kit->growing_mode::DISTANCE_AND_MEAN_CURVATURE_BASED_LOWERFIRST;
+	data_ptr->point_cloud_kit->is_residual_grow = false;
+	//data_ptr->point_cloud_kit->growing_latency = 0;
+	//data_ptr->point_cloud_kit->ignore_high_curvature_regions = true;
+	force_start_grow();
+}
+/// will grow after hitting this button
+void visual_processing::grow_with_dist_and_highest_curvature() {
+	// re-set some parameters, flexible for switching between 
+	data_ptr->point_cloud_kit->gm = data_ptr->point_cloud_kit->growing_mode::DISTANCE_AND_MEAN_CURVATURE_BASED_HIGHERFIRST;
 	data_ptr->point_cloud_kit->is_residual_grow = false;
 	//data_ptr->point_cloud_kit->growing_latency = 0;
 	//data_ptr->point_cloud_kit->ignore_high_curvature_regions = true;
@@ -1218,7 +1227,7 @@ void visual_processing::undo_sync_grow() {
 }
 ///
 //void visual_processing::final_grow_dist_and_curvature_based() {
-//	data_ptr->point_cloud_kit->gm = data_ptr->point_cloud_kit->growing_mode::DISTANCE_AND_MEAN_CURVATURE_BASED;
+//	data_ptr->point_cloud_kit->gm = data_ptr->point_cloud_kit->growing_mode::DISTANCE_AND_MEAN_CURVATURE_BASED_LOWERFIRST;
 //	data_ptr->point_cloud_kit->final_grow = true;
 //	//data_ptr->point_cloud_kit->submit_face(); // move points from queue to final queue, all faces 
 //	force_start_grow(); // but, only curr region now 
@@ -1729,7 +1738,7 @@ void visual_processing::single_hit__regrow_unsigned_mean_curvature_based() {
 }
 ///
 void visual_processing::single_hit__regrow_distance_and_curvature_based() {
-	data_ptr->point_cloud_kit->gm = data_ptr->point_cloud_kit->growing_mode::DISTANCE_AND_MEAN_CURVATURE_BASED;
+	data_ptr->point_cloud_kit->gm = data_ptr->point_cloud_kit->growing_mode::DISTANCE_AND_MEAN_CURVATURE_BASED_LOWERFIRST;
 	data_ptr->point_cloud_kit->reset_queue_with_seeds(); // reset growing parameters, faces are marked as origin  
 	stop_parallel_region_growing(); // stop if thread is not stopped 	s
 	start_parallel_region_growing(); // start 
@@ -1814,7 +1823,7 @@ void visual_processing::drop_unwanted_regions() {
 void visual_processing::automatic_region_extraction() {
 	selection_kit->curr_face_selecting_id = -1;
 	while (find_next_and_increase_curr_region()) {
-		data_ptr->point_cloud_kit->gm = data_ptr->point_cloud_kit->growing_mode::DISTANCE_AND_MEAN_CURVATURE_BASED;
+		data_ptr->point_cloud_kit->gm = data_ptr->point_cloud_kit->growing_mode::DISTANCE_AND_MEAN_CURVATURE_BASED_LOWERFIRST;
 		data_ptr->point_cloud_kit->growing_latency = 0;
 		data_ptr->point_cloud_kit->ignore_high_curvature_regions = true;
 		data_ptr->point_cloud_kit->is_residual_grow = false;
@@ -1947,19 +1956,21 @@ void visual_processing::create_gui() {
 	//
 	if (begin_tree_node("Interactive Region Growing", gui_irg, gui_irg, "level=3")) {
 		//
-		add_member_control(this, "check_the_queue_and_stop", data_ptr->point_cloud_kit->check_the_queue_and_stop, "check");
-		add_member_control(this, "ignore_high_curvature_regions", data_ptr->point_cloud_kit->ignore_high_curvature_regions, "check");
+		connect_copy(add_button("reset grow, delete seeds")->click, rebind(data_ptr->point_cloud_kit, 
+			&point_cloud_interactable::prepare_grow, true)); 
+		connect_copy(add_button("smooth_curvature_and_recolor")->click,
+			rebind(data_ptr->point_cloud_kit, &point_cloud_interactable::smooth_curvature_and_recolor));
+		add_decorator("// parameters ", "heading", "level=3");
 		add_member_control(this, "minimum_searching_neighbor_points", data_ptr->point_cloud_kit->minimum_searching_neighbor_points,
 			"value_slider", "min=1;max=50;log=false;ticks=true;");
 		add_member_control(this, "growing_latency", data_ptr->point_cloud_kit->growing_latency, // per point? 
 			"value_slider", "min=1;max=2000;log=false;ticks=true;");
-		//add_member_control(this, "check_the_queue_and_stop", data_ptr->point_cloud_kit->use_property_scale, "check");
-		add_member_control(this, "use_property_scale", data_ptr->point_cloud_kit->use_property_scale, "check");
-		connect_copy(add_button("clear_seed_for_regions")->click,
-			rebind(data_ptr->point_cloud_kit, &point_cloud_interactable::clear_seed_for_regions));
-		//
-		/*connect_copy(add_button("prepare_grow_ourmethod")->click,
-			rebind(this, &visual_processing::prepare_grow_ourmethod));*/
+		add_member_control(this, "normal_threshold", data_ptr->point_cloud_kit->normal_threshold,
+			"value_slider", "min=0;max=1;log=false;ticks=true;");
+		add_member_control(this, "region_grow_check_normals",
+			data_ptr->point_cloud_kit->region_grow_check_normals, "check");
+
+		add_decorator("// loading seed ", "heading", "level=3");
 		connect_copy(add_button("mark_sample_seed")->click, rebind(this, &visual_processing::mark_sample_seed));
 		connect_copy(add_button("load_seeds_with_dialog_without_recover")->click, 
 			rebind(this, &visual_processing::load_seeds_with_dialog_without_recover));
@@ -1970,27 +1981,15 @@ void visual_processing::create_gui() {
 		connect_copy(add_button("save_sample_seeds_with_dialog")->click, rebind(this, &visual_processing::save_sample_seeds_with_dialog));
 		
 		add_decorator("// iterative interaction ", "heading", "level=3");
-
-		/*
-			usage: 
-				pick and trigger to select a seed 
-				press right to start, down to pause/ continue. left to undo 
-		*/
-		// seed selection 
-		connect_copy(add_button("reset grow, delete seeds")->click, rebind(data_ptr->point_cloud_kit, 
-			&point_cloud_interactable::prepare_grow, true)); // overwrite face ids 
-		// todo: find_next_region: select seed points automatically from low curvature regions 
 		add_member_control(this, "curr_region", selection_kit->curr_face_selecting_id,
 			"value_slider", "min=1;max=50;log=false;ticks=true;");
 		connect_copy(add_button("find_next_and_increase_curr_region")->click,
 			rebind(this, &visual_processing::find_next_and_increase_curr_region));
-		connect_copy(add_button("[S]automatic_region_extraction")->click,
-			rebind(this, &visual_processing::automatic_region_extraction));
 
-		// grow only current region 
-		connect_copy(add_button("grow_with_dist_and_curvature")->click,
-			rebind(this, &visual_processing::grow_with_dist_and_curvature));
-		// grow only current region 
+		connect_copy(add_button("grow_with_dist_and_lowest_curvature")->click,
+			rebind(this, &visual_processing::grow_with_dist_and_lowest_curvature)); 
+		connect_copy(add_button("grow_with_dist_and_highest_curvature")->click,
+				rebind(this, &visual_processing::grow_with_dist_and_highest_curvature));
 		connect_copy(add_button("grow_with_accu_dist")->click,
 			rebind(this, &visual_processing::grow_with_accu_dist)); 
 		connect_copy(add_button("pause_continue_parallel_region_growing")->click,
@@ -1998,33 +1997,15 @@ void visual_processing::create_gui() {
 		connect_copy(add_button("undo curr region")->click,
 			rebind(this, &visual_processing::undo_curr_region));
 
-		// final grow options: fill the gap
-		/*connect_copy(add_button("final_grow_accu_dist")->click,
-			rebind(this, &visual_processing::final_grow_accu_dist));*/
-		connect_copy(add_button("submit_face")->click, // all faces will be pushed to final queue
-			rebind(data_ptr->point_cloud_kit, &point_cloud_interactable::submit_face));
-
-		// an other option is residual growing, lower speed, undo support 
-		connect_copy(add_button("resume_queue")->click, // all faces will be pushed to final queue
-			rebind(data_ptr->point_cloud_kit, &point_cloud_interactable::resume_queue));
-		//add_member_control(this, "is_residual_grow", data_ptr->point_cloud_kit->is_residual_grow, "check");
-		connect_copy(add_button("residual_grow_curvature_based")->click,
-			rebind(this, &visual_processing::residual_grow_curvature_based));
-		connect_copy(add_button("residual_grow_dist_and_curvature_based")->click,
-			rebind(this, &visual_processing::residual_grow_dist_and_curvature_based));
+		// sync_grow
 		connect_copy(add_button("sync_grow_dist_curvature_based")->click,
 			rebind(this, &visual_processing::sync_grow_dist_curvature_based));
 		connect_copy(add_button("sync_grow_dist_based")->click,
 			rebind(this, &visual_processing::sync_grow_dist_based));
 		connect_copy(add_button("sync_grow_curv_based")->click,
 			rebind(this, &visual_processing::sync_grow_curv_based));
-		
 		connect_copy(add_button("undo_sync_grow")->click,
 			rebind(this, &visual_processing::undo_sync_grow));
-		add_member_control(this, "normal_threshold", data_ptr->point_cloud_kit->normal_threshold,
-			"value_slider", "min=0;max=1;log=false;ticks=true;");
-		add_member_control(this, "region_grow_check_normals", 
-			data_ptr->point_cloud_kit->region_grow_check_normals, "check");
 	}
 	// 
 	if (begin_tree_node("Model Fitting (Connectivity )", gui_Fitting, gui_Fitting, "level=3")) {
@@ -2035,11 +2016,33 @@ void visual_processing::create_gui() {
 	}
 	//
 	if (begin_tree_node("Region Growing", gui_rg, gui_rg, "level=3")) {
+		//add_member_control(this, "check_the_queue_and_stop", data_ptr->point_cloud_kit->use_property_scale, "check");
+		//add_member_control(this, "use_property_scale", data_ptr->point_cloud_kit->use_property_scale, "check");
+		//connect_copy(add_button("clear_seed_for_regions")->click, rebind(data_ptr->point_cloud_kit, &point_cloud_interactable::clear_seed_for_regions));
+		//
+		/*connect_copy(add_button("prepare_grow_ourmethod")->click,
+			rebind(this, &visual_processing::prepare_grow_ourmethod));*/
 		// prepare computing, extract neighbour graphs, commpute cuavature, compute knn 
 		//connect_copy(add_button("[S,ONCE]prepare_region_grow")->click, rebind(this, &visual_processing::single_hit__prepare_region_grow));
 		// reset 
 		connect_copy(add_button("reset grow, delete seeds")->click, rebind(data_ptr->point_cloud_kit, &point_cloud_interactable::prepare_grow, true)); // overwrite face ids 
 		
+		add_decorator("// automatic method ", "heading", "level=3");
+		connect_copy(add_button("submit_face")->click, // all faces will be pushed to final queue
+			rebind(data_ptr->point_cloud_kit, &point_cloud_interactable::submit_face));
+		// an other option is residual growing, lower speed, undo support 
+		connect_copy(add_button("resume_queue")->click, // all faces will be pushed to final queue
+			rebind(data_ptr->point_cloud_kit, &point_cloud_interactable::resume_queue));
+		/*connect_copy(add_button("final_grow_accu_dist")->click,
+			rebind(this, &visual_processing::final_grow_accu_dist));*/
+		//add_member_control(this, "is_residual_grow", data_ptr->point_cloud_kit->is_residual_grow, "check");
+		connect_copy(add_button("residual_grow_curvature_based")->click,
+			rebind(this, &visual_processing::residual_grow_curvature_based));
+		connect_copy(add_button("residual_grow_dist_and_curvature_based")->click,
+			rebind(this, &visual_processing::residual_grow_dist_and_curvature_based));
+		connect_copy(add_button("[S]automatic_region_extraction")->click,
+			rebind(this, &visual_processing::automatic_region_extraction));
+
 		add_decorator("// seed selection ", "heading", "level=3");
 		// seed selection 
 		connect_copy(add_button("load_sample_seeds_default")->click, rebind(this, &visual_processing::load_sample_seeds_default));
@@ -2072,7 +2075,6 @@ void visual_processing::create_gui() {
 			rebind(this, &visual_processing::single_hit__regrow_stop_at_high_curvature));
 		connect_copy(add_button("mark_sample_seed")->click, rebind(this, &visual_processing::mark_sample_seed));
 		
-
 		add_decorator("// debug the growing process", "heading", "level=3");
 		add_member_control(this, "use_property_scale", data_ptr->point_cloud_kit->use_property_scale, "check");
 		add_member_control(this, "knn", data_ptr->point_cloud_kit->k,
@@ -2086,7 +2088,8 @@ void visual_processing::create_gui() {
 			rebind(this, &visual_processing::debug_region_growing_step_by_step_test));
 
 		add_decorator("// curvature computing ", "heading", "level=3");
-
+		connect_copy(add_button("smooth_curvature_and_recolor")->click,
+			rebind(data_ptr->point_cloud_kit, &point_cloud_interactable::smooth_curvature_and_recolor));
 		connect_copy(add_button("signed: compute_principal_curvature_and_colorize")->click,
 			rebind(this, &visual_processing::ep_compute_principal_curvature_and_colorize_signed));
 		connect_copy(add_button("unsigned: compute_principal_curvature_and_colorize")->click,

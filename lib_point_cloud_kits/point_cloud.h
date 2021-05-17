@@ -284,6 +284,8 @@ public:
 	std::vector<float> point_scan_index; 
 	/// per-vertex attribute: curvature in tangent space, gaussian curvature, mean curvature and principle curvatures can be computed out of it 
 	std::vector<principal_curvature> curvature; // kmin and kmax, not passed to shader directly 
+	/// do not modify principal_curvature above for output file support 
+	std::vector<float> smoothed_mean_curvature;
 	/// per point lod information 
 	std::vector<int> lods;
 

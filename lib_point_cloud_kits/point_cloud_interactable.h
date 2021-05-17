@@ -315,6 +315,12 @@ public:
 	/// unsigned version 
 	void compute_principal_curvature_unsigned();
 	///
+	void smooth_curvature_and_recolor();
+	///
+	void compute_smoothed_curvature();
+	///
+	void apply_smoothed_curvature();
+	///
 	void colorize_with_computed_curvature_unsigned();
 	///
 	void ep_compute_principal_curvature_and_colorize_unsigned();
@@ -452,7 +458,8 @@ public:
 		ACCU_DISTANCE_BASED,
 		SEED_DISTANCE_BASED,
 		UNSIGNED_MEAN_CURVATURE_BASED,
-		DISTANCE_AND_MEAN_CURVATURE_BASED,
+		DISTANCE_AND_MEAN_CURVATURE_BASED_LOWERFIRST,
+		DISTANCE_AND_MEAN_CURVATURE_BASED_HIGHERFIRST,
 		STOP_ON_BOUNDARY,
 
 		// todo 
@@ -465,7 +472,7 @@ public:
 	/// loop all points to check is too slow 
 	bool check_the_queue_and_stop = false;
 	/// ignore high curvature points, sometime searching radius is too large 
-	bool ignore_high_curvature_regions = true;
+	bool ignore_high_curvature_regions = false;
 	/// 
 	std::vector<int> num_of_knn_used_for_each_group;
 	///
