@@ -172,7 +172,7 @@ public:
 	/// whether to automatically set the view after reading new points
 	bool do_auto_view;
 	/// whether to automatically compute normals after point reading 
-	bool compute_normal_after_read = false;
+	bool compute_normal_after_read = true;
 
 	/*reading camera positions: .campose file  */
 	///

@@ -1708,10 +1708,10 @@ void visual_processing::single_hit__prepare_region_grow_worker(bool overwrite_fa
 /// single thread, some pre-computing 
 void visual_processing::single_hit__prepare_region_grow(bool overwrite_face_id) {
 	std::cout << "preparing everything for region growing!" << std::endl;
-	if (data_ptr->point_cloud_kit->pc.curvature.size() == 0)
-		data_ptr->point_cloud_kit->ep_compute_principal_curvature_and_colorize_unsigned(); // compute unsigned curvature 
 	if (data_ptr->point_cloud_kit->pc.nearest_neighbour_indices.size() == 0)
 		data_ptr->point_cloud_kit->extract_neighbours(); // will take some time for neighbour points extraction 
+	if (data_ptr->point_cloud_kit->pc.curvature.size() == 0)
+		data_ptr->point_cloud_kit->ep_compute_principal_curvature_and_colorize_unsigned(); // compute unsigned curvature 
 	data_ptr->point_cloud_kit->prepare_grow(overwrite_face_id);
 	std::cout << "prepared! " << std::endl;
 }

@@ -3575,6 +3575,10 @@ void point_cloud_interactable::compute_principal_curvature_unsigned() {
 	// loop over to compute 
 	for (int i = 0; i < pc.get_nr_points(); i++) {
 		projected_normals.clear();
+		if (!pc.has_normals()) {
+			compute_normals();
+			orient_normals();
+		}
 		const Dir& point_normal = pc.nml(i);
 		tree_ds->extract_neighbors(i, k, neighbor_points);
 
@@ -3635,7 +3639,7 @@ void point_cloud_interactable::compute_smoothed_curvature() {
 		// compute for each point a new curvature 
 		float weighted_average_curvature = 0;
 		float sum_dist = 0;
-		for (int j = 1; j < pc.nearest_neighbour_indices.at(i).size(); j++) { // 0 is the poitn itself 
+		for (int j = 0; j < pc.nearest_neighbour_indices.at(i).size(); j++) { // 0 is the poitn itself 
 			int neighbor_index = pc.nearest_neighbour_indices.at(i).at(j);
 			float curr_dist = (pc.pnt(i) - pc.pnt(neighbor_index)).length();
 			weighted_average_curvature += 
