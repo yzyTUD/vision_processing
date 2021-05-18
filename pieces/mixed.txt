@@ -1,0 +1,100 @@
+
+
+	//can_parallel_edit = false; // atomic: stop seleciton when parallel growing 
+
+	//num_of_knn_used_for_each_group.resize(pc.num_of_face_selections_rendered);
+	//for (auto& n : num_of_knn_used_for_each_group) { n = minimum_searching_neighbor_points; } // reset knn searching radius in final step 
+
+	//// if not all point are grown 
+	//while (!pause_growing) { // thread will exit if pausing, but queue stays the unchanged 
+	//	//
+	//	for (int gi = 1; gi < pc.num_of_face_selections_rendered; gi++)
+	//		grow_one_step_bfs(false, gi); // boolean not used 
+
+	//	// sleep for a while after one point
+	//	std::this_thread::sleep_for(std::chrono::milliseconds(growing_latency));
+
+	//	// stopping criteria for final grow
+	//	if (points_grown == pc.get_nr_points()) {
+	//		std::cout << "all points are grown, quit" << std::endl;
+	//		return;
+	//	}
+	//}
+
+	//std::cout << "finalize_grow: done." << std::endl;
+	//can_parallel_edit = true;
+
+	--------------------
+
+	//auto start = std::chrono::high_resolution_clock::now();
+	// update distances 
+	//max_accu_dist = 0;
+	//max_dist = (pc.box().get_max_pnt() - pc.box().get_min_pnt()).length();
+	//std::cout << "parallel region growing: starts" << std::endl;
+	//can_parallel_edit = false; // atomic: stop seleciton when parallel growing 
+
+	/* parallel: one thread for each group 
+	growing_thread_pool.resize(pc.num_of_face_selections_rendered);
+
+	for (int gi = 1; gi < pc.num_of_face_selections_rendered; gi++) 
+		growing_thread_pool.at(gi) = new std::thread(&point_cloud_interactable::grow_one_region,this,gi);
+
+	for (int gi = 1; gi < pc.num_of_face_selections_rendered; gi++)
+		growing_thread_pool.at(gi)->join();*/
+
+	//if (final_grow) {
+	//	num_of_knn_used_for_each_group.resize(pc.num_of_face_selections_rendered);
+	//	for (auto& n : num_of_knn_used_for_each_group) { n = k; } // reset knn searching radius in final step 
+	//}
+
+	//const int points_one_chunk = 100;
+	//int points_grown = 0;
+	//// if not all point are grown 
+	//while (!pause_growing) { // thread will exit if pausing, but queue stays the unchanged 
+	//	//
+	//	for (int gi = 1; gi < pc.num_of_face_selections_rendered; gi++)
+	//		grow_one_step_bfs(final_grow, gi);
+
+	//	// sleep for a while 
+	//	points_grown++;
+
+	//	// 
+	//	if (points_grown > points_one_chunk) {
+	//		// sleep for a while 
+	//		if (growing_latency != 0)
+	//			std::this_thread::sleep_for(std::chrono::milliseconds(growing_latency));
+	//		points_grown = 0; // reset 
+	//	}
+
+	//	// stopping criteria
+	//	if (final_grow) {
+	//		if (points_grown == pc.get_nr_points()) {
+	//			std::cout << "all points are grown, quit" << std::endl;
+	//			return;
+	//		}
+	//	}
+	//	else {		
+	//		// check all queues 
+	//		bool all_enpty_can_stop = true;
+	//		for (int gi = 1; gi < pc.num_of_face_selections_rendered; gi++)
+	//		{
+	//			all_enpty_can_stop = all_enpty_can_stop && queue_for_regions[gi].empty();
+	//		}
+	//		if (all_enpty_can_stop) {
+	//			std::cout << "all queues are empty, quit" << std::endl;
+	//			return;
+	//		}
+	//	}
+	//}
+
+	//if (final_grow) 
+	//	final_grow = false;
+
+	//auto finish = std::chrono::high_resolution_clock::now();
+	//std::chrono::duration<double> elapsed = finish - start;
+
+	//std::cout << "parallel region growing: done." << std::endl;
+	//std::cout << "elapsed time: " << elapsed.count() << " s\n";
+	//std::cout << "max_dist_real: " << max_accu_dist << std::endl;
+	//std::cout << "max_dist: " << max_dist << std::endl;
+	//can_parallel_edit = true;

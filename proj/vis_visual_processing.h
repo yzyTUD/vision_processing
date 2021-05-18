@@ -186,6 +186,7 @@ protected:
 	bool overwrite_face_id = false;
 	bool instance_redraw = true;
 	bool put_points_to_table = true;
+	bool backward_grow = false;
 
 	// cam rendering 
 	std::vector<vec3> point_and_cam;
@@ -401,6 +402,7 @@ public:
 	void grow_with_dist_and_highest_curvature();
 	void grow_with_accu_dist();
 	void grow_with_highest_curvature_only();
+	void backward_growing();
 	void force_start_grow();
 	void ep_start_grow_auto_curv_direction();
 	void pause_continue_parallel_region_growing();
@@ -480,6 +482,8 @@ public:
 	/// embeded for vr handlers 
 	void upscale_model_one_step();
 	void undo_curr_region();
+
+	void quiet_save();
 
 	void create_gui();
 	void write_trajectory() { draw_kit->write_trajectory(); }
@@ -725,7 +729,6 @@ public:
 	void debug_region_growing_step_by_step_test() {
 		data_ptr->point_cloud_kit->gm = data_ptr->point_cloud_kit->growing_mode::ACCU_DISTANCE_BASED;
 		data_ptr->point_cloud_kit->grow_one_step_bfs(false, 1);
-		data_ptr->point_cloud_kit->grow_one_step_bfs(false, 2);
 	}
 	void direct_buffer_loading() { // very special case 
 		data_ptr->point_cloud_kit->direct_buffer_loading();

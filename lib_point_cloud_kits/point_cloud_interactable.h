@@ -114,6 +114,11 @@ struct LowSecComp {
 //	std::set<int> set_;
 //};
 
+struct growing_history_element { // hard to keep consistancy, record growing state from time to time
+	int curr_point_id;
+	std::vector<int> curr_neighbors_pushed_to_queue;
+};
+
 /** the point cloud view adds a gui to the gl_point_cloud_drawable_base and adds
     some basic processing like normal computation as well as some debug rendering
 	of the neighbor graph*/
@@ -347,6 +352,9 @@ public:
 	///
 	std::vector<std::priority_queue<point_priority_mapping,
 		std::vector<point_priority_mapping>, LowSecComp>> suspend_queue_for_regions;
+	///
+	std::vector<std::priority_queue<point_priority_mapping,
+		std::vector<point_priority_mapping>, LowSecComp>> backward_queue_for_regions;
 	/// 
 	std::vector<int> seed_for_regions;
 	/// 
@@ -359,6 +367,9 @@ public:
 	int points_grown = 0;
 	///
 	int bkp_points_grown = 0;
+	///
+	std::vector<std::priority_queue<point_priority_mapping,
+		std::vector<point_priority_mapping>, LowSecComp>> bkp_queue;
 	///
 	std::vector<int> knn;
 	/// reset seeds, and face_id and topo_id
@@ -381,6 +392,10 @@ public:
 	///
 	void submit_face();
 	///
+	void clear_queue_and_restore_attributes();
+	///
+	void clear_curr_queue_and_restore_attributes(int curr_group);
+	///
 	void resume_queue();
 	///	
 	void record_current_state_before_sync_grow();
@@ -390,6 +405,12 @@ public:
 	void undo_curr_region(int curr_region);
 	///
 	void scale_model();
+	///
+	void step_back_one_point();
+	///
+	void backward_grow_one_step(int curr_region);
+	///
+	void backward_grow_current_region(int curr_region);
 	///
 	void grow_curr_region(int curr_region);
 	///
@@ -514,6 +535,8 @@ public:
 	std::vector<int> bkp_point_in_queue_which_group;
 	/// 
 	//additionally, queue should be restored, but it is easy 
+	/// for backward growing 
+	std::vector<std::vector<growing_history_element>> growing_history_for_region; // hard to track 
 
 
 	/* Fine-Grained Point Classification */

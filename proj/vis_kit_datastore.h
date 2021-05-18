@@ -323,13 +323,20 @@ public:
 		gp_btn_tmp.push_back("RegionGrowing\nHighlightUnmarked");
 		gp_btn_tmp.push_back("RegionGrowing\nScaleModel");
 
+		// pick up seeds for regions 
 		gp_btn_tmp.push_back("RegionGrowing\nSeedPicker");
 
+		// novel region growing scheme 
 		gp_btn_tmp.push_back("RegionGrowing\nOurMethod");
-		// those are used to control the growing process 
+
+		// control the growing process 
 		gp_btn_tmp.push_back("RegionGrowing\nMarkAsOrig");
 		gp_btn_tmp.push_back("RegionGrowing\nMarkQueue\nToOrig");
 		gp_btn_tmp.push_back("RegionGrowing\nMarkAsCurr");
+		gp_btn_tmp.push_back("RegionGrowing\nBackGrow");
+
+		//
+		gp_btn_tmp.push_back("RegionGrowing\nSyncGrow");
 
 		gp_btn_tmp.push_back("RegionGrowing\nOurMethod\nToggleIgnore\nHighCurvatureRegions");
 		gp_btn_tmp.push_back("RegionGrowing\nSaveToFile");

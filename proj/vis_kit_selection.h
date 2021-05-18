@@ -227,6 +227,38 @@ public:
 						}
 						else {
 							marking_style.radius -= 0.001f;
+							if (marking_style.radius < 0.001f)
+								marking_style.radius = 0.001f;
+						}
+					}
+					if (data_ptr->check_roulette_selection(data_ptr->get_id_with_name("RegionGrowing\nMarkAsOrig"))) { // selection 
+						if (vrse.get_y() > 0) {
+							marking_style.radius += 0.001f;
+						}
+						else {
+							marking_style.radius -= 0.001f;
+							if (marking_style.radius < 0.001f)
+								marking_style.radius = 0.001f;
+						}
+					}
+					if (data_ptr->check_roulette_selection(data_ptr->get_id_with_name("RegionGrowing\nMarkQueue\nToOrig"))) { // selection 
+						if (vrse.get_y() > 0) {
+							marking_style.radius += 0.001f;
+						}
+						else {
+							marking_style.radius -= 0.001f;
+							if (marking_style.radius < 0.001f)
+								marking_style.radius = 0.001f;
+						}
+					}
+					if (data_ptr->check_roulette_selection(data_ptr->get_id_with_name("RegionGrowing\nMarkAsCurr"))) { // selection 
+						if (vrse.get_y() > 0) {
+							marking_style.radius += 0.001f;
+						}
+						else {
+							marking_style.radius -= 0.001f;
+							if (marking_style.radius < 0.001f)
+								marking_style.radius = 0.001f;
 						}
 					}
 					// shading effects 
@@ -737,6 +769,9 @@ public:
 			render_palette_sphere_on_righthand(ctx);
 		}
 		if (data_ptr->check_roulette_selection(data_ptr->get_id_with_name("RegionGrowing\nMarkQueue\nToOrig"))) {
+			render_palette_sphere_on_righthand(ctx);
+		}
+		if (data_ptr->check_roulette_selection(data_ptr->get_id_with_name("RegionGrowing\nBackGrow"))) {
 			render_palette_sphere_on_righthand(ctx);
 		}
 		

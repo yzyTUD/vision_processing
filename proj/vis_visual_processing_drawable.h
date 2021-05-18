@@ -149,7 +149,10 @@ void visual_processing::timer_event(double t, double dt) {
 }
 /// timer event executes in an other parallel thread, fixed freq 
 void visual_processing::parallel_region_growing() {
-	data_ptr->point_cloud_kit->grow_curr_region(selection_kit->curr_face_selecting_id);
+	if (!backward_grow)
+		data_ptr->point_cloud_kit->grow_curr_region(selection_kit->curr_face_selecting_id);
+	else
+		data_ptr->point_cloud_kit->backward_grow_current_region(selection_kit->curr_face_selecting_id);
 }
 ///
 visual_processing::~visual_processing() {
@@ -535,6 +538,12 @@ bool visual_processing::handle(cgv::gui::event& e)
 						//pause_continue_parallel_region_growing(); 
 						ep_start_grow_auto_curv_direction(); // automatic select which grow strategy 
 					}
+					if (data_ptr->check_roulette_selection(data_ptr->get_id_with_name("RegionGrowing\nBackGrow"))) {
+						//force_start_grow();
+						//pause_continue_parallel_region_growing(); 
+						//ep_start_grow_auto_curv_direction(); // automatic select which grow strategy 
+						backward_growing();
+					}
 				}
 			}
 		}
@@ -546,8 +555,16 @@ bool visual_processing::handle(cgv::gui::event& e)
 				if (vrke.get_controller_index() == data_ptr->right_rgbd_controller_index)
 				{
 					if (data_ptr->check_roulette_selection(data_ptr->get_id_with_name("RegionGrowing\nOurMethod"))) {
-						//data_ptr->point_cloud_kit->submit_face();
 						pause_continue_parallel_region_growing();
+					}
+					if (data_ptr->check_roulette_selection(data_ptr->get_id_with_name("RegionGrowing\nBackGrow"))) {
+						pause_continue_parallel_region_growing();
+					}
+					if (data_ptr->check_roulette_selection(data_ptr->get_id_with_name("RegionGrowing\nSaveToFile"))) {
+						quiet_save();
+					}
+					if (data_ptr->check_roulette_selection(data_ptr->get_id_with_name("RegionGrowing\nSyncGrow"))) {
+						sync_grow_dist_curvature_based();
 					}
 				}
 			}
@@ -561,6 +578,12 @@ bool visual_processing::handle(cgv::gui::event& e)
 				{
 					if (data_ptr->check_roulette_selection(data_ptr->get_id_with_name("RegionGrowing\nOurMethod"))) {
 						data_ptr->point_cloud_kit->undo_curr_region(selection_kit->curr_face_selecting_id);
+					}
+					if (data_ptr->check_roulette_selection(data_ptr->get_id_with_name("RegionGrowing\nBackGrow"))) {
+						data_ptr->point_cloud_kit->undo_curr_region(selection_kit->curr_face_selecting_id);
+					}
+					if (data_ptr->check_roulette_selection(data_ptr->get_id_with_name("RegionGrowing\nSyncGrow"))) {
+						undo_sync_grow();
 					}
 				}
 			}
@@ -1153,6 +1176,7 @@ void visual_processing::residual_grow_dist_and_curvature_based() {
 	data_ptr->point_cloud_kit->growing_latency = 200;
 	data_ptr->point_cloud_kit->ignore_high_curvature_regions = false;
 	data_ptr->point_cloud_kit->is_residual_grow = true;
+	backward_grow = false;
 	force_start_grow();
 }
 ///
@@ -1162,6 +1186,7 @@ void visual_processing::residual_grow_curvature_based() {
 	data_ptr->point_cloud_kit->growing_latency = 200;
 	data_ptr->point_cloud_kit->ignore_high_curvature_regions = false;
 	data_ptr->point_cloud_kit->is_residual_grow = true;
+	backward_grow = false;
 	force_start_grow();
 }
 ///
@@ -1172,6 +1197,7 @@ void visual_processing::sync_grow_dist_curvature_based() {
 	data_ptr->point_cloud_kit->is_synchronous_growth = true;
 	data_ptr->point_cloud_kit->growing_latency = 0;
 	data_ptr->point_cloud_kit->region_grow_check_normals = true;
+	backward_grow = false;
 	force_start_grow();
 }
 ///
@@ -1182,6 +1208,7 @@ void visual_processing::sync_grow_dist_based() {
 	data_ptr->point_cloud_kit->is_synchronous_growth = true;
 	//data_ptr->point_cloud_kit->growing_latency = 0;
 	//data_ptr->point_cloud_kit->region_grow_check_normals = true;
+	backward_grow = false;
 	force_start_grow();
 }
 ///
@@ -1192,6 +1219,7 @@ void visual_processing::sync_grow_curv_based() {
 	data_ptr->point_cloud_kit->is_synchronous_growth = true;
 	//data_ptr->point_cloud_kit->growing_latency = 0;
 	//data_ptr->point_cloud_kit->region_grow_check_normals = true;
+	backward_grow = false;
 	force_start_grow();
 }
 /// will grow after hitting this button
@@ -1201,15 +1229,17 @@ void visual_processing::grow_with_dist_and_lowest_curvature() {
 	data_ptr->point_cloud_kit->is_residual_grow = false;
 	//data_ptr->point_cloud_kit->growing_latency = 0;
 	//data_ptr->point_cloud_kit->ignore_high_curvature_regions = true;
+	backward_grow = false;
 	force_start_grow();
 }
-/// will grow after hitting this button
+/// will grow after hitting this button, not working 
 void visual_processing::grow_with_dist_and_highest_curvature() {
 	// re-set some parameters, flexible for switching between 
 	data_ptr->point_cloud_kit->gm = data_ptr->point_cloud_kit->growing_mode::DISTANCE_AND_MEAN_CURVATURE_BASED_HIGHERFIRST;
 	data_ptr->point_cloud_kit->is_residual_grow = false;
 	//data_ptr->point_cloud_kit->growing_latency = 0;
 	//data_ptr->point_cloud_kit->ignore_high_curvature_regions = true;
+	backward_grow = false;
 	force_start_grow();
 }
 ///
@@ -1219,6 +1249,7 @@ void visual_processing::grow_with_accu_dist() {
 	//data_ptr->point_cloud_kit->growing_latency = 0;
 	//data_ptr->point_cloud_kit->ignore_high_curvature_regions = true;
 	data_ptr->point_cloud_kit->is_residual_grow = false;
+	backward_grow = false;
 	force_start_grow();
 }
 ///
@@ -1228,6 +1259,12 @@ void visual_processing::grow_with_highest_curvature_only() {
 	//data_ptr->point_cloud_kit->growing_latency = 0;
 	//data_ptr->point_cloud_kit->ignore_high_curvature_regions = true;
 	data_ptr->point_cloud_kit->is_residual_grow = false;
+	backward_grow = false;
+	force_start_grow();
+}
+///
+void visual_processing::backward_growing() {
+	backward_grow = true;
 	force_start_grow();
 }
 /// check, for it will access queue 
@@ -1878,6 +1915,18 @@ void visual_processing::upscale_model_one_step() {
 void visual_processing::undo_curr_region() {
 	data_ptr->point_cloud_kit->undo_curr_region(selection_kit->curr_face_selecting_id);
 }
+///
+void visual_processing::quiet_save() {
+	// recorded when reading file 
+	data_ptr->point_cloud_kit->pc.suggested_point_size = data_ptr->point_cloud_kit->surfel_style.point_size;
+	std::string fn_without_extension =
+		cgv::utils::file::get_file_name(cgv::utils::file::drop_extension(data_ptr->point_cloud_kit->file_dir)); 
+	auto microsecondsUTC = std::chrono::duration_cast<std::chrono::microseconds>(
+			std::chrono::system_clock::now().time_since_epoch()).count();
+	std::string time_stamp_for_file_name = "_" + std::to_string(microsecondsUTC);
+	data_ptr->point_cloud_kit->write_pc_to_file_with_given_dir(fn_without_extension + time_stamp_for_file_name + ".ypc");
+	std::cout << "saved!" << std::endl;
+}
 /*gui */
 ///
 void visual_processing::create_gui() {
@@ -1967,6 +2016,7 @@ void visual_processing::create_gui() {
 		connect_copy(add_button("[B]read_pc_append(obj raw scan)")->click, rebind(this, &visual_processing::read_pc_append));
 		add_member_control(this, "Ignore Deleted Points", data_ptr->point_cloud_kit->pc.ignore_deleted_points, "check");
 		connect_copy(add_button("save")->click, rebind(this, &visual_processing::start_writting_pc_parallel));
+		connect_copy(add_button("quiet_save")->click, rebind(this, &visual_processing::quiet_save));
 		connect_copy(add_button("print_pc_information")->click, rebind(this, &visual_processing::print_pc_information));
 		connect_copy(add_button("clear_all_pcs")->click, rebind(this, &visual_processing::clear_all_pcs));
 		connect_copy(add_button("[Clod,GPC]direct_buffer_loading")->click, rebind(this, &visual_processing::direct_buffer_loading));
@@ -1991,6 +2041,10 @@ void visual_processing::create_gui() {
 			"value_slider", "min=0;max=1;log=false;ticks=true;");
 		add_member_control(this, "region_grow_check_normals",
 			data_ptr->point_cloud_kit->region_grow_check_normals, "check");
+		connect_copy(add_button("debug_region_growing_step_by_step_test")->click,
+			rebind(this, &visual_processing::debug_region_growing_step_by_step_test));
+		connect_copy(add_button("backward_grow_one_step")->click, rebind(data_ptr->point_cloud_kit,
+			&point_cloud_interactable::backward_grow_one_step,selection_kit->curr_face_selecting_id));
 
 		add_decorator("// loading seed ", "heading", "level=3");
 		connect_copy(add_button("mark_sample_seed")->click, rebind(this, &visual_processing::mark_sample_seed));
@@ -2001,30 +2055,31 @@ void visual_processing::create_gui() {
 		connect_copy(add_button("save_sample_seeds_default")->click, rebind(this, &visual_processing::save_sample_seeds_default));
 		connect_copy(add_button("load_sample_seeds_with_dialog")->click, rebind(this, &visual_processing::load_sample_seeds_with_dialog));
 		connect_copy(add_button("save_sample_seeds_with_dialog")->click, rebind(this, &visual_processing::save_sample_seeds_with_dialog));
+		connect_copy(add_button("find_next_and_increase_curr_region")->click,
+			rebind(this, &visual_processing::find_next_and_increase_curr_region));
 		
 		add_decorator("// iterative interaction ", "heading", "level=3");
 		add_member_control(this, "curr_region", selection_kit->curr_face_selecting_id,
 			"value_slider", "min=1;max=50;log=false;ticks=true;");
-		connect_copy(add_button("find_next_and_increase_curr_region")->click,
-			rebind(this, &visual_processing::find_next_and_increase_curr_region));
-
 		connect_copy(add_button("grow_with_dist_and_lowest_curvature")->click,
 			rebind(this, &visual_processing::grow_with_dist_and_lowest_curvature)); 
 		connect_copy(add_button("grow_with_dist_and_highest_curvature")->click,
 				rebind(this, &visual_processing::grow_with_dist_and_highest_curvature));
 		connect_copy(add_button("ep_start_grow_auto_curv_direction")->click, // calls the above functions under condition
 			rebind(this, &visual_processing::ep_start_grow_auto_curv_direction));
-
 		connect_copy(add_button("grow_with_highest_curvature_only")->click,
 			rebind(this, &visual_processing::grow_with_highest_curvature_only));
 		connect_copy(add_button("grow_with_accu_dist")->click,
 			rebind(this, &visual_processing::grow_with_accu_dist)); 
 		connect_copy(add_button("pause_continue_parallel_region_growing")->click,
 			rebind(this, &visual_processing::pause_continue_parallel_region_growing));
+
+		add_decorator("// undo functions ", "heading", "level=3");
+		connect_copy(add_button("backward_growing")->click, rebind(this, &visual_processing::backward_growing));
 		connect_copy(add_button("undo curr region")->click,
 			rebind(this, &visual_processing::undo_curr_region));
 
-		// sync_grow
+		add_decorator("// sync grow ", "heading", "level=3");
 		connect_copy(add_button("sync_grow_dist_curvature_based")->click,
 			rebind(this, &visual_processing::sync_grow_dist_curvature_based));
 		connect_copy(add_button("sync_grow_dist_based")->click,
@@ -2111,8 +2166,6 @@ void visual_processing::create_gui() {
 		connect_copy(add_button("pause/continue")->click, rebind(this, &visual_processing::pause_continue_parallel_region_growing));
 		connect_copy(add_button("start")->click, rebind(this, &visual_processing::start_parallel_region_growing));
 		connect_copy(add_button("terminate")->click, rebind(this, &visual_processing::stop_parallel_region_growing));
-		connect_copy(add_button("debug_region_growing_step_by_step_test")->click, 
-			rebind(this, &visual_processing::debug_region_growing_step_by_step_test));
 
 		add_decorator("// curvature computing ", "heading", "level=3");
 		connect_copy(add_button("smooth_curvature_and_recolor")->click,

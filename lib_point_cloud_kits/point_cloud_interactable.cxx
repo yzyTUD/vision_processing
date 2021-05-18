@@ -1429,12 +1429,19 @@ void point_cloud_interactable::prepare_grow(bool overwrite_face_selection) {
 	suspend_queue_for_regions.clear();
 	suspend_queue_for_regions.resize(pc.num_of_face_selections_rendered, std::priority_queue<point_priority_mapping,
 		std::vector<point_priority_mapping>, LowSecComp>());
+	backward_queue_for_regions.clear();
+	backward_queue_for_regions.resize(pc.num_of_face_selections_rendered, std::priority_queue<point_priority_mapping,
+		std::vector<point_priority_mapping>, LowSecComp>());
 	seed_for_regions.clear();
 	seed_for_regions.resize(pc.num_of_face_selections_rendered);
 	for (auto& sid : seed_for_regions) { sid = -1; }
 
 	// init number of grown points to 0 
 	points_grown = 0;
+
+	//
+	growing_history_for_region.resize(pc.num_of_face_selections_rendered);
+	for (auto& e : growing_history_for_region) { e.clear(); }
 
 	// 
 	is_residual_grow = false;
@@ -1711,6 +1718,32 @@ void point_cloud_interactable::submit_face() {
 		}
 	}
 }
+/// not used 
+void point_cloud_interactable::clear_queue_and_restore_attributes() {
+	point_priority_mapping curr_top;
+	for (int curr_group = 1; curr_group < pc.num_of_face_selections_rendered; curr_group++) {
+		while (!queue_for_regions[curr_group].empty()) {
+			curr_top = queue_for_regions[curr_group].top();
+			pc.face_id.at(std::get<ID>(curr_top)) = 0;
+			pc.point_visited.at(std::get<ID>(curr_top)) = false;
+			pc.point_in_queue.at(std::get<ID>(curr_top)) = false;
+			pc.point_in_queue_which_group.at(std::get<ID>(curr_top)) = 0;
+			queue_for_regions[curr_group].pop();
+		}
+	}
+}
+///
+void point_cloud_interactable::clear_curr_queue_and_restore_attributes(int curr_group) {
+	point_priority_mapping curr_top;
+	while (!queue_for_regions[curr_group].empty()) {
+		curr_top = queue_for_regions[curr_group].top();
+		pc.face_id.at(std::get<ID>(curr_top)) = 0;
+		pc.point_visited.at(std::get<ID>(curr_top)) = false;
+		pc.point_in_queue.at(std::get<ID>(curr_top)) = false;
+		pc.point_in_queue_which_group.at(std::get<ID>(curr_top)) = 0;
+		queue_for_regions[curr_group].pop();
+	}
+}
 /// all suspend_queue_for_regions empty, everything pushed to queue, can grow an other time 
 /// serves for automatic methods: modify the state of the queue
 void point_cloud_interactable::resume_queue() {
@@ -1842,6 +1875,58 @@ void point_cloud_interactable::scale_model() {
 			k. final grow to fill the gap.
 
 */
+void point_cloud_interactable::step_back_one_point() {
+
+}
+/// modify: 5 attributes + 1 queue
+void point_cloud_interactable::backward_grow_one_step(int curr_region) {
+	if (!queue_for_regions[curr_region].empty()) {
+		clear_curr_queue_and_restore_attributes(curr_region);
+	}
+
+	growing_history_element e = growing_history_for_region[curr_region][num_of_points_curr_region[curr_region] -1]; // size of growing_history should be the same as points_grown
+	
+	// recover last point 
+	pc.point_in_queue[e.curr_point_id] = false;
+	pc.point_visited[e.curr_point_id] = false;
+	pc.face_id[e.curr_point_id] = 0;
+	pc.point_in_queue_which_group[e.curr_point_id] = 0;
+
+	points_grown--;
+	num_of_points_curr_region[curr_region]--;
+}
+/// modify: 5 attributes + 1 queue 
+/// what about grow again? back and grow will cause complexity 
+void point_cloud_interactable::backward_grow_current_region(int curr_region) {
+	// step back one point: 
+		// curr queue -> origin (queue modified )
+		// curr point -> origin 
+		// curr point -> queue 
+	// but have to save enough information 
+		// std::vector<growing_history_element> growing_history;
+		// 
+	const int points_one_chunk = 100;
+	int num_points = 0;
+	while (!pause_growing) {
+		//
+		if (num_of_points_curr_region[curr_region] == 0)
+			return;
+
+		//
+		backward_grow_one_step(curr_region);
+		
+		// for sleeping 
+		num_points++;
+
+		//
+		if (num_points > points_one_chunk) {
+			// sleep for a while 
+			if (growing_latency != 0)
+				std::this_thread::sleep_for(std::chrono::milliseconds(growing_latency));
+			num_points = 0; // reset 
+		}
+	}
+}
 /// curr_region is ignored when growing in sync mode 
 void point_cloud_interactable::grow_curr_region(int curr_region) {
 	// update distances 
@@ -1931,105 +2016,10 @@ void point_cloud_interactable::grow_curr_region(int curr_region) {
 }
 /// just grow every region at the same time 
 void point_cloud_interactable::sync_grow() {
-	//can_parallel_edit = false; // atomic: stop seleciton when parallel growing 
-
-	//num_of_knn_used_for_each_group.resize(pc.num_of_face_selections_rendered);
-	//for (auto& n : num_of_knn_used_for_each_group) { n = minimum_searching_neighbor_points; } // reset knn searching radius in final step 
-
-	//// if not all point are grown 
-	//while (!pause_growing) { // thread will exit if pausing, but queue stays the unchanged 
-	//	//
-	//	for (int gi = 1; gi < pc.num_of_face_selections_rendered; gi++)
-	//		grow_one_step_bfs(false, gi); // boolean not used 
-
-	//	// sleep for a while after one point
-	//	std::this_thread::sleep_for(std::chrono::milliseconds(growing_latency));
-
-	//	// stopping criteria for final grow
-	//	if (points_grown == pc.get_nr_points()) {
-	//		std::cout << "all points are grown, quit" << std::endl;
-	//		return;
-	//	}
-	//}
-
-	//std::cout << "finalize_grow: done." << std::endl;
-	//can_parallel_edit = true;
 }
 /// entry function, split to two functions above, not used 
 void point_cloud_interactable::region_growing() {
 	std::cout << "deprecated!..." << std::endl;
-	//auto start = std::chrono::high_resolution_clock::now();
-	// update distances 
-	//max_accu_dist = 0;
-	//max_dist = (pc.box().get_max_pnt() - pc.box().get_min_pnt()).length();
-	//std::cout << "parallel region growing: starts" << std::endl;
-	//can_parallel_edit = false; // atomic: stop seleciton when parallel growing 
-
-	/* parallel: one thread for each group 
-	growing_thread_pool.resize(pc.num_of_face_selections_rendered);
-
-	for (int gi = 1; gi < pc.num_of_face_selections_rendered; gi++) 
-		growing_thread_pool.at(gi) = new std::thread(&point_cloud_interactable::grow_one_region,this,gi);
-
-	for (int gi = 1; gi < pc.num_of_face_selections_rendered; gi++)
-		growing_thread_pool.at(gi)->join();*/
-
-	//if (final_grow) {
-	//	num_of_knn_used_for_each_group.resize(pc.num_of_face_selections_rendered);
-	//	for (auto& n : num_of_knn_used_for_each_group) { n = k; } // reset knn searching radius in final step 
-	//}
-
-	//const int points_one_chunk = 100;
-	//int points_grown = 0;
-	//// if not all point are grown 
-	//while (!pause_growing) { // thread will exit if pausing, but queue stays the unchanged 
-	//	//
-	//	for (int gi = 1; gi < pc.num_of_face_selections_rendered; gi++)
-	//		grow_one_step_bfs(final_grow, gi);
-
-	//	// sleep for a while 
-	//	points_grown++;
-
-	//	// 
-	//	if (points_grown > points_one_chunk) {
-	//		// sleep for a while 
-	//		if (growing_latency != 0)
-	//			std::this_thread::sleep_for(std::chrono::milliseconds(growing_latency));
-	//		points_grown = 0; // reset 
-	//	}
-
-	//	// stopping criteria
-	//	if (final_grow) {
-	//		if (points_grown == pc.get_nr_points()) {
-	//			std::cout << "all points are grown, quit" << std::endl;
-	//			return;
-	//		}
-	//	}
-	//	else {		
-	//		// check all queues 
-	//		bool all_enpty_can_stop = true;
-	//		for (int gi = 1; gi < pc.num_of_face_selections_rendered; gi++)
-	//		{
-	//			all_enpty_can_stop = all_enpty_can_stop && queue_for_regions[gi].empty();
-	//		}
-	//		if (all_enpty_can_stop) {
-	//			std::cout << "all queues are empty, quit" << std::endl;
-	//			return;
-	//		}
-	//	}
-	//}
-
-	//if (final_grow) 
-	//	final_grow = false;
-
-	//auto finish = std::chrono::high_resolution_clock::now();
-	//std::chrono::duration<double> elapsed = finish - start;
-
-	//std::cout << "parallel region growing: done." << std::endl;
-	//std::cout << "elapsed time: " << elapsed.count() << " s\n";
-	//std::cout << "max_dist_real: " << max_accu_dist << std::endl;
-	//std::cout << "max_dist: " << max_dist << std::endl;
-	//can_parallel_edit = true;
 }
 ///
 void point_cloud_interactable::show_num_of_points_per_region() {
@@ -2056,6 +2046,7 @@ void point_cloud_interactable::show_num_of_points_per_region() {
 
 */
 /// one step growing with bfs, grow_with_queue not used 
+/// only one point is grown in this step 
 bool point_cloud_interactable::grow_one_step_bfs(bool grow_with_queue, int which_group) {
 	// bfs, simple approach, do not update normal currently 
 	if (pc.get_nr_points() == 0)
@@ -2143,6 +2134,7 @@ bool point_cloud_interactable::grow_one_step_bfs(bool grow_with_queue, int which
 	pc.point_visited.at(std::get<ID>(to_visit)) = true;
 	points_grown++;
 	num_of_points_curr_region[which_group]++;
+	std::vector<int> which_neighbors_were_pushed;
 
 	// expend queue by visiting children of the to_visit (knn)
 	// not everything in queue in the final growing step 
@@ -2275,6 +2267,7 @@ bool point_cloud_interactable::grow_one_step_bfs(bool grow_with_queue, int which
 		}
 
 		// push to queue. store addtional value, can be quired when dequeue 
+		which_neighbors_were_pushed.push_back(kid);
 		if (!grow_with_queue) 
 			queue_for_regions[which_group].push(std::make_tuple(kid, property_scale * curr_property, curr_curvature));
 		else 
@@ -2282,7 +2275,10 @@ bool point_cloud_interactable::grow_one_step_bfs(bool grow_with_queue, int which
 		pc.point_in_queue.at(kid) = true;
 		pc.point_in_queue_which_group.at(kid) = which_group;
 	}
-	
+	growing_history_element e;
+	e.curr_point_id = std::get<ID>(to_visit);
+	e.curr_neighbors_pushed_to_queue = std::move(which_neighbors_were_pushed);
+	growing_history_for_region[which_group].push_back(e);
 	return true;
 }
 /// check if all points growed 
