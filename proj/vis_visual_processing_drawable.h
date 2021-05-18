@@ -826,7 +826,7 @@ bool visual_processing::handle(cgv::gui::event& e)
 				/*region grow */
 				if (data_ptr->check_roulette_selection(data_ptr->get_id_with_name("RegionGrowing\nOurMethod"))) {
 					// vrse.get_y() : -1, 1 ... -vrse.get_y()+1 : 0 , 2 ... (-vrse.get_y()+1) * 100 : 200,0
-					data_ptr->point_cloud_kit->growing_latency = int((-vrse.get_y() + 1) * 100);
+					data_ptr->point_cloud_kit->growing_latency = int((-vrse.get_y() + 1) * 100) + 1;
 					// UPPER means faster 
 				}
 				/*vr icp */ 
@@ -1171,7 +1171,7 @@ void visual_processing::sync_grow_dist_curvature_based() {
 	data_ptr->point_cloud_kit->ignore_high_curvature_regions = false;
 	data_ptr->point_cloud_kit->is_synchronous_growth = true;
 	data_ptr->point_cloud_kit->growing_latency = 0;
-	//data_ptr->point_cloud_kit->region_grow_check_normals = true;
+	data_ptr->point_cloud_kit->region_grow_check_normals = true;
 	force_start_grow();
 }
 ///
@@ -1221,6 +1221,15 @@ void visual_processing::grow_with_accu_dist() {
 	data_ptr->point_cloud_kit->is_residual_grow = false;
 	force_start_grow();
 }
+///
+void visual_processing::grow_with_highest_curvature_only() {
+	// re-set some parameters, flexible for switching between 
+	data_ptr->point_cloud_kit->gm = data_ptr->point_cloud_kit->growing_mode::UNSIGNED_MEAN_CURVATURE_BASED;
+	//data_ptr->point_cloud_kit->growing_latency = 0;
+	//data_ptr->point_cloud_kit->ignore_high_curvature_regions = true;
+	data_ptr->point_cloud_kit->is_residual_grow = false;
+	force_start_grow();
+}
 /// check, for it will access queue 
 void visual_processing::undo_sync_grow() {
 	stop_parallel_region_growing(); // stop to avoid conflict visiting queue 
@@ -1256,7 +1265,8 @@ void visual_processing::ep_start_grow_auto_curv_direction() {
 	int curr_seed_pid = data_ptr->point_cloud_kit->seed_for_regions[selection_kit->curr_face_selecting_id];
 	float curr_seed_curvature = data_ptr->point_cloud_kit->pc.curvature.at(curr_seed_pid).mean_curvature;
 	if (curr_seed_curvature > data_ptr->point_cloud_kit->pc.curvinfo.coloring_threshold) {
-		grow_with_dist_and_highest_curvature();
+		//grow_with_dist_and_highest_curvature();
+		grow_with_highest_curvature_only();
 	}
 	else {
 		grow_with_dist_and_lowest_curvature();
@@ -2004,7 +2014,9 @@ void visual_processing::create_gui() {
 				rebind(this, &visual_processing::grow_with_dist_and_highest_curvature));
 		connect_copy(add_button("ep_start_grow_auto_curv_direction")->click, // calls the above functions under condition
 			rebind(this, &visual_processing::ep_start_grow_auto_curv_direction));
-		
+
+		connect_copy(add_button("grow_with_highest_curvature_only")->click,
+			rebind(this, &visual_processing::grow_with_highest_curvature_only));
 		connect_copy(add_button("grow_with_accu_dist")->click,
 			rebind(this, &visual_processing::grow_with_accu_dist)); 
 		connect_copy(add_button("pause_continue_parallel_region_growing")->click,

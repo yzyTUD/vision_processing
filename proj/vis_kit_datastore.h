@@ -326,9 +326,11 @@ public:
 		gp_btn_tmp.push_back("RegionGrowing\nSeedPicker");
 
 		gp_btn_tmp.push_back("RegionGrowing\nOurMethod");
-		// those two interaction with the growing process 
-		gp_btn_tmp.push_back("RegionGrowing\nDirectMark");
-		gp_btn_tmp.push_back("RegionGrowing\nMarkOnQueue");
+		// those are used to control the growing process 
+		gp_btn_tmp.push_back("RegionGrowing\nMarkAsOrig");
+		gp_btn_tmp.push_back("RegionGrowing\nMarkQueue\nToOrig");
+		gp_btn_tmp.push_back("RegionGrowing\nMarkAsCurr");
+
 		gp_btn_tmp.push_back("RegionGrowing\nOurMethod\nToggleIgnore\nHighCurvatureRegions");
 		gp_btn_tmp.push_back("RegionGrowing\nSaveToFile");
 		//gp_btn_tmp.push_back("RegionGrowing\nOurMethod\nUndoCurrRegion"); // integrated to left press. typically, we do not have to delete seeds 

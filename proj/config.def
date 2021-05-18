@@ -14,7 +14,7 @@ persistent
 name(vr interactor):tracking_rotation=-180
 name(vr interactor):tracking_origin_x=0;
 name(vr interactor):tracking_origin_y=1;
-name(vr interactor):tracking_origin_z=0;
+name(vr interactor):tracking_origin_z=-0.5;
 name(vr interactor):tracking_rotation_origin_x=0;
 name(vr interactor):tracking_rotation_origin_y=0;
 name(vr interactor):tracking_rotation_origin_z=0

@@ -294,7 +294,7 @@ public:
 	/// mark if current point already visited 
 	std::vector<bool> point_visited; // point_visited
 	/// mark if current point in queue 
-	std::vector<bool> point_in_queue;
+	std::vector<bool> point_in_queue; // ignore this point if this has been set to false; 
 	/// binded with the above one, indicates which group it belongs to 
 	std::vector<int> point_in_queue_which_group;
 public:

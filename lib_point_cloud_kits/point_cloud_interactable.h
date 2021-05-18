@@ -453,7 +453,7 @@ public:
 	/// how many points will be growed before sleep, not used, use 100 just 
 	int steps_per_event_as_speed = 200;
 	/// latency after 100 points growed 
-	int growing_latency = 0; // ms
+	int growing_latency = 100; // ms
 	///
 	std::chrono::duration<double> Elapsed_knn;
 	///

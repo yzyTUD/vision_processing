@@ -895,7 +895,7 @@ void point_cloud_interactable::mark_points_in_queue_to_original(Pnt p, float r) 
 					if (pc.point_in_queue.at(i) == true) {
 						pc.face_id.at(i) = 0;
 						pc.point_visited.at(i) = false;
-						pc.point_in_queue.at(i) = false;
+						pc.point_in_queue.at(i) = false; // will be ignored when dequeue, this flag has dual usage 
 						pc.point_in_queue_which_group.at(i) = 0;
 						points_grown--;
 					}
@@ -1861,8 +1861,10 @@ void point_cloud_interactable::grow_curr_region(int curr_region) {
 		for (auto& n : num_of_knn_used_for_each_group) { n = k; }
 	}
 
-	const int points_one_chunk = 100;
+	const int points_one_chunk = 1000;
 	int num_points = 0;
+	int last_points_grown = 0;
+	int no_progress_iters_for_sleeping = 0;
 	// if not all point are grown 
 	while (!pause_growing) { // thread will exit if pausing, but queue stays the unchanged 
 		
@@ -1905,6 +1907,18 @@ void point_cloud_interactable::grow_curr_region(int curr_region) {
 				return;
 			}
 		}
+
+		if (points_grown == last_points_grown) {
+			no_progress_iters_for_sleeping++;
+		}
+
+		// terminate the thread if havent progress for too many times
+		if (no_progress_iters_for_sleeping > 10) {
+			std::wcout << "havent progress for too many times, quit" << std::endl;
+			break;
+		}
+
+		last_points_grown = points_grown;
 	}
 
 	if (is_synchronous_growth)
@@ -2101,6 +2115,13 @@ bool point_cloud_interactable::grow_one_step_bfs(bool grow_with_queue, int which
 				to_visit = queue_for_regions[which_group].top(); // query top of the queue as new candidate 
 			}
 		}
+		// ignore points that are marked as not in queue 
+		while (!pc.point_in_queue.at(std::get<ID>(to_visit))) {
+			queue_for_regions[which_group].pop();
+			if (queue_for_regions[which_group].empty()) // check 
+				return false;
+			to_visit = queue_for_regions[which_group].top();
+		}
 		// state: lower curvature found 
 		queue_for_regions[which_group].pop();
 	}
@@ -2195,8 +2216,8 @@ bool point_cloud_interactable::grow_one_step_bfs(bool grow_with_queue, int which
 		}
 
 		// pure curvature based 
-		if (gm == growing_mode::UNSIGNED_MEAN_CURVATURE_BASED) {
-			curr_property = pc.curvature.at(kid).mean_curvature;
+		if (gm == growing_mode::UNSIGNED_MEAN_CURVATURE_BASED) { // does work 
+			curr_property = -pc.curvature.at(kid).mean_curvature;
 		}
 
 		// stop with bounary condition
@@ -2217,7 +2238,7 @@ bool point_cloud_interactable::grow_one_step_bfs(bool grow_with_queue, int which
 		}
 
 		// dequeue first in low distance and high curvature regions.
-		if (gm == growing_mode::DISTANCE_AND_MEAN_CURVATURE_BASED_HIGHERFIRST) {
+		if (gm == growing_mode::DISTANCE_AND_MEAN_CURVATURE_BASED_HIGHERFIRST) { // not working 
 			float maxinum_accu_dist = pc.get_nr_points() * max_dist;
 			float revertable_scaling_factor;
 			if (pc.curvinfo.minimum_curvature_difference > 0)
@@ -2228,7 +2249,7 @@ bool point_cloud_interactable::grow_one_step_bfs(bool grow_with_queue, int which
 			float scaled_mean_curvature = 
 				(pc.curvature.at(kid).mean_curvature - pc.curvinfo.min_mean_curvature) 
 					/ pc.curvinfo.max_mean_curvature;
-			float scale_dist_by_curva = 1.0f + revertable_scaling_factor * (1 - scaled_mean_curvature);
+			float scale_dist_by_curva = 1.0f - revertable_scaling_factor * pc.curvature.at(kid).mean_curvature;
 			curr_property = scale_dist_by_curva * dist + std::get<DIST>(to_visit);
 		}
 

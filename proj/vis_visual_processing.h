@@ -400,6 +400,7 @@ public:
 	void grow_with_dist_and_lowest_curvature();
 	void grow_with_dist_and_highest_curvature();
 	void grow_with_accu_dist();
+	void grow_with_highest_curvature_only();
 	void force_start_grow();
 	void ep_start_grow_auto_curv_direction();
 	void pause_continue_parallel_region_growing();
