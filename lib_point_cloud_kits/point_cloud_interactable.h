@@ -246,6 +246,10 @@ public:
 	/// make sure vector size: face_id, point_visited
 	void prepare_marking();
 	/// mark with controllers 
+	void mark_leaking_points_face_id_and_other_attributes(Pnt p, float r); // mark to original 
+	///
+	void mark_points_in_queue_to_original(Pnt p, float r);
+	/// 
 	void mark_face_id_with_controller(Pnt p, float r, int objctive);
 	/// mark with controllers 
 	void mark_topo_id_with_controller(Pnt p, float r, int objctive);

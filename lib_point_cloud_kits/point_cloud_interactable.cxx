@@ -838,6 +838,66 @@ void point_cloud_interactable::mark_topo_id_with_controller(Pnt p, float r, int 
 		}
 	}
 }
+///
+void point_cloud_interactable::mark_leaking_points_face_id_and_other_attributes(Pnt p, float r) {
+	if (pc.get_nr_points()) {
+		ensure_tree_ds();
+		float closest_dist = -1;
+		int closest_idx = -1;
+		tree_ds->find_closest_and_its_dist(p, closest_dist, closest_idx);
+		if (closest_dist > r) {
+			// do nothing 
+		}
+		else {
+			for (Idx i = 0; i < (Idx)pc.get_nr_points(); ++i) {
+				if ((pc.pnt(i) - p).length() < r) {
+					// ignore deleted points 
+					if (pc.topo_id.at(i) == point_cloud::TOPOAttribute::DEL) {
+						continue;
+					}
+					// ignore points already marked as original 
+					if (pc.face_id.at(i) != 0) { 
+						pc.face_id.at(i) = 0;
+						pc.point_visited.at(i) = false;
+						pc.point_in_queue.at(i) = false;
+						pc.point_in_queue_which_group.at(i) = 0;
+						points_grown--;
+					}
+				}
+			}
+		}
+	}
+}
+///
+void point_cloud_interactable::mark_points_in_queue_to_original(Pnt p, float r) {
+	if (pc.get_nr_points()) {
+		ensure_tree_ds();
+		float closest_dist = -1;
+		int closest_idx = -1;
+		tree_ds->find_closest_and_its_dist(p, closest_dist, closest_idx);
+		if (closest_dist > r) {
+			// do nothing 
+		}
+		else {
+			for (Idx i = 0; i < (Idx)pc.get_nr_points(); ++i) {
+				if ((pc.pnt(i) - p).length() < r) {
+					// ignore deleted points 
+					if (pc.topo_id.at(i) == point_cloud::TOPOAttribute::DEL) {
+						continue;
+					}
+					// only mark points in queue, ignore other points 
+					if (pc.point_in_queue.at(i) == true) {
+						pc.face_id.at(i) = 0;
+						pc.point_visited.at(i) = false;
+						pc.point_in_queue.at(i) = false;
+						pc.point_in_queue_which_group.at(i) = 0;
+						points_grown--;
+					}
+				}
+			}
+		}
+	}
+}
 /// currently, we set confirmed to true. The visual feedback is better to be impl. in shaders.
 /// ignore deleted points by default 
 void point_cloud_interactable::mark_face_id_with_controller(Pnt p, float r, int objctive) {
@@ -852,99 +912,41 @@ void point_cloud_interactable::mark_face_id_with_controller(Pnt p, float r, int 
 			// do nothing 
 		}
 		else {
-			////std::cout << "some points inside the sphere!" << std::endl;
-			//// point estimation, todo 
-			//Box pc_bbox = pc.box();
-			//float vol_pc = pc_bbox.get_extent().x() * pc_bbox.get_extent().y() * pc_bbox.get_extent().z();
-			//int max_points_estimated;
-			//if (vol_pc > 0)
-			//	max_points_estimated = pc.get_nr_points() * pow((2 * r), 3) / vol_pc;
-			//else
-			//	max_points_estimated = 100;
-			//std::vector<int> knn;
-			//std::vector<float> dist_list;
-			//tree_ds->find_closest_points(p, max_points_estimated, knn, dist_list);
-			//// if the last point is in outside of the ball on hand, 
-			//// all wanted points are included
-			//// if knn is not present, quit, todo  
-			//if (dist_list.size() == 0)
-			//	return;
-			//if (dist_list.back() > r) { // enough points estimated 
-			//	// start at minimal dist 
-			//	for (int i = 0; i < knn.size(); i++) {
-			//		// check if is smaller than r 
-			//		if (dist_list.at(i) < r) {
-			//			// ignore deleted points 
-			//			if (pc.topo_id.at(knn.at(i)) == point_cloud::TOPOAttribute::DEL) {
-			//				continue;
-			//			}
-			//			// ignore marked points if is highlighting unmarked points 
-			//			if (highlight_unmarked_points) {
-			//				if (pc.face_id.at(knn.at(i)) > 0) { // ignore already marked, 0 means unmarked  
-			//					continue;
-			//				}
-			//			}
-			//			//// ignore points that are not having correct scaning index 
-			//			//if (objctive == point_cloud::TOPOAttribute::ICP_SOURCE_A) {
-			//			//	if (pc.point_scan_index.at(knn.at(i)) != src_scan_idx) {
-			//			//		continue;
-			//			//	}
-			//			//}
-			//			//// ignore points that are not having correct scaning index 
-			//			//if (objctive == point_cloud::TOPOAttribute::ICP_TARGET_A) {
-			//			//	if (pc.point_scan_index.at(knn.at(i)) != target_scan_idx) {
-			//			//		continue;
-			//			//	}
-			//			//}
-			//			// record tracing information
-			//			pointHistoryEntry phe;
-			//			phe.point_index = knn.at(i);
-			//			phe.from_face_id = pc.face_id.at(knn.at(i));
-			//			phe.to_face_id = objctive;
-			//			point_marking_history.top().push_back(phe);
-			//			// perform real operations 
-			//			pc.face_id.at(knn.at(i)) = objctive;
-			//			pc.has_face_selection = true;
-			//		}
-			//	}
-			//}else {
-				// too few points are estimated, iter the entire cloud 
-				for (Idx i = 0; i < (Idx)pc.get_nr_points(); ++i) {
-					if ((pc.pnt(i) - p).length() < r) {
-						// ignore deleted points 
-						if (pc.topo_id.at(i) == point_cloud::TOPOAttribute::DEL) {
+			for (Idx i = 0; i < (Idx)pc.get_nr_points(); ++i) {
+				if ((pc.pnt(i) - p).length() < r) {
+					// ignore deleted points 
+					if (pc.topo_id.at(i) == point_cloud::TOPOAttribute::DEL) {
+						continue;
+					}
+					// ignore marked points if is highlighting unmarked points 
+					if (highlight_unmarked_points) {
+						if (pc.face_id.at(i) > 0) { // ignore already marked, 0 means unmarked  
 							continue;
 						}
-						// ignore marked points if is highlighting unmarked points 
-						if (highlight_unmarked_points) {
-							if (pc.face_id.at(i) > 0) { // ignore already marked, 0 means unmarked  
-								continue;
-							}
-						}
-						//// ignore points that are not having correct scaning index, ineffecient 
-						//if (objctive == point_cloud::TOPOAttribute::ICP_SOURCE_A) {
-						//	if (pc.point_scan_index.at(i) != src_scan_idx) {
-						//		continue;
-						//	}
-						//}
-						//// ignore points that are not having correct scaning index 
-						//if (objctive == point_cloud::TOPOAttribute::ICP_TARGET_A) {
-						//	if (pc.point_scan_index.at(i) != target_scan_idx) {
-						//		continue;
-						//	}
-						//}
-						// record tracing information
-						pointHistoryEntry phe;
-						phe.point_index = i;
-						phe.from_face_id = pc.face_id.at(i);
-						phe.to_face_id = objctive;
-						point_marking_history.top().push_back(phe);
-						// perform real operations 
-						pc.face_id.at(i) = objctive;
-						pc.has_face_selection = true;
 					}
+					//// ignore points that are not having correct scaning index, ineffecient 
+					//if (objctive == point_cloud::TOPOAttribute::ICP_SOURCE_A) {
+					//	if (pc.point_scan_index.at(i) != src_scan_idx) {
+					//		continue;
+					//	}
+					//}
+					//// ignore points that are not having correct scaning index 
+					//if (objctive == point_cloud::TOPOAttribute::ICP_TARGET_A) {
+					//	if (pc.point_scan_index.at(i) != target_scan_idx) {
+					//		continue;
+					//	}
+					//}
+					// record tracing information
+					pointHistoryEntry phe;
+					phe.point_index = i;
+					phe.from_face_id = pc.face_id.at(i);
+					phe.to_face_id = objctive;
+					point_marking_history.top().push_back(phe);
+					// perform real operations 
+					pc.face_id.at(i) = objctive;
+					pc.has_face_selection = true;
 				}
-			//}
+			}
 		}
 		on_point_cloud_change_callback(PCC_COLORS);
 	}
@@ -1745,7 +1747,7 @@ void point_cloud_interactable::undo_sync_grow() {
 	
 	points_grown = bkp_points_grown;
 
-	resume_queue();
+	resume_queue(); // restore queue from suspend_queue_for_regions as a trick, suspend_queue_for_regions stored implicitly 
 }
 ///
 void point_cloud_interactable::undo_curr_region(int curr_region) {
@@ -3642,9 +3644,12 @@ void point_cloud_interactable::compute_smoothed_curvature() {
 		for (int j = 0; j < pc.nearest_neighbour_indices.at(i).size(); j++) { // 0 is the poitn itself 
 			int neighbor_index = pc.nearest_neighbour_indices.at(i).at(j);
 			float curr_dist = (pc.pnt(i) - pc.pnt(neighbor_index)).length();
-			weighted_average_curvature += 
-				pc.curvature.at(neighbor_index).mean_curvature * curr_dist;
-			sum_dist += curr_dist;
+			if (curr_dist > 0) { // float version of != 0
+				curr_dist = 1.0f / curr_dist;
+				weighted_average_curvature += 
+					pc.curvature.at(neighbor_index).mean_curvature * curr_dist;
+				sum_dist += curr_dist;
+			}
 		}
 		if (sum_dist > 0)
 			weighted_average_curvature = weighted_average_curvature / sum_dist;

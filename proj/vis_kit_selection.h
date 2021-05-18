@@ -397,6 +397,30 @@ public:
 						}
 					}
 				}
+				if (data_ptr->check_roulette_selection(data_ptr->get_id_with_name("RegionGrowing\nSeedPicker"))) {
+					if (v > 0) {
+						// face selection with controller, on lower side  
+						if (curr_active_selection == 1 && curr_face_selecting_id != -1) {
+							vec3 right_hand_ball_posi = data_ptr->cur_right_hand_posi + data_ptr->cur_off_right;
+							data_ptr->point_cloud_kit->mark_face_id_with_controller(
+								right_hand_ball_posi, marking_style.radius, curr_face_selecting_id);
+						}
+					}
+				}
+				if (data_ptr->check_roulette_selection(data_ptr->get_id_with_name("RegionGrowing\nDirectMark"))) {
+					if (v > 0) {
+						vec3 right_hand_ball_posi = data_ptr->cur_right_hand_posi + data_ptr->cur_off_right;
+						data_ptr->point_cloud_kit->mark_leaking_points_face_id_and_other_attributes(
+							right_hand_ball_posi, marking_style.radius);
+					}
+				}
+				if (data_ptr->check_roulette_selection(data_ptr->get_id_with_name("RegionGrowing\nMarkOnQueue"))) {
+					if (v > 0) {
+						vec3 right_hand_ball_posi = data_ptr->cur_right_hand_posi + data_ptr->cur_off_right;
+						data_ptr->point_cloud_kit->mark_points_in_queue_to_original(
+							right_hand_ball_posi, marking_style.radius);
+					}
+				}
 				if (data_ptr->check_roulette_selection(data_ptr->get_id_with_name("PointCloud\nDelPoints\nTouchTo\nActivate"))) { // hold throttle to mark
 					if (v > 0 && curr_face_selecting_id != -1) {
 						if (data_ptr->point_cloud_kit->can_parallel_edit == true) {
@@ -707,6 +731,13 @@ public:
 			render_palette_on_left_hand(ctx);
 			render_palette_sphere_on_righthand(ctx);
 		}
+		if (data_ptr->check_roulette_selection(data_ptr->get_id_with_name("RegionGrowing\nDirectMark"))) {
+			render_palette_sphere_on_righthand(ctx);
+		}
+		if (data_ptr->check_roulette_selection(data_ptr->get_id_with_name("RegionGrowing\nMarkOnQueue"))) {
+			render_palette_sphere_on_righthand(ctx);
+		}
+		
 		// shading effects 
 		if (data_ptr->check_roulette_selection(data_ptr->get_id_with_name("PCCleaning\nFake\nSeleciton"))) {
 			render_a_sphere_on_righthand_shading_effect(ctx);

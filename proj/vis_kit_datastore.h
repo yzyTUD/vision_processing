@@ -299,10 +299,7 @@ public:
 	}
 	///
 	vis_kit_data_store_shared() {
-
 		//initialize_trackable_list();
-		//supersampling_bbox = box3(vec3(-2,0,0),vec3(2,1,1));
-		//mode = interaction_mode::SUPERSAMPLING_DRAW;
 		std::vector<std::string> gp_btn_tmp;
 
 		//////////////////////////////////////////////////////////////////
@@ -316,6 +313,31 @@ public:
 		gp_btn_tmp.push_back("Teleport\nTeleport");
 		gps.push_back(gp_btn_tmp);
 
+
+		//////////////////////////////////////////////////////////////////
+		// point cloud: region growing 
+		//////////////////////////////////////////////////////////////////
+		gp_btn_tmp.clear();
+		//gp_btn_tmp.push_back("RegionGrowing\nGroupPicker");
+		gp_btn_tmp.push_back("RegionGrowing\nReset\nMarking");
+		gp_btn_tmp.push_back("RegionGrowing\nHighlightUnmarked");
+		gp_btn_tmp.push_back("RegionGrowing\nScaleModel");
+
+		gp_btn_tmp.push_back("RegionGrowing\nSeedPicker");
+
+		gp_btn_tmp.push_back("RegionGrowing\nOurMethod");
+		// those two interaction with the growing process 
+		gp_btn_tmp.push_back("RegionGrowing\nDirectMark");
+		gp_btn_tmp.push_back("RegionGrowing\nMarkOnQueue");
+		gp_btn_tmp.push_back("RegionGrowing\nOurMethod\nToggleIgnore\nHighCurvatureRegions");
+		gp_btn_tmp.push_back("RegionGrowing\nSaveToFile");
+		//gp_btn_tmp.push_back("RegionGrowing\nOurMethod\nUndoCurrRegion"); // integrated to left press. typically, we do not have to delete seeds 
+		//gp_btn_tmp.push_back("RegionGrowing\nOurMethod\nFinalizeGrow"); // menu press 
+		//gp_btn_tmp.push_back("RegionGrowing\nAccuDistanceBased");
+		//gp_btn_tmp.push_back("RegionGrowing\nSeedDistanceBased");
+		//gp_btn_tmp.push_back("RegionGrowing\nUnsignedMeanCurvature");
+		//gp_btn_tmp.push_back("RegionGrowing\nAutoRegion\nGrowing");
+		//gp_btn_tmp.push_back("RegionGrowing\nToggle\nCheckNmls");
 		//bkp: gp_btn_tmp.push_back("PointCloud\nDelPoints\nTouchTo\nActivate");
 		//bkp: gp_btn_tmp.push_back("PointCloud\nMarkAs\nOrig");
 		//bkp: gp_btn_tmp.push_back("PointCloud\nToggle\npcColor");
@@ -323,6 +345,19 @@ public:
 		//bkp: gp_btn_tmp.push_back("PointCloud\nSuperSampling");
 		//bkp: gp_btn_tmp.push_back("PointCloud\nToggle\nACloud");
 		//bkp: gp_btn_tmp.push_back("PointCloud\nACloud\nCtrl\nRange");
+		gps.push_back(gp_btn_tmp);
+
+
+		//////////////////////////////////////////////////////////////////
+		// point cloud: topology extraction 
+		//////////////////////////////////////////////////////////////////
+		gp_btn_tmp.clear();
+		gp_btn_tmp.push_back("TopologyExtraction\nBoundary\nExtraction");
+		gp_btn_tmp.push_back("TopologyExtraction\nStepBack");
+		gp_btn_tmp.push_back("TopologyExtraction\nToggle\nOnlyRender\nFunctionIdx"); // finalize viewing of the points 
+		gp_btn_tmp.push_back("TopologyExtraction\nTopology\nExtraction");
+		gp_btn_tmp.push_back("TopologyExtraction\nSaveToFile"); // write to a .cgvconnectivity file 
+		gps.push_back(gp_btn_tmp);
 
 		//////////////////////////////////////////////////////////////////
 		// point cloud: VR ICP 
@@ -342,40 +377,6 @@ public:
 		gp_btn_tmp.push_back("VRICP\nExtractPointClouds");
 		gp_btn_tmp.push_back("VRICP\nRandomizeSource");
 		gp_btn_tmp.push_back("VRICP\nPerformICP_1Iter"); 
-		gps.push_back(gp_btn_tmp);
-
-		//////////////////////////////////////////////////////////////////
-		// point cloud: region growing 
-		//////////////////////////////////////////////////////////////////
-		gp_btn_tmp.clear();
-		//gp_btn_tmp.push_back("RegionGrowing\nGroupPicker");
-		gp_btn_tmp.push_back("RegionGrowing\nReset\nMarking");
-		gp_btn_tmp.push_back("RegionGrowing\nHighlightUnmarked");
-		gp_btn_tmp.push_back("RegionGrowing\nScaleModel");
-
-		gp_btn_tmp.push_back("RegionGrowing\nSeedPicker");
-		gp_btn_tmp.push_back("RegionGrowing\nOurMethod");
-		gp_btn_tmp.push_back("RegionGrowing\nOurMethod\nToggleIgnore\nHighCurvatureRegions");
-		//gp_btn_tmp.push_back("RegionGrowing\nOurMethod\nUndoCurrRegion"); // integrated to left press. typically, we do not have to delete seeds 
-		//gp_btn_tmp.push_back("RegionGrowing\nOurMethod\nFinalizeGrow"); // menu press 
-		gp_btn_tmp.push_back("RegionGrowing\nAccuDistanceBased");
-		gp_btn_tmp.push_back("RegionGrowing\nSeedDistanceBased");
-		gp_btn_tmp.push_back("RegionGrowing\nUnsignedMeanCurvature");
-
-		//gp_btn_tmp.push_back("RegionGrowing\nAutoRegion\nGrowing");
-		//gp_btn_tmp.push_back("RegionGrowing\nToggle\nCheckNmls");
-		gp_btn_tmp.push_back("RegionGrowing\nSaveToFile"); 
-		gps.push_back(gp_btn_tmp);
-
-		//////////////////////////////////////////////////////////////////
-		// point cloud: topology extraction 
-		//////////////////////////////////////////////////////////////////
-		gp_btn_tmp.clear();
-		gp_btn_tmp.push_back("TopologyExtraction\nBoundary\nExtraction");
-		gp_btn_tmp.push_back("TopologyExtraction\nStepBack"); 
-		gp_btn_tmp.push_back("TopologyExtraction\nToggle\nOnlyRender\nFunctionIdx"); // finalize viewing of the points 
-		gp_btn_tmp.push_back("TopologyExtraction\nTopology\nExtraction"); 
-		gp_btn_tmp.push_back("TopologyExtraction\nSaveToFile"); // write to a .cgvconnectivity file 
 		gps.push_back(gp_btn_tmp);
 
 		//////////////////////////////////////////////////////////////////
