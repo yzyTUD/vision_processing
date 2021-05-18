@@ -315,13 +315,25 @@ public:
 
 
 		//////////////////////////////////////////////////////////////////
-		// point cloud: region growing 
+		// parameters 
+		//////////////////////////////////////////////////////////////////
+		gp_btn_tmp.clear();
+		gp_btn_tmp.push_back("RegionGrowing\nScaleModel");
+		gp_btn_tmp.push_back("RegionGrowing\nRenderTopoSel");
+		gp_btn_tmp.push_back("PointCloud\nPointSize"); 
+		gp_btn_tmp.push_back("PointCloud\nShowNml");
+		gps.push_back(gp_btn_tmp);
+
+
+		//////////////////////////////////////////////////////////////////
+		// point cloud: region growing: 
+		// max 12 items
 		//////////////////////////////////////////////////////////////////
 		gp_btn_tmp.clear();
 		//gp_btn_tmp.push_back("RegionGrowing\nGroupPicker");
 		gp_btn_tmp.push_back("RegionGrowing\nReset\nMarking");
 		gp_btn_tmp.push_back("RegionGrowing\nHighlightUnmarked");
-		gp_btn_tmp.push_back("RegionGrowing\nScaleModel");
+		gp_btn_tmp.push_back("RegionGrowing\nCurvatureViewer");
 
 		// pick up seeds for regions 
 		gp_btn_tmp.push_back("RegionGrowing\nSeedPicker");
@@ -332,14 +344,15 @@ public:
 		// control the growing process 
 		gp_btn_tmp.push_back("RegionGrowing\nMarkAsOrig");
 		gp_btn_tmp.push_back("RegionGrowing\nMarkQueue\nToOrig");
-		gp_btn_tmp.push_back("RegionGrowing\nMarkAsCurr");
+		gp_btn_tmp.push_back("RegionGrowing\nMarkAsCurr"); // basic marking support, without rg: only face_id will be recorded 
 		gp_btn_tmp.push_back("RegionGrowing\nBackGrow");
 
 		//
-		gp_btn_tmp.push_back("RegionGrowing\nSyncGrow");
+		gp_btn_tmp.push_back("RegionGrowing\nSyncGrow"); // down press to grow sync, left undo 
 
+		//
 		gp_btn_tmp.push_back("RegionGrowing\nOurMethod\nToggleIgnore\nHighCurvatureRegions");
-		gp_btn_tmp.push_back("RegionGrowing\nSaveToFile");
+		gp_btn_tmp.push_back("RegionGrowing\nSaveToFile\nQuiet");
 		//gp_btn_tmp.push_back("RegionGrowing\nOurMethod\nUndoCurrRegion"); // integrated to left press. typically, we do not have to delete seeds 
 		//gp_btn_tmp.push_back("RegionGrowing\nOurMethod\nFinalizeGrow"); // menu press 
 		//gp_btn_tmp.push_back("RegionGrowing\nAccuDistanceBased");

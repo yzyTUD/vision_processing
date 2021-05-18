@@ -430,15 +430,15 @@ public:
 					}
 				}
 				if (data_ptr->check_roulette_selection(data_ptr->get_id_with_name("RegionGrowing\nMarkAsCurr"))) {
-					//if (v > 0) {
-					//	// face selection with controller, on lower side  
-					//	if (curr_active_selection == 1 && curr_face_selecting_id != -1) {
-					//		vec3 right_hand_ball_posi = data_ptr->cur_right_hand_posi + data_ptr->cur_off_right;
-					//		data_ptr->point_cloud_kit->mark_face_id_with_controller(
-					//			right_hand_ball_posi, marking_style.radius, curr_face_selecting_id);
-					//	}
-					//}
-					// not finished 
+					if (v > 0) {
+						// face selection with controller, on lower side  
+						if (curr_active_selection == 1 && curr_face_selecting_id != -1) {
+							vec3 right_hand_ball_posi = data_ptr->cur_right_hand_posi + data_ptr->cur_off_right;
+							data_ptr->point_cloud_kit->mark_face_id_with_controller(
+								right_hand_ball_posi, marking_style.radius, curr_face_selecting_id);
+							// not only face_id
+						}
+					}
 				}
 				if (data_ptr->check_roulette_selection(data_ptr->get_id_with_name("RegionGrowing\nMarkAsOrig"))) {
 					if (v > 0) {
@@ -771,7 +771,7 @@ public:
 		if (data_ptr->check_roulette_selection(data_ptr->get_id_with_name("RegionGrowing\nMarkQueue\nToOrig"))) {
 			render_palette_sphere_on_righthand(ctx);
 		}
-		if (data_ptr->check_roulette_selection(data_ptr->get_id_with_name("RegionGrowing\nBackGrow"))) {
+		if (data_ptr->check_roulette_selection(data_ptr->get_id_with_name("RegionGrowing\nMarkAsCurr"))) {
 			render_palette_sphere_on_righthand(ctx);
 		}
 		

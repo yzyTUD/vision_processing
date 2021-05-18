@@ -445,9 +445,23 @@ bool visual_processing::handle(cgv::gui::event& e)
 							point_cloud::TOPOAttribute::ICP_TARGET_A
 						);
 					}
-					// final_grow can be done with menu key press 
 					if (data_ptr->check_roulette_selection(data_ptr->get_id_with_name("RegionGrowing\nOurMethod"))) {
-						//final_grow_accu_dist();
+						data_ptr->point_cloud_kit->prepare_grow(true);
+					}
+					if (data_ptr->check_roulette_selection(data_ptr->get_id_with_name("RegionGrowing\nMarkAsOrig"))) {
+						data_ptr->point_cloud_kit->prepare_grow(true);
+					}
+					if (data_ptr->check_roulette_selection(data_ptr->get_id_with_name("RegionGrowing\nMarkQueue\nToOrig"))) {
+						data_ptr->point_cloud_kit->prepare_grow(true);
+					}
+					if (data_ptr->check_roulette_selection(data_ptr->get_id_with_name("RegionGrowing\nMarkAsCurr"))) {
+						data_ptr->point_cloud_kit->prepare_grow(true);
+					}
+					if (data_ptr->check_roulette_selection(data_ptr->get_id_with_name("RegionGrowing\nCurvatureViewer"))) {
+						data_ptr->point_cloud_kit->force_render_with_original_color = !data_ptr->point_cloud_kit->force_render_with_original_color;
+					}
+					if (data_ptr->check_roulette_selection(data_ptr->get_id_with_name("RegionGrowing\nSaveToFile\nQuiet"))) {
+						quiet_save();
 					}
 				}
 			}
@@ -544,6 +558,10 @@ bool visual_processing::handle(cgv::gui::event& e)
 						//ep_start_grow_auto_curv_direction(); // automatic select which grow strategy 
 						backward_growing();
 					}
+					if (data_ptr->check_roulette_selection(data_ptr->get_id_with_name("RegionGrowing\nSyncGrow"))) {
+						sync_grow_dist_curvature_based();
+					}
+					
 				}
 			}
 		}
@@ -560,12 +578,7 @@ bool visual_processing::handle(cgv::gui::event& e)
 					if (data_ptr->check_roulette_selection(data_ptr->get_id_with_name("RegionGrowing\nBackGrow"))) {
 						pause_continue_parallel_region_growing();
 					}
-					if (data_ptr->check_roulette_selection(data_ptr->get_id_with_name("RegionGrowing\nSaveToFile"))) {
-						quiet_save();
-					}
-					if (data_ptr->check_roulette_selection(data_ptr->get_id_with_name("RegionGrowing\nSyncGrow"))) {
-						sync_grow_dist_curvature_based();
-					}
+					
 				}
 			}
 		}
@@ -763,8 +776,9 @@ bool visual_processing::handle(cgv::gui::event& e)
 					data_ptr->point_cloud_kit->pc.randomize_position(data_ptr->point_cloud_kit->src_scan_idx);
 				}
 				/*region growing */
-				if (data_ptr->check_roulette_selection(data_ptr->get_id_with_name("RegionGrowing\nGroupPicker"))) { 
-					//data_ptr->point_cloud_kit->show_nmls = !data_ptr->point_cloud_kit->show_nmls;
+				//
+				if (data_ptr->check_roulette_selection(data_ptr->get_id_with_name("RegionGrowing\nRenderTopoSel"))) {
+					data_ptr->point_cloud_kit->render_with_topo_selction = !data_ptr->point_cloud_kit->render_with_topo_selction;
 				}
 				if (data_ptr->check_roulette_selection(data_ptr->get_id_with_name("RegionGrowing\nOurMethod\nToggleIgnore\nHighCurvatureRegions"))) {
 					//data_ptr->point_cloud_kit->undo_curr_region(selection_kit->curr_face_selecting_id);
@@ -849,8 +863,20 @@ bool visual_processing::handle(cgv::gui::event& e)
 				/*region grow */
 				if (data_ptr->check_roulette_selection(data_ptr->get_id_with_name("RegionGrowing\nOurMethod"))) {
 					// vrse.get_y() : -1, 1 ... -vrse.get_y()+1 : 0 , 2 ... (-vrse.get_y()+1) * 100 : 200,0
-					data_ptr->point_cloud_kit->growing_latency = int((-vrse.get_y() + 1) * 100) + 1;
+					data_ptr->point_cloud_kit->growing_latency = int((-vrse.get_y() + 1) * 300) + 1;
 					// UPPER means faster 
+				}
+				if (data_ptr->check_roulette_selection(data_ptr->get_id_with_name("RegionGrowing\nCurvatureViewer"))) {
+					//ep_force_recolor();
+					//prepare_grow_ourmethod();
+					if (vrse.get_y() > 0) {
+						data_ptr->point_cloud_kit->pc.curvinfo.coloring_threshold += 0.0001f;
+						data_ptr->point_cloud_kit->ep_force_recolor();
+					}
+					else {
+						data_ptr->point_cloud_kit->pc.curvinfo.coloring_threshold -= 0.0001f;
+						data_ptr->point_cloud_kit->ep_force_recolor();
+					}
 				}
 				/*vr icp */ 
 				if (data_ptr->check_roulette_selection(data_ptr->get_id_with_name("VRICP\nPerformICP_1Iter"))) {

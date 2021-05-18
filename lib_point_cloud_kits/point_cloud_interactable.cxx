@@ -863,11 +863,12 @@ void point_cloud_interactable::mark_leaking_points_face_id_and_other_attributes(
 					}
 					// ignore points already marked as original 
 					if (pc.face_id.at(i) != 0) { 
+						num_of_points_curr_region[pc.face_id.at(i)]--; // correct point number tracking 
 						pc.face_id.at(i) = 0;
 						pc.point_visited.at(i) = false;
 						pc.point_in_queue.at(i) = false;
 						pc.point_in_queue_which_group.at(i) = 0;
-						points_grown--;
+						points_grown--; // correct point number tracking 
 					}
 				}
 			}
@@ -893,11 +894,13 @@ void point_cloud_interactable::mark_points_in_queue_to_original(Pnt p, float r) 
 					}
 					// only mark points in queue, ignore other points 
 					if (pc.point_in_queue.at(i) == true) {
+						// marking from face_id to origin 
+						num_of_points_curr_region[pc.face_id.at(i)]--; // correct point number tracking 
 						pc.face_id.at(i) = 0;
 						pc.point_visited.at(i) = false;
 						pc.point_in_queue.at(i) = false; // will be ignored when dequeue, this flag has dual usage 
 						pc.point_in_queue_which_group.at(i) = 0;
-						points_grown--;
+						points_grown--; // correct point number tracking 
 					}
 				}
 			}
@@ -930,27 +933,21 @@ void point_cloud_interactable::mark_face_id_with_controller(Pnt p, float r, int 
 							continue;
 						}
 					}
-					//// ignore points that are not having correct scaning index, ineffecient 
-					//if (objctive == point_cloud::TOPOAttribute::ICP_SOURCE_A) {
-					//	if (pc.point_scan_index.at(i) != src_scan_idx) {
-					//		continue;
-					//	}
-					//}
-					//// ignore points that are not having correct scaning index 
-					//if (objctive == point_cloud::TOPOAttribute::ICP_TARGET_A) {
-					//	if (pc.point_scan_index.at(i) != target_scan_idx) {
-					//		continue;
-					//	}
-					//}
 					// record tracing information
 					pointHistoryEntry phe;
 					phe.point_index = i;
 					phe.from_face_id = pc.face_id.at(i);
 					phe.to_face_id = objctive;
 					point_marking_history.top().push_back(phe);
+
 					// perform real operations 
-					pc.face_id.at(i) = objctive;
-					pc.has_face_selection = true;
+					pc.face_id[i] = objctive;
+					pc.point_in_queue[i] = false;
+					pc.point_in_queue_which_group[i] = 0;
+					pc.point_visited[i] = true;
+
+					points_grown++; // correct point number tracking 
+					num_of_points_curr_region[objctive]++; // correct point number tracking 
 				}
 			}
 		}
@@ -1829,6 +1826,10 @@ void point_cloud_interactable::undo_curr_region(int curr_region) {
 		}
 	}
 
+	// reset those numbers 
+	points_grown -= num_of_points_curr_region[curr_region];
+	num_of_points_curr_region[curr_region] = 0;
+
 	// re-add seed to queue 
 	add_seed_to_queue(curr_region);
 }
@@ -1946,7 +1947,7 @@ void point_cloud_interactable::grow_curr_region(int curr_region) {
 		for (auto& n : num_of_knn_used_for_each_group) { n = k; }
 	}
 
-	const int points_one_chunk = 1000;
+	const int points_one_chunk = 100;
 	int num_points = 0;
 	int last_points_grown = 0;
 	int no_progress_iters_for_sleeping = 0;
@@ -1965,7 +1966,7 @@ void point_cloud_interactable::grow_curr_region(int curr_region) {
 		num_points++;
 
 		// slower growing speed and undo support for residual growing 
-		if (!is_residual_grow && !is_synchronous_growth) {
+		if (!is_residual_grow && !is_synchronous_growth && growing_latency<500) {
 			if (num_points > points_one_chunk) {
 				// sleep for a while 
 				if (growing_latency != 0)
@@ -1975,7 +1976,8 @@ void point_cloud_interactable::grow_curr_region(int curr_region) {
 		}
 		else {
 			// pointwise
-			std::this_thread::sleep_for(std::chrono::milliseconds(growing_latency));
+			if(growing_latency>0)
+				std::this_thread::sleep_for(std::chrono::milliseconds(growing_latency - 490));
 		}
 
 		if (!is_synchronous_growth) {
@@ -2221,8 +2223,8 @@ bool point_cloud_interactable::grow_one_step_bfs(bool grow_with_queue, int which
 		if (gm == growing_mode::DISTANCE_AND_MEAN_CURVATURE_BASED_LOWERFIRST) {
 			float maxinum_accu_dist = pc.get_nr_points() * max_dist;
 			float revertable_scaling_factor; 
-			if(pc.curvinfo.minimum_curvature_difference>0)
-				revertable_scaling_factor = maxinum_accu_dist / pc.curvinfo.minimum_curvature_difference;
+			if(pc.curvinfo.minimum_curvature_difference > 0 && false)
+				revertable_scaling_factor = maxinum_accu_dist * 1e12;
 			else 
 				revertable_scaling_factor = pc.get_nr_points() * pc.get_nr_points();
 			float scale_dist_by_curva = 1.0f + revertable_scaling_factor * pc.curvature.at(kid).mean_curvature; // ok-todo: find a upper bound 
@@ -2233,10 +2235,10 @@ bool point_cloud_interactable::grow_one_step_bfs(bool grow_with_queue, int which
 		if (gm == growing_mode::DISTANCE_AND_MEAN_CURVATURE_BASED_HIGHERFIRST) { // not working 
 			float maxinum_accu_dist = pc.get_nr_points() * max_dist;
 			float revertable_scaling_factor;
-			if (pc.curvinfo.minimum_curvature_difference > 0)
+			if (pc.curvinfo.minimum_curvature_difference > 0 && false)
 				revertable_scaling_factor = maxinum_accu_dist / pc.curvinfo.minimum_curvature_difference;
 			else
-				revertable_scaling_factor = pc.get_nr_points() * pc.get_nr_points();
+				revertable_scaling_factor = maxinum_accu_dist * 1e12;
 			// revertable_scaling_factor can also be scaled ... but do not have to do that 
 			float scaled_mean_curvature = 
 				(pc.curvature.at(kid).mean_curvature - pc.curvinfo.min_mean_curvature) 
@@ -3914,15 +3916,16 @@ void point_cloud_interactable::compute_and_print_curvature_computing_info() {
 			pc.curvinfo.min_mean_curvature = pc.curvature.at(i).mean_curvature;
 	}
 
-	for (int i = 0; i < pc.get_nr_points(); i++) {
-		float curr_curvatire = pc.curvature.at(i).mean_curvature;
-		for (int j = 0; j < pc.get_nr_points() && (j != i); j++) {
-			float compairing_curvature = pc.curvature.at(j).mean_curvature;
-			float curr_diff = abs(curr_curvatire - compairing_curvature);
-			if (curr_diff < pc.curvinfo.minimum_curvature_difference && curr_diff>0)
-				pc.curvinfo.minimum_curvature_difference = curr_diff;
-		}
-	}
+	pc.curvinfo.minimum_curvature_difference = std::numeric_limits<float>::min();
+	//for (int i = 0; i < pc.get_nr_points(); i++) {
+	//	float curr_curvatire = pc.curvature.at(i).mean_curvature;
+	//	for (int j = 0; j < pc.get_nr_points() && (j != i); j++) {
+	//		float compairing_curvature = pc.curvature.at(j).mean_curvature;
+	//		float curr_diff = abs(curr_curvatire - compairing_curvature);
+	//		if (curr_diff < pc.curvinfo.minimum_curvature_difference && curr_diff>0)
+	//			pc.curvinfo.minimum_curvature_difference = curr_diff;
+	//	}
+	//}
 
 	pc.curvinfo.max_gaussian_curvature = std::numeric_limits<float>::min();
 	pc.curvinfo.min_gaussian_curvature = std::numeric_limits<float>::max();
