@@ -531,8 +531,9 @@ bool visual_processing::handle(cgv::gui::event& e)
 				if (vrke.get_controller_index() == data_ptr->right_rgbd_controller_index)
 				{
 					if (data_ptr->check_roulette_selection(data_ptr->get_id_with_name("RegionGrowing\nOurMethod"))) {
-						force_start_grow();
+						//force_start_grow();
 						//pause_continue_parallel_region_growing(); 
+						ep_start_grow_auto_curv_direction(); // automatic select which grow strategy 
 					}
 				}
 			}
@@ -1169,7 +1170,7 @@ void visual_processing::sync_grow_dist_curvature_based() {
 	data_ptr->point_cloud_kit->gm = data_ptr->point_cloud_kit->growing_mode::DISTANCE_AND_MEAN_CURVATURE_BASED_LOWERFIRST;
 	data_ptr->point_cloud_kit->ignore_high_curvature_regions = false;
 	data_ptr->point_cloud_kit->is_synchronous_growth = true;
-	//data_ptr->point_cloud_kit->growing_latency = 0;
+	data_ptr->point_cloud_kit->growing_latency = 0;
 	//data_ptr->point_cloud_kit->region_grow_check_normals = true;
 	force_start_grow();
 }
@@ -1249,6 +1250,17 @@ void visual_processing::force_start_grow() {
 
 	data_ptr->point_cloud_kit->pause_growing = false;
 	parallel_region_growing_thread = new thread(&visual_processing::parallel_region_growing, this);
+}
+///
+void visual_processing::ep_start_grow_auto_curv_direction() {
+	int curr_seed_pid = data_ptr->point_cloud_kit->seed_for_regions[selection_kit->curr_face_selecting_id];
+	float curr_seed_curvature = data_ptr->point_cloud_kit->pc.curvature.at(curr_seed_pid).mean_curvature;
+	if (curr_seed_curvature > data_ptr->point_cloud_kit->pc.curvinfo.coloring_threshold) {
+		grow_with_dist_and_highest_curvature();
+	}
+	else {
+		grow_with_dist_and_lowest_curvature();
+	}
 }
 ///
 void visual_processing::pause_continue_parallel_region_growing() {
@@ -1990,6 +2002,9 @@ void visual_processing::create_gui() {
 			rebind(this, &visual_processing::grow_with_dist_and_lowest_curvature)); 
 		connect_copy(add_button("grow_with_dist_and_highest_curvature")->click,
 				rebind(this, &visual_processing::grow_with_dist_and_highest_curvature));
+		connect_copy(add_button("ep_start_grow_auto_curv_direction")->click, // calls the above functions under condition
+			rebind(this, &visual_processing::ep_start_grow_auto_curv_direction));
+		
 		connect_copy(add_button("grow_with_accu_dist")->click,
 			rebind(this, &visual_processing::grow_with_accu_dist)); 
 		connect_copy(add_button("pause_continue_parallel_region_growing")->click,

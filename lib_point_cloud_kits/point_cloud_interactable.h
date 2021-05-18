@@ -333,7 +333,7 @@ public:
 	/// helper function: recolor for vis 
 	void ep_force_recolor();
 	/// helper function
-	void print_curvature_computing_info();
+	void compute_and_print_curvature_computing_info();
 	/// helper function: compute a threshold automatically
 	void auto_cluster_kmeans();
 

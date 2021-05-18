@@ -40,6 +40,12 @@ void point_cloud_interactable::print_pc_information() {
 	std::cout << "pc.point_scan_index.size: " << pc.point_scan_index.size() << std::endl;
 	std::cout << "pc.lods.size: " << pc.lods.size() << std::endl;
 	std::cout << "pc.F_conn.size(): " << pc.F_conn.size() << std::endl;
+
+	std::cout << "pc.curvinfo.curvinfo.minimum_curvature_difference = " << pc.curvinfo.minimum_curvature_difference << std::endl;
+	std::cout << "pc.curvinfo.max_mean_curvature = " << pc.curvinfo.max_mean_curvature << std::endl;
+	std::cout << "pc.curvinfo.min_mean_curvature = " << pc.curvinfo.min_mean_curvature << std::endl;
+	std::cout << "pc.curvinfo.max_gaussian_curvature = " << pc.curvinfo.max_gaussian_curvature << std::endl;
+	std::cout << "pc.curvinfo.min_gaussian_curvature = " << pc.curvinfo.min_gaussian_curvature << std::endl;
 	//for (auto f : pc.F_conn) {
 	//	std::cout << "current f.size(): " << f.size() << std::endl;
 	//}
@@ -2200,21 +2206,29 @@ bool point_cloud_interactable::grow_one_step_bfs(bool grow_with_queue, int which
 
 		// dequeue first in low distance and low curvature regions. Just like fill water to a pool.
 		if (gm == growing_mode::DISTANCE_AND_MEAN_CURVATURE_BASED_LOWERFIRST) {
-			float a_very_large_factor = pc.get_nr_points() * pc.get_nr_points();
-			float scaled_mean_curvature =
-				(pc.curvature.at(kid).mean_curvature - pc.curvinfo.min_mean_curvature)
-				/ pc.curvinfo.max_mean_curvature;
-			float scale_dist_by_curva = 1.0f + a_very_large_factor * scaled_mean_curvature; // ok-todo: find a upper bound 
+			float maxinum_accu_dist = pc.get_nr_points() * max_dist;
+			float revertable_scaling_factor; 
+			if(pc.curvinfo.minimum_curvature_difference>0)
+				revertable_scaling_factor = maxinum_accu_dist / pc.curvinfo.minimum_curvature_difference;
+			else 
+				revertable_scaling_factor = pc.get_nr_points() * pc.get_nr_points();
+			float scale_dist_by_curva = 1.0f + revertable_scaling_factor * pc.curvature.at(kid).mean_curvature; // ok-todo: find a upper bound 
 			curr_property = scale_dist_by_curva * dist + std::get<DIST>(to_visit);
 		}
 
 		// dequeue first in low distance and high curvature regions.
 		if (gm == growing_mode::DISTANCE_AND_MEAN_CURVATURE_BASED_HIGHERFIRST) {
-			float a_very_large_factor = pc.get_nr_points() * pc.get_nr_points();
+			float maxinum_accu_dist = pc.get_nr_points() * max_dist;
+			float revertable_scaling_factor;
+			if (pc.curvinfo.minimum_curvature_difference > 0)
+				revertable_scaling_factor = maxinum_accu_dist / pc.curvinfo.minimum_curvature_difference;
+			else
+				revertable_scaling_factor = pc.get_nr_points() * pc.get_nr_points();
+			// revertable_scaling_factor can also be scaled ... but do not have to do that 
 			float scaled_mean_curvature = 
 				(pc.curvature.at(kid).mean_curvature - pc.curvinfo.min_mean_curvature) 
 					/ pc.curvinfo.max_mean_curvature;
-			float scale_dist_by_curva = 1.0f + a_very_large_factor * (1 - scaled_mean_curvature);
+			float scale_dist_by_curva = 1.0f + revertable_scaling_factor * (1 - scaled_mean_curvature);
 			curr_property = scale_dist_by_curva * dist + std::get<DIST>(to_visit);
 		}
 
@@ -3629,7 +3643,7 @@ void point_cloud_interactable::compute_principal_curvature_unsigned() {
 void point_cloud_interactable::smooth_curvature_and_recolor() {
 	compute_smoothed_curvature();
 	apply_smoothed_curvature();
-	print_curvature_computing_info();
+	compute_and_print_curvature_computing_info();
 	auto_cluster_kmeans();
 	colorize_with_computed_curvature_unsigned();
 }
@@ -3872,7 +3886,8 @@ void point_cloud_interactable::colorize_with_computed_curvature_signed() {
 	}
 }
 ///
-void point_cloud_interactable::print_curvature_computing_info() {
+void point_cloud_interactable::compute_and_print_curvature_computing_info() {
+	pc.curvinfo.minimum_curvature_difference = std::numeric_limits<float>::max();
 	pc.curvinfo.max_mean_curvature = std::numeric_limits<float>::min();
 	pc.curvinfo.min_mean_curvature = std::numeric_limits<float>::max();
 	for (int i = 0; i < pc.get_nr_points(); i++) {
@@ -3880,6 +3895,16 @@ void point_cloud_interactable::print_curvature_computing_info() {
 			pc.curvinfo.max_mean_curvature = pc.curvature.at(i).mean_curvature;
 		if (pc.curvature.at(i).mean_curvature < pc.curvinfo.min_mean_curvature) 
 			pc.curvinfo.min_mean_curvature = pc.curvature.at(i).mean_curvature;
+	}
+
+	for (int i = 0; i < pc.get_nr_points(); i++) {
+		float curr_curvatire = pc.curvature.at(i).mean_curvature;
+		for (int j = 0; j < pc.get_nr_points() && (j != i); j++) {
+			float compairing_curvature = pc.curvature.at(j).mean_curvature;
+			float curr_diff = abs(curr_curvatire - compairing_curvature);
+			if (curr_diff < pc.curvinfo.minimum_curvature_difference && curr_diff>0)
+				pc.curvinfo.minimum_curvature_difference = curr_diff;
+		}
 	}
 
 	pc.curvinfo.max_gaussian_curvature = std::numeric_limits<float>::min();
@@ -3891,6 +3916,7 @@ void point_cloud_interactable::print_curvature_computing_info() {
 			pc.curvinfo.min_gaussian_curvature = pc.curvature.at(i).gaussian_curvature;
 	}
 
+	std::cout << "pc.curvinfo.curvinfo.minimum_curvature_difference = " << pc.curvinfo.minimum_curvature_difference << std::endl;
 	std::cout << "pc.curvinfo.max_mean_curvature = " << pc.curvinfo.max_mean_curvature << std::endl;
 	std::cout << "pc.curvinfo.min_mean_curvature = " << pc.curvinfo.min_mean_curvature << std::endl;
 	std::cout << "pc.curvinfo.max_gaussian_curvature = " << pc.curvinfo.max_gaussian_curvature << std::endl;
@@ -3978,7 +4004,7 @@ void point_cloud_interactable::auto_cluster_kmeans() {
 void point_cloud_interactable::ep_compute_principal_curvature_and_colorize_signed() {
 	compute_principal_curvature_signed();
 	fill_curvature_structure();
-	print_curvature_computing_info();
+	compute_and_print_curvature_computing_info();
 	colorize_with_computed_curvature_signed(); // vis with gaussian_curvature
 }
 /// the entry point 

@@ -226,6 +226,7 @@ struct curvature_info {
 	float min_mean_curvature;
 	float max_gaussian_curvature;
 	float min_gaussian_curvature;
+	float minimum_curvature_difference;
 };
 
 /** simple point cloud data structure with dynamic containers for positions, normals and colors.
@@ -305,6 +306,7 @@ public:
 	// ng required, in upper level -> 
 	// compute_principal_curvature()
 	curvature_info curvinfo;
+	//float ; // should larger than 0. curr not stored to file 
 
 	/*lod caching */
 	bool has_lod = false;

@@ -401,6 +401,7 @@ public:
 	void grow_with_dist_and_highest_curvature();
 	void grow_with_accu_dist();
 	void force_start_grow();
+	void ep_start_grow_auto_curv_direction();
 	void pause_continue_parallel_region_growing();
 	void stop_parallel_region_growing();
 	void read_pc_queue();
