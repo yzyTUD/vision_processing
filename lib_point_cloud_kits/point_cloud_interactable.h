@@ -569,6 +569,10 @@ public:
 
 	/*point cleaning paper */
 	//void direct_buffer_loading();
+	mat4 curr_additional_model_matrix;
+	mat4 last_additional_model_matrix;
+	bool use_controller_transformations = false;
+	bool bind_point_cloud_to_rhand = false;
 
 public:
 	int src_scan_idx = 1;

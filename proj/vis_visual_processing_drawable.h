@@ -781,6 +781,14 @@ bool visual_processing::handle(cgv::gui::event& e)
 				}
 				/*region growing */
 				//
+				if (data_ptr->check_roulette_selection(data_ptr->get_id_with_name("PointCloud\nBindPCtoRHand"))) {
+					data_ptr->point_cloud_kit->use_controller_transformations = true;
+					data_ptr->point_cloud_kit->bind_point_cloud_to_rhand = !data_ptr->point_cloud_kit->bind_point_cloud_to_rhand;
+					if (data_ptr->point_cloud_kit->bind_point_cloud_to_rhand) {
+						data_ptr->last_fixed_mat = data_ptr->point_cloud_kit->last_additional_model_matrix;
+						data_ptr->fixed_poseMat = data_ptr->poseMat_rhand;
+					}
+				}
 				if (data_ptr->check_roulette_selection(data_ptr->get_id_with_name("RegionGrowing\nRenderTopoSel"))) {
 					data_ptr->point_cloud_kit->render_with_topo_selction = !data_ptr->point_cloud_kit->render_with_topo_selction;
 				}
@@ -1045,7 +1053,6 @@ void visual_processing::draw(cgv::render::context& ctx)
 	}
 	if (render_env) if (env_render_kit != nullptr) env_render_kit->draw(ctx);
 	if (render_handhold_gui) if (tmpfixed_gui_kit != nullptr) tmpfixed_gui_kit->draw(ctx);
-	if (render_pc) data_ptr->point_cloud_kit->draw(ctx);
 	if (data_ptr->render_handhold_pc) data_ptr->point_cloud_in_hand->draw(ctx);
 	if (roller_coaster_kit_1) roller_coaster_kit_1->draw(ctx);
 	if (draw_kit!=nullptr) draw_kit->render_trajectory(ctx);
@@ -1054,6 +1061,22 @@ void visual_processing::draw(cgv::render::context& ctx)
 	if (imagebox_kit != nullptr)imagebox_kit->draw(ctx);
 	if (selection_kit != nullptr)selection_kit->draw(ctx);
 	if (parametric_surface_kit != nullptr) parametric_surface_kit->draw(ctx);
+	ctx.push_modelview_matrix();
+	if (!data_ptr->point_cloud_kit->use_controller_transformations) {
+		data_ptr->point_cloud_kit->curr_additional_model_matrix = data_ptr->point_cloud_kit->last_additional_model_matrix;
+	}	
+	else {
+		if (data_ptr->point_cloud_kit->bind_point_cloud_to_rhand) {
+			data_ptr->point_cloud_kit->curr_additional_model_matrix = data_ptr->poseMat_rhand * inv(data_ptr->fixed_poseMat) * data_ptr->last_fixed_mat;
+			data_ptr->point_cloud_kit->last_additional_model_matrix = data_ptr->point_cloud_kit->curr_additional_model_matrix; // updating last matrix
+		}
+		else {
+			data_ptr->point_cloud_kit->curr_additional_model_matrix = data_ptr->point_cloud_kit->last_additional_model_matrix; // unbind, last_additional_model_matrix will not be updated 
+		}
+	}
+	ctx.set_modelview_matrix(ctx.get_modelview_matrix() * data_ptr->point_cloud_kit->curr_additional_model_matrix);
+	if (render_pc) data_ptr->point_cloud_kit->draw(ctx);
+	ctx.pop_modelview_matrix();
 	//if (b_interactable != nullptr) b_interactable->draw(ctx);
 	//if (handhold_near_kit!=nullptr) handhold_near_kit->draw(ctx);
 

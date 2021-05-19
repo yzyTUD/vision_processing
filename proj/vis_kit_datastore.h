@@ -228,6 +228,9 @@ public:
 	vec3 cur_off_right;
 	vec3 normal_clipping_plane_RHand;
 	vec3 cur_headset_position;
+	mat4 poseMat_rhand;
+	mat4 last_fixed_mat;
+	mat4 fixed_poseMat;
 	box3 supersampling_bbox;	
 	int max_idx_num = 5;
 	std::vector<vec3> righthand_posi_list;
@@ -318,6 +321,7 @@ public:
 		// parameters 
 		//////////////////////////////////////////////////////////////////
 		gp_btn_tmp.clear();
+		gp_btn_tmp.push_back("PointCloud\nBindPCtoRHand");
 		gp_btn_tmp.push_back("RegionGrowing\nScaleModel");
 		gp_btn_tmp.push_back("RegionGrowing\nRenderTopoSel");
 		gp_btn_tmp.push_back("PointCloud\nPointSize"); 

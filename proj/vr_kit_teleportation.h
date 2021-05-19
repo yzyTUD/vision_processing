@@ -338,7 +338,6 @@ public:
 			if (ci == data_ptr->right_rgbd_controller_index) {
 				// fill the mat and pass to shader as uniform 
 				// from_global_to_controller 
-				mat4 poseMat;
 
 				// define offsets
 				//vec3 trans_offset = vec3(0, 0, -0.2); 
@@ -375,7 +374,7 @@ public:
 				mat4 transMat4 = translate4<float>(handTransVec);
 
 				//
-				poseMat = transMat4 * rotMat4;
+				data_ptr->poseMat_rhand = transMat4 * rotMat4;
 				
 				//  from_global_to_controller * from_controller_to_pc 
 				//poseMat = 
@@ -385,7 +384,7 @@ public:
 
 				// setup varible and pass to gpu in render pass 
 				// current matrix will be updated continusly 
-				data_ptr->point_cloud_in_hand->current_model_matrix = poseMat * data_ptr->point_cloud_in_hand->relative_model_matrix_controller_to_pc;
+				data_ptr->point_cloud_in_hand->current_model_matrix = data_ptr->poseMat_rhand * data_ptr->point_cloud_in_hand->relative_model_matrix_controller_to_pc;
 				/*if (data_ptr->render_handhold_pc)
 					data_ptr->point_cloud_in_hand->use_current_matrix = true;*/
 					// this results using an other uniform matrix: current_model_matrix  
