@@ -599,6 +599,7 @@ bool point_cloud_interactable::read_pc_with_dialog(bool append) {
 	auto start = std::chrono::high_resolution_clock::now();
 	data_path = cgv::utils::file::get_path(file_dir);
 	file_name = cgv::utils::file::drop_extension(cgv::utils::file::get_file_name(file_dir));
+	file_extension = cgv::utils::file::get_extension(cgv::utils::file::get_file_name(file_dir));
 	reading_from_raw_scan = append;
 	if (!append) 
 		clear_all();
@@ -1026,7 +1027,7 @@ void point_cloud_interactable::mark_points_with_clipping_plane(Pnt p,Nml plane_n
 	new_history_recording();
 	for (Idx i = 0; i < (Idx)pc.get_nr_points(); ++i) {
 		if (dot(p - pc.pnt(i), plane_normal) < 0) {
-			pc.face_id[i] = objective;
+			pc.topo_id[i] = objective;
 		}
 	}
 }
@@ -1422,35 +1423,7 @@ void point_cloud_interactable::spawn_points_in_the_handhold_quad(quat controller
 void point_cloud_interactable::auto_scale_after_read_points() {
 	if (pc.get_nr_points() == 0)
 		return;
-	mat4 identity_mat;
-	identity_mat.identity();
-	if (pc.last_additional_model_matrix == identity_mat) // if we have last_additional_model_matrix, do not scale 
-		return;
-	model_translation.identity();
-	inv_model_translation.identity();
-	float ext = (pc.box().get_max_pnt() - pc.box().get_min_pnt()).length();
-	vec3 target_center = pc.box().get_center();
-	model_scale = 1.0f / ext;
-	mat4 m = cgv::math::translate4(-target_center);
-	mat4 table_offset = cgv::math::translate4(vec3(0, 2, 0));
-	float buttom_gap = target_center.y() - pc.box().get_min_pnt().y() + 0.1f; // 0.1 is table dick 
-	mat4 buttom_offset = cgv::math::translate4(vec3(0, buttom_gap, 0));
-	
-	// adjust point size with bbox and num of points? record point size, save to file! 
-	surfel_style.point_size = pc.suggested_point_size > 0 ? pc.suggested_point_size : 0.2f; 
-		//pow(pc.box().get_extent().length(),20) / pc.get_nr_points();
-
-	// perform actual transforms 
-	//pc.transform(m); // move to 0,0,0
-	pc.last_additional_model_matrix = m * pc.last_additional_model_matrix;
-	scale_model();
-	vec3 new_center_offset = pc.box().get_center();
-	mat4 new_center_offmat = cgv::math::translate4(-new_center_offset);
-	model_translation = table_offset * buttom_offset; // record current model traslation and inverse 
-	//pc.transform(model_translation); // move to desired position 
-	pc.last_additional_model_matrix = model_translation * pc.last_additional_model_matrix;
-	inv_model_translation = inv(model_translation);
-
+	put_to_table();
 }
 /*region growing after marked*/
 /// prepare/ reset region grow 
@@ -1894,28 +1867,54 @@ void point_cloud_interactable::undo_curr_region(int curr_region) {
 	// re-add seed to queue 
 	add_seed_to_queue(curr_region);
 }
+///
+void point_cloud_interactable::put_to_table() {
+	//
+	surfel_style.point_size = pc.suggested_point_size > 0 ? pc.suggested_point_size : 0.2f;
+
+	//
+	float ext = (pc.box().get_max_pnt() - pc.box().get_min_pnt()).length();
+	model_scale = 1.0f / ext;
+	std::cout << "model has been scaled with factor of: " << model_scale << std::endl;
+	mat4 scale_matrix = cgv::math::scale4(vec3(model_scale, model_scale, model_scale));
+	vec3 target_center = pc.box().get_center();
+	mat4 inv_mt = cgv::math::translate4(-target_center);
+	mat4 mt = cgv::math::translate4(target_center);
+	pc.last_additional_model_matrix = inv_mt * pc.last_additional_model_matrix;
+	pc.last_additional_model_matrix = scale_matrix * pc.last_additional_model_matrix;
+	pc.last_additional_model_matrix = mt * pc.last_additional_model_matrix;
+
+	//
+	mat4 table_offset = cgv::math::translate4(vec3(0, 2, 0));
+	mat4 t; t.identity();
+	target_center = pc.box().get_center();
+	float buttom_gap = target_center.y() - pc.box().get_min_pnt().y() + 0.1f; // 0.1 is table dick 
+	mat4 buttom_offset = cgv::math::translate4(vec3(0, buttom_gap, 0));
+	t = table_offset * buttom_offset; 
+	pc.last_additional_model_matrix = t * pc.last_additional_model_matrix;
+
+	apply_transfrom_to_pc();
+}
 /// apply model scalling 
 void point_cloud_interactable::scale_model() {
-	//pc.transform(inv_model_translation);
-	pc.last_additional_model_matrix = inv_model_translation * pc.last_additional_model_matrix;
 	std::cout << "model has been scaled with factor of: " << model_scale << std::endl;
-	float tmp = model_scale;
-	model_scale *= 1.0f / last_model_scale; // recover last scale first 
 	mat4 scale_matrix = cgv::math::scale4(vec3(model_scale, model_scale, model_scale));
-	//pc.transform(scale_matrix);
+	vec3 target_center = pc.box().get_center();
+	mat4 inv_model_translation = cgv::math::translate4(-target_center);
+	mat4 model_translation = cgv::math::translate4(target_center);
+	pc.last_additional_model_matrix = inv_model_translation * pc.last_additional_model_matrix;
 	pc.last_additional_model_matrix = scale_matrix * pc.last_additional_model_matrix;
-	last_model_scale = tmp;
-	//pc.transform(model_translation);
 	pc.last_additional_model_matrix = model_translation * pc.last_additional_model_matrix;
+
+	apply_transfrom_to_pc();
 }
 void point_cloud_interactable::apply_transfrom_to_pc() {
 	pc.transform_pnt_and_nml(pc.last_additional_model_matrix);
 	pc.last_additional_model_matrix.identity();
 	std::cout << "mat = \n" << pc.last_additional_model_matrix << std::endl;
-	tree_ds_out_of_date = true;
-	ensure_tree_ds();
-	ng.clear();
-	//ensure_neighbor_graph();
+	pc.box_out_of_date = true;
+	tree_ds_out_of_date = true; ensure_tree_ds();
+	ng.clear(); //ensure_neighbor_graph();
 }
 /*
 	algorithm: 

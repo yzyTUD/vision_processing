@@ -1192,7 +1192,8 @@ void visual_processing::read_pc() {
 	else
 		data_ptr->point_cloud_kit->prepare_grow(overwrite_face_id); // reading from file, do not overwrite, this will very fast 
 	
-	if(put_points_to_table)
+
+	if(!(data_ptr->point_cloud_kit->file_extension.compare("ypc") == 0))
 		data_ptr->point_cloud_kit->auto_scale_after_read_points();
 }
 ///  read the whole pc to data_ptr->point_cloud_kit
@@ -1641,7 +1642,6 @@ void visual_processing::del_clipping_btn_press() {
 	// it will continuesly update 
 	// just do this for consistant 
 	data_ptr->point_cloud_in_hand->on_rendering_settings_changed();
-	post_redraw();
 }
 ///
 void visual_processing::del_menu_btn_press() {

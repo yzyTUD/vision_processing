@@ -138,6 +138,8 @@ public:
 	std::string file_dir;
 	/// file name without path nor extension of current file
 	std::string file_name;
+	///
+	std::string file_extension;
 	/// helper member for updating the file name without overwriting the current one. This is needed for concatenation of file names when appending them
 	std::string new_file_name;
 	/// directory_name is used to support reading all point clouds from a directory by setting directory_path in the config file
@@ -405,6 +407,8 @@ public:
 	void undo_sync_grow();
 	/// opposite to submit face, we may want to undo current grow 
 	void undo_curr_region(int curr_region);
+	///
+	void put_to_table();
 	///
 	void scale_model();
 	///
