@@ -303,6 +303,8 @@ public:
 
 	// read from file 
 	float suggested_point_size = -1; // check with larger than 0
+	mat4 curr_additional_model_matrix;
+	mat4 last_additional_model_matrix;
 
 	/*curvature estimation */ 
 	// ng required, in upper level -> 
@@ -650,6 +652,8 @@ public:
 	void transform(const AMat& amat);
 	/// transform with homogeneous transform and w-clip and bounding box outdated (careful: normals are not yet transformed!)
 	void transform(const HMat& hmat);
+	///
+	void transform_pnt_and_nml(const HMat& hmat);
 	/// add a point and allocate normal and color if necessary, return index of new point
 	size_t add_point(const Pnt& p);
 	/// add a point and allocate normal and color if necessary, return index of new point

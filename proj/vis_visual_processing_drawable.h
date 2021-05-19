@@ -467,6 +467,9 @@ bool visual_processing::handle(cgv::gui::event& e)
 					if (data_ptr->check_roulette_selection(data_ptr->get_id_with_name("RegionGrowing\nSaveToFile\nQuiet"))) {
 						quiet_save();
 					}
+					if (data_ptr->check_roulette_selection(data_ptr->get_id_with_name("PointCloud\nBindPCtoRHand"))) {
+						data_ptr->point_cloud_kit->apply_transfrom_to_pc(); // flush current matrix to pc 
+					}
 				}
 			}
 			if (vrke.get_action() == cgv::gui::KA_PRESS) { //
@@ -785,8 +788,11 @@ bool visual_processing::handle(cgv::gui::event& e)
 					data_ptr->point_cloud_kit->use_controller_transformations = true;
 					data_ptr->point_cloud_kit->bind_point_cloud_to_rhand = !data_ptr->point_cloud_kit->bind_point_cloud_to_rhand;
 					if (data_ptr->point_cloud_kit->bind_point_cloud_to_rhand) {
-						data_ptr->last_fixed_mat = data_ptr->point_cloud_kit->last_additional_model_matrix;
+						data_ptr->last_fixed_mat = data_ptr->point_cloud_kit->pc.last_additional_model_matrix;
 						data_ptr->fixed_poseMat = data_ptr->poseMat_rhand;
+					}
+					else {
+						data_ptr->point_cloud_kit->apply_transfrom_to_pc(); // apply after release
 					}
 				}
 				if (data_ptr->check_roulette_selection(data_ptr->get_id_with_name("RegionGrowing\nRenderTopoSel"))) {
@@ -1063,18 +1069,18 @@ void visual_processing::draw(cgv::render::context& ctx)
 	if (parametric_surface_kit != nullptr) parametric_surface_kit->draw(ctx);
 	ctx.push_modelview_matrix();
 	if (!data_ptr->point_cloud_kit->use_controller_transformations) {
-		data_ptr->point_cloud_kit->curr_additional_model_matrix = data_ptr->point_cloud_kit->last_additional_model_matrix;
+		data_ptr->point_cloud_kit->pc.curr_additional_model_matrix = data_ptr->point_cloud_kit->pc.last_additional_model_matrix;
 	}	
 	else {
 		if (data_ptr->point_cloud_kit->bind_point_cloud_to_rhand) {
-			data_ptr->point_cloud_kit->curr_additional_model_matrix = data_ptr->poseMat_rhand * inv(data_ptr->fixed_poseMat) * data_ptr->last_fixed_mat;
-			data_ptr->point_cloud_kit->last_additional_model_matrix = data_ptr->point_cloud_kit->curr_additional_model_matrix; // updating last matrix
+			data_ptr->point_cloud_kit->pc.curr_additional_model_matrix = data_ptr->poseMat_rhand * inv(data_ptr->fixed_poseMat) * data_ptr->last_fixed_mat;
+			data_ptr->point_cloud_kit->pc.last_additional_model_matrix = data_ptr->point_cloud_kit->pc.curr_additional_model_matrix; // updating last matrix
 		}
 		else {
-			data_ptr->point_cloud_kit->curr_additional_model_matrix = data_ptr->point_cloud_kit->last_additional_model_matrix; // unbind, last_additional_model_matrix will not be updated 
+			data_ptr->point_cloud_kit->pc.curr_additional_model_matrix = data_ptr->point_cloud_kit->pc.last_additional_model_matrix; // unbind, last_additional_model_matrix will not be updated 
 		}
 	}
-	ctx.set_modelview_matrix(ctx.get_modelview_matrix() * data_ptr->point_cloud_kit->curr_additional_model_matrix);
+	ctx.set_modelview_matrix(ctx.get_modelview_matrix() * data_ptr->point_cloud_kit->pc.curr_additional_model_matrix);
 	if (render_pc) data_ptr->point_cloud_kit->draw(ctx);
 	ctx.pop_modelview_matrix();
 	//if (b_interactable != nullptr) b_interactable->draw(ctx);
@@ -1980,6 +1986,10 @@ void visual_processing::quiet_save() {
 	data_ptr->point_cloud_kit->write_pc_to_file_with_given_dir(fn_without_extension + time_stamp_for_file_name + ".ypc");
 	std::cout << "saved!" << std::endl;
 }
+///
+void visual_processing::apply_transfrom_to_pc() {
+	data_ptr->point_cloud_kit->apply_transfrom_to_pc();
+}
 /*gui */
 ///
 void visual_processing::create_gui() {
@@ -2077,6 +2087,9 @@ void visual_processing::create_gui() {
 		add_member_control(this, "model_scale", data_ptr->point_cloud_kit->model_scale, 
 			"value_slider", "min=0.001;max=10;log=false;ticks=true;");
 		connect_copy(add_button("scale_model")->click, rebind(data_ptr->point_cloud_kit, &point_cloud_interactable::scale_model));
+
+		connect_copy(add_button("apply_transform")->click, rebind(this, &visual_processing::apply_transfrom_to_pc));
+		//connect_copy(add_button("apply_transform")->click, rebind(data_ptr->point_cloud_kit->pc, &point_cloud::transform, data_ptr->point_cloud_kit->pc.last_additional_model_matrix));
 	}
 	//
 	if (begin_tree_node("Interactive Region Growing", gui_irg, gui_irg, "level=3")) {

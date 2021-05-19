@@ -326,6 +326,7 @@ public:
 		gp_btn_tmp.push_back("RegionGrowing\nRenderTopoSel");
 		gp_btn_tmp.push_back("PointCloud\nPointSize"); 
 		gp_btn_tmp.push_back("PointCloud\nShowNml");
+		gp_btn_tmp.push_back("RegionGrowing\nSaveToFile\nQuiet");
 		gps.push_back(gp_btn_tmp);
 
 
@@ -357,7 +358,6 @@ public:
 
 		//
 		gp_btn_tmp.push_back("RegionGrowing\nOurMethod\nToggleIgnore\nHighCurvatureRegions");
-		gp_btn_tmp.push_back("RegionGrowing\nSaveToFile\nQuiet");
 		//gp_btn_tmp.push_back("RegionGrowing\nOurMethod\nUndoCurrRegion"); // integrated to left press. typically, we do not have to delete seeds 
 		//gp_btn_tmp.push_back("RegionGrowing\nOurMethod\nFinalizeGrow"); // menu press 
 		//gp_btn_tmp.push_back("RegionGrowing\nAccuDistanceBased");

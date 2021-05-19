@@ -485,6 +485,8 @@ public:
 
 	void quiet_save();
 
+	void apply_transfrom_to_pc();
+
 	void create_gui();
 	void write_trajectory() { draw_kit->write_trajectory(); }
 	void read_trajectory() { draw_kit->read_trajectory(); }

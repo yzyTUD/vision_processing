@@ -408,6 +408,8 @@ public:
 	///
 	void scale_model();
 	///
+	void apply_transfrom_to_pc();	
+	///
 	void step_back_one_point();
 	///
 	void backward_grow_one_step(int curr_region);
@@ -569,8 +571,6 @@ public:
 
 	/*point cleaning paper */
 	//void direct_buffer_loading();
-	mat4 curr_additional_model_matrix;
-	mat4 last_additional_model_matrix;
 	bool use_controller_transformations = false;
 	bool bind_point_cloud_to_rhand = false;
 

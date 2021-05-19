@@ -46,6 +46,8 @@ void point_cloud_interactable::print_pc_information() {
 	std::cout << "pc.curvinfo.min_mean_curvature = " << pc.curvinfo.min_mean_curvature << std::endl;
 	std::cout << "pc.curvinfo.max_gaussian_curvature = " << pc.curvinfo.max_gaussian_curvature << std::endl;
 	std::cout << "pc.curvinfo.min_gaussian_curvature = " << pc.curvinfo.min_gaussian_curvature << std::endl;
+
+	std::cout << "pc.last_additional_model_matrix = \n" << pc.last_additional_model_matrix << std::endl;
 	//for (auto f : pc.F_conn) {
 	//	std::cout << "current f.size(): " << f.size() << std::endl;
 	//}
@@ -1420,6 +1422,10 @@ void point_cloud_interactable::spawn_points_in_the_handhold_quad(quat controller
 void point_cloud_interactable::auto_scale_after_read_points() {
 	if (pc.get_nr_points() == 0)
 		return;
+	mat4 identity_mat;
+	identity_mat.identity();
+	if (pc.last_additional_model_matrix == identity_mat) // if we have last_additional_model_matrix, do not scale 
+		return;
 	model_translation.identity();
 	inv_model_translation.identity();
 	float ext = (pc.box().get_max_pnt() - pc.box().get_min_pnt()).length();
@@ -1435,12 +1441,14 @@ void point_cloud_interactable::auto_scale_after_read_points() {
 		//pow(pc.box().get_extent().length(),20) / pc.get_nr_points();
 
 	// perform actual transforms 
-	pc.transform(m); // move to 0,0,0
+	//pc.transform(m); // move to 0,0,0
+	pc.last_additional_model_matrix = m * pc.last_additional_model_matrix;
 	scale_model();
 	vec3 new_center_offset = pc.box().get_center();
 	mat4 new_center_offmat = cgv::math::translate4(-new_center_offset);
-	model_translation = table_offset * buttom_offset * new_center_offmat; // record current model traslation and inverse 
-	pc.transform(model_translation); // move to desired position 
+	model_translation = table_offset * buttom_offset; // record current model traslation and inverse 
+	//pc.transform(model_translation); // move to desired position 
+	pc.last_additional_model_matrix = model_translation * pc.last_additional_model_matrix;
 	inv_model_translation = inv(model_translation);
 
 }
@@ -1888,14 +1896,26 @@ void point_cloud_interactable::undo_curr_region(int curr_region) {
 }
 /// apply model scalling 
 void point_cloud_interactable::scale_model() {
-	pc.transform(inv_model_translation);
+	//pc.transform(inv_model_translation);
+	pc.last_additional_model_matrix = inv_model_translation * pc.last_additional_model_matrix;
 	std::cout << "model has been scaled with factor of: " << model_scale << std::endl;
 	float tmp = model_scale;
 	model_scale *= 1.0f / last_model_scale; // recover last scale first 
-	mat3 scale_matrix = cgv::math::scale3(vec3(model_scale, model_scale, model_scale));
-	pc.transform(scale_matrix);
+	mat4 scale_matrix = cgv::math::scale4(vec3(model_scale, model_scale, model_scale));
+	//pc.transform(scale_matrix);
+	pc.last_additional_model_matrix = scale_matrix * pc.last_additional_model_matrix;
 	last_model_scale = tmp;
-	pc.transform(model_translation);
+	//pc.transform(model_translation);
+	pc.last_additional_model_matrix = model_translation * pc.last_additional_model_matrix;
+}
+void point_cloud_interactable::apply_transfrom_to_pc() {
+	pc.transform_pnt_and_nml(pc.last_additional_model_matrix);
+	pc.last_additional_model_matrix.identity();
+	std::cout << "mat = \n" << pc.last_additional_model_matrix << std::endl;
+	tree_ds_out_of_date = true;
+	ensure_tree_ds();
+	ng.clear();
+	//ensure_neighbor_graph();
 }
 /*
 	algorithm: 
@@ -3045,8 +3065,10 @@ void point_cloud_interactable::draw_graph(cgv::render::context& ctx)
 /// basic functions
 bool point_cloud_interactable::init(cgv::render::context& ctx)
 {
-	curr_additional_model_matrix.identity();
-	last_additional_model_matrix.identity();
+	pc.curr_additional_model_matrix.identity();
+	pc.last_additional_model_matrix.identity();
+	model_translation.identity();
+	inv_model_translation.identity();
 	if (!gl_point_cloud_drawable::init(ctx))
 		return false;
 	return true;

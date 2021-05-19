@@ -1193,6 +1193,26 @@ void point_cloud::transform(const HMat& hmat)
 	box_out_of_date = true;
 }
 
+/// transform with homogeneous transform and w-clip
+void point_cloud::transform_pnt_and_nml(const HMat& hmat)
+{
+	Mat mat; mat.identity();
+	for (int i = 0; i < 3; i++) {
+		for (int j = 0; j < 3; j++) {
+			mat(i, j) = hmat(i, j);
+		}
+	}
+	for (Idx i = 0; i < (Idx)get_nr_points(); ++i) {
+		vec4 tmp_posi = hmat * vec4(pnt(i), 1);
+		vec3 tmp_nml = mat * nml(i);
+		normalize(tmp_nml); 
+
+		pnt(i) = Pnt(tmp_posi.x(), tmp_posi.y(), tmp_posi.z());
+		nml(i) = tmp_nml;
+	}
+	box_out_of_date = true;
+}
+
 /// add a point and allocate normal and color if necessary
 size_t point_cloud::add_point(const Pnt& p)
 {
@@ -1788,7 +1808,10 @@ enum YPCFlags
 	// 12-05-2021
 	YPC_HAS_FACE_SELECTIONS = 512,
 	YPC_HAS_SCAN_INDICES = 1024,
-	YPC_HAS_POINT_SIZE = 2048
+	YPC_HAS_POINT_SIZE = 2048,
+
+	// 19-05-2021
+	YPC_HAS_TRANSFORMATION_MAT = 2048 * 2
 };
 
 /// buffer based, gpc format gpu rendering manipulation point cloud 
@@ -1874,6 +1897,10 @@ bool point_cloud::read_ypc(const std::string& file_name) {
 	}
 	if(flags & YPC_HAS_POINT_SIZE)
 		success = success && (fread(&suggested_point_size, sizeof(float), 1, fp) == 1);
+	
+	// 
+	if (flags & YPC_HAS_TRANSFORMATION_MAT)
+		success = success && fread(&last_additional_model_matrix, sizeof(mat4), 1, fp) == 1;
 
 	return fclose(fp) == 0 && success;
 }
@@ -3083,6 +3110,7 @@ bool point_cloud::write_ypc(const std::string& file_name) {
 	flags += has_face_selections() ? YPC_HAS_FACE_SELECTIONS : 0;
 	flags += has_scan_indices() ? YPC_HAS_SCAN_INDICES : 0;
 	flags += (suggested_point_size > 0) ? YPC_HAS_POINT_SIZE : 0;
+	flags += YPC_HAS_TRANSFORMATION_MAT; // files will always have this flag later on 
 
 	bool success; 
 
@@ -3124,6 +3152,9 @@ bool point_cloud::write_ypc(const std::string& file_name) {
 		success = success && (fwrite(&point_scan_index[0], sizeof(float), n, fp) == n);
 	if (suggested_point_size > 0)
 		success = success && (fwrite(&suggested_point_size, sizeof(float), 1, fp) == 1);
+
+	//
+	success = success && fwrite(&last_additional_model_matrix, sizeof(mat4), 1, fp) == 1;
 
 	return fclose(fp) == 0 && success;
 }
