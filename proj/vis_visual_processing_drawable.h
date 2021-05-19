@@ -449,14 +449,18 @@ bool visual_processing::handle(cgv::gui::event& e)
 						data_ptr->point_cloud_kit->prepare_grow(true);
 					}
 					if (data_ptr->check_roulette_selection(data_ptr->get_id_with_name("RegionGrowing\nMarkAsOrig"))) {
-						data_ptr->point_cloud_kit->prepare_grow(true);
+						//data_ptr->point_cloud_kit->prepare_grow(true);
 					}
 					if (data_ptr->check_roulette_selection(data_ptr->get_id_with_name("RegionGrowing\nMarkQueue\nToOrig"))) {
-						data_ptr->point_cloud_kit->prepare_grow(true);
+						//data_ptr->point_cloud_kit->prepare_grow(true);
 					}
 					if (data_ptr->check_roulette_selection(data_ptr->get_id_with_name("RegionGrowing\nMarkAsCurr"))) {
-						data_ptr->point_cloud_kit->prepare_grow(true);
+						//data_ptr->point_cloud_kit->prepare_grow(true);
 					}
+					if (data_ptr->check_roulette_selection(data_ptr->get_id_with_name("RegionGrowing\nMarkSpawn\nQueue"))) {
+						data_ptr->point_cloud_kit->clear_curr_queue_and_restore_attributes(selection_kit->curr_face_selecting_id);
+					}
+					
 					if (data_ptr->check_roulette_selection(data_ptr->get_id_with_name("RegionGrowing\nCurvatureViewer"))) {
 						data_ptr->point_cloud_kit->force_render_with_original_color = !data_ptr->point_cloud_kit->force_render_with_original_color;
 					}

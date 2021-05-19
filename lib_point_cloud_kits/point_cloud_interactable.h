@@ -115,8 +115,8 @@ struct LowSecComp {
 //};
 
 struct growing_history_element { // hard to keep consistancy, record growing state from time to time
-	int curr_point_id;
-	std::vector<int> curr_neighbors_pushed_to_queue;
+	point_priority_mapping curr_point;
+	std::vector<point_priority_mapping> curr_neighbors_pushed_to_queue;
 };
 
 /** the point cloud view adds a gui to the gl_point_cloud_drawable_base and adds
@@ -254,6 +254,8 @@ public:
 	void mark_leaking_points_face_id_and_other_attributes(Pnt p, float r); // mark to original 
 	///
 	void mark_points_in_queue_to_original(Pnt p, float r);
+	///
+	void mark_and_spawn_queue_from_possible_candidates(Pnt p, float r, int objctive);
 	/// 
 	void mark_face_id_with_controller(Pnt p, float r, int objctive);
 	/// mark with controllers 

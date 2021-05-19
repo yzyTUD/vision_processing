@@ -297,6 +297,8 @@ public:
 	std::vector<bool> point_in_queue; // ignore this point if this has been set to false; 
 	/// binded with the above one, indicates which group it belongs to 
 	std::vector<int> point_in_queue_which_group;
+	/// order, // ranking = 0 for the first point
+	std::vector<int> ranking_within_curr_group;
 public:
 
 	// read from file 

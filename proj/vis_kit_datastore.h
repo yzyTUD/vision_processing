@@ -345,6 +345,7 @@ public:
 		gp_btn_tmp.push_back("RegionGrowing\nMarkAsOrig");
 		gp_btn_tmp.push_back("RegionGrowing\nMarkQueue\nToOrig");
 		gp_btn_tmp.push_back("RegionGrowing\nMarkAsCurr"); // basic marking support, without rg: only face_id will be recorded 
+		gp_btn_tmp.push_back("RegionGrowing\nMarkSpawn\nQueue");
 		gp_btn_tmp.push_back("RegionGrowing\nBackGrow");
 
 		//
@@ -426,8 +427,8 @@ public:
 		// poitn cloud: rendering adjustments 
 		//////////////////////////////////////////////////////////////////
 		gp_btn_tmp.clear();
-		gp_btn_tmp.push_back("PointCloud\nPointSize");
-		gp_btn_tmp.push_back("PointCloud\nShowNml");
+		//gp_btn_tmp.push_back("PointCloud\nPointSize"); // todo: re-naming error 
+		//gp_btn_tmp.push_back("PointCloud\nShowNml");
 		gp_btn_tmp.push_back("PointCloud\nToggle\nCamera\nCulling");
 		gp_btn_tmp.push_back("PointCloud\nCulling\nRange");
 		gps.push_back(gp_btn_tmp);

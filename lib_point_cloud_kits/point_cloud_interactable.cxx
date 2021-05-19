@@ -49,6 +49,11 @@ void point_cloud_interactable::print_pc_information() {
 	//for (auto f : pc.F_conn) {
 	//	std::cout << "current f.size(): " << f.size() << std::endl;
 	//}
+
+	// growing info: 
+	std::cout << "points_grown: " << points_grown << std::endl;
+	std::cout << "pc.suggested_point_size: " << pc.suggested_point_size << std::endl;
+
 	std::cout << "### end: point cloud info: ###" << std::endl;
 }
 
@@ -907,6 +912,52 @@ void point_cloud_interactable::mark_points_in_queue_to_original(Pnt p, float r) 
 		}
 	}
 }
+///
+void point_cloud_interactable::mark_and_spawn_queue_from_possible_candidates(Pnt p, float r, int curr_region) {
+	if (pc.get_nr_points() == 0)
+		return;
+	ensure_tree_ds();
+	float closest_dist = -1;
+	int closest_idx = -1;
+	tree_ds->find_closest_and_its_dist(p, closest_dist, closest_idx);
+	//std::cout << "closest_dist = "<< closest_dist << std::endl;
+	if (closest_dist > r) {
+		// do nothing 
+	}
+	else {
+		for (Idx i = 0; i < (Idx)pc.get_nr_points(); ++i) {
+			if ((pc.pnt(i) - p).length() < r) {
+				// ignore deleted points 
+				if (pc.topo_id.at(i) == point_cloud::TOPOAttribute::DEL) {
+					continue;
+				}
+
+				// perform real operations: just push to queue, modify some face ids, not growing  
+				if (pc.face_id[i] == curr_region) {
+					// if found a visited point, get its neighbors recorded 
+					std::vector<point_priority_mapping>* neighbors =
+						&growing_history_for_region[curr_region][pc.ranking_within_curr_group[i]].curr_neighbors_pushed_to_queue;
+					// push them to queue if possible 
+					for (auto& neighbor: *neighbors) {
+						int curr_kid = std::get<ID>(neighbor);
+						if (pc.point_visited[curr_kid])
+							continue;
+						if (pc.point_in_queue[curr_kid])
+							continue;
+						if (pc.face_id[curr_kid])
+							continue;
+						// an acceptable child found 
+						queue_for_regions[curr_region].push(neighbor);
+						pc.face_id[curr_kid] = 26 - curr_region; // visual mark 
+						pc.point_in_queue[curr_kid] = true;
+						pc.point_in_queue_which_group[curr_kid] = curr_region;
+						pc.point_visited[curr_kid] = false;
+					}
+				}
+			}
+		}
+	}
+}
 /// currently, we set confirmed to true. The visual feedback is better to be impl. in shaders.
 /// ignore deleted points by default 
 void point_cloud_interactable::mark_face_id_with_controller(Pnt p, float r, int objctive) {
@@ -1418,6 +1469,8 @@ void point_cloud_interactable::prepare_grow(bool overwrite_face_selection) {
 	for (auto& n : num_of_knn_used_for_each_group) { n = k;} // init to 30 at the beginning 
 	num_of_points_curr_region.resize(pc.num_of_face_selections_rendered);
 	for (auto& n : num_of_points_curr_region) { n = 0; }
+	pc.ranking_within_curr_group.resize(pc.get_nr_points());
+	for (auto& v : pc.ranking_within_curr_group) { v = -1; }
 
 	// init queue and seed tracking 
 	queue_for_regions.clear();
@@ -1888,10 +1941,10 @@ void point_cloud_interactable::backward_grow_one_step(int curr_region) {
 	growing_history_element e = growing_history_for_region[curr_region][num_of_points_curr_region[curr_region] -1]; // size of growing_history should be the same as points_grown
 	
 	// recover last point 
-	pc.point_in_queue[e.curr_point_id] = false;
-	pc.point_visited[e.curr_point_id] = false;
-	pc.face_id[e.curr_point_id] = 0;
-	pc.point_in_queue_which_group[e.curr_point_id] = 0;
+	pc.point_in_queue[std::get<ID>(e.curr_point)] = false;
+	pc.point_visited[std::get<ID>(e.curr_point)] = false;
+	pc.face_id[std::get<ID>(e.curr_point)] = 0;
+	pc.point_in_queue_which_group[std::get<ID>(e.curr_point)] = 0;
 
 	points_grown--;
 	num_of_points_curr_region[curr_region]--;
@@ -2135,8 +2188,9 @@ bool point_cloud_interactable::grow_one_step_bfs(bool grow_with_queue, int which
 	pc.face_id.at(std::get<ID>(to_visit)) = which_group;
 	pc.point_visited.at(std::get<ID>(to_visit)) = true;
 	points_grown++;
+	pc.ranking_within_curr_group.at(std::get<ID>(to_visit)) = num_of_points_curr_region[which_group]; // ranking = 0 for the first point 
 	num_of_points_curr_region[which_group]++;
-	std::vector<int> which_neighbors_were_pushed;
+	std::vector<point_priority_mapping> which_neighbors_were_pushed;
 
 	// expend queue by visiting children of the to_visit (knn)
 	// not everything in queue in the final growing step 
@@ -2269,7 +2323,7 @@ bool point_cloud_interactable::grow_one_step_bfs(bool grow_with_queue, int which
 		}
 
 		// push to queue. store addtional value, can be quired when dequeue 
-		which_neighbors_were_pushed.push_back(kid);
+		which_neighbors_were_pushed.push_back(std::make_tuple(kid, property_scale* curr_property, curr_curvature));
 		if (!grow_with_queue) 
 			queue_for_regions[which_group].push(std::make_tuple(kid, property_scale * curr_property, curr_curvature));
 		else 
@@ -2278,7 +2332,7 @@ bool point_cloud_interactable::grow_one_step_bfs(bool grow_with_queue, int which
 		pc.point_in_queue_which_group.at(kid) = which_group;
 	}
 	growing_history_element e;
-	e.curr_point_id = std::get<ID>(to_visit);
+	e.curr_point = to_visit;
 	e.curr_neighbors_pushed_to_queue = std::move(which_neighbors_were_pushed);
 	growing_history_for_region[which_group].push_back(e);
 	return true;
