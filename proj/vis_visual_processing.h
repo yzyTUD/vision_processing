@@ -239,15 +239,16 @@ public:
 	///
 	void stream_help(std::ostream& os);
 	///
-	bool self_reflect(cgv::reflect::reflection_handler& rh);
+	//bool self_reflect(cgv::reflect::reflection_handler& rh);
 	///
 	void on_set(void* member_ptr);
 	///
-	/*bool self_reflect(cgv::reflect::reflection_handler& rh)
+	bool self_reflect(cgv::reflect::reflection_handler& rh)
 	{
 		return
-			rh.reflect_member("pick_point_index", pick_point_index);
-	}*/
+			rh.reflect_member("pick_point_index", pick_point_index) && 
+			rh.reflect_member("curr_region", selection_kit->curr_face_selecting_id);
+	}
 	///
 	void init_6_points_picking() {
 		data_ptr->pick_points.push_back(vec3(1));
@@ -487,6 +488,8 @@ public:
 	void quiet_save();
 
 	void apply_transfrom_to_pc();
+	void next_topo_ranking();
+	void prev_topo_ranking();
 
 	void create_gui();
 	void write_trajectory() { draw_kit->write_trajectory(); }

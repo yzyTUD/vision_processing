@@ -204,11 +204,11 @@ void visual_processing::stream_help(std::ostream& os) {
 	os << "visual_processing: no shortcuts defined" << std::endl;
 }
 ///
-bool visual_processing::self_reflect(cgv::reflect::reflection_handler& rh)
-{
-	return
-		rh.reflect_member("curr_region", curr_face_selecting_id);
-}
+//bool visual_processing::self_reflect(cgv::reflect::reflection_handler& rh)
+//{
+//	return
+//		rh.reflect_member("curr_region", curr_face_selecting_id);
+//}
 ///		
 void visual_processing::on_set(void* member_ptr)
 {
@@ -1996,6 +1996,14 @@ void visual_processing::quiet_save() {
 void visual_processing::apply_transfrom_to_pc() {
 	data_ptr->point_cloud_kit->apply_transfrom_to_pc();
 }
+///
+void visual_processing::next_topo_ranking() {
+	data_ptr->point_cloud_kit->highlight_topo_ranking++;
+}
+///
+void visual_processing::prev_topo_ranking() {
+	data_ptr->point_cloud_kit->highlight_topo_ranking--;
+}
 /*gui */
 ///
 void visual_processing::create_gui() {
@@ -2175,6 +2183,10 @@ void visual_processing::create_gui() {
 			"value_slider", "min=1;max=22;log=false;ticks=true;");
 		add_member_control(this, "highlight_topo_ranking", data_ptr->point_cloud_kit->highlight_topo_ranking, // per point? 
 			"value_slider", "min=1;max=22;log=false;ticks=true;");
+		connect_copy(add_button("prev")->click,
+			rebind(this, &visual_processing::prev_topo_ranking));
+		connect_copy(add_button("next")->click,
+			rebind(this, &visual_processing::next_topo_ranking));
 	}
 	//
 	if (begin_tree_node("Region Growing", gui_rg, gui_rg, "level=3")) {
