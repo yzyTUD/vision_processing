@@ -480,7 +480,7 @@ public:
 	/// pause the growing, exit the thread (can not and not good to keep it run )
 	bool pause_growing = false;
 	/// how many points will be growed before sleep, not used, use 100 just 
-	int steps_per_event_as_speed = 200;
+	int steps_per_event_as_speed = 200;	
 	/// latency after 100 points growed 
 	int growing_latency = 100; // ms / 1000 points 
 	///
@@ -569,8 +569,10 @@ public:
 	void build_connectivity_graph_fitting_and_render_control_points() {
 		point_classification();
 		extract_all();
-		pc.make_explicit();
-		pc.fit_all();
+		//pc.make_explicit();
+		//pc.fit_all();
+		colorize_with_corner_edge_id = true;
+		render_with_topo_selction = true;
 	}
 
 	/*point cleaning paper */

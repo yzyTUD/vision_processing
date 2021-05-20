@@ -77,6 +77,10 @@ public:
 	bool render_with_topo_selctions_only = false;
 	bool colorize_with_face_selection = true;
 	bool colorize_with_face_selection_only = false;
+	bool colorize_with_corner_edge_id = true;
+
+	int highlight_topo_id = 4;
+	int highlight_topo_ranking = 0;
 
 	/*point rendering */
 	

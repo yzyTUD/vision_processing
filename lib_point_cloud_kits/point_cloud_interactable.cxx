@@ -1079,6 +1079,7 @@ void point_cloud_interactable::point_classification() {
 		if (incident_point_ids.size() == 1) { // interior points, keep the current selection (face id )
 			F_conn_info f_conn_info;
 			f_conn_info.point_id = i;
+			pc.ranking_within_conn[i] = pc.F_conn.size();
 			pc.F_conn.push_back(f_conn_info);
 		}
 		if (incident_point_ids.size() == 2)  // boundary 
@@ -1089,6 +1090,7 @@ void point_cloud_interactable::point_classification() {
 			e_conn_info.incident_ids = incident_point_ids;
 			e_conn_info.valence = incident_point_ids.size();
 			e_conn_info.visited = false;
+			pc.ranking_within_conn[i] = pc.E_conn.size();
 			pc.E_conn.push_back(e_conn_info);
 			// fill the hashmap structure for later use 
 			pc.pid_to_E_conn_info_map[i] = e_conn_info;
@@ -1103,6 +1105,7 @@ void point_cloud_interactable::point_classification() {
 			v_conn_info.incident_ids = incident_point_ids;
 			v_conn_info.valence = incident_point_ids.size();
 			v_conn_info.visited = false;
+			pc.ranking_within_conn[i] = pc.V_conn.size();
 			pc.V_conn.push_back(v_conn_info);
 			// fill the hashmap structure for later use 
 			pc.pid_to_V_conn_info_map[i] = v_conn_info;
@@ -1156,7 +1159,7 @@ void point_cloud_interactable::corner_extraction() {
 	std::vector<int> knn;
 	ensure_tree_ds();
 	// classify points to each vertex, global info about the vertex we are working on
-	int curr_corner_id = 0;
+	int curr_corner_id = 0; 
 	//
 	bool not_done = false;
 	int seed_pnt_id;
@@ -1172,16 +1175,22 @@ void point_cloud_interactable::corner_extraction() {
 		while (!q.empty()) { 
 			int cur_seed_pnt_id = q.front(); q.pop(); // fetch the front point
 			// visit the current point 
-			// match in pc.V_conn
-			int curr_point_id = -1;
 			std::set<int> curr_incident_ids;
-			for (auto& vc : pc.V_conn) {
+			//int curr_point_id = -1;
+			/*for (auto& vc : pc.V_conn) {
 				if (vc.point_id == cur_seed_pnt_id) {
 					vc.corner_id = curr_corner_id;
 					vc.visited = true;
 					curr_incident_ids = vc.incident_ids;
 				}
-			}
+			}*/
+			//
+			V_conn_info* vc = &pc.V_conn[pc.ranking_within_conn[cur_seed_pnt_id]];
+			vc->corner_id = curr_corner_id;
+			pc.ranking_within_curr_topo[cur_seed_pnt_id] = curr_corner_id;
+			vc->visited = true;
+			curr_incident_ids = vc->incident_ids;
+
 			// find neighbour points 
 			tree_ds->find_closest_points(pc.pnt(cur_seed_pnt_id), 30, &knn); // find knn points 
 			for (auto k : knn) { // loop over knn points
@@ -1235,7 +1244,7 @@ void point_cloud_interactable::edge_extraction() {
 	std::vector<int> knn;
 	ensure_tree_ds();
 	// classify points to each vertex, global info about the vertex we are working on
-	int curr_edge_id = 0;
+	int curr_edge_id = 0; // curr_edge_id should start from 0 
 	//
 	bool not_done = false;
 	int seed_pnt_id;
@@ -1252,15 +1261,22 @@ void point_cloud_interactable::edge_extraction() {
 			int cur_seed_pnt_id = q.front(); q.pop(); // fetch the front point
 			// visit the current point 
 			// match in pc.V_conn
-			int curr_point_id = -1;
 			std::set<int> curr_incident_ids;
-			for (auto& ec : pc.E_conn) {
+			//int curr_point_id = -1;
+			/*for (auto& ec : pc.E_conn) {
 				if (ec.point_id == cur_seed_pnt_id) {
 					ec.edge_id = curr_edge_id;
 					ec.visited = true;
 					curr_incident_ids = ec.incident_ids;
 				}
-			}
+			}*/
+			//
+			E_conn_info* ec = &pc.E_conn[pc.ranking_within_conn[cur_seed_pnt_id]];
+			ec->edge_id = curr_edge_id;
+			pc.ranking_within_curr_topo[cur_seed_pnt_id] = curr_edge_id;
+			ec->visited = true;
+			curr_incident_ids = ec->incident_ids;
+
 			// find neighbour points 
 			tree_ds->find_closest_points(pc.pnt(cur_seed_pnt_id), 30, &knn); // find knn points 
 			for (auto k : knn) { // loop over knn points
@@ -1452,6 +1468,10 @@ void point_cloud_interactable::prepare_grow(bool overwrite_face_selection) {
 	for (auto& n : num_of_points_curr_region) { n = 0; }
 	pc.ranking_within_curr_group.resize(pc.get_nr_points());
 	for (auto& v : pc.ranking_within_curr_group) { v = -1; }
+	pc.ranking_within_conn.resize(pc.get_nr_points());
+	for (auto& v : pc.ranking_within_conn) { v = -1; }
+	pc.ranking_within_curr_topo.resize(pc.get_nr_points());
+	for (auto& v : pc.ranking_within_curr_topo) { v = -1; }
 
 	// init queue and seed tracking 
 	queue_for_regions.clear();
@@ -2692,6 +2712,22 @@ void point_cloud_interactable::clear_all() {
 	use_these_point_palette = 0;
 	use_these_point_color_indices = 0; 
 	use_these_component_colors = 0;
+
+	/*region growing related */
+	points_grown = 0;
+	bkp_points_grown = 0;
+	can_sleep = false;
+	pause_growing = false;
+	for (int i = 0; i < num_of_points_curr_region.size(); i++) {
+		num_of_points_curr_region[i] = 0;
+	}
+	model_scale = 1;
+	accu_model_scale = 1;
+	last_model_scale = 1;
+	model_translation.identity();
+	inv_model_translation.identity();
+	bind_point_cloud_to_rhand = false;
+
 }
 ///
 void point_cloud_interactable::interact_callback(double t, double dt)

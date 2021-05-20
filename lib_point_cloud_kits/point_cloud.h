@@ -281,6 +281,10 @@ public:
 	std::vector<int> face_id; // from point_selection, write to .scan file  
 	/// per-vertex attribute: used for marking edges/ vertices/ faces... subsampled... 
 	std::vector<int> topo_id; // 0 is reserved, points will be marked to edges, corners... 
+	/// point rankped in pc.V_conn
+	std::vector<int> ranking_within_conn;
+	/// indicates in topo group: corner 0,1,2...
+	std::vector<int> ranking_within_curr_topo;
 	/// container for per vertex scan indices, which scan it belones to 
 	std::vector<float> point_scan_index; 
 	/// per-vertex attribute: curvature in tangent space, gaussian curvature, mean curvature and principle curvatures can be computed out of it 

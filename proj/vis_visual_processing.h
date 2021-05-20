@@ -187,6 +187,7 @@ protected:
 	bool instance_redraw = true;
 	bool put_points_to_table = true;
 	bool backward_grow = false;
+	int curr_face_selecting_id;
 
 	// cam rendering 
 	std::vector<vec3> point_and_cam;

@@ -207,7 +207,7 @@ void visual_processing::stream_help(std::ostream& os) {
 bool visual_processing::self_reflect(cgv::reflect::reflection_handler& rh)
 {
 	return
-		rh.reflect_member("curr_region", selection_kit->curr_face_selecting_id);
+		rh.reflect_member("curr_region", curr_face_selecting_id);
 }
 ///		
 void visual_processing::on_set(void* member_ptr)
@@ -734,10 +734,12 @@ bool visual_processing::handle(cgv::gui::event& e)
 				if (data_ptr->check_roulette_selection(data_ptr->get_id_with_name("PointCloud\nDelPoints\nTouchTo\nActivate"))) {
 					// this will be used in the throttle event 
 					selection_kit->curr_face_selecting_id = point_cloud::TOPOAttribute::DEL;
+					curr_face_selecting_id = selection_kit->curr_face_selecting_id;
 				}
 				if (data_ptr->check_roulette_selection(data_ptr->get_id_with_name("PointCloud\nMarkAs\nOrig"))) {
 					// this will be used in the throttle event 
 					selection_kit->curr_face_selecting_id = point_cloud::TOPOAttribute::ORI;
+					curr_face_selecting_id = selection_kit->curr_face_selecting_id;
 				}
 				if (data_ptr->check_roulette_selection(data_ptr->get_id_with_name("PointCloud\nToggle\npcColor"))) {
 					data_ptr->point_cloud_kit->render_with_original_color = !data_ptr->point_cloud_kit->render_with_original_color;
@@ -1881,10 +1883,13 @@ void visual_processing::find_pointcloud()
 }
 ///
 bool visual_processing::find_next_and_increase_curr_region() {
-	if (selection_kit->curr_face_selecting_id == -1)
+	if (selection_kit->curr_face_selecting_id == -1) {
 		selection_kit->curr_face_selecting_id = 1;
+		curr_face_selecting_id = selection_kit->curr_face_selecting_id;
+	}
 	else
 		selection_kit->curr_face_selecting_id++;
+		curr_face_selecting_id = selection_kit->curr_face_selecting_id;
 	int pid_next = data_ptr->point_cloud_kit->find_next_seed_in_low_curvature_area();
 	if (pid_next == -1)
 		return false;
@@ -1940,6 +1945,7 @@ void visual_processing::drop_unwanted_regions() {
 ///
 void visual_processing::automatic_region_extraction() {
 	selection_kit->curr_face_selecting_id = -1;
+	curr_face_selecting_id = selection_kit->curr_face_selecting_id;
 	while (find_next_and_increase_curr_region()) {
 		data_ptr->point_cloud_kit->gm = data_ptr->point_cloud_kit->growing_mode::DISTANCE_AND_MEAN_CURVATURE_BASED_LOWERFIRST;
 		data_ptr->point_cloud_kit->growing_latency = 0;
@@ -2048,7 +2054,8 @@ void visual_processing::create_gui() {
 		add_member_control(this, "render_with_topo_selction_only", data_ptr->point_cloud_kit->render_with_topo_selctions_only, "check");
 		add_member_control(this, "colorize_with_face_selection", data_ptr->point_cloud_kit->colorize_with_face_selection, "check");
 		add_member_control(this, "colorize_with_face_selection_only", data_ptr->point_cloud_kit->colorize_with_face_selection_only, "check");
-
+		add_member_control(this, "colorize_with_corner_edge_id", data_ptr->point_cloud_kit->colorize_with_corner_edge_id, "check");
+		
 		add_member_control(this, "force_render_with_original_color", data_ptr->point_cloud_kit->force_render_with_original_color, "check");
 		add_member_control(this, "highlight_unmarked_points", data_ptr->point_cloud_kit->highlight_unmarked_points, "check");
 		add_member_control(this, "render_nmls", data_ptr->point_cloud_kit->show_nmls, "check");
@@ -2063,7 +2070,6 @@ void visual_processing::create_gui() {
 		add_member_control(this, "show_neighbor_graph", data_ptr->point_cloud_kit->show_neighbor_graph, "check");
 		add_member_control(this, "knn", data_ptr->point_cloud_kit->k,
 			"value_slider", "min=1;max=50;log=false;ticks=true;");
-		
 		connect_copy(add_control("render_pc", render_pc, "check")->value_change, rebind(
 			static_cast<drawable*>(this), &visual_processing::post_redraw));
 		add_member_control(this, "surfel point size", data_ptr->point_cloud_kit->surfel_style.point_size,
@@ -2157,10 +2163,18 @@ void visual_processing::create_gui() {
 	}
 	// 
 	if (begin_tree_node("Model Fitting (Connectivity )", gui_Fitting, gui_Fitting, "level=3")) {
+		connect_copy(add_button("[T,S]automatic_region_extraction")->click,
+			rebind(this, &visual_processing::automatic_region_extraction));
+		connect_copy(add_button("[T]sync_grow_dist_curvature_based")->click,
+			rebind(this, &visual_processing::sync_grow_dist_curvature_based));
 		connect_copy(add_button("fitting_render_control_points_test")->click,
 			rebind(this, &visual_processing::fitting_render_control_points_test));
 		connect_copy(add_button("build_connectivity_graph_fitting_and_render_control_points")->click,
 			rebind(this, &visual_processing::build_connectivity_graph_fitting_and_render_control_points));
+		add_member_control(this, "highlight_topo_id", data_ptr->point_cloud_kit->highlight_topo_id, // per point? 
+			"value_slider", "min=1;max=22;log=false;ticks=true;");
+		add_member_control(this, "highlight_topo_ranking", data_ptr->point_cloud_kit->highlight_topo_ranking, // per point? 
+			"value_slider", "min=1;max=22;log=false;ticks=true;");
 	}
 	//
 	if (begin_tree_node("Region Growing", gui_rg, gui_rg, "level=3")) {
@@ -2188,8 +2202,6 @@ void visual_processing::create_gui() {
 			rebind(this, &visual_processing::residual_grow_curvature_based));
 		connect_copy(add_button("residual_grow_dist_and_curvature_based")->click,
 			rebind(this, &visual_processing::residual_grow_dist_and_curvature_based));
-		connect_copy(add_button("[S]automatic_region_extraction")->click,
-			rebind(this, &visual_processing::automatic_region_extraction));
 
 		add_decorator("// seed selection ", "heading", "level=3");
 		// seed selection 

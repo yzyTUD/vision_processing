@@ -614,10 +614,28 @@ void point_cloud::clear_all() {
 	T.clear();
 	I.clear();
 	F.clear();
+
+	nearest_neighbour_indices.clear();
 	face_id.clear();
-	point_visited.clear();
+	topo_id.clear();
 	point_scan_index.clear();
-	//point_visibility.clear();
+	curvature.clear();
+	smoothed_mean_curvature.clear();
+	lods.clear();
+
+	point_visited.clear();
+	point_in_queue.clear();
+	point_in_queue_which_group.clear();
+	ranking_within_curr_group.clear();
+
+	suggested_point_size = -1;
+	curr_additional_model_matrix.identity();
+	last_additional_model_matrix.identity();
+	curvinfo = *(new curvature_info());
+
+	has_lod = false;
+	has_curv_information = false;
+
 
 	/// container to store  one component index per point
 	component_indices.clear();

@@ -987,7 +987,14 @@ void gl_point_cloud_drawable::set_arrays(context& ctx, size_t offset, size_t cou
 		);
 	}
 
-	
+	if (pc.ranking_within_curr_topo.size()>0) {
+		s_renderer.set_attribute_array_renderer(ctx,
+			"ranking_within_curr_topo",
+			&pc.ranking_within_curr_topo.at(unsigned(offset)),
+			count,
+			unsigned(sizeof(int)) * show_point_step
+		);
+	}
 }
 /// render with surfel 
 void gl_point_cloud_drawable::draw_points_surfel(context& ctx)
@@ -1033,7 +1040,13 @@ void gl_point_cloud_drawable::draw_points_surfel(context& ctx)
 	s_renderer.ref_prog().set_uniform(ctx, "render_with_topo_selctions_only", render_with_topo_selctions_only);
 	s_renderer.ref_prog().set_uniform(ctx, "colorize_with_face_selection", colorize_with_face_selection);
 	s_renderer.ref_prog().set_uniform(ctx, "colorize_with_face_selection_only", colorize_with_face_selection_only);
+	s_renderer.ref_prog().set_uniform(ctx, "colorize_with_corner_edge_id", colorize_with_corner_edge_id);
+
+	s_renderer.ref_prog().set_uniform(ctx, "highlight_topo_id", highlight_topo_id);
+	s_renderer.ref_prog().set_uniform(ctx, "highlight_topo_ranking", highlight_topo_ranking);
+		
 	
+
 	std::size_t n = pc.get_nr_points();
 		//(show_point_end - show_point_begin) / show_point_step;
 	GLint offset = GLint(show_point_begin / show_point_step);
