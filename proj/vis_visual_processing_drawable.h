@@ -2010,17 +2010,18 @@ void visual_processing::create_gui() {
 	add_decorator("visual_computing", "heading", "level=2");
 	
 	//
-	bool gui_io = true;
+	bool gui_render_control = false;
+	bool gui_io = false;
+	bool gui_irg = false;
+	bool gui_Fitting = true;
+
 	bool gui_rg = false;
-	bool gui_irg = true;
 	bool gui_pc_cleaning = true;
 	bool gui_pc_rendering_style = true;
-	bool gui_Fitting = true;
 	bool gui_point_Scale = true;
 	bool gui_icp = true;
 	bool gui_Connectivity = true;
 	bool gui_Triangulation = true;
-
 	bool gui_scanindex = true;
 	bool gui_copy_points = true;
 	bool gui_Tube = true;
@@ -2031,13 +2032,11 @@ void visual_processing::create_gui() {
 	bool gui_Nml_computing = true;
 	bool gui_Semantic = true;
 	bool gui_Mesh = true;
-
 	bool gui_Teleportation = true;
 	bool gui_Roller_Coaster = true;
 	bool gui_Draw = true;
 	bool gui_mocap = true;
 	bool gui_selection = true;
-	bool gui_render_control = true;
 
 	if (begin_tree_node("Render Control", gui_render_control, gui_render_control, "level=3")) {
 		//
@@ -2087,7 +2086,7 @@ void visual_processing::create_gui() {
 		add_member_control(this, "use_octree_sampling", data_ptr->point_cloud_kit->use_octree_sampling, "check");
 	}
 	//
-	if (begin_tree_node("IO", gui_io, true, "level=3")) {
+	if (begin_tree_node("IO", gui_io, gui_io, "level=3")) {
 		connect_copy(add_button("read_pc")->click, rebind(this, &visual_processing::start_reading_pc_parallel));
 		connect_copy(add_button("[S,YPC]load_point_cloud_and_render_with_clod")->click, rebind(this, &visual_processing::single_hit__load_point_cloud_and_render_with_clod));
 		connect_copy(add_button("[B]read_pc_append(obj raw scan)")->click, rebind(this, &visual_processing::read_pc_append));
@@ -2170,15 +2169,22 @@ void visual_processing::create_gui() {
 			rebind(this, &visual_processing::undo_sync_grow));
 	}
 	// 
-	if (begin_tree_node("Model Fitting (Connectivity )", gui_Fitting, gui_Fitting, "level=3")) {
+	if (begin_tree_node("Connectivity Extraction", gui_Fitting, gui_Fitting, "level=3")) {
+		add_decorator("// IO ", "heading", "level=3");
+		connect_copy(add_button("read_pc")->click, rebind(this, &visual_processing::start_reading_pc_parallel));
+
+		add_decorator("// quick segmentation ", "heading", "level=3");
 		connect_copy(add_button("[T,S]automatic_region_extraction")->click,
 			rebind(this, &visual_processing::automatic_region_extraction));
 		connect_copy(add_button("[T]sync_grow_dist_curvature_based")->click,
 			rebind(this, &visual_processing::sync_grow_dist_curvature_based));
-		connect_copy(add_button("fitting_render_control_points_test")->click,
-			rebind(this, &visual_processing::fitting_render_control_points_test));
+
+		add_decorator("// extract connectivity ", "heading", "level=3");
 		connect_copy(add_button("build_connectivity_graph_fitting_and_render_control_points")->click,
 			rebind(this, &visual_processing::build_connectivity_graph_fitting_and_render_control_points));
+
+		add_decorator("// connectivity info visulization ", "heading", "level=3");
+		connect_copy(add_button("print_pc_information")->click, rebind(this, &visual_processing::print_pc_information));
 		add_member_control(this, "highlight_topo_id", data_ptr->point_cloud_kit->highlight_topo_id, // per point? 
 			"value_slider", "min=1;max=22;log=false;ticks=true;");
 		add_member_control(this, "highlight_topo_ranking", data_ptr->point_cloud_kit->highlight_topo_ranking, // per point? 
@@ -2187,6 +2193,10 @@ void visual_processing::create_gui() {
 			rebind(this, &visual_processing::prev_topo_ranking));
 		connect_copy(add_button("next")->click,
 			rebind(this, &visual_processing::next_topo_ranking));
+
+		add_decorator("// fitting ", "heading", "level=3");
+		connect_copy(add_button("fitting_render_control_points_test")->click,
+			rebind(this, &visual_processing::fitting_render_control_points_test));
 	}
 	//
 	if (begin_tree_node("Region Growing", gui_rg, gui_rg, "level=3")) {

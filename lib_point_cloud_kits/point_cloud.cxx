@@ -383,44 +383,46 @@ void point_cloud::update_scan_index_visibility() {
 			corners and add their ids to a set 
 
 */
-/// collect point_indices/ compute he 
+/// collect point_indices/ compute he, do further extraction of the connectivity model 
 void point_cloud::make_explicit() {
 	// collect faces 
-	for (int i = 0; i < num_face_ids; i++) {
+	for (int face_id = 0; face_id < num_face_ids; face_id++) {
 		mFace tmp_mFace;
-		tmp_mFace.face_id = i;
-		for (auto& fc : F_conn) {
-			if (fc.face_id == i) {
-				tmp_mFace.point_indices.push_back(fc.point_id);
+		tmp_mFace.face_id = face_id;
+		for (auto& fcpid: classified_to_be_a_face_point) {
+			if (ranking_within_curr_topo[fcpid] == face_id) {
+				tmp_mFace.point_indices.push_back(fcpid);
 			}
 		}
 		modelFace.push_back(tmp_mFace);
 	}
-	// collect vertices 
-	for (int i = 0; i < num_corner_ids; i++) {
+
+	// collect vertices, extract connectivity: incident_faces  
+	for (int corner_id = 0; corner_id < num_corner_ids; corner_id++) {
 		mV tmp_mV;
-		tmp_mV.corner_id = i;
-		for (auto& vc : V_conn) {
-			if (vc.corner_id == i) {
-				tmp_mV.point_indices.push_back(vc.point_id);
-				tmp_mV.valence = vc.valence;
-				for (auto& fi : vc.incident_ids) {
-					tmp_mV.incident_faces.insert((int)fi - 20); // convert to face index 
+		tmp_mV.corner_id = corner_id;
+		for (auto& vcpid : classified_to_be_a_corner_point) {
+			if (ranking_within_curr_topo[vcpid] == corner_id) {
+				tmp_mV.point_indices.push_back(vcpid);
+				tmp_mV.valence = incident_ids[vcpid].size();
+				for (auto& fi : incident_ids[vcpid]) {
+					tmp_mV.incident_faces.insert(fi); // face id starts from 1 
 				}
 			}
 		}
 		modelV.push_back(tmp_mV);
 	}
+
 	// collect edges  
-	for (int i = 0; i < num_edge_ids; i++) {
+	for (int edge_id = 0; edge_id < num_edge_ids; edge_id++) {
 		mEdge tmp_mHE;
-		tmp_mHE.edge_id = i;
-		for (auto& ec : E_conn) {
-			if (ec.edge_id == i) {
-				tmp_mHE.point_indices.push_back(ec.point_id);
-				tmp_mHE.valence = ec.valence;
-				for (auto& fi : ec.incident_ids) {
-					tmp_mHE.incident_faces.insert((int)fi - 20); // convert to face index 
+		tmp_mHE.edge_id = edge_id;
+		for (auto& ecpid : classified_to_be_an_edge_point) {
+			if (ranking_within_curr_topo[ecpid] == edge_id) {
+				tmp_mHE.point_indices.push_back(ecpid);
+				tmp_mHE.valence = incident_ids[ecpid].size();
+				for (auto& fi : incident_ids[ecpid]) {
+					tmp_mHE.incident_faces.insert(fi); // extract edge - face incident info 
 				}
 			}
 		}
@@ -441,6 +443,7 @@ void point_cloud::make_explicit() {
 		}
 	}
 
+	//
 	for (auto& me: modelEdge) {
 		std::set<int> curr_ef_incident_ids = me.incident_faces;
 		for (auto& mv: modelV) {
@@ -459,7 +462,6 @@ void point_cloud::make_explicit() {
 			}
 		}
 	}
-
 }
 
 /// fit one vertex for each corner
@@ -684,11 +686,10 @@ void point_cloud::clear_all() {
 	scan_index_visibility.clear();
 
 	/*point based connectivity model*/
-	F_conn.clear(); num_face_ids = 0;
-	E_conn.clear(); num_edge_ids = 0;
-	V_conn.clear(); num_corner_ids = 0;
-	pid_to_V_conn_info_map.clear();
-	pid_to_E_conn_info_map.clear(); // not used, use flags instead 
+	incident_ids.clear();
+	classified_to_be_an_edge_point.clear();
+	classified_to_be_a_corner_point.clear();
+	classified_to_be_a_face_point.clear();
 
 	/*connectivity extraction */
 	modelV.clear();
@@ -1396,8 +1397,6 @@ bool point_cloud::read(const string& _file_name)
 		success = read_cgvscan(_file_name);
 	if (ext == "pwitha")
 		success = read_pwitha(_file_name);
-	if (ext == "cgvcgvconnectivity")
-		success = read_cgvcgvconnectivity(_file_name);
 	if (ext == "cgvfitting")
 		success = read_cgvfitting(_file_name);
 	if (ext == "cgvcad")
@@ -2441,16 +2440,6 @@ bool point_cloud::write_cgvscan(const std::string& file_name)
 		
 	return !os.fail();
 }
-
-bool point_cloud::read_cgvcgvconnectivity(const std::string& file_name) {
-	return true;
-}
-
-///
-bool point_cloud::write_cgvcgvconnectivity(const std::string& file_name) {
-	return true;
-}
-
 
 bool point_cloud::read_cgvfitting(const std::string& file_name) {
 	return true;

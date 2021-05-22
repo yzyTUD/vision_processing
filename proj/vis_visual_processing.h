@@ -650,7 +650,7 @@ public:
 		data_ptr->point_cloud_kit->print_pc_information();
 	}
 	void boundary_extraction() {
-		data_ptr->point_cloud_kit->extract_all();
+		//data_ptr->point_cloud_kit->extract_all();
 	}
 	void extract_connectivity_graph() {
 		//data_ptr->point_cloud_kit->extract_connectivity_graph();
@@ -662,8 +662,7 @@ public:
 			fetch_from_point_cloud_kit_demo();
 	}
 	void build_connectivity_graph_fitting_and_render_control_points() {
-		data_ptr->point_cloud_kit->
-			build_connectivity_graph_fitting_and_render_control_points();
+		data_ptr->point_cloud_kit->connectivity_extraction();
 	}
 	void read_cgvcad_with_dialog() {
 		data_ptr->point_cloud_kit->read_cgvcad_with_dialog();

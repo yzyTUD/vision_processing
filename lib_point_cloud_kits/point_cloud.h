@@ -304,14 +304,14 @@ public:
 	/// order, // ranking = 0 for the first point
 	std::vector<int> ranking_within_curr_group;
 
-	/*fine-grained point classification */
+	/*fine-grained point classification: 22-05-2021 */
 	/// each point has a valence, searched from neighbor points 
 	//std::vector<int> valence; // is nothing but incident_ids.size()
 	/// incident face ids 
 	std::vector<std::set<int>> incident_ids;
 
 public:
-	/*fine-grained point classification */
+	/*fine-grained point classification: 22-05-2021*/
 	/// all points that are classified to be a face point 
 	std::vector<int> classified_to_be_a_face_point;
 	/// all points that are classified to be an edge point 
@@ -366,6 +366,10 @@ public:
 		impl. in pc_interactable, knn required 
 		/// classify points to corners/ edges/ faces
 		void point_classification();
+	*/
+
+	/*connectivity extraction */
+	/*
 		/// find points that belongs to faces with region growing 
 		void face_extraction();
 		/// find points that belongs to corners with region growing 
@@ -373,10 +377,8 @@ public:
 		/// find points that belongs to edges with region growing 
 		void edge_extraction();
 		/// all-in-one function: invoke functions above 
-		void extract_all();
+		void extract_incidents();
 	*/
-
-	/*connectivity extraction */
 	/// explicit storage of connectivity information:  
 	/// how many faces in this model 
 	int num_face_ids;

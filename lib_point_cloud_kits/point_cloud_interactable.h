@@ -547,7 +547,10 @@ public:
 	std::vector<std::vector<growing_history_element>> growing_history_for_region; // hard to track 
 
 
+
 	/* Fine-Grained Point Classification */
+	///
+	void clear_before_point_classification();
 	/// thw quality of the boundaries depends on region growing steps, how good faces are marked 
 	void point_classification();
 	///  quality depends on the prev. steps 
@@ -557,7 +560,7 @@ public:
 	/// do some region growing and extract to global ds 
 	void edge_extraction();
 	/// entry point, batch operation 
-	void extract_all();
+	void extract_incidents();
 
 	/* Topological Information Extraction*/
 	/// currently done in point_cloud
@@ -566,10 +569,11 @@ public:
 	/// set points and indices for a demo surface 
 	void fitting_render_control_points_test();
 	///
-	void build_connectivity_graph_fitting_and_render_control_points() {
+	void connectivity_extraction() {
 		point_classification();
-		extract_all();
-		//pc.make_explicit();
+		extract_incidents();
+		pc.make_explicit(); // extract to explicit expression 
+		// extract he ... 
 		//pc.fit_all();
 		colorize_with_corner_edge_id = true;
 		render_with_topo_selction = true;

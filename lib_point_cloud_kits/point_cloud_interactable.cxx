@@ -39,7 +39,6 @@ void point_cloud_interactable::print_pc_information() {
 	std::cout << "pc.topo_id.size: " << pc.topo_id.size() << std::endl;
 	std::cout << "pc.point_scan_index.size: " << pc.point_scan_index.size() << std::endl;
 	std::cout << "pc.lods.size: " << pc.lods.size() << std::endl;
-	std::cout << "pc.F_conn.size(): " << "" << std::endl;
 
 	std::cout << "pc.curvinfo.curvinfo.minimum_curvature_difference = " << pc.curvinfo.minimum_curvature_difference << std::endl;
 	std::cout << "pc.curvinfo.max_mean_curvature = " << pc.curvinfo.max_mean_curvature << std::endl;
@@ -55,6 +54,11 @@ void point_cloud_interactable::print_pc_information() {
 	// growing info: 
 	std::cout << "points_grown: " << points_grown << std::endl;
 	std::cout << "pc.suggested_point_size: " << pc.suggested_point_size << std::endl;
+
+	std::cout << "pc.num_corner_ids: " << pc.num_corner_ids << std::endl;
+	std::cout << "pc.num_edge_ids: " << pc.num_edge_ids << std::endl;
+	std::cout << "pc.num_face_ids: " << pc.num_face_ids << std::endl;
+	std::cout << "pc.modelV.size(): " << pc.modelV.size() << std::endl;
 
 	std::cout << "### end: point cloud info: ###" << std::endl;
 }
@@ -1063,27 +1067,42 @@ const typename ADAPTER::container_type& get_container(ADAPTER& a)
 			do region growing with stopping criteria: find non edge point or edge point whose face indices are not 
                     the same face indices of reference point.
 */
+void point_cloud_interactable::clear_before_point_classification() {
+	// reset visiting information, reuse the point visited boolean array 
+	for (auto& pv : pc.point_visited) pv = false;
+	for (auto& pq : pc.point_in_queue) pq = false;
+	for (auto& pg : pc.point_in_queue_which_group) pg = 0;
+	pc.classified_to_be_an_edge_point.clear();
+	pc.classified_to_be_a_corner_point.clear();
+	pc.classified_to_be_a_face_point.clear();
+	pc.incident_ids.clear();
+	pc.incident_ids.resize(pc.get_nr_points());
+	pc.ranking_within_curr_topo.clear();
+	pc.ranking_within_curr_topo.resize(pc.get_nr_points());
+}
 
 /// pre-requirement: rg is done, per point selection ready. after marked.
 /// result will be stored and visualized with TOPOAttribute
 #include <set>
 void point_cloud_interactable::point_classification() {
-	// reset visiting information, reuse the point visited boolean array 
-	for (auto& pv : pc.point_visited) pv = false;
-	for (auto& pq : pc.point_in_queue) pq = false;
-	for (auto& pg : pc.point_in_queue_which_group) pg = 0;
+	//
+	clear_before_point_classification();
+	
+	//
 	ensure_tree_ds();
+
+	// iterate all points to classify 
 	for (Idx i = 0; i < (Idx)pc.get_nr_points(); ++i) {
 		// ignore deleted points 
 		if (pc.topo_id.at(i) == point_cloud::TOPOAttribute::DEL)
 			continue;
 
-		// find knn points 
-		std::vector<int> knn;
-		tree_ds->find_closest_points(pc.pnt(i), 30, &knn);
+		// query neighbor points 
 		std::set<int> incident_point_ids;
-		for (auto k: knn) { // k is the index 
-			incident_point_ids.insert(pc.face_id.at(k));
+		for (auto kid: pc.nearest_neighbour_indices[i]) { // k is the index
+			if (incident_point_ids.size() > 30)
+				break;
+			incident_point_ids.insert(pc.face_id.at(kid));
 		}
 
 		// interior points, keep the current selection (face id)
@@ -1117,7 +1136,6 @@ void point_cloud_interactable::point_classification() {
 			pc.topo_id.at(i) = point_cloud::TOPOAttribute::CORNER;
 		}
 	}
-	on_point_cloud_change_callback(PCC_COLORS);
 	render_with_topo_selctions_only = true; // not working for now ...
 }
 
@@ -1129,7 +1147,7 @@ void point_cloud_interactable::face_extraction() {
 	pc.num_face_ids = regions.size();
 }
 
-/// fine grained classification, region grow to find neighbor points, push them to the global list 
+/// region grow to find neighbor points, extract connectivity info of the model: how many vertices/ edges/ faces 
 void point_cloud_interactable::corner_extraction() {
 	//
 	std::vector<int> knn;
@@ -1161,19 +1179,25 @@ void point_cloud_interactable::corner_extraction() {
 			curr_incident_ids = pc.incident_ids[curr_seed_pid]; // extract incident info for neighbor search 
 			pc.ranking_within_curr_topo[curr_seed_pid] = curr_corner_id; // fill topo ranking information 
 			pc.point_visited[curr_seed_pid] = true;
+			pc.point_in_queue[curr_seed_pid] = false;
 
 			// find neighbour points 
-			tree_ds->find_closest_points(pc.pnt(curr_seed_pid), 30, &knn); // find knn points 
-			for (auto kid : knn) { // loop over knn points
+				// alternative: 	
+				//tree_ds->find_closest_points(pc.pnt(curr_seed_pid), 30, &knn); // find knn points 
+				//for(auto kid:knn){}
+			for (auto kid : pc.nearest_neighbour_indices[curr_seed_pid]) { // k is the index
 				if (pc.point_visited[kid])// if visited, ignore 
 					continue;
-				if (pc.incident_ids[kid] != curr_incident_ids)// if not belones to the same corner 
-					continue;
+				bool check_incident_face_ids = true;
+				if(check_incident_face_ids)
+					if (pc.incident_ids[kid] != curr_incident_ids)// if not belones to the same corner 
+						continue;
 				if (pc.incident_ids.size() < 3)
 					continue;
 				if (pc.point_in_queue[kid])
 					continue;
 				q.push(kid);
+				pc.point_in_queue[kid] = true;
 			}
 		}
 		// state: an other region is done 
@@ -1192,12 +1216,11 @@ void point_cloud_interactable::corner_extraction() {
 	// state: all corners should be extracted, they are built from points 
 	// goal: quick check, how many regions are here? / corners 
 	std::set<int> regions;
-	for (auto& pid:pc.classified_to_be_a_corner_point) {
+	for (auto& pid:pc.classified_to_be_a_corner_point) 
 		regions.insert(pc.ranking_within_curr_topo[pid]);
-	}
+	pc.num_corner_ids = regions.size();
 	std::cout << "number of corners extracted: " << regions.size()
 		<< " or, curr_corner_id = " << curr_corner_id << std::endl;
-	pc.num_corner_ids = regions.size();
 }
 
 ///
@@ -1206,85 +1229,71 @@ void point_cloud_interactable::edge_extraction() {
 	//
 	std::vector<int> knn;
 	ensure_tree_ds();
-	// classify points to each vertex, global info about the vertex we are working on
 	int curr_edge_id = 0; // curr_edge_id should start from 0 
-	//
 	bool not_done = false;
 	int seed_pnt_id;
-	for (auto& ec : pc.E_conn) { // check if all points classified 
-		if (ec.visited == false) {
+
+	// find the first unvisited point as seed
+	for (auto& vpid : pc.classified_to_be_an_edge_point) {
+		if (pc.point_visited[vpid] == false) {
 			not_done = true;
-			seed_pnt_id = ec.point_id; // found an unvisited point as seed
+			seed_pnt_id = vpid;
+			break;
 		}
 	}
+
+	//
 	while (not_done) {
 		// goal: do rg to find all neighbour points
 		std::queue<int> q; q.push(seed_pnt_id);
 		while (!q.empty()) {
-			int cur_seed_pnt_id = q.front(); q.pop(); // fetch the front point
-			// visit the current point 
-			// match in pc.V_conn
+			int curr_seed_pid = q.front(); q.pop(); // fetch the front point
 			std::set<int> curr_incident_ids;
-			//int curr_point_id = -1;
-			/*for (auto& ec : pc.E_conn) {
-				if (ec.point_id == cur_seed_pnt_id) {
-					ec.edge_id = curr_edge_id;
-					ec.visited = true;
-					curr_incident_ids = ec.incident_ids;
-				}
-			}*/
+
 			//
-			E_conn_info* ec = &pc.E_conn[pc.index_in_classified_array[cur_seed_pnt_id]];
-			ec->edge_id = curr_edge_id;
-			pc.ranking_within_curr_topo[cur_seed_pnt_id] = curr_edge_id;
-			ec->visited = true;
-			curr_incident_ids = ec->incident_ids;
+			curr_incident_ids = pc.incident_ids[curr_seed_pid];
+			pc.ranking_within_curr_topo[curr_seed_pid] = curr_edge_id; // assign an edge id for each topological edge 
+			pc.point_visited[curr_seed_pid] = true;
+			pc.point_in_queue[curr_seed_pid] = false;
 
 			// find neighbour points 
-			tree_ds->find_closest_points(pc.pnt(cur_seed_pnt_id), 30, &knn); // find knn points 
-			for (auto k : knn) { // loop over knn points
-				bool will_be_pushed = true;
-				for (auto& ec : pc.E_conn) {
-					if (ec.point_id == k) {
-						if (ec.visited)// if visited, ignore 
-							will_be_pushed = false;
-						if (ec.incident_ids != curr_incident_ids)// if not belones to the same edge 
-							will_be_pushed = false;
-						auto& c = get_container(q);
-						const auto it = std::find(c.cbegin(), c.cend(), k);
-						const auto position = std::distance(c.cbegin(), it);
-						if (position < q.size()) // if already exists 
-							will_be_pushed = false;
-						if (will_be_pushed)
-							q.push(k);
-						break; // assume only one match 
-					}
-				}
+				//tree_ds->find_closest_points(pc.pnt(curr_seed_pid), 30, &knn); // find knn points 
+				//for (auto kid : knn) { // loop over knn points
+			for (auto kid : pc.nearest_neighbour_indices[curr_seed_pid]){
+				if (pc.point_visited[kid])// if visited, ignore 
+					continue;
+				if (pc.incident_ids[kid] != curr_incident_ids)// if not belones to the same edge 
+					continue;
+				if (pc.point_in_queue[kid]) // if already exists 
+					continue;
+				q.push(kid);
+				pc.point_in_queue[kid] = true;
 			}
 		}
 		// state: an other region is done 
 		curr_edge_id++;
-		// goal: check again if all points are classified 
+		// reset
 		not_done = false;
-		for (auto& ec : pc.E_conn) {
-			if (ec.visited == false) {
+		// find the first unvisited point as seed
+		for (auto& vpid : pc.classified_to_be_an_edge_point) {
+			if (pc.point_visited[vpid] == false) {
 				not_done = true;
-				seed_pnt_id = ec.point_id; // found an unvisited point as seed
+				seed_pnt_id = vpid;
+				break;
 			}
 		}
 	}
 	// state: all point-based edges should be extracted
 	// goal: quick check, how many regions are here? / edges  
 	std::set<int> regions;
-	for (auto& ec : pc.E_conn) {
-		regions.insert(ec.edge_id);
-	}
+	for (auto& epid : pc.classified_to_be_an_edge_point) 
+		regions.insert(pc.ranking_within_curr_topo[epid]);
+	pc.num_edge_ids = regions.size();
 	std::cout << "number of point-besed edges extracted: " << regions.size()  
 		<< " or, curr_edge_id = " << curr_edge_id  << std::endl;
-	pc.num_edge_ids = regions.size();
 }
 ///
-void point_cloud_interactable::extract_all() {
+void point_cloud_interactable::extract_incidents() {
 	face_extraction();
 	corner_extraction();
 	edge_extraction();
