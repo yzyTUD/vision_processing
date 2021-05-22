@@ -39,7 +39,7 @@ void point_cloud_interactable::print_pc_information() {
 	std::cout << "pc.topo_id.size: " << pc.topo_id.size() << std::endl;
 	std::cout << "pc.point_scan_index.size: " << pc.point_scan_index.size() << std::endl;
 	std::cout << "pc.lods.size: " << pc.lods.size() << std::endl;
-	std::cout << "pc.F_conn.size(): " << pc.F_conn.size() << std::endl;
+	std::cout << "pc.F_conn.size(): " << "" << std::endl;
 
 	std::cout << "pc.curvinfo.curvinfo.minimum_curvature_difference = " << pc.curvinfo.minimum_curvature_difference << std::endl;
 	std::cout << "pc.curvinfo.max_mean_curvature = " << pc.curvinfo.max_mean_curvature << std::endl;
@@ -1032,6 +1032,18 @@ void point_cloud_interactable::mark_points_with_clipping_plane(Pnt p,Nml plane_n
 	}
 }
 
+///
+template <class ADAPTER>
+const typename ADAPTER::container_type& get_container(ADAPTER& a)
+{
+	struct hack : private ADAPTER {
+		static typename ADAPTER::container_type& get(ADAPTER& a) {
+			return a.*(&hack::c);
+		}
+	};
+
+	return hack::get(a);
+}
 /*operations after marked */
 /*
 	algorithm:
@@ -1051,23 +1063,21 @@ void point_cloud_interactable::mark_points_with_clipping_plane(Pnt p,Nml plane_n
 			do region growing with stopping criteria: find non edge point or edge point whose face indices are not 
                     the same face indices of reference point.
 */
+
 /// pre-requirement: rg is done, per point selection ready. after marked.
 /// result will be stored and visualized with TOPOAttribute
 #include <set>
-#include <unordered_set>
 void point_cloud_interactable::point_classification() {
-	std::vector<int> will_be_marked_as_boundary;
-	std::vector<int> will_be_marked_as_corner;
-	//new_history_recording();
-	std::vector<pointHistoryEntry> current_selection;
-	//pc.per_vertex_topology.resize(pc.get_nr_points());
+	// reset visiting information, reuse the point visited boolean array 
+	for (auto& pv : pc.point_visited) pv = false;
+	for (auto& pq : pc.point_in_queue) pq = false;
+	for (auto& pg : pc.point_in_queue_which_group) pg = 0;
 	ensure_tree_ds();
 	for (Idx i = 0; i < (Idx)pc.get_nr_points(); ++i) {
-		// initialize the topology information 
-		// pc.per_vertex_topology = 
 		// ignore deleted points 
 		if (pc.topo_id.at(i) == point_cloud::TOPOAttribute::DEL)
 			continue;
+
 		// find knn points 
 		std::vector<int> knn;
 		tree_ds->find_closest_points(pc.pnt(i), 30, &knn);
@@ -1075,162 +1085,115 @@ void point_cloud_interactable::point_classification() {
 		for (auto k: knn) { // k is the index 
 			incident_point_ids.insert(pc.face_id.at(k));
 		}
-		//
-		if (incident_point_ids.size() == 1) { // interior points, keep the current selection (face id )
-			F_conn_info f_conn_info;
-			f_conn_info.point_id = i;
-			pc.ranking_within_conn[i] = pc.F_conn.size();
-			pc.F_conn.push_back(f_conn_info);
+
+		// interior points, keep the current selection (face id)
+		if (incident_point_ids.size() == 1) {
+			//
+			pc.classified_to_be_a_face_point.push_back(i); 
+			pc.incident_ids[i] = incident_point_ids;
 		}
-		if (incident_point_ids.size() == 2)  // boundary 
+		
+		// boundary points 
+		if (incident_point_ids.size() == 2) 
 		{
-			// fill the E_conn_info structure 
-			E_conn_info e_conn_info;
-			e_conn_info.point_id = i;
-			e_conn_info.incident_ids = incident_point_ids;
-			e_conn_info.valence = incident_point_ids.size();
-			e_conn_info.visited = false;
-			pc.ranking_within_conn[i] = pc.E_conn.size();
-			pc.E_conn.push_back(e_conn_info);
-			// fill the hashmap structure for later use 
-			pc.pid_to_E_conn_info_map[i] = e_conn_info;
-			// used locally 
-			will_be_marked_as_boundary.push_back(i);
+			//
+			pc.classified_to_be_an_edge_point.push_back(i);
+			pc.incident_ids[i] = incident_point_ids;
+			pc.index_in_classified_array[i] = pc.classified_to_be_an_edge_point.size() - 1;
+			
+			//
+			pc.topo_id.at(i) = point_cloud::TOPOAttribute::BOUNDARIES;
 		}
-		if (incident_point_ids.size() >= 3)  // corner 
+		
+		// corner points 
+		if (incident_point_ids.size() >= 3)  
 		{
-			// fill the V_conn_info structure 
-			V_conn_info v_conn_info;
-			v_conn_info.point_id = i;
-			v_conn_info.incident_ids = incident_point_ids;
-			v_conn_info.valence = incident_point_ids.size();
-			v_conn_info.visited = false;
-			pc.ranking_within_conn[i] = pc.V_conn.size();
-			pc.V_conn.push_back(v_conn_info);
-			// fill the hashmap structure for later use 
-			pc.pid_to_V_conn_info_map[i] = v_conn_info;
-			// used locally 
-			will_be_marked_as_corner.push_back(i);
+			//
+			pc.classified_to_be_a_corner_point.push_back(i);
+			pc.incident_ids[i] = incident_point_ids;
+			pc.index_in_classified_array[i] = pc.classified_to_be_a_corner_point.size() - 1;
+
+			//
+			pc.topo_id.at(i) = point_cloud::TOPOAttribute::CORNER;
 		}
-		// after this, all points will be classified to V_conn/E_conn or F_conn
-		// need further process to find out which point belones to which individual vertex/edge/face
-	}
-	for (auto b : will_be_marked_as_boundary) {
-		// trace the marking: skipped
-		// perform 
-		pc.topo_id.at(b) = point_cloud::TOPOAttribute::BOUNDARIES;
-	}
-	for (auto c : will_be_marked_as_corner) {
-		// trace the marking: skipped
-		// perform 
-		pc.topo_id.at(c) = point_cloud::TOPOAttribute::CORNER;
 	}
 	on_point_cloud_change_callback(PCC_COLORS);
 	render_with_topo_selctions_only = true; // not working for now ...
 }
 
-/// topology extraction: faces 
+/// connectivity extraction: faces 
 void point_cloud_interactable::face_extraction() {
 	std::set<int> regions;
-	for (auto& f : pc.F_conn) { // loop all, no matter which face 
-		f.face_id = pc.face_id.at(f.point_id); // face id starts from 1 if marked  
-		regions.insert(f.face_id);
-	}
+	for (auto& pid : pc.classified_to_be_a_face_point) 
+		regions.insert(pc.face_id[pid]);
 	pc.num_face_ids = regions.size();
 }
 
-///
-template <class ADAPTER>
-const typename ADAPTER::container_type& get_container(ADAPTER& a)
-{
-	struct hack : private ADAPTER {
-		static typename ADAPTER::container_type& get(ADAPTER& a) {
-			return a.*(&hack::c);
-		}
-	};
-
-	return hack::get(a);
-}
-
-///
 /// fine grained classification, region grow to find neighbor points, push them to the global list 
 void point_cloud_interactable::corner_extraction() {
 	//
 	std::vector<int> knn;
 	ensure_tree_ds();
-	// classify points to each vertex, global info about the vertex we are working on
-	int curr_corner_id = 0; 
+	
 	//
+	int curr_corner_id = 0; 
 	bool not_done = false;
 	int seed_pnt_id;
-	for (auto& vc : pc.V_conn) { // check if all points classified 
-		if (vc.visited == false) {
+	
+	// find the first unvisited point as seed
+	for (auto& vpid : pc.classified_to_be_a_corner_point) { 
+		if (pc.point_visited[vpid] == false) {
 			not_done = true;
-			seed_pnt_id = vc.point_id; // found an unvisited point as seed
+			seed_pnt_id = vpid; 
+			break;
 		}
 	}
+
+	//
 	while (not_done) {
 		// goal: do rg to find all neighbour points
 		std::queue<int> q; q.push(seed_pnt_id);
 		while (!q.empty()) { 
-			int cur_seed_pnt_id = q.front(); q.pop(); // fetch the front point
+			int curr_seed_pid = q.front(); q.pop(); // fetch the front point
 			// visit the current point 
 			std::set<int> curr_incident_ids;
-			//int curr_point_id = -1;
-			/*for (auto& vc : pc.V_conn) {
-				if (vc.point_id == cur_seed_pnt_id) {
-					vc.corner_id = curr_corner_id;
-					vc.visited = true;
-					curr_incident_ids = vc.incident_ids;
-				}
-			}*/
-			//
-			V_conn_info* vc = &pc.V_conn[pc.ranking_within_conn[cur_seed_pnt_id]];
-			vc->corner_id = curr_corner_id;
-			pc.ranking_within_curr_topo[cur_seed_pnt_id] = curr_corner_id;
-			vc->visited = true;
-			curr_incident_ids = vc->incident_ids;
+
+			curr_incident_ids = pc.incident_ids[curr_seed_pid]; // extract incident info for neighbor search 
+			pc.ranking_within_curr_topo[curr_seed_pid] = curr_corner_id; // fill topo ranking information 
+			pc.point_visited[curr_seed_pid] = true;
 
 			// find neighbour points 
-			tree_ds->find_closest_points(pc.pnt(cur_seed_pnt_id), 30, &knn); // find knn points 
-			for (auto k : knn) { // loop over knn points
-				bool will_be_pushed = true;
-				for (auto& vc : pc.V_conn) {
-					if (vc.point_id == k) {
-						if (vc.visited)// if visited, ignore 
-							will_be_pushed = false;
-						if (vc.incident_ids != curr_incident_ids)// if not belones to the same corner 
-							will_be_pushed = false;
-						if (vc.valence < 3)
-							will_be_pushed = false;
-						auto& c = get_container(q);
-						const auto it = std::find(c.cbegin(), c.cend(), k);
-						const auto position = std::distance(c.cbegin(), it);
-						if (position < q.size()) // if already exists 
-							will_be_pushed = false;
-						if(will_be_pushed)
-							q.push(vc.point_id);
-						break; // assume only one match 
-					}
-				}
+			tree_ds->find_closest_points(pc.pnt(curr_seed_pid), 30, &knn); // find knn points 
+			for (auto kid : knn) { // loop over knn points
+				if (pc.point_visited[kid])// if visited, ignore 
+					continue;
+				if (pc.incident_ids[kid] != curr_incident_ids)// if not belones to the same corner 
+					continue;
+				if (pc.incident_ids.size() < 3)
+					continue;
+				if (pc.point_in_queue[kid])
+					continue;
+				q.push(kid);
 			}
 		}
 		// state: an other region is done 
 		curr_corner_id++;
-		// goal: check again if all points are classified 
+		// reset 
 		not_done = false;
-		for (auto& vc : pc.V_conn) { 
-			if (vc.visited == false) {
+		// find the first unvisited point as seed
+		for (auto& vpid : pc.classified_to_be_a_corner_point) { 
+			if (pc.point_visited[vpid] == false) {
 				not_done = true;
-				seed_pnt_id = vc.point_id; // found an unvisited point as seed
+				seed_pnt_id = vpid;
+				break;
 			}
 		}
 	}
 	// state: all corners should be extracted, they are built from points 
 	// goal: quick check, how many regions are here? / corners 
 	std::set<int> regions;
-	for (auto& vc : pc.V_conn) {
-		regions.insert(vc.corner_id);
+	for (auto& pid:pc.classified_to_be_a_corner_point) {
+		regions.insert(pc.ranking_within_curr_topo[pid]);
 	}
 	std::cout << "number of corners extracted: " << regions.size()
 		<< " or, curr_corner_id = " << curr_corner_id << std::endl;
@@ -1271,7 +1234,7 @@ void point_cloud_interactable::edge_extraction() {
 				}
 			}*/
 			//
-			E_conn_info* ec = &pc.E_conn[pc.ranking_within_conn[cur_seed_pnt_id]];
+			E_conn_info* ec = &pc.E_conn[pc.index_in_classified_array[cur_seed_pnt_id]];
 			ec->edge_id = curr_edge_id;
 			pc.ranking_within_curr_topo[cur_seed_pnt_id] = curr_edge_id;
 			ec->visited = true;
@@ -1468,8 +1431,8 @@ void point_cloud_interactable::prepare_grow(bool overwrite_face_selection) {
 	for (auto& n : num_of_points_curr_region) { n = 0; }
 	pc.ranking_within_curr_group.resize(pc.get_nr_points());
 	for (auto& v : pc.ranking_within_curr_group) { v = -1; }
-	pc.ranking_within_conn.resize(pc.get_nr_points());
-	for (auto& v : pc.ranking_within_conn) { v = -1; }
+	pc.index_in_classified_array.resize(pc.get_nr_points());
+	for (auto& v : pc.index_in_classified_array) { v = -1; }
 	pc.ranking_within_curr_topo.resize(pc.get_nr_points());
 	for (auto& v : pc.ranking_within_curr_topo) { v = -1; }
 

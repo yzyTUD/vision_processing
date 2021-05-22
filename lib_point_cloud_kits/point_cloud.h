@@ -13,31 +13,31 @@
 #include "lib_begin.h"
 
 #define BYTE_COLORS
-
-// implicit connectivity 
-/*this will be saved to file as: vc point_id valence incident_ids corner_id*/
-struct V_conn_info {
-	int point_id; // this index can be used to retrieve points in point list
-	int valence;
-	std::set<int> incident_ids; // incident to surrounding points, their ids 
-	int corner_id; // to which corner it belones to 
-	bool visited;
-};
-/*this will be saved to file as:ec point_id valence incident_ids edge_id*/
-struct E_conn_info {
-	int point_id; // this index can be used to retrieve points in point list
-	int valence;
-	std::set<int> incident_ids; // incident to surrounding points, their ids 
-	int edge_id; // to which edge it belones to 
-	bool visited;
-};
-/*this will be saved to file as: fc point_id face_id angle_in_neighbor_graph*/
-struct F_conn_info {
-	int point_id; // this index can be used to retrieve points in point list
-	// surrounded by points with the same id 
-	float angle_in_neighbor_graph; // used to extract boundaries
-	int face_id; // to which face it belones to, globally
-};
+//
+//// implicit connectivity 
+///*this will be saved to file as: vc point_id valence incident_ids corner_id*/
+//struct V_conn_info {
+//	int point_id; // this index can be used to retrieve points in point list
+//	int valence;
+//	std::set<int> incident_ids; // incident to surrounding points, their ids 
+//	int corner_id; // to which corner it belones to 
+//	bool visited;
+//};
+///*this will be saved to file as:ec point_id valence incident_ids edge_id*/
+//struct E_conn_info {
+//	int point_id; // this index can be used to retrieve points in point list
+//	int valence;
+//	std::set<int> incident_ids; // incident to surrounding points, their ids 
+//	int edge_id; // to which edge it belones to 
+//	bool visited;
+//};
+///*this will be saved to file as: fc point_id face_id angle_in_neighbor_graph*/
+//struct F_conn_info {
+//	int point_id; // this index can be used to retrieve points in point list
+//	// surrounded by points with the same id 
+//	float angle_in_neighbor_graph; // used to extract boundaries
+//	int face_id; // to which face it belones to, globally
+//};
 // -> 
 // explicit connectivity, more info than he 
 // model has a list of pbHEs, do not mix up with E_conn_info, which has larger size, per point info
@@ -281,8 +281,8 @@ public:
 	std::vector<int> face_id; // from point_selection, write to .scan file  
 	/// per-vertex attribute: used for marking edges/ vertices/ faces... subsampled... 
 	std::vector<int> topo_id; // 0 is reserved, points will be marked to edges, corners... 
-	/// point rankped in pc.V_conn
-	std::vector<int> ranking_within_conn;
+	/// index saved to allow fast visit, it may be classified to diff. entities 
+	std::vector<int> index_in_classified_array;
 	/// indicates in topo group: corner 0,1,2...
 	std::vector<int> ranking_within_curr_topo;
 	/// container for per vertex scan indices, which scan it belones to 
@@ -294,7 +294,7 @@ public:
 	/// per point lod information 
 	std::vector<int> lods;
 
-	/*per vertex info, used for region growing, continuely changing */
+	/*used for region growing, continuely changing */
 	/// mark if current point already visited 
 	std::vector<bool> point_visited; // point_visited
 	/// mark if current point in queue 
@@ -304,8 +304,22 @@ public:
 	/// order, // ranking = 0 for the first point
 	std::vector<int> ranking_within_curr_group;
 
+	/*fine-grained point classification */
+	/// each point has a valence, searched from neighbor points 
+	//std::vector<int> valence; // is nothing but incident_ids.size()
+	/// incident face ids 
+	std::vector<std::set<int>> incident_ids;
+
 public:
-	// read from file 
+	/*fine-grained point classification */
+	/// all points that are classified to be a face point 
+	std::vector<int> classified_to_be_a_face_point;
+	/// all points that are classified to be an edge point 
+	std::vector<int> classified_to_be_an_edge_point;
+	/// all points that are classified to be a corner point 
+	std::vector<int> classified_to_be_a_corner_point;
+
+	/*read from file */ 
 	float suggested_point_size = -1; // check with larger than 0
 	mat4 curr_additional_model_matrix;
 	mat4 last_additional_model_matrix;
@@ -337,45 +351,46 @@ public:
 
 	/* fine-grained point classification */
 	/// connectivity graph storage 
-	/// faces in connectivity graph
-	std::vector<F_conn_info> F_conn; int num_face_ids;
-	/// edges in connectivity graph
-	std::vector<E_conn_info> E_conn; int num_edge_ids;
-	/// vertices in connectivity graph, 
-	/// one vertex V consists of a list of points 
-	std::vector<V_conn_info> V_conn;  int num_corner_ids;
-	/// convenient structures for fast retrivel 
-	std::map<int, V_conn_info> pid_to_V_conn_info_map; // from point_id, find V_conn_info
-	std::map<int, E_conn_info> pid_to_E_conn_info_map; // from point_id, find E_conn_info
+	//out-of-date! use per point attribute to support more effecient storage!
+		///// faces in connectivity graph
+		//std::vector<F_conn_info> F_conn; int num_face_ids;
+		///// edges in connectivity graph
+		//std::vector<E_conn_info> E_conn; int num_edge_ids;
+		///// vertices in connectivity graph, 
+		///// one vertex V consists of a list of points 
+		//std::vector<V_conn_info> V_conn;  int num_corner_ids;
+		///// convenient structures for fast retrivel 
+		//std::map<int, V_conn_info> pid_to_V_conn_info_map; // from point_id, find V_conn_info
+		//std::map<int, E_conn_info> pid_to_E_conn_info_map; // from point_id, find E_conn_info
 	/* 
-	*	impl. in pc_interactable, knn required 
-	*	///
+		impl. in pc_interactable, knn required 
+		/// classify points to corners/ edges/ faces
 		void point_classification();
-		///  quality depends on the prev. steps 
+		/// find points that belongs to faces with region growing 
 		void face_extraction();
-		/// do some region growing and extract to global ds 
+		/// find points that belongs to corners with region growing 
 		void corner_extraction();
-		/// do some region growing and extract to global ds 
+		/// find points that belongs to edges with region growing 
 		void edge_extraction();
-		/// entry point 
+		/// all-in-one function: invoke functions above 
 		void extract_all();
 	*/
 
 	/*connectivity extraction */
 	/// explicit storage of connectivity information:  
-	/// a list of vertices 
+	/// how many faces in this model 
+	int num_face_ids;
+	/// how many edges in this model 
+	int num_edge_ids;
+	/// how many vertices in this model 
+	int num_corner_ids;
+	/// a model is built from a list of vertices 
 	std::vector<mV> modelV;
-	/// a list of edges
+	/// a model is built from a list of edges
 	std::vector<mEdge> modelEdge;
-	/// a list of surfaces 
+	/// a model is built from a list of surfaces 
 	std::vector<mFace> modelFace;
 	void make_explicit();
-	/// assign per vertex attributes after extraction: this is done on GPU
-	void colorize_the_connectivity_graph();
-	/// this will be written to binary .ypc files 
-	bool read_cgvcgvconnectivity(const std::string& file_name);
-	/// this will be written to binary .ypc files 
-	bool write_cgvcgvconnectivity(const std::string& file_name);
 
 	/* parametic surface model extraction
 		the key is to find control points 
