@@ -303,8 +303,8 @@ public:
 	std::vector<int> point_in_queue_which_group;
 	/// order, // ranking = 0 for the first point
 	std::vector<int> ranking_within_curr_group;
-public:
 
+public:
 	// read from file 
 	float suggested_point_size = -1; // check with larger than 0
 	mat4 curr_additional_model_matrix;
@@ -326,9 +326,8 @@ public:
 
 	/*camera positions */
 	std::vector<cgv::math::fvec<float, 3>> cam_posi_list;
-	/*
-		vr-icp 
-	*/
+
+	/*vr-icp */
 	/// for rendering with different scans 
 	int num_of_scan_indices = 0;
 	/// for visualize scan indices 
@@ -336,11 +335,7 @@ public:
 	/// from scan_index_visibility to point_visibility
 	void update_scan_index_visibility();
 
-	/*
-		point based connectivity model, per point cloud varible
-		can be stored externally in a .cgv
-		build upon the .cgvscan file, ref the original data structure  
-	*/
+	/* fine-grained point classification */
 	/// connectivity graph storage 
 	/// faces in connectivity graph
 	std::vector<F_conn_info> F_conn; int num_face_ids;
@@ -353,8 +348,7 @@ public:
 	std::map<int, V_conn_info> pid_to_V_conn_info_map; // from point_id, find V_conn_info
 	std::map<int, E_conn_info> pid_to_E_conn_info_map; // from point_id, find E_conn_info
 	/* 
-	*	impl. in pc_interactable to enable knn usage 
-	* 
+	*	impl. in pc_interactable, knn required 
 	*	///
 		void point_classification();
 		///  quality depends on the prev. steps 
@@ -363,30 +357,29 @@ public:
 		void corner_extraction();
 		/// do some region growing and extract to global ds 
 		void edge_extraction();
-		///
+		/// entry point 
 		void extract_all();
 	*/
-	void make_explicit();
-	/// assign per vertex attributes after extraction 
-	void colorize_the_connectivity_graph();
-	///
-	bool read_cgvcgvconnectivity(const std::string& file_name);
-	///
-	bool write_cgvcgvconnectivity(const std::string& file_name);
 
-	/*
-		explicit storage of topological information 
-	*/
+	/*connectivity extraction */
+	/// explicit storage of connectivity information:  
 	/// a list of vertices 
 	std::vector<mV> modelV;
 	/// a list of edges
 	std::vector<mEdge> modelEdge;
 	/// a list of surfaces 
 	std::vector<mFace> modelFace;
+	void make_explicit();
+	/// assign per vertex attributes after extraction: this is done on GPU
+	void colorize_the_connectivity_graph();
+	/// this will be written to binary .ypc files 
+	bool read_cgvcgvconnectivity(const std::string& file_name);
+	/// this will be written to binary .ypc files 
+	bool write_cgvcgvconnectivity(const std::string& file_name);
 
-	/*
-		model extraction
-	
+	/* parametic surface model extraction
+		the key is to find control points 
+		first step is to fit vertices, second is to fit edges, then faces 
 	*/
 	/// global storage of the control points, can be used to render directly 
 	std::vector<Pnt> control_points;
@@ -410,15 +403,13 @@ public:
 	bool write_cgvfitting(const std::string& file_name);
 	/// 
 	bool read_cgvcad(const std::string& file_name);
-
-	/// all-in-one function: moved to upper level
+	/// all-in-one function: moved to upper level, entry point 
 	//void build_connectivity_graph_fitting_and_render_control_points() {
 
 	//}
 
-	/*
-	*	optional:
-		triangulation of the points 
+
+	/*triangulation of the points 
 		f geometric vertex/ texture vertex/ vertex normal
 		we can direct define/ compute them simply if no rendering requirements (as a processor )
 	*/
@@ -434,8 +425,7 @@ public:
 	/// save as obj file with per vertex 
 	bool export_to_an_obj_file(const std::string& file_name);
 
-
-	// 
+	/*support ancient files */
 	void convert_to_int_face_selection_representation() {
 		for (auto& fi : face_id) {
 			fi -= 19; // start from 20 previous, 20 -> 1 
@@ -564,41 +554,47 @@ public:
 	bool write_ptsn(const std::string& file_name) const;
 
 public:
+	/*subsampling */
 	///
 	bool ignore_deleted_points = false;
-	///
+	/// do not clear 
 	bool from_CC = false;
 	/// downsampling according to a rate from 0 to 1 
 	void downsampling(int scale);
-
+	///
 	void subsampling_with_bbox(box3 b);
-
+	///
 	void downsampling_expected_num_of_points(int num_of_points_wanted);
 	///
 	bool read_pts_subsampled(const std::string& file_name, float percentage);
+
+	/*read from .campose file, 10.01.2021*/
 	///
-
-	/// read from .campose file, 10.01.2021
-	int num_of_shots; 
+	int num_of_shots;
+	///
 	int num_of_points_in_campose;
+	///
 	std::vector<int> list_point_idx;
+	///
 	std::vector<cgv::math::quaternion<float>> list_cam_rotation;
+	///
 	std::vector<cgv::math::fvec<float, 3>> list_cam_translation;
+	///
 	bool render_cams = false;
+	///
 	std::vector<cgv::media::color<float, cgv::media::RGB>> list_clrs;
+	///
 	cgv::render::sphere_render_style srs;
+	///
 	bool has_cam_posi = false;
+	///
 	bool read_campose(const std::string& file_name); 
-
-	//cgv::render::box_render_style brs;
 	///
 	int cur_shot = 0;
 	///
 	int num_points = 0;
 	/// 
 	bool write_reflectance = true;
-
-	/// boolean flags  
 
 	/// construct empty point cloud
 	point_cloud();

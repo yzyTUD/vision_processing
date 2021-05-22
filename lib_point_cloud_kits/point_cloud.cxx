@@ -607,7 +607,7 @@ void point_cloud::clear_all_for_get_next_shot() {
 
 /// todo: clear all newly added varibles 
 void point_cloud::clear_all() {
-	// per-point 
+	/*clear per point varibles */
 	P.clear();
 	N.clear();
 	C.clear();
@@ -628,16 +628,13 @@ void point_cloud::clear_all() {
 	point_in_queue_which_group.clear();
 	ranking_within_curr_group.clear();
 
+	/*read from file */
 	suggested_point_size = -1;
 	curr_additional_model_matrix.identity();
 	last_additional_model_matrix.identity();
 	curvinfo = *(new curvature_info());
 
-	has_lod = false;
-	has_curv_information = false;
-
-
-	/// container to store  one component index per point
+	/*container to store  one component index per point*/ 
 	component_indices.clear();
 	components.clear();
 	component_colors.clear();
@@ -646,6 +643,9 @@ void point_cloud::clear_all() {
 	component_boxes.clear();
 	component_pixel_ranges.clear();
 
+	/*reset flags */
+	has_lod = false;
+	has_curv_information = false;
 	has_clrs = false;
 	has_nmls = false;
 	has_texcrds = false;
@@ -657,6 +657,7 @@ void point_cloud::clear_all() {
 	has_scan_index = false;
 	has_cam_posi = false;
 
+	/*reset component information */
 	comp_box_out_of_date.clear();
 	comp_pixrng_out_of_date.clear();
 	/// flag to remember whether bounding box is out of date and will be recomputed in the box() method
@@ -664,7 +665,7 @@ void point_cloud::clear_all() {
 	/// flag to remember whether pixel coordinate range is out of date and will be recomputed in the pixel_range() method
 	pixel_range_out_of_date = true;
 
-	/// reset all vars 
+	/*camera positions */
 	num_of_shots = 0;
 	list_point_idx.clear();
 	list_cam_rotation.clear();
@@ -674,6 +675,34 @@ void point_cloud::clear_all() {
 	cur_shot = 0;
 	num_points = 0;
 	currentScanIdx_Recon = 0;
+
+	/*camera positions */
+	cam_posi_list.clear();
+
+	/*vr-icp */
+	num_of_scan_indices = 0;
+	scan_index_visibility.clear();
+
+	/*point based connectivity model*/
+	F_conn.clear(); num_face_ids = 0;
+	E_conn.clear(); num_edge_ids = 0;
+	V_conn.clear(); num_corner_ids = 0;
+	pid_to_V_conn_info_map.clear();
+	pid_to_E_conn_info_map.clear(); // not used, use flags instead 
+
+	/*connectivity extraction */
+	modelV.clear();
+	modelEdge.clear();
+	modelFace.clear();
+
+	/*parametic surface model extraction*/
+	control_points.clear();
+	control_point_colors.clear();
+	demo_surface.clear();
+	demo_model.clear();
+
+	/*triangulation of the points */
+	faces.clear();
 }
 
 void point_cloud::randomize_position(int scan_index) {
