@@ -40,7 +40,7 @@ gl_point_cloud_drawable::gl_point_cloud_drawable()
 	surfel_style.measure_point_size_in_pixel = false;
 	surfel_style.blend_width_in_pixel = 0.0f;
 
-	box_color = rgba(0.5f, 0.5f, 0.5f, 1.0f);
+	box_color = rgba(1,0,0,0);
 	box_style.illumination_mode = cgv::render::IM_TWO_SIDED;
 	box_style.culling_mode = cgv::render::CM_FRONTFACE;
 
@@ -125,7 +125,7 @@ void gl_point_cloud_drawable::render_boxes(context& ctx, group_renderer& R, cgv:
 ///
 void gl_point_cloud_drawable::draw_box(cgv::render::context& ctx, const Box& box, const rgba& clr)
 {
-	bool tmp_use_color = box_style.use_group_color;
+	/*bool tmp_use_color = box_style.use_group_color;
 	bool tmp_use_transformation = box_style.use_group_transformation;
 	box_style.use_group_color = false;
 	box_style.use_group_transformation = false;
@@ -135,18 +135,18 @@ void gl_point_cloud_drawable::draw_box(cgv::render::context& ctx, const Box& box
 	b_renderer.render(ctx, 0, 1);
 
 	box_style.use_group_color = tmp_use_color;
-	box_style.use_group_transformation = tmp_use_transformation;
+	box_style.use_group_transformation = tmp_use_transformation;*/
 
-	tmp_use_color = box_wire_style.use_group_color;
-	tmp_use_transformation = box_wire_style.use_group_transformation;
+	/*tmp_use_color = box_wire_style.use_group_color;
+	tmp_use_transformation = box_wire_style.use_group_transformation;*/
 	box_wire_style.use_group_color = false;
 	box_wire_style.use_group_transformation = false;
 	bw_renderer.set_render_style(box_wire_style);
 	bw_renderer.set_box_array(ctx, &box, 1);
 	bw_renderer.set_color_array(ctx, &clr, 1);
 	bw_renderer.render(ctx, 0, 1);
-	box_wire_style.use_group_color = tmp_use_color;
-	box_wire_style.use_group_transformation = tmp_use_transformation;
+	/*box_wire_style.use_group_color = tmp_use_color;
+	box_wire_style.use_group_transformation = tmp_use_transformation;*/
 }
 ///
 void gl_point_cloud_drawable::draw_boxes(context& ctx)
@@ -995,6 +995,15 @@ void gl_point_cloud_drawable::set_arrays(context& ctx, size_t offset, size_t cou
 			unsigned(sizeof(int)) * show_point_step
 		);
 	}
+
+	if (pc.color_mapped_by_incident_ids.size() > 0) {
+		s_renderer.set_attribute_array_renderer(ctx,
+			"color_mapped_by_incident_ids",
+			&pc.color_mapped_by_incident_ids.at(unsigned(offset)),
+			count,
+			unsigned(sizeof(Clr)) * show_point_step
+		);
+	}
 }
 /// render with surfel 
 void gl_point_cloud_drawable::draw_points_surfel(context& ctx)
@@ -1044,6 +1053,8 @@ void gl_point_cloud_drawable::draw_points_surfel(context& ctx)
 
 	s_renderer.ref_prog().set_uniform(ctx, "highlight_topo_id", highlight_topo_id);
 	s_renderer.ref_prog().set_uniform(ctx, "highlight_topo_ranking", highlight_topo_ranking);
+	s_renderer.ref_prog().set_uniform(ctx, "enable_topo_highlight", enable_topo_highlight);
+	
 		
 	
 

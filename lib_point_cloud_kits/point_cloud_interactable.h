@@ -549,10 +549,19 @@ public:
 
 
 	/* Fine-Grained Point Classification */
+	int neighbor_points_point_classification = 50; // more points may required 
 	///
 	void clear_before_point_classification();
 	/// the quality of the boundaries depends on region growing steps, how good faces are marked 
-	void point_classification();
+	void classify_points_and_visualize();
+	///
+	void compute_color_mapping();
+
+	/* Topological Information Extraction*/
+	cgv::render::box_render_style high_risk_corner_style;
+	std::vector<box3> high_risk_corner_boxes;
+	std::vector<rgb> high_risk_corners_color;
+	std::vector<bool> corner_incidents_is_in_high_risk;
 	///  extract faces from points 
 	void face_extraction();
 	/// extract corners from points 
@@ -561,25 +570,32 @@ public:
 	void edge_extraction();
 	///  corner extraction variation 
 	void corner_extraction_loop_all();
-	/// entry point, batch operation 
+	/// all-in-one function, extract all incident info
 	void extract_incidents();
+	///
+	void extract_high_risk_corners();
+	/// used for flipping,, blinking, change in timer event 
+	bool is_rendering_high_risk_corners = false;
+	///
+	void render_high_risk_corners(cgv::render::context& ctx);
+	///
+	void connectivity_extraction() {
+		classify_points_and_visualize();
+		extract_incidents();
+		extract_high_risk_corners();
+		pc.make_explicit(); // extract to explicit expression 
+		// extract he ... 
+		//pc.fit_all();
+		//colorize_with_corner_edge_id = true;
+		//render_with_topo_selction = true;
+	}
+	///
+	void merge_high_risk_corners();
 
-	/* Topological Information Extraction*/
-	/// currently done in point_cloud
 
 	/* Model Fitting */
 	/// set points and indices for a demo surface 
 	void fitting_render_control_points_test();
-	///
-	void connectivity_extraction() {
-		point_classification();
-		extract_incidents();
-		pc.make_explicit(); // extract to explicit expression 
-		// extract he ... 
-		//pc.fit_all();
-		colorize_with_corner_edge_id = true;
-		render_with_topo_selction = true;
-	}
 
 	/*point cleaning paper */
 	//void direct_buffer_loading();

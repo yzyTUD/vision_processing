@@ -150,6 +150,24 @@ void ann_tree::find_closest_points(const Pnt& p, Idx k, std::vector<int>* knn) c
 	delete[] index_array;
 }
 
+void ann_tree::find_neighbor_point_given_radius(const Pnt& p, int maximum_num_points, float radius, std::vector<int>* knn) {
+	ann_struct* ann = static_cast<ann_struct*>(ann_impl);
+	if (!ann) {
+		std::cerr << "no ann_tree built" << std::endl;
+		return;
+	}
+	ANNidxArray index_array = new ANNidx[maximum_num_points];
+	ANNdistArray dist_array = new ANNdist[maximum_num_points];
+	ann->ps->annkFRSearch(const_cast<ANNpoint>(&p[0]), radius, maximum_num_points, index_array, dist_array);
+	for (Idx i = 0; i < maximum_num_points; ++i) {
+		if (dist_array[i] > radius)
+			break;
+		knn->push_back(index_array[i]);
+	}
+	delete[] dist_array;
+	delete[] index_array;
+}
+
 void ann_tree::find_closest_points(const Pnt& p, Idx k, std::vector<int>& knn, std::vector<float>& dist) const
 {
 	ann_struct* ann = static_cast<ann_struct*>(ann_impl);

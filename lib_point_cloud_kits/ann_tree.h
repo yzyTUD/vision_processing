@@ -34,6 +34,8 @@ public:
 	/// knn query that returns pointers to points
 	void find_closest_points(const Pnt& p, Idx k, std::vector<int>* knn) const;
 	///
+	void find_neighbor_point_given_radius(const Pnt& p, int maximum_num_points, float radius, std::vector<int>* knn);
+	///
 	void find_closest_points(const Pnt& p, Idx k, std::vector<int>& knn, std::vector<float>& dist) const;
 };
 

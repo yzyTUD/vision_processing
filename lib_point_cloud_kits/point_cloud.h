@@ -308,9 +308,12 @@ public:
 
 	/*fine-grained point classification: 22-05-2021 */
 	/// each point has a valence, searched from neighbor points 
-	//std::vector<int> valence; // is nothing but incident_ids.size()
+	std::vector<int> valence; // is nothing but incident_ids.size(), used for rendering 
 	/// incident face ids 
 	std::vector<std::set<int>> incident_ids;
+	/// for rendering and correction 
+	std::vector<Clr> color_mapped_by_incident_ids;
+
 
 public:
 	/*fine-grained point classification: 22-05-2021*/
@@ -320,6 +323,8 @@ public:
 	std::vector<int> classified_to_be_an_edge_point;
 	/// all points that are classified to be a corner point 
 	std::vector<int> classified_to_be_a_corner_point;
+	/// mapping incident ids to colors 
+	std::vector<Clr> mapped_colors;
 
 	/*read from file */ 
 	float suggested_point_size = -1; // check with larger than 0
@@ -394,6 +399,11 @@ public:
 	std::vector<mEdge> modelEdge;
 	/// a model is built from a list of surfaces 
 	std::vector<mFace> modelFace;
+	/// incidents per corner, for special case in corner extraction 
+	std::vector<std::set<int>> corner_incidents_table;
+	///
+	std::vector<std::vector<int>> point_indices_for_corners;
+	///
 	void make_explicit();
 
 	/* parametic surface model extraction

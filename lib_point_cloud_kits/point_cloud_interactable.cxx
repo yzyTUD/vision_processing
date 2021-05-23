@@ -26,6 +26,736 @@
 
 #define FILE_SAVE_TITLE "Save Point Cloud"
 #define FILE_SAVE_FILTER "Point Clouds (apc,bpc):*.apc;*.bpc|Mesh Files (obj,ply):*.obj;*.ply|All Files:*.*"
+
+/*Rarely Changed Functions */
+/// call this before using the view ptr for the first time
+bool point_cloud_interactable::ensure_view_pointer()
+{
+	return cgv::base::ensure_by_find(this, view_ptr);
+}
+///
+point_cloud_interactable::point_cloud_interactable() : ne(pc, ng)
+{
+	set_name("Point Cloud Viewer");
+
+	view_ptr = 0;
+
+	accelerate_picking = true;
+	tree_ds_out_of_date = true;
+	tree_ds = 0;
+	tree_ds_target_pc_last_frame = 0;
+	tree_ds_source_pc = 0;
+
+	do_append = false;
+	do_auto_view = true;
+
+	show_nmls = false;
+	interact_point_step = 1;
+	show_point_count = 0;
+	show_point_start = 0;
+	interact_delay = 0.15;
+
+	interact_state = IS_INTERMEDIATE_FRAME;
+
+	cgv::signal::connect(interact_trigger.shoot, this, &point_cloud_interactable::interact_callback);
+	interact_trigger.schedule_recuring(interact_delay);
+
+	show_neighbor_graph = false;
+	k = 30; // init k to 30 
+	gm = growing_mode::UNSIGNED_MEAN_CURVATURE_BASED;
+	do_symmetrize = false;
+	reorient_normals = true;
+
+	frame_pointers.push_back(0);
+
+	icp_clicking_points_src.resize(4);
+	icp_clicking_point_colors_src.resize(4);
+	icp_clicking_points_target.resize(4);
+	icp_clicking_point_colors_target.resize(4);
+}
+///
+void point_cloud_interactable::auto_set_view()
+{
+	if (pc.get_nr_points() == 0)
+		return;
+
+	std::vector<cgv::render::view*> view_ptrs;
+	cgv::base::find_interface<cgv::render::view>(get_node(), view_ptrs);
+	if (view_ptrs.empty()) {
+		cgv::gui::message("could not find a view to adjust!!");
+		return;
+	}
+	cgv::gui::animate_with_rotation(view_ptrs[0]->ref_view_up_dir(), dvec3(0, 1, 0), 0.5)->set_base_ptr(this);
+	cgv::gui::animate_with_geometric_blend(view_ptrs[0]->ref_y_extent_at_focus(), 1.5 * pc.box().get_extent()(1), 0.5)->set_base_ptr(this);
+	cgv::gui::animate_with_linear_blend(view_ptrs[0]->ref_focus(), dvec3(pc.box().get_center()), 0.5)->set_base_ptr(this);
+	post_redraw();
+}
+///
+std::string point_cloud_interactable::get_type_name() const
+{
+	return "point_cloud_interactable";
+}
+///
+bool point_cloud_interactable::self_reflect(cgv::reflect::reflection_handler& srh)
+{
+	if (srh.reflect_member("do_append", do_append) &&
+		srh.reflect_member("use_component_colors", use_component_colors) &&
+		srh.reflect_member("use_component_transformations", use_component_transformations) &&
+		srh.reflect_member("do_auto_view", do_auto_view) &&
+		srh.reflect_member("data_path", data_path) &&
+		srh.reflect_member("file_name", new_file_name) &&
+		srh.reflect_member("directory_name", directory_name) &&
+		srh.reflect_member("interact_point_step", interact_point_step) &&
+		srh.reflect_member("surfel_style", surfel_style) &&
+		srh.reflect_member("normal_style", normal_style) &&
+		srh.reflect_member("box_style", box_style) &&
+		srh.reflect_member("box_wire_style", box_wire_style) &&
+		srh.reflect_member("show_points", show_points) &&
+		srh.reflect_member("show_nmls", show_nmls) &&
+		srh.reflect_member("show_boxes", show_boxes) &&
+		srh.reflect_member("show_box", show_box) &&
+		srh.reflect_member("show_neighbor_graph", show_neighbor_graph) &&
+		srh.reflect_member("k", k) &&
+		srh.reflect_member("do_symmetrize", do_symmetrize) &&
+		srh.reflect_member("reorient_normals", reorient_normals))
+		return true;
+	return false;
+}
+///
+void point_cloud_interactable::stream_help(std::ostream& os)
+{
+	os << "PC: open (Ctrl-O), append (Ctrl-A), toggle <p>oints, <n>ormals, <b>ox, <g>graph, <i>llum" << std::endl;
+}
+///
+void point_cloud_interactable::stream_stats(std::ostream& os)
+{
+	os << "PC: #P=" << pc.get_nr_points()
+		<< ", #N=" << (pc.has_normals() ? pc.get_nr_points() : 0)
+		<< ", #C=" << (pc.has_colors() ? pc.get_nr_points() : 0)
+		<< ", B=" << pc.box().get_center() << "<" << pc.box().get_extent() << ">" << std::endl;
+}
+///
+void point_cloud_interactable::draw_edge_color(unsigned int vi, unsigned int j, bool is_symm, bool is_start) const
+{
+	if (is_symm)
+		glColor3f(0.5f, 0.5f, 0.5f);
+	else {
+		if (is_start)
+			glColor3f(1, 0.5f, 0.5f);
+		else
+			glColor3f(1, 1, 0.5f);
+	}
+}
+/// basic functions
+void point_cloud_interactable::draw_graph(cgv::render::context& ctx)
+{
+	if (!show_neighbor_graph)
+		return;
+
+	glDisable(GL_LIGHTING);
+	glColor3f(0.5f, 0.5f, 0.5f);
+	glLineWidth(normal_style.line_width);
+	glBegin(GL_LINES);
+	for (unsigned int vi = 0; vi < ng.size(); ++vi) {
+		const std::vector<Idx>& Ni = ng[vi];
+		for (unsigned int j = 0; j < Ni.size(); ++j) {
+			unsigned int vj = Ni[j];
+			// check for symmetric case and only draw once
+			if (ng.is_directed_edge(vj, vi)) {
+				if (vi < vj) {
+					draw_edge_color(vi, j, true, true);
+					glArrayElement(vi);
+					draw_edge_color(vi, j, true, false);
+					glArrayElement(vj);
+				}
+			}
+			else {
+				draw_edge_color(vi, j, false, true);
+				glArrayElement(vi);
+				draw_edge_color(vi, j, false, false);
+				glArrayElement(vj);
+			}
+		}
+	}
+	glEnd();
+	glEnable(GL_LIGHTING);
+}
+/// basic functions
+bool point_cloud_interactable::init(cgv::render::context& ctx)
+{
+	pc.curr_additional_model_matrix.identity();
+	pc.last_additional_model_matrix.identity();
+	model_translation.identity();
+	inv_model_translation.identity();
+	if (!gl_point_cloud_drawable::init(ctx))
+		return false;
+	if (!bw_renderer.init(ctx))
+		return false;
+	return true;
+}
+/// basic functions
+void point_cloud_interactable::init_frame(cgv::render::context& ctx)
+{
+	/*static bool my_tab_selected = false;
+	if (!my_tab_selected) {
+		my_tab_selected = true;
+		cgv::gui::gui_group_ptr gg = ((provider*)this)->get_parent_group();
+		if (gg) {
+			cgv::gui::gui_group_ptr tab_group = gg->get_parent()->cast<cgv::gui::gui_group>();
+			if (tab_group) {
+				cgv::base::base_ptr c = gg;
+				tab_group->select_child(c, true);
+			}
+		}
+	}*/
+	gl_point_cloud_drawable::init_frame(ctx);
+}
+/// draw call
+void point_cloud_interactable::draw(cgv::render::context& ctx)
+{
+
+	if (pc.get_nr_points() != 0) {
+		glVertexPointer(3, GL_FLOAT, 0, &(pc.pnt(0).x()));
+		glEnableClientState(GL_VERTEX_ARRAY);
+		draw_graph(ctx);
+		glDisableClientState(GL_VERTEX_ARRAY);
+	}
+	/*if (interact_state != IS_DRAW_FULL_FRAME)
+		std::swap(show_point_step, interact_point_step);*/
+	gl_point_cloud_drawable::draw(ctx);
+
+	render_high_risk_corners(ctx);
+
+	//if (interact_state != IS_DRAW_FULL_FRAME) {
+	//	std::swap(show_point_step, interact_point_step);
+	//	interact_state = IS_INTERMEDIATE_FRAME;
+	//}
+	//else
+	//	interact_state = IS_FULL_FRAME;
+
+	// render the cameras with information read from .campose file 
+	//if (pc.render_cams) {
+	//	for (auto render_kit : image_renderer_list) {
+	//		render_kit.draw(ctx);
+	//	}
+	//}
+
+	//// render feature points 
+	//if (feature_points.size() > 0 && fea_box.size() > 0) {
+	//	cgv::render::box_renderer& renderer = cgv::render::ref_box_renderer(ctx);
+	//	renderer.set_render_style(fea_style);
+	//	renderer.set_box_array(ctx, fea_box);
+	//	renderer.set_color_array(ctx, fea_box_color);
+	//	renderer.set_translation_array(ctx, fea_box_trans);
+	//	renderer.set_rotation_array(ctx, fea_box_rot);
+	//	renderer.render(ctx, 0, fea_box.size());
+	//}
+
+	//// render feature points for ICP 
+	//srs_icp_feature_points.radius = surfel_style.point_size / 100.0f;
+	//if (feature_points_src.size() > 0) {
+	//	auto& sr = cgv::render::ref_sphere_renderer(ctx);
+	//	sr.set_render_style(srs_icp_feature_points);
+	//	sr.set_position_array(ctx, feature_points_src);
+	//	sr.set_color_array(ctx, feature_point_colors_src);
+	//	sr.render(ctx, 0, feature_points_src.size());
+	//}
+	//if (feature_points_target.size() > 0) {
+	//	auto& sr = cgv::render::ref_sphere_renderer(ctx);
+	//	sr.set_render_style(srs_icp_feature_points);
+	//	sr.set_position_array(ctx, feature_points_target);
+	//	sr.set_color_array(ctx, feature_point_colors_target);
+	//	sr.render(ctx, 0, feature_points_target.size());
+	//}
+
+	// 
+	/*if (icp_clicking_points_src.size() > 0) {
+		auto& sr = cgv::render::ref_sphere_renderer(ctx);
+		sr.set_render_style(srs_icp_feature_points);
+		sr.set_position_array(ctx, icp_clicking_points_src);
+		sr.set_color_array(ctx, icp_clicking_point_colors_src);
+		sr.render(ctx, 0, icp_clicking_points_src.size());
+	}
+	if (icp_clicking_points_target.size() > 0) {
+		auto& sr = cgv::render::ref_sphere_renderer(ctx);
+		sr.set_render_style(srs_icp_feature_points);
+		sr.set_position_array(ctx, icp_clicking_points_target);
+		sr.set_color_array(ctx, icp_clicking_point_colors_target);
+		sr.render(ctx, 0, icp_clicking_points_target.size());
+	}*/
+
+	// quick test, higher effecency rendering 
+	//cgv::render::clod_point_renderer& cp_renderer = ref_clod_point_renderer(ctx);
+	//cp_renderer.set_render_style(cp_style);
+
+	//if (pc.get_nr_points() > 0) {
+	//	if (renderer_out_of_date) {
+	//		std::vector<LODPoint> V(pc.get_nr_points());
+	//		for (int i = 0; i < pc.get_nr_points(); ++i) {
+	//			V[i].position() = pc.pnt(i);
+	//			V[i].color() = pc.clr(i);
+	//		}
+	//		points_with_lod = std::move(lod_generator.generate_lods(V));
+
+	//		cp_renderer.set_points(ctx, &points_with_lod.data()->position(),
+	//			&points_with_lod.data()->color(), &points_with_lod.data()->level(), points_with_lod.size(), sizeof(LODPoint));
+	//		
+	//		renderer_out_of_date = false;
+	//	}
+
+	//	if (cp_renderer.enable(ctx))
+	//		cp_renderer.draw(ctx, 0, (size_t)pc.get_nr_points());
+	//}
+
+}
+///
+void point_cloud_interactable::configure_subsample_controls()
+{
+	if (find_control(show_point_begin)) {
+		find_control(show_point_begin)->set("max", show_point_end);
+		find_control(show_point_end)->set("min", show_point_begin);
+		find_control(show_point_end)->set("max", pc.get_nr_points());
+		find_control(show_point_count)->set("max", pc.get_nr_points());
+		find_control(show_point_start)->set("max", pc.get_nr_points() - show_point_count);
+	}
+}
+/// basic functions
+void point_cloud_interactable::handle_args(std::vector<std::string>& args)
+{
+	for (unsigned ai = 0; ai < args.size(); ++ai) {
+		if (cgv::utils::file::exists(args[ai])) {
+			if (open_and_append(args[ai])) {
+				args.erase(args.begin() + ai);
+				--ai;
+			}
+		}
+	}
+}
+/// basic functions
+bool point_cloud_interactable::handle(cgv::gui::event& e)
+{
+	if (e.get_kind() == cgv::gui::EID_KEY) {
+		cgv::gui::key_event& ke = static_cast<cgv::gui::key_event&>(e);
+		if (ke.get_action() == cgv::gui::KA_PRESS || ke.get_action() == cgv::gui::KA_REPEAT) {
+			switch (ke.get_key()) {
+			case '=':
+			case '+':
+				surfel_style.point_size += 1;
+				on_set(&surfel_style.point_size);
+				return true;
+			case '-':
+				if (surfel_style.point_size > 0) {
+					surfel_style.point_size -= 1;
+					if (surfel_style.point_size < 1)
+						surfel_style.point_size = 1;
+					on_set(&surfel_style.point_size);
+				}
+				return true;
+			case 'P':
+				show_points = !show_points;
+				on_set(&show_points);
+				return true;
+			case 'C':
+				if (ke.get_modifiers() == 0) {
+					if (surfel_style.map_color_to_material == cgv::render::MS_FRONT_AND_BACK)
+						surfel_style.map_color_to_material = cgv::render::CM_NONE;
+					else
+						++(int&)surfel_style.map_color_to_material;
+					on_set(&surfel_style.map_color_to_material);
+				}
+				else if (ke.get_modifiers() == cgv::gui::EM_SHIFT) {
+					if (surfel_style.culling_mode == cgv::render::CM_FRONTFACE)
+						surfel_style.culling_mode = cgv::render::CM_OFF;
+					else
+						++(int&)surfel_style.culling_mode;
+					on_set(&surfel_style.culling_mode);
+				}
+				return true;
+			case 'B':
+				if (ke.get_modifiers() == 0) {
+					surfel_style.blend_points = !surfel_style.blend_points;
+					on_set(&surfel_style.blend_points);
+				}
+				else if (ke.get_modifiers() == cgv::gui::EM_SHIFT) {
+					show_boxes = !show_boxes;
+					on_set(&show_boxes);
+				}
+				return true;
+			case 'N':
+				if (ke.get_modifiers() == 0) {
+					show_nmls = !show_nmls;
+					on_set(&show_nmls);
+				}
+				else if (ke.get_modifiers() == cgv::gui::EM_CTRL + cgv::gui::EM_ALT) {
+					if (!pc.has_normals()) {
+						pc.create_normals();
+						compute_normals();
+					}
+					else
+						recompute_normals();
+
+					on_point_cloud_change_callback(PCC_NORMALS);
+					post_redraw();
+				}
+				return true;
+			case 'I':
+				if (surfel_style.illumination_mode == cgv::render::IM_TWO_SIDED)
+					surfel_style.illumination_mode = cgv::render::IM_OFF;
+				else
+					++(int&)surfel_style.illumination_mode;
+				on_set(&surfel_style.illumination_mode);
+				return true;
+			case 'G':
+				show_neighbor_graph = !show_neighbor_graph;
+				on_set(&show_neighbor_graph);
+				return true;
+			case 'O':
+				if (ke.get_modifiers() == 0) {
+					surfel_style.orient_splats = !surfel_style.orient_splats;
+					on_set(&surfel_style.orient_splats);
+				}
+				else if (ke.get_modifiers() == cgv::gui::EM_SHIFT) {
+					orient_normals();
+					on_point_cloud_change_callback(PCC_NORMALS);
+					post_redraw();
+					return true;
+				}
+				else if (ke.get_modifiers() == cgv::gui::EM_ALT) {
+					orient_normals_to_view_point();
+					on_point_cloud_change_callback(PCC_NORMALS);
+					post_redraw();
+					return true;
+				}
+				else if (ke.get_modifiers() == cgv::gui::EM_CTRL) {
+					std::string fn = cgv::gui::file_open_dialog(FILE_OPEN_TITLE, FILE_OPEN_FILTER);
+					if (!fn.empty())
+						open(fn);
+					return true;
+				}
+				else if (ke.get_modifiers() == cgv::gui::EM_CTRL + cgv::gui::EM_SHIFT) {
+					std::string fn = cgv::gui::file_open_dialog("Open Component Transformations", "Text Files (txt):*.txt|All Files:*.*");
+					if (!fn.empty()) {
+						if (!pc.read_component_transformations(fn)) {
+							std::cerr << "error reading component transformation file " << fn << std::endl;
+						}
+						post_redraw();
+					}
+					return true;
+				}
+				return false;
+			case 'A':
+				if (ke.get_modifiers() == cgv::gui::EM_CTRL) {
+					std::string fn = cgv::gui::file_open_dialog(FILE_APPEND_TITLE, FILE_OPEN_FILTER);
+					if (!fn.empty())
+						open_and_append(fn);
+					return true;
+				}
+				return false;
+			case 'S':
+				if (ke.get_modifiers() == cgv::gui::EM_CTRL + cgv::gui::EM_SHIFT) {
+					std::string fn = cgv::gui::file_save_dialog(FILE_SAVE_TITLE, FILE_OPEN_FILTER);
+					if (!fn.empty())
+						save(fn);
+					return true;
+				}
+				else if (ke.get_modifiers() == cgv::gui::EM_ALT) {
+					sort_points = !sort_points;
+					on_set(&sort_points);
+					return true;
+				}
+				return false;
+			case cgv::gui::KEY_Space:
+				if (pc.get_nr_points() == 0)
+					return false;
+				auto_set_view();
+				return true;
+			}
+		}
+	}
+
+	if (e.get_kind() == cgv::gui::EID_MOUSE) {
+		//cgv::gui::mouse_event& me = (cgv::gui::mouse_event&) e;
+		//if (me.get_action() == cgv::gui::MA_PRESS) {
+		//	/*if (me.get_modifiers() != cgv::gui::EM_CTRL)
+		//		return false;*/
+		//	unsigned picked_index;
+		//	if (get_picked_point(me.get_x(), me.get_y(), picked_index)) {
+		//		std::cout << pc.pnt(picked_index) << std::endl;
+		//	}
+		//	return true;
+		//}
+	}
+
+	return false;
+}
+///
+void point_cloud_interactable::on_point_cloud_change_callback(PointCloudChangeEvent pcc_event)
+{
+	if (use_component_transformations != pc.has_component_transformations()) {
+		use_component_transformations = pc.has_component_transformations();
+		on_set(&use_component_transformations);
+	}
+	if (use_component_colors != pc.has_component_colors()) {
+		use_component_colors = pc.has_component_colors();
+		on_set(&use_component_colors);
+	}
+	if (!pc.has_normals() != surfel_style.illumination_mode == cgv::render::IM_OFF) {
+		if (pc.has_normals())
+			surfel_style.illumination_mode = cgv::render::IM_ONE_SIDED;
+		else
+			surfel_style.illumination_mode = cgv::render::IM_OFF;
+		update_member(&surfel_style.illumination_mode);
+	}
+	// after new points are added, very fast 
+	if (((pcc_event & PCC_POINTS_MASK) == PCC_POINTS_RESIZE) || ((pcc_event & PCC_POINTS_MASK) == PCC_NEW_POINT_CLOUD)) {
+		// reconstruct colors if not present 
+		if (!pc.has_colors()) {
+			pc.C.resize(pc.get_nr_points());
+			for (auto& pc : pc.C) pc = rgba(0.4, 0.4, 0.4, 1);
+		}
+		// reconstruct normals if not present 
+		if (!pc.has_normals() && compute_normal_after_read) {
+			compute_normals();
+			orient_normals();
+		}
+		// create per-point face id  if not present, fast 
+		if (pc.face_id.size() == 0 || reading_from_raw_scan) {
+			pc.face_id.resize(pc.get_nr_points());
+			for (auto& fi : pc.face_id) fi = 0; // 0 means non-selected faces 
+			pc.has_face_selection = true;
+		}
+		// create per-point topo id if not present 
+		if (pc.topo_id.size() == 0 || reading_from_raw_scan) {
+			pc.topo_id.resize(pc.get_nr_points());
+			for (auto& ti : pc.topo_id) ti = 0; // 0 means non-topological information present 
+			pc.has_topo_selection = true; // not used actually? 
+		}
+		// create per-point scan index if not present, 0 by default 
+		// the first is for one scan, later for raw scans 
+		// mainly used for point appending 
+		if (pc.point_scan_index.size() == 0 || reading_from_raw_scan) {
+			int append_starting_index = pc.point_scan_index.size();
+			pc.point_scan_index.resize(pc.get_nr_points());
+			for (int Idx = append_starting_index; Idx < pc.point_scan_index.size(); Idx++) {
+				pc.point_scan_index.at(Idx) = pc.currentScanIdx_Recon;
+			}
+			pc.has_scan_index = true;
+		}
+		reading_from_raw_scan = false;
+		// prepare scan indices visibility, create if not present: not used currently 
+		/*pc.scan_index_visibility.resize(pc.num_of_scan_indices);
+		for (auto& siv : pc.scan_index_visibility) {siv = true;}
+		pc.update_scan_index_visibility();*/
+		// box is used to adjust correct size of the normals, surfel size... and for selection estimation 
+		// also used for rendering of the boxes 
+		pc.box_out_of_date = true;
+		// tree ds will be 
+		tree_ds_out_of_date = true;
+		if (tree_ds) {
+			delete tree_ds;
+			tree_ds = 0;
+		}
+		// neighbor_graph is used for normal and feature computation, built upon tree ds 
+		ng.clear();
+		// configure point cloud rendering, step...
+		show_point_end = pc.get_nr_points();
+		show_point_begin = 0;
+		show_point_count = pc.get_nr_points();
+		interact_point_step = std::max((unsigned)(show_point_count / 1000000), 1u);
+		nr_draw_calls = std::max((unsigned)(show_point_count / 1000000), 1u);
+		// update gui, not used currently 
+		update_member(&show_point_begin);
+		update_member(&show_point_end);
+		update_member(&show_point_count);
+		update_member(&interact_point_step);
+		update_member(&nr_draw_calls);
+		configure_subsample_controls();
+	}
+	if ((pcc_event & PCC_POINTS_MASK) == PCC_NEW_POINT_CLOUD && do_auto_view) {
+		auto_set_view();
+	}
+	post_redraw();
+}
+///
+void point_cloud_interactable::on_set(void* member_ptr)
+{
+	if (member_ptr == &ne.localization_scale || member_ptr == &ne.normal_sigma || member_ptr == &ne.bw_type || member_ptr == &ne.plane_distance_scale) {
+		on_point_cloud_change_callback(PCC_WEIGHTS);
+	}
+	if (member_ptr == &new_file_name) {
+		if (ref_tree_node_visible_flag(new_file_name)) {
+			save(new_file_name);
+		}
+		else {
+			if (!do_append)
+				open(new_file_name);
+			else
+				open_and_append(new_file_name);
+		}
+	}
+	if (member_ptr == &directory_name) {
+		open_directory(directory_name);
+	}
+	if (member_ptr == &show_point_start) {
+		show_point_begin = show_point_start;
+		show_point_end = show_point_start + show_point_count;
+		update_member(&show_point_begin);
+		update_member(&show_point_end);
+		configure_subsample_controls();
+	}
+	if (member_ptr == &show_point_count) {
+		if (show_point_start + show_point_count > pc.get_nr_points()) {
+			show_point_start = pc.get_nr_points() - show_point_count;
+			show_point_begin = show_point_start;
+			update_member(&show_point_begin);
+			update_member(&show_point_start);
+		}
+		show_point_end = show_point_start + show_point_count;
+		update_member(&show_point_end);
+		configure_subsample_controls();
+	}
+	if (member_ptr == &show_point_begin) {
+		show_point_start = show_point_begin;
+		show_point_count = show_point_end - show_point_begin;
+		update_member(&show_point_start);
+		update_member(&show_point_count);
+		configure_subsample_controls();
+	}
+	if (member_ptr == &show_point_end) {
+		show_point_count = show_point_end - show_point_begin;
+		update_member(&show_point_count);
+		configure_subsample_controls();
+	}
+	if (member_ptr == &interact_delay) {
+		interact_trigger.stop();
+		interact_trigger.schedule_recuring(interact_delay);
+	}
+	if (member_ptr == &use_component_colors) {
+		surfel_style.use_group_color = use_component_colors;
+		update_member(&surfel_style.use_group_color);
+	}
+	if (member_ptr == &use_component_transformations) {
+		surfel_style.use_group_transformation = use_component_transformations;
+		update_member(&surfel_style.use_group_transformation);
+	}
+	update_member(member_ptr);
+	post_redraw();
+}
+///
+void point_cloud_interactable::create_gui()
+{
+	add_decorator(get_name(), "heading", "level=2");
+	bool show = begin_tree_node("IO", data_path, true, "level=3;options='w=40';align=' '");
+	add_member_control(this, "append", do_append, "toggle", "w=60", " ");
+	add_member_control(this, "auto_view", do_auto_view, "toggle", "w=80");
+
+	if (show) {
+		align("\a");
+		add_gui("data_path", data_path, "directory", "w=170;title='Select Data Directory'");
+		add_gui("file_name", new_file_name, "file_name",
+			"w=130;"
+			"open=true;open_title='" FILE_OPEN_TITLE "';open_filter='" FILE_OPEN_FILTER "';"
+			"save=true;save_title='" FILE_SAVE_TITLE "';save_filter='" FILE_SAVE_FILTER "'"
+		);
+		add_gui("directory_name", directory_name, "directory", "w=170;title='Select Data Directory';tooltip='read all point clouds from a directory'");
+		align("\b");
+		end_tree_node(data_path);
+	}
+	show = begin_tree_node("points", show_points, false, "level=3;options='w=70';align=' '");
+	add_member_control(this, "show", show_points, "toggle", "w=40", " ");
+	add_member_control(this, "sort", sort_points, "toggle", "w=40", " ");
+	add_member_control(this, "blnd", surfel_style.blend_points, "toggle", "w=40");
+	if (show) {
+		align("\a");
+		add_gui("surfel_style", surfel_style);
+		if (begin_tree_node("subsample", show_point_step, false, "level=3")) {
+			align("\a");
+			add_member_control(this, "nr_draw_calls", nr_draw_calls, "value_slider", "min=1;max=100;log=true;ticks=true");
+			add_member_control(this, "interact step", interact_point_step, "value_slider", "min=1;max=100;log=true;ticks=true");
+			add_member_control(this, "interact delay", interact_delay, "value_slider", "min=0.01;max=1;log=true;ticks=true");
+			add_member_control(this, "show step", show_point_step, "value_slider", "min=1;max=20;log=true;ticks=true");
+			add_decorator("range control", "heading", "level=3");
+			add_member_control(this, "begin", show_point_begin, "value_slider", "min=0;max=10;ticks=true");
+			add_member_control(this, "end", show_point_end, "value_slider", "min=0;max=10;ticks=true");
+			add_decorator("window control", "heading", "level=3");
+			add_member_control(this, "start", show_point_start, "value_slider", "min=0;max=10;ticks=true");
+			add_member_control(this, "width", show_point_count, "value_slider", "min=0;max=10;ticks=true");
+			configure_subsample_controls();
+			align("\b");
+			end_tree_node(show_point_step);
+		}
+		add_member_control(this, "accelerate_picking", accelerate_picking, "check");
+		align("\b");
+		end_tree_node(show_points);
+	}
+	show = begin_tree_node("components", pc.components, false, "level=3;options='w=140';align=' '");
+	add_member_control(this, "clr", use_component_colors, "toggle", "w=30", " ");
+	add_member_control(this, "tra", use_component_transformations, "toggle", "w=30");
+	if (show) {
+		align("\a");
+		if (begin_tree_node("component colors", pc.component_colors, false, "level=3")) {
+			align("\a");
+			for (unsigned i = 0; i < pc.component_colors.size(); ++i) {
+				add_member_control(this, std::string("C") + cgv::utils::to_string(i), pc.component_colors[i]);
+			}
+			align("\b");
+			end_tree_node(pc.component_colors);
+		}
+		if (begin_tree_node("group transformations", pc.component_translations, false, "level=3")) {
+			align("\a");
+			for (unsigned i = 0; i < pc.component_translations.size(); ++i) {
+				add_gui(std::string("T") + cgv::utils::to_string(i), pc.component_translations[i]);
+				add_gui(std::string("Q") + cgv::utils::to_string(i), (HVec&)pc.component_rotations[i], "direction");
+			}
+			align("\b");
+			end_tree_node(pc.component_translations);
+		}
+		align("\b");
+		end_tree_node(pc.components);
+	}
+	show = begin_tree_node("neighbor graph", show_neighbor_graph, false, "level=3;options='w=160';align=' '");
+	add_member_control(this, "show", show_neighbor_graph, "toggle", "w=50");
+	if (show) {
+		add_member_control(this, "k", k, "value_slider", "min=3;max=50;log=true;ticks=true");
+		add_member_control(this, "symmetrize", do_symmetrize, "toggle");
+		cgv::signal::connect_copy(add_button("build")->click, cgv::signal::rebind(this, &point_cloud_interactable::build_neighbor_graph));
+		end_tree_node(show_neighbor_graph);
+	}
+
+	show = begin_tree_node("normals", show_nmls, false, "level=3;options='w=160';align=' '");
+	add_member_control(this, "show", show_nmls, "toggle", "w=50");
+	if (show) {
+		cgv::signal::connect_copy(add_button("toggle orientation")->click, cgv::signal::rebind(this, &point_cloud_interactable::toggle_normal_orientations));
+		add_member_control(this, "bilateral weight approach", ne.bw_type, "dropdown", "enums='normal,plane'");
+		add_member_control(this, "localization_scale", ne.localization_scale, "value_slider", "min=0.1;max=2;log=true;ticks=true");
+		add_member_control(this, "normal_sigma", ne.normal_sigma, "value_slider", "min=0.01;max=2;log=true;ticks=true");
+		add_member_control(this, "plane_distance_scale", ne.plane_distance_scale, "value_slider", "min=0.01;max=2;log=true;ticks=true");
+		add_member_control(this, "reorient", reorient_normals, "toggle");
+		cgv::signal::connect_copy(add_button("compute")->click, cgv::signal::rebind(this, &point_cloud_interactable::compute_normals));
+		cgv::signal::connect_copy(add_button("recompute")->click, cgv::signal::rebind(this, &point_cloud_interactable::recompute_normals));
+		cgv::signal::connect_copy(add_button("orient")->click, cgv::signal::rebind(this, &point_cloud_interactable::orient_normals));
+		cgv::signal::connect_copy(add_button("orient to view")->click, cgv::signal::rebind(this, &point_cloud_interactable::orient_normals_to_view_point));
+		add_gui("normal_style", normal_style);
+		end_tree_node(show_nmls);
+	}
+
+	/*	show = begin_tree_node("surfrec", show_surfrec, false, "level=3;w=100;align=' '");
+		add_member_control(this, "show", show_surfrec, "toggle", "w=50");
+		if (show) {
+			add_member_control(this, "debug_mode", SR.debug_mode, "enums='none,symmetrize,make_consistent,cycle_filter'");
+			end_tree_node(show_surfrec);
+		}
+		*/
+	show = begin_tree_node("box", show_box, false, "level=3;options='w=140';align=' '");
+	add_member_control(this, "main", show_box, "toggle", "w=30", " ");
+	add_member_control(this, "com", show_boxes, "toggle", "w=30");
+	if (show) {
+		add_gui("color", box_color);
+		add_gui("box_style", box_style);
+		add_gui("box_wire_style", box_wire_style);
+		end_tree_node(show_box);
+	}
+}
 ///
 void point_cloud_interactable::print_pc_information() {
 	std::cout << "### begin: point cloud info: ###" << std::endl;
@@ -106,6 +836,192 @@ bool point_cloud_interactable::open(const std::string& fn)
 	return true;
 }
 
+/*Point Cloud IO */
+///
+bool point_cloud_interactable::open_directory(const std::string& dn)
+{
+	std::vector<std::string> file_names;
+	void* handle = cgv::utils::file::find_first(directory_name + "/*.*");
+	while (handle) {
+		if (!cgv::utils::file::find_directory(handle))
+			file_names.push_back(cgv::utils::file::find_name(handle));
+		handle = cgv::utils::file::find_next(handle);
+	}
+	if (file_names.empty()) {
+		std::cerr << "did not find files in directory <" << dn << ">" << std::endl;
+		return false;
+	}
+	unsigned i;
+	for (i = 0; i < file_names.size(); ++i) {
+		std::cout << i << "(" << file_names.size() << "): " << file_names[i];
+		std::cout.flush();
+		if (!do_append && i == 0)
+			open(directory_name + "/" + file_names[i]);
+		else
+			open_and_append(directory_name + "/" + file_names[i]);
+		std::cout << std::endl;
+	}
+	for (i = 0; i < pc.get_nr_components(); ++i) {
+		pc.component_color(i) = cgv::media::color<float, cgv::media::HLS, cgv::media::OPACITY>(float(i) / float(pc.get_nr_components() - 1), 0.5f, 1.0f, 1.0f);
+	}
+	use_component_colors = true;
+	update_member(&use_component_colors);
+	if (!do_append)
+		on_point_cloud_change_callback(PCC_NEW_POINT_CLOUD);
+	update_file_name(dn);
+	return true;
+}
+///
+bool point_cloud_interactable::open_and_append(const std::string& fn)
+{
+	if (!append(fn)) {
+		cgv::gui::message(std::string("could not append ") + fn);
+		return false;
+	}
+	on_point_cloud_change_callback(PointCloudChangeEvent(PCC_POINTS_RESIZE + PCC_COMPONENTS_RESIZE));
+	update_file_name(fn, true);
+	return true;
+}
+///
+bool point_cloud_interactable::open_or_append(cgv::gui::event& e, const std::string& file_name)
+{
+	cgv::utils::tokenizer T(file_name);
+	T.set_ws("\n").set_sep("");
+	std::vector<cgv::utils::token> toks;
+	T.bite_all(toks);
+	bool res = false;
+	for (unsigned i = 0; i < toks.size(); ++i) {
+		std::string file_path = cgv::base::find_data_file(to_string(toks[i]), "CM", "", data_path);
+		if (e.get_modifiers() == cgv::gui::EM_ALT || i > 0)
+			res |= open_and_append(file_path);
+		else
+			res |= open(file_path);
+	}
+	return res;
+}
+/// read point cloud with a dialog 
+bool point_cloud_interactable::read_pc_with_dialog(bool append) {
+	file_dir = cgv::gui::file_open_dialog("Open", "Point Cloud:*.*");
+	auto start = std::chrono::high_resolution_clock::now();
+	data_path = cgv::utils::file::get_path(file_dir);
+	file_name = cgv::utils::file::drop_extension(cgv::utils::file::get_file_name(file_dir));
+	file_extension = cgv::utils::file::get_extension(cgv::utils::file::get_file_name(file_dir));
+	reading_from_raw_scan = append;
+	if (!append)
+		clear_all();
+	if (!open(file_dir))
+		return false;
+	finished_loading_points = true;
+	auto finish = std::chrono::high_resolution_clock::now();
+	std::chrono::duration<double> d = finish - start;
+	std::cout << "elapsed time: " << d.count() << std::endl;
+	//std::cout << "read file_name: " << file_name << std::endl;
+	//std::cout << "read data_path: " << data_path << std::endl;
+	return true;
+}
+bool point_cloud_interactable::read_cgvcad_with_dialog() {
+	std::string f = cgv::gui::file_open_dialog("Open", "cgvcad:*");
+	if (!open(f))
+		return false;
+	return true;
+}
+///
+bool point_cloud_interactable::read_pc_with_dialog_queue(bool append) {
+	if (!append)
+		clear_all();
+	std::vector<std::string> f_names;
+	cgv::gui::files_open_dialog(f_names, "Open", "Point Cloud:*");
+	for (auto& f : f_names)
+		open(f);
+	return true;
+}
+/// read point cloud and perform a automatic downsampling 
+bool point_cloud_interactable::read_pc_subsampled_with_dialog() {
+	std::string f = cgv::gui::file_open_dialog("Open", "Point Cloud:*");
+	clear_all();
+	pc.read_pts_subsampled(f, 0.05);
+	show_point_begin = 0;
+	show_point_end = pc.get_nr_points();
+	return true;
+}
+///
+void point_cloud_interactable::write_pc_to_file() {
+	/*auto microsecondsUTC = std::chrono::duration_cast<std::chrono::microseconds>(
+	std::chrono::system_clock::now().time_since_epoch()).count();
+	std::string filename_base = cgv::base::ref_data_path_list()[0] + "\\object_scanns\\pointcloud_all_" + std::to_string(microsecondsUTC);
+	std::string filename = filename_base + ".obj";*/
+	std::string f = cgv::gui::file_save_dialog("Open", "Save Point Cloud:*");
+	pc.suggested_point_size = surfel_style.point_size; // write point size by default 
+	pc.write(f);
+	std::cout << "saved!" << std::endl;
+}
+///
+void point_cloud_interactable::write_pc_to_file_with_given_dir(const std::string f) {
+	/*auto microsecondsUTC = std::chrono::duration_cast<std::chrono::microseconds>(
+		std::chrono::system_clock::now().time_since_epoch()).count();
+	std::to_string(microsecondsUTC)*/
+	pc.write(f);
+	std::cout << "saved!" << std::endl;
+}
+/// read camera positions with a dialog, .campose files are accepted
+bool point_cloud_interactable::read_pc_campose(cgv::render::context& ctx, quat initialcamq) {
+	std::string f = cgv::gui::file_open_dialog("Open", "Point Cloud:*");
+	pc.read_campose(f);
+
+	if (render_camposes) {
+		//alig with cgv fram
+		align_leica_scans_with_cgv();
+		// prepare for rendering 
+		for (int i = 0; i < pc.num_of_shots; i++) {
+			vr_kit_image_renderer tmp_renderer;
+			std::string folder_name = cgv::utils::file::drop_extension(cgv::utils::file::get_file_name(f));
+			std::string panorama_fn = cgv::utils::file::get_path(f) + "/pano/apb_" + std::to_string(i + 1) + ".jpg";
+			std::cout << panorama_fn << std::endl; //pc.list_cam_rotation.at(i) //initialcamq * pc.list_cam_rotation.at(i)
+			tmp_renderer.bind_image_to_camera_position(ctx, panorama_fn, quat(), pc.list_cam_translation.at(i));
+			image_renderer_list.push_back(tmp_renderer);
+		}
+	}
+
+	return true;
+}
+/// check if the camera position is valid 
+bool point_cloud_interactable::check_valid_pc_and_campose()
+{
+	bool succ = pc.cam_posi_list.front().x() != -1000
+		&& pc.cam_posi_list.front().y() != -1000
+		&& pc.cam_posi_list.front().z() != -1000
+		&& pc.get_nr_points() == pc.num_of_points_in_campose
+		&& pc.has_cam_posi;
+	if (!succ) {
+		std::cout << "invalid! check following vars:" << std::endl;
+		std::cout << "pc.cam_posi_list front: " << pc.cam_posi_list.front() << std::endl;
+		std::cout << "pc.get_nr_points(): " << pc.get_nr_points() << std::endl;
+		std::cout << "pc.num_of_points_in_campose: " << pc.num_of_points_in_campose << std::endl;
+		std::cout << "pc.has_cam_posi: " << pc.has_cam_posi << std::endl;
+	}
+	return succ;
+}
+/// 
+void point_cloud_interactable::apply_further_transformation(int which, quat q, vec3 t) {
+	image_renderer_list.at(which).apply_further_transformation(q, t);
+}
+///
+void point_cloud_interactable::align_leica_scans_with_cgv() {
+	quat rz = quat(vec3(0, 0, 1), 25 * M_PI / 180);
+	quat rx = quat(vec3(1, 0, 0), -90 * M_PI / 180);
+	quat r_align = rx * rz;
+	for (auto& t : pc.list_cam_translation) {
+		r_align.rotate(t);
+	}
+	for (auto& r : pc.list_cam_rotation) {
+		r = r_align * r;
+	}
+	pc.rotate(r_align);
+	// approximate 1m from ground 
+	//pc.translate(vec3(0,1,0));
+}
+
+/*Point Cloud Generation*/
 /// 
 void point_cloud_interactable::generate_pc_random_sphere() {
 	std::default_random_engine g;
@@ -139,7 +1055,7 @@ void point_cloud_interactable::generate_pc_random_sphere() {
 	finished_loading_points = true;
 
 }
-
+///
 void point_cloud_interactable::generate_pc_unit_torus() {
 	//
 	pc.clear_all();
@@ -220,7 +1136,7 @@ void point_cloud_interactable::generate_pc_unit_torus() {
 	on_point_cloud_change_callback(PCC_NEW_POINT_CLOUD);
 	finished_loading_points = true;
 }
-
+///
 void point_cloud_interactable::generate_pc_unit_cylinder() {
 	int resolution = 50;
 	std::vector<float> V; V.reserve(6 * (resolution + 1));
@@ -290,7 +1206,6 @@ void point_cloud_interactable::generate_pc_unit_cylinder() {
 	on_point_cloud_change_callback(PCC_NEW_POINT_CLOUD);
 	finished_loading_points = true;
 }
-
 /// 
 void point_cloud_interactable::generate_pc_init_sphere() {
 	//
@@ -370,7 +1285,6 @@ void point_cloud_interactable::generate_pc_init_sphere() {
 	on_point_cloud_change_callback(PCC_NEW_POINT_CLOUD);
 	finished_loading_points = true;
 }
-
 /// procedure point cloud generation, a hemisphere
 bool point_cloud_interactable::generate_pc_hemisphere() {
 	pc.clear_all();
@@ -407,7 +1321,6 @@ bool point_cloud_interactable::generate_pc_hemisphere() {
 	on_point_cloud_change_callback(PCC_NEW_POINT_CLOUD);
 	return true;
 }
-
 /// uniform sampling in a plane 
 void point_cloud_interactable::generate_testing_plane() {
 	pc.clear_all();
@@ -475,6 +1388,8 @@ bool point_cloud_interactable::generate_pc_cube() {
 	on_point_cloud_change_callback(PCC_NEW_POINT_CLOUD);
 	return true;
 }
+
+/*Point Cloud DownSampling */ 
 ///
 void point_cloud_interactable::downsampling(int step, int num_of_points_wanted, int which_strategy) {
 	if(which_strategy == 0)
@@ -535,191 +1450,8 @@ void point_cloud_interactable::render_with_fullpc() {
 	on_point_cloud_change_callback(PCC_NEW_POINT_CLOUD);
 	post_redraw();
 }
-///
-bool point_cloud_interactable::open_directory(const std::string& dn)
-{
-	std::vector<std::string> file_names;
-	void* handle = cgv::utils::file::find_first(directory_name + "/*.*");
-	while (handle) {
-		if (!cgv::utils::file::find_directory(handle))
-			file_names.push_back(cgv::utils::file::find_name(handle));
-		handle = cgv::utils::file::find_next(handle);
-	}
-	if (file_names.empty()) {
-		std::cerr << "did not find files in directory <" << dn << ">" << std::endl;
-		return false;
-	}
-	unsigned i;
-	for (i = 0; i < file_names.size(); ++i) {
-		std::cout << i << "(" << file_names.size() << "): " << file_names[i];
-		std::cout.flush();
-		if (!do_append && i == 0)
-			open(directory_name + "/" + file_names[i]);
-		else
-			open_and_append(directory_name + "/" + file_names[i]);
-		std::cout << std::endl;
-	}
-	for (i = 0; i < pc.get_nr_components(); ++i) {
-		pc.component_color(i) = cgv::media::color<float, cgv::media::HLS, cgv::media::OPACITY>(float(i) / float(pc.get_nr_components() - 1), 0.5f, 1.0f, 1.0f);
-	}
-	use_component_colors = true;
-	update_member(&use_component_colors);
-	if (!do_append)
-		on_point_cloud_change_callback(PCC_NEW_POINT_CLOUD);
-	update_file_name(dn);
-	return true;
-}
-///
-bool point_cloud_interactable::open_and_append(const std::string& fn)
-{
-	if (!append(fn)) {
-		cgv::gui::message(std::string("could not append ") + fn);
-		return false;
-	}
-	on_point_cloud_change_callback(PointCloudChangeEvent(PCC_POINTS_RESIZE + PCC_COMPONENTS_RESIZE));
-	update_file_name(fn, true);
-	return true;
-}
-///
-bool point_cloud_interactable::open_or_append(cgv::gui::event& e, const std::string& file_name)
-{
-	cgv::utils::tokenizer T(file_name);
-	T.set_ws("\n").set_sep("");
-	std::vector<cgv::utils::token> toks;
-	T.bite_all(toks);
-	bool res = false;
-	for (unsigned i = 0; i<toks.size(); ++i) {
-		std::string file_path = cgv::base::find_data_file(to_string(toks[i]), "CM", "", data_path);
-		if (e.get_modifiers() == cgv::gui::EM_ALT || i > 0)
-			res |= open_and_append(file_path);
-		else
-			res |= open(file_path);
-	}
-	return res;
-}
-/// read point cloud with a dialog 
-bool point_cloud_interactable::read_pc_with_dialog(bool append) {
-	file_dir = cgv::gui::file_open_dialog("Open", "Point Cloud:*.*");
-	auto start = std::chrono::high_resolution_clock::now();
-	data_path = cgv::utils::file::get_path(file_dir);
-	file_name = cgv::utils::file::drop_extension(cgv::utils::file::get_file_name(file_dir));
-	file_extension = cgv::utils::file::get_extension(cgv::utils::file::get_file_name(file_dir));
-	reading_from_raw_scan = append;
-	if (!append) 
-		clear_all();
-	if (!open(file_dir))
-		return false;
-	finished_loading_points = true;
-	auto finish = std::chrono::high_resolution_clock::now();
-	std::chrono::duration<double> d = finish - start;
-	std::cout << "elapsed time: " << d.count() << std::endl;
-	//std::cout << "read file_name: " << file_name << std::endl;
-	//std::cout << "read data_path: " << data_path << std::endl;
-	return true;
-}
-bool point_cloud_interactable::read_cgvcad_with_dialog() {
-	std::string f = cgv::gui::file_open_dialog("Open", "cgvcad:*");
-	if (!open(f))
-		return false;
-	return true;
-}
-///
-bool point_cloud_interactable::read_pc_with_dialog_queue(bool append) {
-	if (!append)
-		clear_all();
-	std::vector<std::string> f_names;
-	cgv::gui::files_open_dialog(f_names, "Open", "Point Cloud:*");
-	for(auto& f:f_names)
-		open(f);
-	return true;
-}
-/// read point cloud and perform a automatic downsampling 
-bool point_cloud_interactable::read_pc_subsampled_with_dialog() {
-	std::string f = cgv::gui::file_open_dialog("Open", "Point Cloud:*");
-	clear_all();
-	pc.read_pts_subsampled(f,0.05);
-	show_point_begin = 0;
-	show_point_end = pc.get_nr_points();
-	return true;
-}
-///
-void point_cloud_interactable::write_pc_to_file() {
-	/*auto microsecondsUTC = std::chrono::duration_cast<std::chrono::microseconds>(
-	std::chrono::system_clock::now().time_since_epoch()).count();
-	std::string filename_base = cgv::base::ref_data_path_list()[0] + "\\object_scanns\\pointcloud_all_" + std::to_string(microsecondsUTC);
-	std::string filename = filename_base + ".obj";*/
-	std::string f = cgv::gui::file_save_dialog("Open", "Save Point Cloud:*");
-	pc.suggested_point_size = surfel_style.point_size; // write point size by default 
-	pc.write(f);
-	std::cout << "saved!" << std::endl;
-}
-///
-void point_cloud_interactable::write_pc_to_file_with_given_dir(const std::string f) {
-	/*auto microsecondsUTC = std::chrono::duration_cast<std::chrono::microseconds>(
-		std::chrono::system_clock::now().time_since_epoch()).count();
-	std::to_string(microsecondsUTC)*/
-	pc.write(f);
-	std::cout << "saved!" << std::endl;
-}
-/// read camera positions with a dialog, .campose files are accepted
-bool point_cloud_interactable::read_pc_campose(cgv::render::context& ctx, quat initialcamq) {
-	std::string f = cgv::gui::file_open_dialog("Open", "Point Cloud:*");
-	pc.read_campose(f);
 
-	if (render_camposes) {
-		//alig with cgv fram
-		align_leica_scans_with_cgv();
-		// prepare for rendering 
-		for (int i = 0; i < pc.num_of_shots; i++) {
-			vr_kit_image_renderer tmp_renderer;
-			std::string folder_name = cgv::utils::file::drop_extension(cgv::utils::file::get_file_name(f));
-			std::string panorama_fn = cgv::utils::file::get_path(f) + "/pano/apb_" + std::to_string(i + 1) + ".jpg";
-			std::cout << panorama_fn << std::endl; //pc.list_cam_rotation.at(i) //initialcamq * pc.list_cam_rotation.at(i)
-			tmp_renderer.bind_image_to_camera_position(ctx, panorama_fn, quat(), pc.list_cam_translation.at(i));
-			image_renderer_list.push_back(tmp_renderer);
-		}
-	}
-
-	return true;
-}
-/// check if the camera position is valid 
-bool point_cloud_interactable::check_valid_pc_and_campose()
-{
-	bool succ = pc.cam_posi_list.front().x() != -1000
-				&& pc.cam_posi_list.front().y() != -1000
-				&& pc.cam_posi_list.front().z() != -1000
-				&& pc.get_nr_points() == pc.num_of_points_in_campose
-				&& pc.has_cam_posi;
-	if (!succ) {
-		std::cout << "invalid! check following vars:" << std::endl;
-		std::cout << "pc.cam_posi_list front: " << pc.cam_posi_list.front() << std::endl;
-		std::cout << "pc.get_nr_points(): " << pc.get_nr_points() << std::endl;
-		std::cout << "pc.num_of_points_in_campose: " << pc.num_of_points_in_campose << std::endl;
-		std::cout << "pc.has_cam_posi: " << pc.has_cam_posi << std::endl;
-	}
-	return succ;
-}
-/// 
-void point_cloud_interactable::apply_further_transformation(int which, quat q, vec3 t) {
-	image_renderer_list.at(which).apply_further_transformation(q, t);
-}
-///
-void point_cloud_interactable::align_leica_scans_with_cgv() {
-	quat rz = quat(vec3(0, 0, 1), 25 * M_PI / 180);
-	quat rx = quat(vec3(1, 0, 0), -90 * M_PI / 180);
-	quat r_align = rx * rz;
-	for (auto& t : pc.list_cam_translation) {
-		r_align.rotate(t);
-	}
-	for (auto& r : pc.list_cam_rotation) {
-		r = r_align * r;
-	}
-	pc.rotate(r_align);
-	// approximate 1m from ground 
-	//pc.translate(vec3(0,1,0));
-}
-
-/*marking on point cloud, cpu side, ineffecient when upload to gpu*/
+/*Point Cloud Marking*/
 /// clear seeds, setup color indices ...
 void point_cloud_interactable::prepare_marking() {
 	pc.face_id.resize(pc.get_nr_points());
@@ -1048,355 +1780,7 @@ const typename ADAPTER::container_type& get_container(ADAPTER& a)
 	return hack::get(a);
 }
 
-/*operations after marked */
-/*
-	algorithm:
-		for each point collect all face indices of neighbors with knn, classify point into
-            a.interior, if all face indices are identical
-            b.boundary, if two different face indices arise
-            c.corner otherwise, number of different face indices is called valence of point
-        a. face_extraction
-            loop over all face points, fill the data structure with point information.
-        b. corner_extraction
-            find one corner point that is not visited, if can not find, terminate.
-            Do region growing with knn neighbor graph to collect neighbor points, add them to data structure.
-                stopping criteria: find non corner point or corner point whose face indices are not 
-                    the same face indices of reference point.
-        c. edge_extraction
-            find one boundary point that is not visited, if can not find, terminate.
-			do region growing with stopping criteria: find non edge point or edge point whose face indices are not 
-                    the same face indices of reference point.
-*/
-void point_cloud_interactable::clear_before_point_classification() {
-	// reset visiting information, reuse the point visited boolean array 
-	for (auto& pv : pc.point_visited) pv = false;
-	for (auto& pq : pc.point_in_queue) pq = false;
-	for (auto& pg : pc.point_in_queue_which_group) pg = 0;
-	pc.classified_to_be_an_edge_point.clear();
-	pc.classified_to_be_a_corner_point.clear();
-	pc.classified_to_be_a_face_point.clear();
-	pc.incident_ids.clear();
-	pc.incident_ids.resize(pc.get_nr_points());
-	pc.ranking_within_curr_topo.clear();
-	pc.ranking_within_curr_topo.resize(pc.get_nr_points());
-}
-/// pre-requirement: rg is done, per point selection ready. after marked.
-/// result will be stored and visualized with TOPOAttribute
-#include <set>
-void point_cloud_interactable::point_classification() {
-	//
-	clear_before_point_classification();
-	
-	//
-	ensure_tree_ds();
-
-	// iterate all points to classify 
-	for (Idx i = 0; i < (Idx)pc.get_nr_points(); ++i) {
-		// ignore deleted points 
-		if (pc.topo_id.at(i) == point_cloud::TOPOAttribute::DEL)
-			continue;
-
-		// query neighbor points 
-		std::set<int> incident_point_ids;
-		for (auto kid: pc.nearest_neighbour_indices[i]) { // k is the index
-			if (incident_point_ids.size() > 30)
-				break;
-			incident_point_ids.insert(pc.face_id.at(kid));
-		}
-
-		// interior points, keep the current selection (face id)
-		if (incident_point_ids.size() == 1) {
-			//
-			pc.classified_to_be_a_face_point.push_back(i); 
-			pc.incident_ids[i] = incident_point_ids;
-
-			//
-			pc.topo_id.at(i) = point_cloud::TOPOAttribute::FACE;
-		}
-		
-		// boundary points 
-		if (incident_point_ids.size() == 2) 
-		{
-			//
-			pc.classified_to_be_an_edge_point.push_back(i);
-			pc.incident_ids[i] = incident_point_ids;
-			pc.index_in_classified_array[i] = pc.classified_to_be_an_edge_point.size() - 1;
-			
-			//
-			pc.topo_id.at(i) = point_cloud::TOPOAttribute::EDGE;
-		}
-		
-		// corner points 
-		if (incident_point_ids.size() >= 3)  
-		{
-			//
-			pc.classified_to_be_a_corner_point.push_back(i);
-			pc.incident_ids[i] = incident_point_ids;
-			pc.index_in_classified_array[i] = pc.classified_to_be_a_corner_point.size() - 1;
-
-			//
-			pc.topo_id.at(i) = point_cloud::TOPOAttribute::CORNER;
-		}
-	}
-	render_with_topo_selctions_only = true; // not working for now ...
-}
-/// connectivity extraction: faces 
-void point_cloud_interactable::face_extraction() {
-	std::set<int> regions;
-	for (auto& pid : pc.classified_to_be_a_face_point) 
-		regions.insert(pc.face_id[pid]);
-	pc.num_face_ids = regions.size();
-}
-/// region grow to find neighbor points, extract connectivity info of the model: how many vertices/ edges/ faces 
-void point_cloud_interactable::corner_extraction() {
-	//
-	std::vector<int> knn;
-	ensure_tree_ds();
-	
-	//
-	int curr_corner_id = 0; 
-	bool not_done = false;
-	int seed_pnt_id;
-	
-	// find the first unvisited point as seed
-	for (auto& vpid : pc.classified_to_be_a_corner_point) { 
-		if (pc.point_visited[vpid] == false) {
-			not_done = true;
-			seed_pnt_id = vpid; 
-			break;
-		}
-	}
-
-	//
-	while (not_done) {
-		// goal: do rg to find all neighbour points
-		std::queue<int> q; q.push(seed_pnt_id);
-		while (!q.empty()) { 
-			int curr_seed_pid = q.front(); q.pop(); // fetch the front point
-			// visit the current point 
-			std::set<int> curr_incident_ids;
-
-			curr_incident_ids = pc.incident_ids[curr_seed_pid]; // extract incident info for neighbor search 
-			pc.ranking_within_curr_topo[curr_seed_pid] = curr_corner_id; // fill topo ranking information 
-			pc.point_visited[curr_seed_pid] = true;
-			pc.point_in_queue[curr_seed_pid] = false;
-
-			// find neighbour points 
-				// alternative: 	
-				//tree_ds->find_closest_points(pc.pnt(curr_seed_pid), 30, &knn); // find knn points 
-				//for(auto kid:knn){}
-			for (auto kid : pc.nearest_neighbour_indices[curr_seed_pid]) { // k is the index
-				if (pc.point_visited[kid])// if visited, ignore 
-					continue;
-				bool check_incident_face_ids = false;
-				if(check_incident_face_ids)
-					if (pc.incident_ids[kid] != curr_incident_ids)// if not belones to the same corner 
-						continue;
-				if (pc.topo_id[kid] != point_cloud::TOPOAttribute::CORNER)
-					continue;
-				if (pc.incident_ids.size() < 3)
-					continue;
-				if (pc.point_in_queue[kid])
-					continue;
-				q.push(kid);
-				pc.point_in_queue[kid] = true;
-			}
-		}
-		// state: an other region is done 
-		curr_corner_id++;
-		// reset 
-		not_done = false;
-		// find the first unvisited point as seed
-		for (auto& vpid : pc.classified_to_be_a_corner_point) { 
-			if (pc.point_visited[vpid] == false) {
-				not_done = true;
-				seed_pnt_id = vpid;
-				break;
-			}
-		}
-	}
-	// state: all corners should be extracted, they are built from points 
-	// goal: quick check, how many regions are here? / corners 
-	std::set<int> regions;
-	for (auto& pid:pc.classified_to_be_a_corner_point) 
-		regions.insert(pc.ranking_within_curr_topo[pid]);
-	pc.num_corner_ids = regions.size();
-	std::cout << "number of corners extracted: " << regions.size()
-		<< " or, curr_corner_id = " << curr_corner_id << std::endl;
-}
-///
-void point_cloud_interactable::corner_extraction_loop_all() {
-	//
-	int curr_corner_id = 0;
-	bool not_done = false;
-	int seed_pnt_id;
-
-	// find the first unvisited point as seed
-	for (auto& vpid : pc.classified_to_be_a_corner_point) {
-		if (pc.point_visited[vpid] == false) {
-			not_done = true;
-			seed_pnt_id = vpid;
-			break;
-		}
-	}
-
-	//
-	while (not_done) {
-		// visit current 
-		std::set<int> curr_incident_ids;
-		curr_incident_ids = pc.incident_ids[seed_pnt_id]; // extract incident info for neighbor search 
-		pc.ranking_within_curr_topo[seed_pnt_id] = curr_corner_id; // fill topo ranking information 
-		pc.point_visited[seed_pnt_id] = true;
-
-		// loop over all points to collect points that belongs to current corner, according to current seed 
-		// problem with boundary points 
-		for (auto& pid:pc.classified_to_be_a_corner_point) {
-			// check if curr point's incident_ids is included by seed point 
-			if (!std::includes(curr_incident_ids.begin(), curr_incident_ids.end(), 
-				pc.incident_ids[pid].begin(), pc.incident_ids[pid].end()))
-				continue;
-			// ignore if already visited 
-			if (pc.point_visited[pid])
-				continue;
-			// visit points 
-			pc.ranking_within_curr_topo[pid] = curr_corner_id;
-			pc.point_visited[pid] = true;
-		}
-
-		// state: an other region is done 
-		curr_corner_id++;
-		not_done = false; // reset 
-		// find the first unvisited point as seed
-		for (auto& vpid : pc.classified_to_be_a_corner_point) {
-			if (pc.point_visited[vpid] == false) {
-				not_done = true;
-				seed_pnt_id = vpid;
-				break;
-			}
-		}
-	}
-}
-/// an other grow to find and push to edges E_conn
-void point_cloud_interactable::edge_extraction() {
-	//
-	std::vector<int> knn;
-	ensure_tree_ds();
-	int curr_edge_id = 0; // curr_edge_id should start from 0 
-	bool not_done = false;
-	int seed_pnt_id;
-
-	// find the first unvisited point as seed
-	for (auto& vpid : pc.classified_to_be_an_edge_point) {
-		if (pc.point_visited[vpid] == false) {
-			not_done = true;
-			seed_pnt_id = vpid;
-			break;
-		}
-	}
-
-	//
-	while (not_done) {
-		// goal: do rg to find all neighbour points
-		std::queue<int> q; q.push(seed_pnt_id);
-		while (!q.empty()) {
-			int curr_seed_pid = q.front(); q.pop(); // fetch the front point
-			std::set<int> curr_incident_ids;
-
-			//
-			curr_incident_ids = pc.incident_ids[curr_seed_pid];
-			pc.ranking_within_curr_topo[curr_seed_pid] = curr_edge_id; // assign an edge id for each topological edge 
-			pc.point_visited[curr_seed_pid] = true;
-			pc.point_in_queue[curr_seed_pid] = false;
-
-			// find neighbour points 
-				//tree_ds->find_closest_points(pc.pnt(curr_seed_pid), 30, &knn); // find knn points 
-				//for (auto kid : knn) { // loop over knn points
-			for (auto kid : pc.nearest_neighbour_indices[curr_seed_pid]){
-				if (pc.point_visited[kid])// if visited, ignore 
-					continue;
-				if (pc.incident_ids[kid] != curr_incident_ids)// if not belones to the same edge 
-					continue;
-				if (pc.point_in_queue[kid]) // if already exists 
-					continue;
-				q.push(kid);
-				pc.point_in_queue[kid] = true;
-			}
-		}
-		// state: an other region is done 
-		curr_edge_id++;
-		// reset
-		not_done = false;
-		// find the first unvisited point as seed
-		for (auto& vpid : pc.classified_to_be_an_edge_point) {
-			if (pc.point_visited[vpid] == false) {
-				not_done = true;
-				seed_pnt_id = vpid;
-				break;
-			}
-		}
-	}
-	// state: all point-based edges should be extracted
-	// goal: quick check, how many regions are here? / edges  
-	std::set<int> regions;
-	for (auto& epid : pc.classified_to_be_an_edge_point) 
-		regions.insert(pc.ranking_within_curr_topo[epid]);
-	pc.num_edge_ids = regions.size();
-	std::cout << "number of point-besed edges extracted: " << regions.size()  
-		<< " or, curr_edge_id = " << curr_edge_id  << std::endl;
-}
-///
-void point_cloud_interactable::extract_incidents() {
-	face_extraction();
-	corner_extraction();
-	edge_extraction();
-}
-///
-void point_cloud_interactable::fitting_render_control_points_test() {
-	/*pc.control_points.push_back(pc.pnt(78673));
-	pc.control_point_colors.push_back(rgb(1, 1, 0));
-	pc.control_points.push_back(pc.pnt(17268));
-	pc.control_point_colors.push_back(rgb(0, 1, 0));*/
-
-	/*pc.face_id.at(78673) = 2u;
-	pc.face_id.at(17268) = 2u;*/
-
-	//pc.demo_surface.push_back();
-
-	pc.control_points.clear();
-	pc.control_point_colors.clear();
-	pc.demo_surface.clear();
-
-	pc.control_points.resize(16);
-	pc.control_point_colors.resize(16);
-	pc.demo_surface.resize(16);
-
-	pc.control_points.at(0) = vec3(0, 0, 0);
-	pc.control_points.at(1) = vec3(0, 1.01, 1);
-	pc.control_points.at(2) = vec3(0, 1.08, 2);
-	pc.control_points.at(3) = vec3(0, 0, 3);
-
-	pc.control_points.at(4) = vec3(1, 1.2, 0);
-	pc.control_points.at(5) = vec3(1, 1.3, 1);
-	pc.control_points.at(6) = vec3(1, 1.2, 2);
-	pc.control_points.at(7) = vec3(1, 1.1, 3);
-
-	pc.control_points.at(8) = vec3(2, 1.4, 0);
-	pc.control_points.at(9) = vec3(2, 1.6, 1);
-	pc.control_points.at(10) = vec3(2, 1.1, 2);
-	pc.control_points.at(11) = vec3(2, 1.2, 3);
-
-	pc.control_points.at(12) = vec3(3, 0, 0);
-	pc.control_points.at(13) = vec3(3, 1.3, 1);
-	pc.control_points.at(14) = vec3(3, 1.4, 2);
-	pc.control_points.at(15) = vec3(3, 0, 3);
-
-	for (int i = 0; i < 16; i++)
-		pc.control_point_colors.at(i) = rgb(0, 1, 0);
-
-	for (int i = 0; i < 16; i++)
-		pc.demo_surface.at(i) = i;
-}
-/// 
+/*Subsampling And Point Cloud Cleaning */
 void point_cloud_interactable::selective_subsampling_cpu() {
 	std::default_random_engine g;
 	std::uniform_real_distribution<float> d(0, 1);
@@ -1412,7 +1796,8 @@ void point_cloud_interactable::selective_subsampling_cpu() {
 		}
 	}
 }
-/*point addition, requiures the scan index present */
+
+/// point addition, requiures the scan index present 
 void point_cloud_interactable::spawn_points_in_the_handhold_quad(quat controllerq, vec3 controllert, vec3 quadextent) {
 
 	if (!pc.has_normals() || !pc.has_scan_index) {
@@ -1465,8 +1850,74 @@ void point_cloud_interactable::auto_scale_after_read_points() {
 		return;
 	put_to_table();
 }
-/*region growing after marked*/
-/// prepare/ reset region grow 
+///
+void point_cloud_interactable::extract_neighbours() {
+	std::cout << "extracting neighbours..." << std::endl;
+	ensure_tree_ds();
+	pc.nearest_neighbour_indices.resize(pc.get_nr_points());
+	for (Idx i= 0; i < pc.get_nr_points(); i++) {
+		pc.nearest_neighbour_indices.at(i).resize(k);
+		tree_ds->find_closest_points(pc.pnt(i), k+1, &knn); // knn will be resized inside 
+		for (Idx j = 0; j < k; ++j)
+			pc.nearest_neighbour_indices.at(i).at(j) = knn.at(j);
+	}
+	std::cout << "done..." << std::endl;
+}
+
+/*Point Cloud Positioning */
+///
+void point_cloud_interactable::put_to_table() {
+	//
+	surfel_style.point_size = pc.suggested_point_size > 0 ? pc.suggested_point_size : 0.2f;
+
+	//
+	float ext = (pc.box().get_max_pnt() - pc.box().get_min_pnt()).length();
+	model_scale = 1.0f / ext;
+	std::cout << "model has been scaled with factor of: " << model_scale << std::endl;
+	mat4 scale_matrix = cgv::math::scale4(vec3(model_scale, model_scale, model_scale));
+	vec3 target_center = pc.box().get_center();
+	mat4 inv_mt = cgv::math::translate4(-target_center);
+	mat4 mt = cgv::math::translate4(target_center);
+	pc.last_additional_model_matrix = inv_mt * pc.last_additional_model_matrix;
+	pc.last_additional_model_matrix = scale_matrix * pc.last_additional_model_matrix;
+	pc.last_additional_model_matrix = mt * pc.last_additional_model_matrix;
+
+	//
+	mat4 table_offset = cgv::math::translate4(vec3(0, 2, 0));
+	mat4 t; t.identity();
+	target_center = pc.box().get_center();
+	float buttom_gap = target_center.y() - pc.box().get_min_pnt().y() + 0.1f; // 0.1 is table dick 
+	mat4 buttom_offset = cgv::math::translate4(vec3(0, buttom_gap, 0));
+	t = table_offset * buttom_offset;
+	pc.last_additional_model_matrix = t * pc.last_additional_model_matrix;
+
+	apply_transfrom_to_pc();
+}
+/// apply model scalling 
+void point_cloud_interactable::scale_model() {
+	std::cout << "model has been scaled with factor of: " << model_scale << std::endl;
+	mat4 scale_matrix = cgv::math::scale4(vec3(model_scale, model_scale, model_scale));
+	vec3 target_center = pc.box().get_center();
+	mat4 inv_model_translation = cgv::math::translate4(-target_center);
+	mat4 model_translation = cgv::math::translate4(target_center);
+	pc.last_additional_model_matrix = inv_model_translation * pc.last_additional_model_matrix;
+	pc.last_additional_model_matrix = scale_matrix * pc.last_additional_model_matrix;
+	pc.last_additional_model_matrix = model_translation * pc.last_additional_model_matrix;
+
+	apply_transfrom_to_pc();
+}
+///
+void point_cloud_interactable::apply_transfrom_to_pc() {
+	pc.transform_pnt_and_nml(pc.last_additional_model_matrix);
+	pc.last_additional_model_matrix.identity();
+	std::cout << "mat = \n" << pc.last_additional_model_matrix << std::endl;
+	pc.box_out_of_date = true;
+	tree_ds_out_of_date = true; ensure_tree_ds();
+	ng.clear(); //ensure_neighbor_graph();
+}
+
+/*interactive region growing */
+/// prepare varibles for region growing 
 void point_cloud_interactable::prepare_grow(bool overwrite_face_selection) {
 	// atomic operation 
 	can_parallel_edit = false;
@@ -1487,7 +1938,7 @@ void point_cloud_interactable::prepare_grow(bool overwrite_face_selection) {
 	pc.point_in_queue_which_group.resize(pc.get_nr_points());
 	for (auto& v : pc.point_in_queue_which_group) v = 0; // group is face id, 1-25 
 	num_of_knn_used_for_each_group.resize(pc.num_of_face_selections_rendered);
-	for (auto& n : num_of_knn_used_for_each_group) { n = k;} // init to 30 at the beginning 
+	for (auto& n : num_of_knn_used_for_each_group) { n = k; } // init to 30 at the beginning 
 	num_of_points_curr_region.resize(pc.num_of_face_selections_rendered);
 	for (auto& n : num_of_points_curr_region) { n = 0; }
 	pc.ranking_within_curr_group.resize(pc.get_nr_points());
@@ -1523,19 +1974,6 @@ void point_cloud_interactable::prepare_grow(bool overwrite_face_selection) {
 
 	// enable again  
 	can_parallel_edit = true;
-}
-///
-void point_cloud_interactable::extract_neighbours() {
-	std::cout << "extracting neighbours..." << std::endl;
-	ensure_tree_ds();
-	pc.nearest_neighbour_indices.resize(pc.get_nr_points());
-	for (Idx i= 0; i < pc.get_nr_points(); i++) {
-		pc.nearest_neighbour_indices.at(i).resize(k);
-		tree_ds->find_closest_points(pc.pnt(i), k+1, &knn); // knn will be resized inside 
-		for (Idx j = 0; j < k; ++j)
-			pc.nearest_neighbour_indices.at(i).at(j) = knn.at(j);
-	}
-	std::cout << "done..." << std::endl;
 }
 ///
 void point_cloud_interactable::rerender_seeds() {
@@ -1697,8 +2135,7 @@ void point_cloud_interactable::grow_one_region(int gi) {
 	//	}
 	//}
 }
-/*interactive region growing */
-///
+/// clear seeds 
 void point_cloud_interactable::clear_seed_for_regions() {
 	// reset seed array 
 	for (auto& s : seed_for_regions)
@@ -1910,55 +2347,6 @@ void point_cloud_interactable::undo_curr_region(int curr_region) {
 
 	// re-add seed to queue 
 	add_seed_to_queue(curr_region);
-}
-///
-void point_cloud_interactable::put_to_table() {
-	//
-	surfel_style.point_size = pc.suggested_point_size > 0 ? pc.suggested_point_size : 0.2f;
-
-	//
-	float ext = (pc.box().get_max_pnt() - pc.box().get_min_pnt()).length();
-	model_scale = 1.0f / ext;
-	std::cout << "model has been scaled with factor of: " << model_scale << std::endl;
-	mat4 scale_matrix = cgv::math::scale4(vec3(model_scale, model_scale, model_scale));
-	vec3 target_center = pc.box().get_center();
-	mat4 inv_mt = cgv::math::translate4(-target_center);
-	mat4 mt = cgv::math::translate4(target_center);
-	pc.last_additional_model_matrix = inv_mt * pc.last_additional_model_matrix;
-	pc.last_additional_model_matrix = scale_matrix * pc.last_additional_model_matrix;
-	pc.last_additional_model_matrix = mt * pc.last_additional_model_matrix;
-
-	//
-	mat4 table_offset = cgv::math::translate4(vec3(0, 2, 0));
-	mat4 t; t.identity();
-	target_center = pc.box().get_center();
-	float buttom_gap = target_center.y() - pc.box().get_min_pnt().y() + 0.1f; // 0.1 is table dick 
-	mat4 buttom_offset = cgv::math::translate4(vec3(0, buttom_gap, 0));
-	t = table_offset * buttom_offset; 
-	pc.last_additional_model_matrix = t * pc.last_additional_model_matrix;
-
-	apply_transfrom_to_pc();
-}
-/// apply model scalling 
-void point_cloud_interactable::scale_model() {
-	std::cout << "model has been scaled with factor of: " << model_scale << std::endl;
-	mat4 scale_matrix = cgv::math::scale4(vec3(model_scale, model_scale, model_scale));
-	vec3 target_center = pc.box().get_center();
-	mat4 inv_model_translation = cgv::math::translate4(-target_center);
-	mat4 model_translation = cgv::math::translate4(target_center);
-	pc.last_additional_model_matrix = inv_model_translation * pc.last_additional_model_matrix;
-	pc.last_additional_model_matrix = scale_matrix * pc.last_additional_model_matrix;
-	pc.last_additional_model_matrix = model_translation * pc.last_additional_model_matrix;
-
-	apply_transfrom_to_pc();
-}
-void point_cloud_interactable::apply_transfrom_to_pc() {
-	pc.transform_pnt_and_nml(pc.last_additional_model_matrix);
-	pc.last_additional_model_matrix.identity();
-	std::cout << "mat = \n" << pc.last_additional_model_matrix << std::endl;
-	pc.box_out_of_date = true;
-	tree_ds_out_of_date = true; ensure_tree_ds();
-	ng.clear(); //ensure_neighbor_graph();
 }
 /*
 	algorithm: 
@@ -2969,731 +3357,9 @@ void point_cloud_interactable::orient_normals_to_view_point_vr(vec3 cam_posi)
 		post_redraw();
 	//}
 }
-/// call this before using the view ptr for the first time
-bool point_cloud_interactable::ensure_view_pointer()
-{
-	return cgv::base::ensure_by_find(this, view_ptr);
-}
-///
-point_cloud_interactable::point_cloud_interactable() : ne(pc, ng)
-{
-	set_name("Point Cloud Viewer");
 
-	view_ptr = 0;
-
-	accelerate_picking = true;
-	tree_ds_out_of_date = true;
-	tree_ds = 0;
-	tree_ds_target_pc_last_frame = 0;
-	tree_ds_source_pc = 0;
-
-	do_append = false;
-	do_auto_view = true;
-
-	show_nmls = false;
-	interact_point_step = 1;
-	show_point_count = 0;
-	show_point_start = 0;
-	interact_delay = 0.15;
-
-	interact_state = IS_INTERMEDIATE_FRAME;
-
-	cgv::signal::connect(interact_trigger.shoot, this, &point_cloud_interactable::interact_callback);
-	interact_trigger.schedule_recuring(interact_delay);
-
-	show_neighbor_graph = false;
-	k = 30; // init k to 30 
-	gm = growing_mode::UNSIGNED_MEAN_CURVATURE_BASED;
-	do_symmetrize = false;
-	reorient_normals = true;
-
-	frame_pointers.push_back(0);
-
-	icp_clicking_points_src.resize(4);
-	icp_clicking_point_colors_src.resize(4);
-	icp_clicking_points_target.resize(4);
-	icp_clicking_point_colors_target.resize(4);
-}
-///
-void point_cloud_interactable::auto_set_view()
-{
-	if (pc.get_nr_points() == 0)
-		return;
-
-	std::vector<cgv::render::view*> view_ptrs;
-	cgv::base::find_interface<cgv::render::view>(get_node(), view_ptrs);
-	if (view_ptrs.empty()) {
-		cgv::gui::message("could not find a view to adjust!!");
-		return;
-	}
-	cgv::gui::animate_with_rotation(view_ptrs[0]->ref_view_up_dir(), dvec3(0, 1, 0), 0.5)->set_base_ptr(this);
-	cgv::gui::animate_with_geometric_blend(view_ptrs[0]->ref_y_extent_at_focus(), 1.5*pc.box().get_extent()(1), 0.5)->set_base_ptr(this);
-	cgv::gui::animate_with_linear_blend(view_ptrs[0]->ref_focus(), dvec3(pc.box().get_center()), 0.5)->set_base_ptr(this);
-	post_redraw();
-}
-///
-std::string point_cloud_interactable::get_type_name() const
-{
-	return "point_cloud_interactable";
-}
-///
-bool point_cloud_interactable::self_reflect(cgv::reflect::reflection_handler& srh)
-{
-	if (srh.reflect_member("do_append", do_append) &&
-		srh.reflect_member("use_component_colors", use_component_colors) &&
-		srh.reflect_member("use_component_transformations", use_component_transformations) &&
-		srh.reflect_member("do_auto_view", do_auto_view) &&
-		srh.reflect_member("data_path", data_path) &&
-		srh.reflect_member("file_name", new_file_name) &&
-		srh.reflect_member("directory_name", directory_name) &&
-		srh.reflect_member("interact_point_step", interact_point_step) &&
-		srh.reflect_member("surfel_style", surfel_style) &&
-		srh.reflect_member("normal_style", normal_style) &&
-		srh.reflect_member("box_style", box_style) &&
-		srh.reflect_member("box_wire_style", box_wire_style) &&
-		srh.reflect_member("show_points", show_points) &&
-		srh.reflect_member("show_nmls", show_nmls) &&
-		srh.reflect_member("show_boxes", show_boxes) &&
-		srh.reflect_member("show_box", show_box) &&
-		srh.reflect_member("show_neighbor_graph", show_neighbor_graph) &&
-		srh.reflect_member("k", k) &&
-		srh.reflect_member("do_symmetrize", do_symmetrize) &&
-		srh.reflect_member("reorient_normals", reorient_normals))
-		return true;
-	return false;
-}
-///
-void point_cloud_interactable::stream_help(std::ostream& os)
-{
-	os << "PC: open (Ctrl-O), append (Ctrl-A), toggle <p>oints, <n>ormals, <b>ox, <g>graph, <i>llum" << std::endl;
-}
-///
-void point_cloud_interactable::stream_stats(std::ostream& os)
-{
-	os << "PC: #P=" << pc.get_nr_points()
-		<< ", #N=" << (pc.has_normals() ? pc.get_nr_points() : 0)
-		<< ", #C=" << (pc.has_colors() ? pc.get_nr_points() : 0) 
-		<< ", B=" << pc.box().get_center() << "<" << pc.box().get_extent() << ">" << std::endl;
-}
-///
-void point_cloud_interactable::draw_edge_color(unsigned int vi, unsigned int j, bool is_symm, bool is_start) const
-{
-	if (is_symm)
-		glColor3f(0.5f, 0.5f, 0.5f);
-	else {
-		if (is_start)
-			glColor3f(1, 0.5f, 0.5f);
-		else
-			glColor3f(1, 1, 0.5f);
-	}
-}
-/// basic functions
-void point_cloud_interactable::draw_graph(cgv::render::context& ctx)
-{
-	if (!show_neighbor_graph)
-		return;
-
-	glDisable(GL_LIGHTING);
-	glColor3f(0.5f, 0.5f, 0.5f);
-	glLineWidth(normal_style.line_width);
-	glBegin(GL_LINES);
-	for (unsigned int vi = 0; vi<ng.size(); ++vi) {
-		const std::vector<Idx> &Ni = ng[vi];
-		for (unsigned int j = 0; j<Ni.size(); ++j) {
-			unsigned int vj = Ni[j];
-			// check for symmetric case and only draw once
-			if (ng.is_directed_edge(vj, vi)) {
-				if (vi < vj) {
-					draw_edge_color(vi, j, true, true);
-					glArrayElement(vi);
-					draw_edge_color(vi, j, true, false);
-					glArrayElement(vj);
-				}
-			}
-			else {
-				draw_edge_color(vi, j, false, true);
-				glArrayElement(vi);
-				draw_edge_color(vi, j, false, false);
-				glArrayElement(vj);
-			}
-		}
-	}
-	glEnd();
-	glEnable(GL_LIGHTING);
-}
-/// basic functions
-bool point_cloud_interactable::init(cgv::render::context& ctx)
-{
-	pc.curr_additional_model_matrix.identity();
-	pc.last_additional_model_matrix.identity();
-	model_translation.identity();
-	inv_model_translation.identity();
-	if (!gl_point_cloud_drawable::init(ctx))
-		return false;
-	return true;
-}
-/// basic functions
-void point_cloud_interactable::init_frame(cgv::render::context& ctx)
-{
-	/*static bool my_tab_selected = false;
-	if (!my_tab_selected) {
-		my_tab_selected = true;
-		cgv::gui::gui_group_ptr gg = ((provider*)this)->get_parent_group();
-		if (gg) {
-			cgv::gui::gui_group_ptr tab_group = gg->get_parent()->cast<cgv::gui::gui_group>();
-			if (tab_group) {
-				cgv::base::base_ptr c = gg;
-				tab_group->select_child(c, true);
-			}
-		}
-	}*/
-	gl_point_cloud_drawable::init_frame(ctx);
-}
-/// draw call
-void point_cloud_interactable::draw(cgv::render::context& ctx)
-{
-
-	if (pc.get_nr_points() != 0) {
-		glVertexPointer(3, GL_FLOAT, 0, &(pc.pnt(0).x()));
-		glEnableClientState(GL_VERTEX_ARRAY);
-		draw_graph(ctx);
-		glDisableClientState(GL_VERTEX_ARRAY);
-	}
-	/*if (interact_state != IS_DRAW_FULL_FRAME)
-		std::swap(show_point_step, interact_point_step);*/
-	gl_point_cloud_drawable::draw(ctx);
-
-	//if (interact_state != IS_DRAW_FULL_FRAME) {
-	//	std::swap(show_point_step, interact_point_step);
-	//	interact_state = IS_INTERMEDIATE_FRAME;
-	//}
-	//else
-	//	interact_state = IS_FULL_FRAME;
-
-	// render the cameras with information read from .campose file 
-	//if (pc.render_cams) {
-	//	for (auto render_kit : image_renderer_list) {
-	//		render_kit.draw(ctx);
-	//	}
-	//}
-
-	//// render feature points 
-	//if (feature_points.size() > 0 && fea_box.size() > 0) {
-	//	cgv::render::box_renderer& renderer = cgv::render::ref_box_renderer(ctx);
-	//	renderer.set_render_style(fea_style);
-	//	renderer.set_box_array(ctx, fea_box);
-	//	renderer.set_color_array(ctx, fea_box_color);
-	//	renderer.set_translation_array(ctx, fea_box_trans);
-	//	renderer.set_rotation_array(ctx, fea_box_rot);
-	//	renderer.render(ctx, 0, fea_box.size());
-	//}
-
-	//// render feature points for ICP 
-	//srs_icp_feature_points.radius = surfel_style.point_size / 100.0f;
-	//if (feature_points_src.size() > 0) {
-	//	auto& sr = cgv::render::ref_sphere_renderer(ctx);
-	//	sr.set_render_style(srs_icp_feature_points);
-	//	sr.set_position_array(ctx, feature_points_src);
-	//	sr.set_color_array(ctx, feature_point_colors_src);
-	//	sr.render(ctx, 0, feature_points_src.size());
-	//}
-	//if (feature_points_target.size() > 0) {
-	//	auto& sr = cgv::render::ref_sphere_renderer(ctx);
-	//	sr.set_render_style(srs_icp_feature_points);
-	//	sr.set_position_array(ctx, feature_points_target);
-	//	sr.set_color_array(ctx, feature_point_colors_target);
-	//	sr.render(ctx, 0, feature_points_target.size());
-	//}
-
-	// 
-	/*if (icp_clicking_points_src.size() > 0) {
-		auto& sr = cgv::render::ref_sphere_renderer(ctx);
-		sr.set_render_style(srs_icp_feature_points);
-		sr.set_position_array(ctx, icp_clicking_points_src);
-		sr.set_color_array(ctx, icp_clicking_point_colors_src);
-		sr.render(ctx, 0, icp_clicking_points_src.size());
-	}
-	if (icp_clicking_points_target.size() > 0) {
-		auto& sr = cgv::render::ref_sphere_renderer(ctx);
-		sr.set_render_style(srs_icp_feature_points);
-		sr.set_position_array(ctx, icp_clicking_points_target);
-		sr.set_color_array(ctx, icp_clicking_point_colors_target);
-		sr.render(ctx, 0, icp_clicking_points_target.size());
-	}*/
-
-	// quick test, higher effecency rendering 
-	//cgv::render::clod_point_renderer& cp_renderer = ref_clod_point_renderer(ctx);
-	//cp_renderer.set_render_style(cp_style);
-
-	//if (pc.get_nr_points() > 0) {
-	//	if (renderer_out_of_date) {
-	//		std::vector<LODPoint> V(pc.get_nr_points());
-	//		for (int i = 0; i < pc.get_nr_points(); ++i) {
-	//			V[i].position() = pc.pnt(i);
-	//			V[i].color() = pc.clr(i);
-	//		}
-	//		points_with_lod = std::move(lod_generator.generate_lods(V));
-
-	//		cp_renderer.set_points(ctx, &points_with_lod.data()->position(),
-	//			&points_with_lod.data()->color(), &points_with_lod.data()->level(), points_with_lod.size(), sizeof(LODPoint));
-	//		
-	//		renderer_out_of_date = false;
-	//	}
-
-	//	if (cp_renderer.enable(ctx))
-	//		cp_renderer.draw(ctx, 0, (size_t)pc.get_nr_points());
-	//}
-
-}
-///
-void point_cloud_interactable::configure_subsample_controls()
-{
-	if (find_control(show_point_begin)) {
-		find_control(show_point_begin)->set("max", show_point_end);
-		find_control(show_point_end)->set("min", show_point_begin);
-		find_control(show_point_end)->set("max", pc.get_nr_points());
-		find_control(show_point_count)->set("max", pc.get_nr_points());
-		find_control(show_point_start)->set("max", pc.get_nr_points() - show_point_count);
-	}
-}
-/// basic functions
-void point_cloud_interactable::handle_args(std::vector<std::string>& args)
-{
-	for (unsigned ai = 0; ai < args.size(); ++ai) {
-		if (cgv::utils::file::exists(args[ai])) {
-			if (open_and_append(args[ai])) {
-				args.erase(args.begin() + ai);
-				--ai;
-			}
-		}
-	}
-}
-/// basic functions
-bool point_cloud_interactable::handle(cgv::gui::event& e)
-{
-	if (e.get_kind() == cgv::gui::EID_KEY) {
-		cgv::gui::key_event& ke = static_cast<cgv::gui::key_event&>(e);
-		if (ke.get_action() == cgv::gui::KA_PRESS || ke.get_action() == cgv::gui::KA_REPEAT) {
-			switch (ke.get_key()) {
-			case '=' :
-			case '+' :
-				surfel_style.point_size += 1;
-				on_set(&surfel_style.point_size); 
-				return true;
-			case '-' :
-				if (surfel_style.point_size > 0) {
-					surfel_style.point_size -= 1;
-					if (surfel_style.point_size < 1)
-						surfel_style.point_size = 1;
-					on_set(&surfel_style.point_size); 
-				}
-				return true;
-			case 'P' :
-				show_points = !show_points;
-				on_set(&show_points); 
-				return true;
-			case 'C' :
-				if (ke.get_modifiers() == 0) {
-					if (surfel_style.map_color_to_material == cgv::render::MS_FRONT_AND_BACK)
-						surfel_style.map_color_to_material = cgv::render::CM_NONE;
-					else
-						++(int&)surfel_style.map_color_to_material;
-					on_set(&surfel_style.map_color_to_material);
-				}
-				else if (ke.get_modifiers() == cgv::gui::EM_SHIFT) {
-					if (surfel_style.culling_mode == cgv::render::CM_FRONTFACE)
-						surfel_style.culling_mode = cgv::render::CM_OFF;
-					else
-						++(int&)surfel_style.culling_mode;
-					on_set(&surfel_style.culling_mode);
-				}
-				return true;
-			case 'B' :
-				if (ke.get_modifiers() == 0) {
-					surfel_style.blend_points = !surfel_style.blend_points;
-					on_set(&surfel_style.blend_points);
-				}
-				else if (ke.get_modifiers() == cgv::gui::EM_SHIFT) {
-					show_boxes = !show_boxes;
-					on_set(&show_boxes);
-				}
-				return true;
-			case 'N' :
-				if (ke.get_modifiers() == 0) {
-					show_nmls = !show_nmls;
-					on_set(&show_nmls);
-				}
-				else if(ke.get_modifiers() == cgv::gui::EM_CTRL+ cgv::gui::EM_ALT) {
-					if (!pc.has_normals()) {
-						pc.create_normals();
-						compute_normals();
-					}
-					else 
-						recompute_normals();
-
-					on_point_cloud_change_callback(PCC_NORMALS);
-					post_redraw();
-				}
-				return true;
-			case 'I' :
-				if (surfel_style.illumination_mode == cgv::render::IM_TWO_SIDED)
-					surfel_style.illumination_mode = cgv::render::IM_OFF;
-				else
-					++(int&)surfel_style.illumination_mode;
-				on_set(&surfel_style.illumination_mode);
-				return true;
-			case 'G' :
-				show_neighbor_graph = !show_neighbor_graph;
-				on_set(&show_neighbor_graph); 
-				return true;
-			case 'O' :
-				if (ke.get_modifiers() == 0) {
-					surfel_style.orient_splats = !surfel_style.orient_splats;
-					on_set(&surfel_style.orient_splats);
-				}
-				else if (ke.get_modifiers() == cgv::gui::EM_SHIFT) {
-					orient_normals();
-					on_point_cloud_change_callback(PCC_NORMALS);
-					post_redraw();
-					return true;
-				}
-				else if (ke.get_modifiers() == cgv::gui::EM_ALT) {
-					orient_normals_to_view_point();
-					on_point_cloud_change_callback(PCC_NORMALS);
-					post_redraw();
-					return true;
-				}
-				else if (ke.get_modifiers() == cgv::gui::EM_CTRL) {
-					std::string fn = cgv::gui::file_open_dialog(FILE_OPEN_TITLE, FILE_OPEN_FILTER);
-					if (!fn.empty())
-						open(fn);
-					return true;
-				}
-				else if (ke.get_modifiers() == cgv::gui::EM_CTRL + cgv::gui::EM_SHIFT) {
-					std::string fn = cgv::gui::file_open_dialog("Open Component Transformations", "Text Files (txt):*.txt|All Files:*.*");
-					if (!fn.empty()) {
-						if (!pc.read_component_transformations(fn)) {
-							std::cerr << "error reading component transformation file " << fn << std::endl;
-						}
-						post_redraw();
-					}
-					return true;
-				}
-				return false;
-			case 'A' :
-				if (ke.get_modifiers() == cgv::gui::EM_CTRL) {
-					std::string fn = cgv::gui::file_open_dialog(FILE_APPEND_TITLE, FILE_OPEN_FILTER);
-					if (!fn.empty())
-						open_and_append(fn);
-					return true;
-				}
-				return false;
-			case 'S' :
-				if (ke.get_modifiers() == cgv::gui::EM_CTRL + cgv::gui::EM_SHIFT) {
-					std::string fn = cgv::gui::file_save_dialog(FILE_SAVE_TITLE, FILE_OPEN_FILTER);
-					if (!fn.empty())
-						save(fn);
-					return true;
-				}
-				else if (ke.get_modifiers() == cgv::gui::EM_ALT) {
-					sort_points = !sort_points;
-					on_set(&sort_points);
-					return true;
-				}
-				return false;
-			case cgv::gui::KEY_Space :
-				if (pc.get_nr_points() == 0)
-					return false;
-				auto_set_view();
-				return true;
-			}
-		}
-	}
-
-	if (e.get_kind() == cgv::gui::EID_MOUSE) {
-		//cgv::gui::mouse_event& me = (cgv::gui::mouse_event&) e;
-		//if (me.get_action() == cgv::gui::MA_PRESS) {
-		//	/*if (me.get_modifiers() != cgv::gui::EM_CTRL)
-		//		return false;*/
-		//	unsigned picked_index;
-		//	if (get_picked_point(me.get_x(), me.get_y(), picked_index)) {
-		//		std::cout << pc.pnt(picked_index) << std::endl;
-		//	}
-		//	return true;
-		//}
-	}
-
-	return false;
-}
-///
-void point_cloud_interactable::on_point_cloud_change_callback(PointCloudChangeEvent pcc_event)
-{
-	if (use_component_transformations != pc.has_component_transformations()) {
-		use_component_transformations = pc.has_component_transformations();
-		on_set(&use_component_transformations);
-	}
-	if (use_component_colors != pc.has_component_colors()) {
-		use_component_colors = pc.has_component_colors();
-		on_set(&use_component_colors);
-	}
-	if (!pc.has_normals() != surfel_style.illumination_mode == cgv::render::IM_OFF) {
-		if (pc.has_normals())
-			surfel_style.illumination_mode = cgv::render::IM_ONE_SIDED;
-		else
-			surfel_style.illumination_mode = cgv::render::IM_OFF;
-		update_member(&surfel_style.illumination_mode);
-	}
-	// after new points are added, very fast 
-	if (((pcc_event & PCC_POINTS_MASK) == PCC_POINTS_RESIZE) || ((pcc_event & PCC_POINTS_MASK) == PCC_NEW_POINT_CLOUD)) {
-		// reconstruct colors if not present 
-		if (!pc.has_colors()) {
-			pc.C.resize(pc.get_nr_points());
-			for (auto& pc : pc.C) pc = rgba(0.4,0.4,0.4,1);
-		}
-		// reconstruct normals if not present 
-		if (!pc.has_normals() && compute_normal_after_read) {
-			compute_normals();
-			orient_normals();
-		}
-		// create per-point face id  if not present, fast 
-		if (pc.face_id.size() == 0 || reading_from_raw_scan) {
-			pc.face_id.resize(pc.get_nr_points());
-			for (auto& fi : pc.face_id) fi = 0; // 0 means non-selected faces 
-			pc.has_face_selection = true;
-		}
-		// create per-point topo id if not present 
-		if (pc.topo_id.size() == 0 || reading_from_raw_scan) {
-			pc.topo_id.resize(pc.get_nr_points());
-			for (auto& ti : pc.topo_id) ti = 0; // 0 means non-topological information present 
-			pc.has_topo_selection = true; // not used actually? 
-		}
-		// create per-point scan index if not present, 0 by default 
-		// the first is for one scan, later for raw scans 
-		// mainly used for point appending 
-		if (pc.point_scan_index.size() == 0 || reading_from_raw_scan) {
-			int append_starting_index = pc.point_scan_index.size();
-			pc.point_scan_index.resize(pc.get_nr_points());
-			for (int Idx = append_starting_index; Idx < pc.point_scan_index.size(); Idx++) {
-				pc.point_scan_index.at(Idx) = pc.currentScanIdx_Recon;
-			}
-			pc.has_scan_index = true;
-		}
-		reading_from_raw_scan = false;
-		// prepare scan indices visibility, create if not present: not used currently 
-		/*pc.scan_index_visibility.resize(pc.num_of_scan_indices);
-		for (auto& siv : pc.scan_index_visibility) {siv = true;}
-		pc.update_scan_index_visibility();*/
-		// box is used to adjust correct size of the normals, surfel size... and for selection estimation 
-		// also used for rendering of the boxes 
-		pc.box_out_of_date = true;
-		// tree ds will be 
-		tree_ds_out_of_date = true;
-		if (tree_ds) {
-			delete tree_ds;
-			tree_ds = 0;
-		}
-		// neighbor_graph is used for normal and feature computation, built upon tree ds 
-		ng.clear();
-		// configure point cloud rendering, step...
-		show_point_end = pc.get_nr_points();
-		show_point_begin = 0;
-		show_point_count = pc.get_nr_points();
-		interact_point_step = std::max((unsigned)(show_point_count / 1000000), 1u);
-		nr_draw_calls = std::max((unsigned)(show_point_count / 1000000), 1u);
-		// update gui, not used currently 
-		update_member(&show_point_begin);
-		update_member(&show_point_end);
-		update_member(&show_point_count);
-		update_member(&interact_point_step);
-		update_member(&nr_draw_calls);
-		configure_subsample_controls();
-	}
-	if ((pcc_event & PCC_POINTS_MASK) == PCC_NEW_POINT_CLOUD && do_auto_view) {
-		auto_set_view();
-	}
-	post_redraw();
-}
-///
-void point_cloud_interactable::on_set(void* member_ptr)
-{
-	if (member_ptr == &ne.localization_scale || member_ptr == &ne.normal_sigma || member_ptr == &ne.bw_type || member_ptr == &ne.plane_distance_scale) {
-		on_point_cloud_change_callback(PCC_WEIGHTS);
-	}
-	if (member_ptr == &new_file_name) {
-		if (ref_tree_node_visible_flag(new_file_name)) {
-			save(new_file_name);
-		}
-		else {
-			if (!do_append)
-				open(new_file_name);
-			else
-				open_and_append(new_file_name);
-		}
-	}
-	if (member_ptr == &directory_name) {
-		open_directory(directory_name);
-	}
-	if (member_ptr == &show_point_start) {
-		show_point_begin = show_point_start;
-		show_point_end = show_point_start + show_point_count;
-		update_member(&show_point_begin);
-		update_member(&show_point_end);
-		configure_subsample_controls();
-	}
-	if (member_ptr == &show_point_count) {
-		if (show_point_start + show_point_count > pc.get_nr_points()) {
-			show_point_start = pc.get_nr_points() - show_point_count;
-			show_point_begin = show_point_start;
-			update_member(&show_point_begin);
-			update_member(&show_point_start);
-		}
-		show_point_end = show_point_start + show_point_count;
-		update_member(&show_point_end);
-		configure_subsample_controls();
-	}
-	if (member_ptr == &show_point_begin) {
-		show_point_start = show_point_begin;
-		show_point_count = show_point_end - show_point_begin;
-		update_member(&show_point_start);
-		update_member(&show_point_count);
-		configure_subsample_controls();
-	}
-	if (member_ptr == &show_point_end) {
-		show_point_count = show_point_end - show_point_begin;
-		update_member(&show_point_count);
-		configure_subsample_controls();
-	}
-	if (member_ptr == &interact_delay) {
-		interact_trigger.stop();
-		interact_trigger.schedule_recuring(interact_delay);
-	}
-	if (member_ptr == &use_component_colors) {
-		surfel_style.use_group_color = use_component_colors;
-		update_member(&surfel_style.use_group_color);
-	}
-	if (member_ptr == &use_component_transformations) {
-		surfel_style.use_group_transformation = use_component_transformations;
-		update_member(&surfel_style.use_group_transformation);
-	}
-	update_member(member_ptr);
-	post_redraw();
-}
-///
-void point_cloud_interactable::create_gui()
-{
-	add_decorator(get_name(), "heading", "level=2");
-	bool show = begin_tree_node("IO", data_path, true, "level=3;options='w=40';align=' '");
-	add_member_control(this, "append", do_append, "toggle", "w=60", " ");
-	add_member_control(this, "auto_view", do_auto_view, "toggle", "w=80");
-
-	if (show) {
-		align("\a");
-		add_gui("data_path", data_path, "directory", "w=170;title='Select Data Directory'");
-		add_gui("file_name", new_file_name, "file_name",
-			"w=130;"
-			"open=true;open_title='" FILE_OPEN_TITLE "';open_filter='" FILE_OPEN_FILTER "';"
-			"save=true;save_title='" FILE_SAVE_TITLE "';save_filter='" FILE_SAVE_FILTER "'"
-		);
-		add_gui("directory_name", directory_name, "directory", "w=170;title='Select Data Directory';tooltip='read all point clouds from a directory'");
-		align("\b");
-		end_tree_node(data_path);
-	}
-	show = begin_tree_node("points", show_points, false, "level=3;options='w=70';align=' '");
-	add_member_control(this, "show", show_points, "toggle", "w=40", " ");
-	add_member_control(this, "sort", sort_points, "toggle", "w=40", " ");
-	add_member_control(this, "blnd", surfel_style.blend_points, "toggle", "w=40");
-	if (show) {
-		align("\a");
-		add_gui("surfel_style", surfel_style);
-		if (begin_tree_node("subsample", show_point_step, false, "level=3")) {
-			align("\a");
-			add_member_control(this, "nr_draw_calls", nr_draw_calls, "value_slider", "min=1;max=100;log=true;ticks=true");
-			add_member_control(this, "interact step", interact_point_step, "value_slider", "min=1;max=100;log=true;ticks=true");
-			add_member_control(this, "interact delay", interact_delay, "value_slider", "min=0.01;max=1;log=true;ticks=true");
-			add_member_control(this, "show step", show_point_step, "value_slider", "min=1;max=20;log=true;ticks=true");
-			add_decorator("range control", "heading", "level=3");
-			add_member_control(this, "begin", show_point_begin, "value_slider", "min=0;max=10;ticks=true");
-			add_member_control(this, "end", show_point_end, "value_slider", "min=0;max=10;ticks=true");
-			add_decorator("window control", "heading", "level=3");
-			add_member_control(this, "start", show_point_start, "value_slider", "min=0;max=10;ticks=true");
-			add_member_control(this, "width", show_point_count, "value_slider", "min=0;max=10;ticks=true");
-			configure_subsample_controls();
-			align("\b");
-			end_tree_node(show_point_step);
-		}
-		add_member_control(this, "accelerate_picking", accelerate_picking, "check");
-		align("\b");
-		end_tree_node(show_points);
-	}
-	show = begin_tree_node("components", pc.components, false, "level=3;options='w=140';align=' '");
-	add_member_control(this, "clr", use_component_colors, "toggle", "w=30", " ");
-	add_member_control(this, "tra", use_component_transformations, "toggle", "w=30");
-	if (show) {
-		align("\a");
-		if (begin_tree_node("component colors", pc.component_colors, false, "level=3")) {
-			align("\a");
-			for (unsigned i = 0; i < pc.component_colors.size(); ++i) {
-				add_member_control(this, std::string("C") + cgv::utils::to_string(i), pc.component_colors[i]);
-			}
-			align("\b");
-			end_tree_node(pc.component_colors);
-		}
-		if (begin_tree_node("group transformations", pc.component_translations, false, "level=3")) {
-			align("\a");
-			for (unsigned i = 0; i < pc.component_translations.size(); ++i) {
-				add_gui(std::string("T") + cgv::utils::to_string(i), pc.component_translations[i]);
-				add_gui(std::string("Q") + cgv::utils::to_string(i), (HVec&)pc.component_rotations[i], "direction");
-			}
-			align("\b");
-			end_tree_node(pc.component_translations);
-		}
-		align("\b");
-		end_tree_node(pc.components);
-	}
-	show = begin_tree_node("neighbor graph", show_neighbor_graph, false, "level=3;options='w=160';align=' '");
-	add_member_control(this, "show", show_neighbor_graph, "toggle", "w=50");
-	if (show) {
-		add_member_control(this, "k", k, "value_slider", "min=3;max=50;log=true;ticks=true");
-		add_member_control(this, "symmetrize", do_symmetrize, "toggle");
-		cgv::signal::connect_copy(add_button("build")->click, cgv::signal::rebind(this, &point_cloud_interactable::build_neighbor_graph));
-		end_tree_node(show_neighbor_graph);
-	}
-
-	show = begin_tree_node("normals", show_nmls, false, "level=3;options='w=160';align=' '");
-	add_member_control(this, "show", show_nmls, "toggle", "w=50");
-	if (show) {
-		cgv::signal::connect_copy(add_button("toggle orientation")->click, cgv::signal::rebind(this, &point_cloud_interactable::toggle_normal_orientations));
-		add_member_control(this, "bilateral weight approach", ne.bw_type, "dropdown", "enums='normal,plane'");
-		add_member_control(this, "localization_scale", ne.localization_scale, "value_slider", "min=0.1;max=2;log=true;ticks=true");
-		add_member_control(this, "normal_sigma", ne.normal_sigma, "value_slider", "min=0.01;max=2;log=true;ticks=true");
-		add_member_control(this, "plane_distance_scale", ne.plane_distance_scale, "value_slider", "min=0.01;max=2;log=true;ticks=true");
-		add_member_control(this, "reorient", reorient_normals, "toggle");
-		cgv::signal::connect_copy(add_button("compute")->click, cgv::signal::rebind       (this, &point_cloud_interactable::compute_normals));
-		cgv::signal::connect_copy(add_button("recompute")->click, cgv::signal::rebind     (this, &point_cloud_interactable::recompute_normals));
-		cgv::signal::connect_copy(add_button("orient")->click, cgv::signal::rebind        (this, &point_cloud_interactable::orient_normals));
-		cgv::signal::connect_copy(add_button("orient to view")->click, cgv::signal::rebind(this, &point_cloud_interactable::orient_normals_to_view_point));
-		add_gui("normal_style", normal_style);
-		end_tree_node(show_nmls);
-	}
-
-/*	show = begin_tree_node("surfrec", show_surfrec, false, "level=3;w=100;align=' '");
-	add_member_control(this, "show", show_surfrec, "toggle", "w=50");
-	if (show) {
-		add_member_control(this, "debug_mode", SR.debug_mode, "enums='none,symmetrize,make_consistent,cycle_filter'");
-		end_tree_node(show_surfrec);
-	}
-	*/
-	show = begin_tree_node("box", show_box, false, "level=3;options='w=140';align=' '");
-	add_member_control(this, "main", show_box, "toggle", "w=30", " ");
-	add_member_control(this, "com", show_boxes, "toggle", "w=30");
-	if (show) {
-		add_gui("color", box_color);
-		add_gui("box_style", box_style);
-		add_gui("box_wire_style", box_wire_style);
-		end_tree_node(show_box);
-	}
-}
-///
+/*Feature Points Computation */
+/// self defined feature 
 void point_cloud_interactable::compute_feature_points_and_colorize()
 {
 	ensure_tree_ds();
@@ -3733,7 +3399,7 @@ void point_cloud_interactable::compute_feature_points_and_colorize()
 	}
 	on_point_cloud_change_callback(PCC_COLORS);
 }
-///
+/// compute unsigned curvature 
 void point_cloud_interactable::compute_principal_curvature_unsigned() {
 	// ensure point structures and properties 
 	ensure_tree_ds();
@@ -3803,7 +3469,7 @@ void point_cloud_interactable::smooth_curvature_and_recolor() {
 	auto_cluster_kmeans();
 	colorize_with_computed_curvature_unsigned();
 }
-///
+/// smooth curvature for region growing 
 void point_cloud_interactable::compute_smoothed_curvature() {
 	pc.smoothed_mean_curvature.resize(pc.get_nr_points());
 	for (int i = 0; i < pc.get_nr_points(); i++) {
@@ -3826,7 +3492,7 @@ void point_cloud_interactable::compute_smoothed_curvature() {
 		pc.smoothed_mean_curvature.at(i) = weighted_average_curvature;
 	}
 }
-///
+/// fill ds with newly computed smoothed curvature 
 void point_cloud_interactable::apply_smoothed_curvature() {
 	for (int i = 0; i < pc.get_nr_points(); i++) 
 		pc.curvature.at(i).mean_curvature = pc.smoothed_mean_curvature.at(i);
@@ -4180,3 +3846,486 @@ void point_cloud_interactable::ep_force_recolor() {
 	colorize_with_computed_curvature_unsigned();
 }
 
+/*Interactive Connectivity Extraction*/
+/*
+	algorithm:
+		for each point collect all face indices of neighbors with knn, classify point into
+			a.interior, if all face indices are identical
+			b.boundary, if two different face indices arise
+			c.corner otherwise, number of different face indices is called valence of point
+		a. face_extraction
+			loop over all face points, fill the data structure with point information.
+		b. corner_extraction
+			find one corner point that is not visited, if can not find, terminate.
+			Do region growing with knn neighbor graph to collect neighbor points, add them to data structure.
+				stopping criteria: find non corner point or corner point whose face indices are not
+					the same face indices of reference point.
+		c. edge_extraction
+			find one boundary point that is not visited, if can not find, terminate.
+			do region growing with stopping criteria: find non edge point or edge point whose face indices are not
+					the same face indices of reference point.
+*/
+/// currently not used
+void point_cloud_interactable::clear_before_point_classification() {
+	// reset visiting information, reuse the point visited boolean array 
+	for (auto& pv : pc.point_visited) pv = false;
+	for (auto& pq : pc.point_in_queue) pq = false;
+	for (auto& pg : pc.point_in_queue_which_group) pg = 0;
+	pc.classified_to_be_an_edge_point.clear();
+	pc.classified_to_be_a_corner_point.clear();
+	pc.classified_to_be_a_face_point.clear();
+	pc.incident_ids.clear();
+	pc.incident_ids.resize(pc.get_nr_points());
+}
+/// pre-requirement: rg is done, per point selection ready. after marked.
+/// result will be stored and visualized with TOPOAttribute
+#include <set>
+void point_cloud_interactable::classify_points_and_visualize() {
+	//
+	for (auto& pv : pc.point_visited) pv = false;
+	for (auto& pq : pc.point_in_queue) pq = false;
+	for (auto& pg : pc.point_in_queue_which_group) pg = 0;
+	pc.classified_to_be_an_edge_point.clear();
+	pc.classified_to_be_a_corner_point.clear();
+	pc.classified_to_be_a_face_point.clear();
+	pc.incident_ids.clear();
+	pc.incident_ids.resize(pc.get_nr_points());
+	pc.valence.clear();
+	pc.valence.resize(pc.get_nr_points());
+
+	//
+	ensure_tree_ds();
+
+	// iterate all points to classify 
+	for (Idx i = 0; i < (Idx)pc.get_nr_points(); ++i) {
+		std::set<int> incident_point_ids;
+
+		// ignore deleted points 
+		if (pc.topo_id.at(i) == point_cloud::TOPOAttribute::DEL)
+			continue;
+
+		// query neighbor points 
+		tree_ds->find_closest_points(pc.pnt(i), neighbor_points_point_classification, &knn);
+		for (auto kid : knn) {
+		//for (auto kid : pc.nearest_neighbour_indices[i]) { // k is the index
+			incident_point_ids.insert(pc.face_id.at(kid));
+		}
+
+		// interior points, keep the current selection (face id)
+		if (incident_point_ids.size() == 1) {
+			//
+			pc.classified_to_be_a_face_point.push_back(i);
+			pc.incident_ids[i] = incident_point_ids;
+
+			//
+			pc.topo_id.at(i) = point_cloud::TOPOAttribute::FACE;
+		}
+
+		// boundary points 
+		if (incident_point_ids.size() == 2)
+		{
+			//
+			pc.classified_to_be_an_edge_point.push_back(i);
+			pc.incident_ids[i] = incident_point_ids;
+			pc.index_in_classified_array[i] = pc.classified_to_be_an_edge_point.size() - 1;
+
+			//
+			pc.topo_id.at(i) = point_cloud::TOPOAttribute::EDGE;
+		}
+
+		// corner points 
+		if (incident_point_ids.size() >= 3)
+		{
+			//
+			pc.classified_to_be_a_corner_point.push_back(i);
+			pc.incident_ids[i] = incident_point_ids;
+			pc.valence[i] = incident_point_ids.size();
+			pc.index_in_classified_array[i] = pc.classified_to_be_a_corner_point.size() - 1;
+
+			//
+			pc.topo_id.at(i) = point_cloud::TOPOAttribute::CORNER;
+		}
+	}
+	compute_color_mapping();
+	//render_with_topo_selctions_only = true; // not working for now ...
+	render_with_topo_selction = true;
+}
+///
+void point_cloud_interactable::compute_color_mapping() {
+	//
+	pc.mapped_colors.clear();
+	pc.color_mapped_by_incident_ids.clear();
+	pc.color_mapped_by_incident_ids.resize(pc.get_nr_points());
+	for (auto& c : pc.color_mapped_by_incident_ids) {c = rgba(0,0,0,0);}
+	std::default_random_engine g;
+	std::uniform_real_distribution<float> d(0, 1);
+		
+	//
+	std::vector<std::set<int>> incident_ids_history;
+	incident_ids_history.push_back(pc.incident_ids[pc.classified_to_be_a_corner_point[0]]);
+
+	// visit the first 
+	int curr_pid = pc.classified_to_be_a_corner_point[0];
+	Clr curr_random_color = rgba(d(g), d(g), d(g), d(g));
+	pc.mapped_colors.push_back(curr_random_color);
+	pc.color_mapped_by_incident_ids[curr_pid] = curr_random_color;
+
+	//
+	for (int i = 1; i < pc.classified_to_be_a_corner_point.size(); i++) {
+		bool in_history = false;
+		int which_incident_group = -1;
+		std::set<int> curr_incident_ids = pc.incident_ids[pc.classified_to_be_a_corner_point[i]];
+		for (int his_idx = 0; his_idx < incident_ids_history.size(); his_idx++) {
+			if (curr_incident_ids == incident_ids_history[his_idx]) {
+				in_history = true;
+				which_incident_group = his_idx;
+				break;
+			}
+		}
+		if (!in_history) {
+			// create new color and visit current 
+			int curr_pid = pc.classified_to_be_a_corner_point[i];
+			curr_random_color = rgba(d(g), d(g), d(g), d(g));
+			// check and make it diff. from previous colors 
+			/*while () { 
+				for (auto& c : pc.mapped_colors) {
+					if(abs(c.R() - curr_random_color.R))
+				}
+			}*/
+			pc.mapped_colors.push_back(curr_random_color);
+			pc.color_mapped_by_incident_ids[curr_pid] = curr_random_color;
+
+			//
+			incident_ids_history.push_back(pc.incident_ids[curr_pid]);
+		}
+		else {
+			// reuse previous colors
+			int curr_pid = pc.classified_to_be_a_corner_point[i];
+			pc.color_mapped_by_incident_ids[curr_pid] = pc.mapped_colors[which_incident_group];
+		}
+		// state: each point has a color mapped from incident ids (corners only for now are used, others are black)
+		// color_mapped_by_incident_ids will be uploaded to GPU and rendered
+	}
+}
+/// connectivity extraction: faces 
+void point_cloud_interactable::face_extraction() {
+	std::set<int> regions;
+	for (auto& pid : pc.classified_to_be_a_face_point)
+		regions.insert(pc.face_id[pid]);
+	pc.num_face_ids = regions.size();
+}
+/// region grow to find neighbor points, extract connectivity info of the model: how many vertices/ edges/ faces 
+void point_cloud_interactable::corner_extraction() {
+	//
+	pc.corner_incidents_table.clear();
+	pc.point_indices_for_corners.clear();
+	pc.ranking_within_curr_topo.clear();
+	pc.ranking_within_curr_topo.resize(pc.get_nr_points());
+
+	//
+	std::vector<int> knn;
+	ensure_tree_ds();
+
+	//
+	int curr_corner_id = 0;
+	bool not_done = false;
+	int seed_pnt_id;
+
+	// find the first unvisited point as seed
+	for (auto& vpid : pc.classified_to_be_a_corner_point) {
+		if (pc.point_visited[vpid] == false) {
+			not_done = true;
+			seed_pnt_id = vpid;
+			break;
+		}
+	}
+
+	//
+	while (not_done) {
+		// goal: do rg to find all neighbour points
+		std::queue<int> q; q.push(seed_pnt_id);
+		std::set<int> curr_incident_ids;
+		std::vector<int> curr_point_indices;
+		while (!q.empty()) {
+			int curr_top_pid = q.front(); q.pop(); // fetch the front point
+			// visit the current point 
+
+			curr_incident_ids = pc.incident_ids[curr_top_pid]; // extract incident info for neighbor search 
+			pc.ranking_within_curr_topo[curr_top_pid] = curr_corner_id; // fill topo ranking information 
+			curr_point_indices.push_back(curr_top_pid);
+			pc.point_visited[curr_top_pid] = true;
+			pc.point_in_queue[curr_top_pid] = false;
+
+			// find neighbour points 
+				// alternative: 	
+				//for (auto kid : pc.nearest_neighbour_indices[curr_top_pid]) { 
+				//tree_ds->find_neighbor_point_given_radius(pc.pnt(curr_top_pid), 1 ,100, &knn);
+			tree_ds->find_closest_points(pc.pnt(curr_top_pid), 30, &knn); // find knn points 
+			for(auto kid:knn){
+				if (pc.point_visited[kid])// if visited, ignore 
+					continue;
+				bool check_incident_face_ids = false; // make sure that incident ids are the same 
+				if (check_incident_face_ids)
+					if (pc.incident_ids[kid] != curr_incident_ids)// if not belones to the same corner 
+						continue;
+				if (pc.topo_id[kid] != point_cloud::TOPOAttribute::CORNER)
+					continue;
+				if (pc.incident_ids.size() < 3)
+					continue;
+				if (pc.point_in_queue[kid])
+					continue;
+				q.push(kid);
+				pc.point_in_queue[kid] = true;
+			}
+		}
+		// state: an other region is done 
+		// trace face incidents for each corner 
+		pc.corner_incidents_table.push_back(curr_incident_ids); // incident id for the last visited, may cause error 
+		// trace points for each corner 
+		pc.point_indices_for_corners.push_back(curr_point_indices);
+		//
+		curr_corner_id++;
+		// reset 
+		not_done = false;
+		// find the first unvisited point as seed
+		for (auto& vpid : pc.classified_to_be_a_corner_point) {
+			if (pc.point_visited[vpid] == false) {
+				not_done = true;
+				seed_pnt_id = vpid;
+				break;
+			}
+		}
+	}
+	// state: all corners should be extracted, they are built from points 
+	// goal: quick check, how many regions are here? / corners 
+	std::set<int> regions;
+	for (auto& pid : pc.classified_to_be_a_corner_point)
+		regions.insert(pc.ranking_within_curr_topo[pid]);
+	pc.num_corner_ids = regions.size();
+	std::cout << "number of corners extracted: " << regions.size()
+		<< " or, curr_corner_id = " << curr_corner_id << std::endl;
+}
+/// not used 
+void point_cloud_interactable::corner_extraction_loop_all() {
+	//
+	int curr_corner_id = 0;
+	bool not_done = false;
+	int seed_pnt_id;
+
+	// find the first unvisited point as seed
+	for (auto& vpid : pc.classified_to_be_a_corner_point) {
+		if (pc.point_visited[vpid] == false) {
+			not_done = true;
+			seed_pnt_id = vpid;
+			break;
+		}
+	}
+
+	//
+	while (not_done) {
+		// visit current 
+		std::set<int> curr_incident_ids;
+		curr_incident_ids = pc.incident_ids[seed_pnt_id]; // extract incident info for neighbor search 
+		pc.ranking_within_curr_topo[seed_pnt_id] = curr_corner_id; // fill topo ranking information 
+		pc.point_visited[seed_pnt_id] = true;
+
+		// loop over all points to collect points that belongs to current corner, according to current seed 
+		// problem with boundary points 
+		for (auto& pid : pc.classified_to_be_a_corner_point) {
+			// check if curr point's incident_ids is included by seed point 
+			if (!std::includes(curr_incident_ids.begin(), curr_incident_ids.end(),
+				pc.incident_ids[pid].begin(), pc.incident_ids[pid].end()))
+				continue;
+			// ignore if already visited 
+			if (pc.point_visited[pid])
+				continue;
+			// visit points 
+			pc.ranking_within_curr_topo[pid] = curr_corner_id;
+			pc.point_visited[pid] = true;
+		}
+
+		// state: an other region is done 
+		curr_corner_id++;
+		not_done = false; // reset 
+		// find the first unvisited point as seed
+		for (auto& vpid : pc.classified_to_be_a_corner_point) {
+			if (pc.point_visited[vpid] == false) {
+				not_done = true;
+				seed_pnt_id = vpid;
+				break;
+			}
+		}
+	}
+}
+/// an other grow to find and push to edges E_conn
+void point_cloud_interactable::edge_extraction() {
+	//
+	std::vector<int> knn;
+	ensure_tree_ds();
+	int curr_edge_id = 0; // curr_edge_id should start from 0 
+	bool not_done = false;
+	int seed_pnt_id;
+
+	// find the first unvisited point as seed
+	for (auto& vpid : pc.classified_to_be_an_edge_point) {
+		if (pc.point_visited[vpid] == false) {
+			not_done = true;
+			seed_pnt_id = vpid;
+			break;
+		}
+	}
+
+	//
+	while (not_done) {
+		// goal: do rg to find all neighbour points
+		std::queue<int> q; q.push(seed_pnt_id);
+		while (!q.empty()) {
+			int curr_top_pid = q.front(); q.pop(); // fetch the front point
+			std::set<int> curr_incident_ids;
+
+			//
+			curr_incident_ids = pc.incident_ids[curr_top_pid];
+			pc.ranking_within_curr_topo[curr_top_pid] = curr_edge_id; // assign an edge id for each topological edge 
+			pc.point_visited[curr_top_pid] = true;
+			pc.point_in_queue[curr_top_pid] = false;
+
+			// find neighbour points 
+				//tree_ds->find_closest_points(pc.pnt(curr_top_pid), 30, &knn); // find knn points 
+				//for (auto kid : knn) { // loop over knn points
+			for (auto kid : pc.nearest_neighbour_indices[curr_top_pid]) {
+				if (pc.point_visited[kid])// if visited, ignore 
+					continue;
+				if (pc.incident_ids[kid] != curr_incident_ids)// if not belones to the same edge 
+					continue;
+				if (pc.point_in_queue[kid]) // if already exists 
+					continue;
+				q.push(kid);
+				pc.point_in_queue[kid] = true;
+			}
+		}
+		// state: an other region is done 
+		curr_edge_id++;
+		// reset
+		not_done = false;
+		// find the first unvisited point as seed
+		for (auto& vpid : pc.classified_to_be_an_edge_point) {
+			if (pc.point_visited[vpid] == false) {
+				not_done = true;
+				seed_pnt_id = vpid;
+				break;
+			}
+		}
+	}
+	// state: all point-based edges should be extracted
+	// goal: quick check, how many regions are here? / edges  
+	std::set<int> regions;
+	for (auto& epid : pc.classified_to_be_an_edge_point)
+		regions.insert(pc.ranking_within_curr_topo[epid]);
+	pc.num_edge_ids = regions.size();
+	std::cout << "number of point-besed edges extracted: " << regions.size()
+		<< " or, curr_edge_id = " << curr_edge_id << std::endl;
+}
+///
+void point_cloud_interactable::extract_incidents() {
+	face_extraction();
+	corner_extraction();
+	edge_extraction();
+}
+/// from point cloud to boxes and render, merge with contorller after that, not used 
+void point_cloud_interactable::extract_high_risk_corners() {
+	// clear variables first 
+	corner_incidents_is_in_high_risk.clear();
+	corner_incidents_is_in_high_risk.resize(pc.num_corner_ids);
+	high_risk_corner_boxes.clear();
+	high_risk_corners_color.clear();
+
+	//
+	for (int incident_set_1 = 0; incident_set_1 < pc.corner_incidents_table.size(); incident_set_1++) {
+		for (int incident_set_2 = 0; incident_set_2 < pc.corner_incidents_table.size(); incident_set_2++) {
+			if (incident_set_1 == incident_set_2)
+				continue;
+			// if incident_set_1 includes incident_set_2 (larger)
+			if (std::includes(pc.corner_incidents_table[incident_set_1].begin(), 
+				pc.corner_incidents_table[incident_set_1].end(),
+				pc.corner_incidents_table[incident_set_2].begin(),
+				pc.corner_incidents_table[incident_set_2].end())) {
+				//
+				corner_incidents_is_in_high_risk[incident_set_2] = true;
+			}
+		}
+	}
+
+	for (int cid = 0; cid < pc.num_corner_ids; cid++) {
+		if (corner_incidents_is_in_high_risk[cid]) {
+			box3 curr_box;
+			for(auto& pid: pc.point_indices_for_corners[cid])
+				curr_box.add_point(pc.pnt(pid));
+			high_risk_corner_boxes.push_back(curr_box);
+			high_risk_corners_color.push_back(rgb(1, 0, 0));
+		}
+	}
+}
+/// 
+void point_cloud_interactable::render_high_risk_corners(cgv::render::context& ctx) {
+	if (high_risk_corner_boxes.size() == 0)
+		return;
+	box_wire_style.use_group_color = false;
+	box_wire_style.use_group_transformation = false;
+	bw_renderer.set_render_style(box_wire_style);
+	bw_renderer.set_box_array(ctx, high_risk_corner_boxes);
+	bw_renderer.set_color_array(ctx, high_risk_corners_color);
+	bw_renderer.render(ctx, 0, high_risk_corner_boxes.size());
+}
+///
+void point_cloud_interactable::merge_high_risk_corners() {
+
+}
+
+
+/*Interactive Fitting */
+///
+void point_cloud_interactable::fitting_render_control_points_test() {
+	/*pc.control_points.push_back(pc.pnt(78673));
+	pc.control_point_colors.push_back(rgb(1, 1, 0));
+	pc.control_points.push_back(pc.pnt(17268));
+	pc.control_point_colors.push_back(rgb(0, 1, 0));*/
+
+	/*pc.face_id.at(78673) = 2u;
+	pc.face_id.at(17268) = 2u;*/
+
+	//pc.demo_surface.push_back();
+
+	pc.control_points.clear();
+	pc.control_point_colors.clear();
+	pc.demo_surface.clear();
+
+	pc.control_points.resize(16);
+	pc.control_point_colors.resize(16);
+	pc.demo_surface.resize(16);
+
+	pc.control_points.at(0) = vec3(0, 0, 0);
+	pc.control_points.at(1) = vec3(0, 1.01, 1);
+	pc.control_points.at(2) = vec3(0, 1.08, 2);
+	pc.control_points.at(3) = vec3(0, 0, 3);
+
+	pc.control_points.at(4) = vec3(1, 1.2, 0);
+	pc.control_points.at(5) = vec3(1, 1.3, 1);
+	pc.control_points.at(6) = vec3(1, 1.2, 2);
+	pc.control_points.at(7) = vec3(1, 1.1, 3);
+
+	pc.control_points.at(8) = vec3(2, 1.4, 0);
+	pc.control_points.at(9) = vec3(2, 1.6, 1);
+	pc.control_points.at(10) = vec3(2, 1.1, 2);
+	pc.control_points.at(11) = vec3(2, 1.2, 3);
+
+	pc.control_points.at(12) = vec3(3, 0, 0);
+	pc.control_points.at(13) = vec3(3, 1.3, 1);
+	pc.control_points.at(14) = vec3(3, 1.4, 2);
+	pc.control_points.at(15) = vec3(3, 0, 3);
+
+	for (int i = 0; i < 16; i++)
+		pc.control_point_colors.at(i) = rgb(0, 1, 0);
+
+	for (int i = 0; i < 16; i++)
+		pc.demo_surface.at(i) = i;
+}

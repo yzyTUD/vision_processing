@@ -820,7 +820,7 @@ bool visual_processing::handle(cgv::gui::event& e)
 				}
 				/*topology extraction */
 				if (data_ptr->check_roulette_selection(data_ptr->get_id_with_name("TopologyExtraction\nBoundary\nExtraction"))) {
-					data_ptr->point_cloud_kit->point_classification();
+					//data_ptr->point_cloud_kit->point_classification();
 				}
 				if (data_ptr->check_roulette_selection(data_ptr->get_id_with_name("TopologyExtraction\nStepBack"))) {
 					data_ptr->point_cloud_kit->step_back_last_selection();
@@ -2051,6 +2051,7 @@ void visual_processing::create_gui() {
 			add_member_control(this, "paratone_5", data_ptr->paratone_5, "value_slider", "min=-1;max=1;log=false;ticks=true;");*/
 		add_member_control(this, "render_skybox", render_skybox, "check");
 		add_member_control(this, "render_env", render_env, "check");
+		add_member_control(this, "show_box", data_ptr->point_cloud_kit->show_box, "check");
 		add_member_control(this, "put_points_to_table", put_points_to_table, "check");
 		add_member_control(this, "camera_ready", camera_ready, "check");
 		add_member_control(this, "render_handhold_gui", render_handhold_gui, "check");
@@ -2182,8 +2183,13 @@ void visual_processing::create_gui() {
 		add_decorator("// extract connectivity ", "heading", "level=3");
 		connect_copy(add_button("build_connectivity_graph_fitting_and_render_control_points")->click,
 			rebind(this, &visual_processing::build_connectivity_graph_fitting_and_render_control_points));
-
+		add_member_control(this, "neighbor_points_point_classification", data_ptr->point_cloud_kit->neighbor_points_point_classification, 
+			"value_slider", "min=1;max=300;log=false;ticks=true;");
+		connect_copy(add_button("classify_points_and_visualize")->click,
+			rebind(data_ptr->point_cloud_kit, &point_cloud_interactable::classify_points_and_visualize));
+		
 		add_decorator("// connectivity info visulization ", "heading", "level=3");
+		add_member_control(this, "enable_topo_highlight", data_ptr->point_cloud_kit->enable_topo_highlight, "check");
 		add_member_control(this, "colorize_with_corner_edge_id", data_ptr->point_cloud_kit->colorize_with_corner_edge_id, "check");
 		connect_copy(add_button("print_pc_information")->click, rebind(this, &visual_processing::print_pc_information));
 		add_member_control(this, "highlight_topo_id", data_ptr->point_cloud_kit->highlight_topo_id, // per point? 
