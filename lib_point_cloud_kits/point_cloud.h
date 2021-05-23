@@ -243,14 +243,16 @@ public:
 		point selection definition
 	*/
 	// per vertex marked index, make it easily readable, passing parameters to functions 
-	enum TOPOAttribute { 
-		RESERVED, 
+	enum TOPOAttribute {
+		RESERVED,
 		ORI = 1,
 		DEL = 2,
-		BOUNDARIES = 3,
-		CORNER = 4, // this is the extracted info, original face id should also be kept 
-		ICP_SOURCE_A = 5,
-		ICP_TARGET_A = 6,
+		FACE = 3,
+		CORNER = 4,
+		EDGE = 5,
+		BOUNDARY = 6,
+		ICP_SOURCE_A,
+		ICP_TARGET_A,
 		TO_BE_SUBSAMPLED, // before split: you will lose face id by marking this 
 		NEWLY_GENERATED,
 		//...

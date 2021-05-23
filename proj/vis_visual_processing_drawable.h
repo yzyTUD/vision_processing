@@ -2184,6 +2184,7 @@ void visual_processing::create_gui() {
 			rebind(this, &visual_processing::build_connectivity_graph_fitting_and_render_control_points));
 
 		add_decorator("// connectivity info visulization ", "heading", "level=3");
+		add_member_control(this, "colorize_with_corner_edge_id", data_ptr->point_cloud_kit->colorize_with_corner_edge_id, "check");
 		connect_copy(add_button("print_pc_information")->click, rebind(this, &visual_processing::print_pc_information));
 		add_member_control(this, "highlight_topo_id", data_ptr->point_cloud_kit->highlight_topo_id, // per point? 
 			"value_slider", "min=1;max=22;log=false;ticks=true;");

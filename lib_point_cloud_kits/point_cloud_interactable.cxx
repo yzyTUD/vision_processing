@@ -682,7 +682,7 @@ bool point_cloud_interactable::read_pc_campose(cgv::render::context& ctx, quat i
 
 	return true;
 }
-///
+/// check if the camera position is valid 
 bool point_cloud_interactable::check_valid_pc_and_campose()
 {
 	bool succ = pc.cam_posi_list.front().x() != -1000
@@ -699,7 +699,7 @@ bool point_cloud_interactable::check_valid_pc_and_campose()
 	}
 	return succ;
 }
-///
+/// 
 void point_cloud_interactable::apply_further_transformation(int which, quat q, vec3 t) {
 	image_renderer_list.at(which).apply_further_transformation(q, t);
 }
@@ -820,7 +820,7 @@ void point_cloud_interactable::mark_points_and_push_to_tmp_pointcloud(Pnt p, flo
 		to_be_copied_pointcloud.box_out_of_date = true;
 	}
 }
-
+///
 void point_cloud_interactable::mark_topo_id_with_controller(Pnt p, float r, int objctive) {
 	if (pc.get_nr_points() == 0)
 		return;
@@ -1035,7 +1035,6 @@ void point_cloud_interactable::mark_points_with_clipping_plane(Pnt p,Nml plane_n
 		}
 	}
 }
-
 ///
 template <class ADAPTER>
 const typename ADAPTER::container_type& get_container(ADAPTER& a)
@@ -1048,6 +1047,7 @@ const typename ADAPTER::container_type& get_container(ADAPTER& a)
 
 	return hack::get(a);
 }
+
 /*operations after marked */
 /*
 	algorithm:
@@ -1080,7 +1080,6 @@ void point_cloud_interactable::clear_before_point_classification() {
 	pc.ranking_within_curr_topo.clear();
 	pc.ranking_within_curr_topo.resize(pc.get_nr_points());
 }
-
 /// pre-requirement: rg is done, per point selection ready. after marked.
 /// result will be stored and visualized with TOPOAttribute
 #include <set>
@@ -1110,6 +1109,9 @@ void point_cloud_interactable::point_classification() {
 			//
 			pc.classified_to_be_a_face_point.push_back(i); 
 			pc.incident_ids[i] = incident_point_ids;
+
+			//
+			pc.topo_id.at(i) = point_cloud::TOPOAttribute::FACE;
 		}
 		
 		// boundary points 
@@ -1121,7 +1123,7 @@ void point_cloud_interactable::point_classification() {
 			pc.index_in_classified_array[i] = pc.classified_to_be_an_edge_point.size() - 1;
 			
 			//
-			pc.topo_id.at(i) = point_cloud::TOPOAttribute::BOUNDARIES;
+			pc.topo_id.at(i) = point_cloud::TOPOAttribute::EDGE;
 		}
 		
 		// corner points 
@@ -1138,7 +1140,6 @@ void point_cloud_interactable::point_classification() {
 	}
 	render_with_topo_selctions_only = true; // not working for now ...
 }
-
 /// connectivity extraction: faces 
 void point_cloud_interactable::face_extraction() {
 	std::set<int> regions;
@@ -1146,7 +1147,6 @@ void point_cloud_interactable::face_extraction() {
 		regions.insert(pc.face_id[pid]);
 	pc.num_face_ids = regions.size();
 }
-
 /// region grow to find neighbor points, extract connectivity info of the model: how many vertices/ edges/ faces 
 void point_cloud_interactable::corner_extraction() {
 	//
@@ -1188,10 +1188,12 @@ void point_cloud_interactable::corner_extraction() {
 			for (auto kid : pc.nearest_neighbour_indices[curr_seed_pid]) { // k is the index
 				if (pc.point_visited[kid])// if visited, ignore 
 					continue;
-				bool check_incident_face_ids = true;
+				bool check_incident_face_ids = false;
 				if(check_incident_face_ids)
 					if (pc.incident_ids[kid] != curr_incident_ids)// if not belones to the same corner 
 						continue;
+				if (pc.topo_id[kid] != point_cloud::TOPOAttribute::CORNER)
+					continue;
 				if (pc.incident_ids.size() < 3)
 					continue;
 				if (pc.point_in_queue[kid])
@@ -1222,8 +1224,58 @@ void point_cloud_interactable::corner_extraction() {
 	std::cout << "number of corners extracted: " << regions.size()
 		<< " or, curr_corner_id = " << curr_corner_id << std::endl;
 }
-
 ///
+void point_cloud_interactable::corner_extraction_loop_all() {
+	//
+	int curr_corner_id = 0;
+	bool not_done = false;
+	int seed_pnt_id;
+
+	// find the first unvisited point as seed
+	for (auto& vpid : pc.classified_to_be_a_corner_point) {
+		if (pc.point_visited[vpid] == false) {
+			not_done = true;
+			seed_pnt_id = vpid;
+			break;
+		}
+	}
+
+	//
+	while (not_done) {
+		// visit current 
+		std::set<int> curr_incident_ids;
+		curr_incident_ids = pc.incident_ids[seed_pnt_id]; // extract incident info for neighbor search 
+		pc.ranking_within_curr_topo[seed_pnt_id] = curr_corner_id; // fill topo ranking information 
+		pc.point_visited[seed_pnt_id] = true;
+
+		// loop over all points to collect points that belongs to current corner, according to current seed 
+		// problem with boundary points 
+		for (auto& pid:pc.classified_to_be_a_corner_point) {
+			// check if curr point's incident_ids is included by seed point 
+			if (!std::includes(curr_incident_ids.begin(), curr_incident_ids.end(), 
+				pc.incident_ids[pid].begin(), pc.incident_ids[pid].end()))
+				continue;
+			// ignore if already visited 
+			if (pc.point_visited[pid])
+				continue;
+			// visit points 
+			pc.ranking_within_curr_topo[pid] = curr_corner_id;
+			pc.point_visited[pid] = true;
+		}
+
+		// state: an other region is done 
+		curr_corner_id++;
+		not_done = false; // reset 
+		// find the first unvisited point as seed
+		for (auto& vpid : pc.classified_to_be_a_corner_point) {
+			if (pc.point_visited[vpid] == false) {
+				not_done = true;
+				seed_pnt_id = vpid;
+				break;
+			}
+		}
+	}
+}
 /// an other grow to find and push to edges E_conn
 void point_cloud_interactable::edge_extraction() {
 	//

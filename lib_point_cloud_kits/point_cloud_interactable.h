@@ -551,14 +551,16 @@ public:
 	/* Fine-Grained Point Classification */
 	///
 	void clear_before_point_classification();
-	/// thw quality of the boundaries depends on region growing steps, how good faces are marked 
+	/// the quality of the boundaries depends on region growing steps, how good faces are marked 
 	void point_classification();
-	///  quality depends on the prev. steps 
+	///  extract faces from points 
 	void face_extraction();
-	/// do some region growing and extract to global ds 
+	/// extract corners from points 
 	void corner_extraction();
-	/// do some region growing and extract to global ds 
+	/// extract edges from points 
 	void edge_extraction();
+	///  corner extraction variation 
+	void corner_extraction_loop_all();
 	/// entry point, batch operation 
 	void extract_incidents();
 
