@@ -1425,6 +1425,13 @@ void  visual_processing::rotate_x() {
 	data_ptr->point_cloud_kit->pc.rotate(quat(vec3(1, 0, 0), 5 * M_PI / 180));
 	std::cout << "rotate 5 degree around x!" << std::endl;
 }
+/// 
+void visual_processing::higher_y() {
+	mat4 m = cgv::math::translate4(vec3(0, height_offset,0));
+	data_ptr->point_cloud_kit->pc.transform(m);
+	data_ptr->point_cloud_kit->tree_ds_out_of_date = true;
+	data_ptr->point_cloud_kit->ng.clear();
+}
 ///
 void  visual_processing::rotate_z() {
 	data_ptr->point_cloud_kit->pc.rotate(quat(vec3(0, 0, 1), 5 * M_PI / 180));
@@ -2462,6 +2469,9 @@ void visual_processing::create_gui() {
 			rebind(this, &visual_processing::toggle_normal_orientations));
 		connect_copy(add_button("save")->click,
 			rebind(this, &visual_processing::start_writting_pc_parallel));
+
+		add_member_control(this, "relative_height_offset", height_offset, "value_slider", "min=-10;max=10;log=false;ticks=true;");
+		connect_copy(add_button("higher_y")->click, rebind(this, &visual_processing::higher_y));
 	}
 	//
 	if (begin_tree_node("Point Cloud ControlLOD", gui_ControlLOD, false, "level=3")) {

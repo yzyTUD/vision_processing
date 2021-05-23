@@ -188,6 +188,7 @@ protected:
 	bool put_points_to_table = true;
 	bool backward_grow = false;
 	int curr_face_selecting_id;
+	float height_offset = 1;
 
 	// cam rendering 
 	std::vector<vec3> point_and_cam;
@@ -420,6 +421,7 @@ public:
 	void apply_further_transformation();
 	void align_leica_scans_with_cgv();
 	void rotate_x();
+	void higher_y();
 	void rotate_z();
 	bool load_next_shot();
 	void compute_nmls_if_is_required();

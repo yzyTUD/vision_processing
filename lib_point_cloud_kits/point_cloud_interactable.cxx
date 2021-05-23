@@ -3964,6 +3964,10 @@ void point_cloud_interactable::classify_points_and_visualize() {
 ///
 void point_cloud_interactable::compute_color_mapping() {
 	//
+	if (pc.classified_to_be_a_corner_point.size() == 0)
+		return;
+	
+	//
 	pc.mapped_colors.clear();
 	pc.color_mapped_by_incident_ids.clear();
 	pc.color_mapped_by_incident_ids.resize(pc.get_nr_points());
