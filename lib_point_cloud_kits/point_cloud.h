@@ -308,11 +308,11 @@ public:
 
 	/*fine-grained point classification: 22-05-2021 */
 	/// each point has a valence, searched from neighbor points 
-	std::vector<int> valence; // is nothing but incident_ids.size(), used for rendering 
+	//std::vector<int> valence; // is nothing but incident_ids.size(), used for rendering 
 	/// incident face ids 
 	std::vector<std::set<int>> incident_ids;
 	/// for rendering and correction 
-	std::vector<Clr> color_mapped_by_incident_ids;
+	std::vector<Clr> color_mapped_by_incident_ids; // fine 
 
 
 public:
@@ -324,7 +324,7 @@ public:
 	/// all points that are classified to be a corner point 
 	std::vector<int> classified_to_be_a_corner_point;
 	/// mapping incident ids to colors 
-	std::vector<Clr> mapped_colors;
+	std::vector<Clr> mapped_colors; // fine
 
 	/*read from file */ 
 	float suggested_point_size = -1; // check with larger than 0
@@ -335,6 +335,7 @@ public:
 	// ng required, in upper level -> 
 	// compute_principal_curvature()
 	curvature_info curvinfo;
+	bool curvature_evenly = false;
 	//float ; // should larger than 0. curr not stored to file 
 
 	/*lod caching */
@@ -403,6 +404,8 @@ public:
 	std::vector<std::set<int>> corner_incidents_table;
 	///
 	std::vector<std::vector<int>> point_indices_for_corners;
+	///
+	std::vector<bool> use_this_point_indices_for_this_corner;
 	///
 	void make_explicit();
 

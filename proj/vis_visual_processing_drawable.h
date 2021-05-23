@@ -2185,6 +2185,8 @@ void visual_processing::create_gui() {
 			rebind(this, &visual_processing::build_connectivity_graph_fitting_and_render_control_points));
 		add_member_control(this, "neighbor_points_point_classification", data_ptr->point_cloud_kit->neighbor_points_point_classification, 
 			"value_slider", "min=1;max=300;log=false;ticks=true;");
+		add_member_control(this, "neighbor_points_corner_extraction", data_ptr->point_cloud_kit->neighbor_points_corner_extraction,
+			"value_slider", "min=1;max=300;log=false;ticks=true;");
 		connect_copy(add_button("classify_points_and_visualize")->click,
 			rebind(data_ptr->point_cloud_kit, &point_cloud_interactable::classify_points_and_visualize));
 		

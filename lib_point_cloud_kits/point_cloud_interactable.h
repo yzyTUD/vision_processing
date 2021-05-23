@@ -549,7 +549,9 @@ public:
 
 
 	/* Fine-Grained Point Classification */
-	int neighbor_points_point_classification = 50; // more points may required 
+	int neighbor_points_point_classification = 30; // more points may required 
+	///
+	int neighbor_points_corner_extraction = 30;
 	///
 	void clear_before_point_classification();
 	/// the quality of the boundaries depends on region growing steps, how good faces are marked 
@@ -557,15 +559,20 @@ public:
 	///
 	void compute_color_mapping();
 
-	/* Topological Information Extraction*/
-	cgv::render::box_render_style high_risk_corner_style;
+	/* Connnectivity Information Extraction*/
+	/// not working
+	std::vector<bool> corner_incidents_is_in_high_risk;
 	std::vector<box3> high_risk_corner_boxes;
 	std::vector<rgb> high_risk_corners_color;
-	std::vector<bool> corner_incidents_is_in_high_risk;
+	/// render corner bboxes and easier correction with controller 
+	std::vector<box3> corner_bboxes;
+	std::vector<rgb> corner_bbox_colors;
 	///  extract faces from points 
 	void face_extraction();
 	/// extract corners from points 
 	void corner_extraction();
+	///
+	void extract_bboxes_for_corners();
 	/// extract edges from points 
 	void edge_extraction();
 	///  corner extraction variation 
@@ -574,15 +581,17 @@ public:
 	void extract_incidents();
 	///
 	void extract_high_risk_corners();
+	///
+	void render_bboxes_for_corners(cgv::render::context& ctx);
 	/// used for flipping,, blinking, change in timer event 
 	bool is_rendering_high_risk_corners = false;
-	///
-	void render_high_risk_corners(cgv::render::context& ctx);
-	///
+	/// all-in-one quick test 
 	void connectivity_extraction() {
 		classify_points_and_visualize();
-		extract_incidents();
-		extract_high_risk_corners();
+		extract_incidents(); // this may cause error, interactively correct 
+			//extract_bboxes_for_corners(); // render all corner bboxes
+			//extract_high_risk_corners(); // doesnt work
+		// interactions needed 
 		pc.make_explicit(); // extract to explicit expression 
 		// extract he ... 
 		//pc.fit_all();
@@ -591,6 +600,8 @@ public:
 	}
 	///
 	void merge_high_risk_corners();
+	///
+	void correct_corner_id_of_the_minior_points_within_range(vec3 p, float r);
 
 
 	/* Model Fitting */

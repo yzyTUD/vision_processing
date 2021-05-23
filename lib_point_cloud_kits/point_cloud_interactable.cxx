@@ -224,7 +224,8 @@ void point_cloud_interactable::draw(cgv::render::context& ctx)
 		std::swap(show_point_step, interact_point_step);*/
 	gl_point_cloud_drawable::draw(ctx);
 
-	render_high_risk_corners(ctx);
+	//render_high_risk_corners(ctx);
+	render_bboxes_for_corners(ctx);
 
 	//if (interact_state != IS_DRAW_FULL_FRAME) {
 	//	std::swap(show_point_step, interact_point_step);
@@ -3459,7 +3460,6 @@ void point_cloud_interactable::compute_principal_curvature_unsigned() {
 			const float& principal_max, const float& principal_min, const Dir& principal_tangent_max, const Dir& principal_tangent_min
 		*/
 	}
-
 }
 /// and recolor at the same time, one can observe from colors 
 void point_cloud_interactable::smooth_curvature_and_recolor() {
@@ -3499,14 +3499,19 @@ void point_cloud_interactable::apply_smoothed_curvature() {
 }
 /// recolor point cloud with curvature
 void point_cloud_interactable::colorize_with_computed_curvature_unsigned() {
-
-	// loop over to assign 
-	for (int i = 0; i < pc.get_nr_points(); i++) {
-		//std::cout << "pc.curvature.at(i).gaussian_curvature: " << pc.curvature.at(i).gaussian_curvature << std::endl;
-		if (pc.curvature.at(i).mean_curvature > pc.curvinfo.coloring_threshold)
-			pc.clr(i) = rgb(102.0f / 255, 0, 102.0f / 255);
-		else
+	if (pc.curvature_evenly) {
+		for (int i = 0; i < pc.get_nr_points(); i++) {
 			pc.clr(i) = rgb(153.0f / 255, 204.0f / 255, 255.0f / 255);
+		}
+	}
+	else {
+		for (int i = 0; i < pc.get_nr_points(); i++) {
+			//std::cout << "pc.curvature.at(i).gaussian_curvature: " << pc.curvature.at(i).gaussian_curvature << std::endl;
+			if (pc.curvature.at(i).mean_curvature > pc.curvinfo.coloring_threshold)
+				pc.clr(i) = rgb(102.0f / 255, 0, 102.0f / 255);
+			else
+				pc.clr(i) = rgb(153.0f / 255, 204.0f / 255, 255.0f / 255);
+		}
 	}
 }
 // describes a surface defined by a quadratic equation with two parameters
@@ -3757,6 +3762,12 @@ void point_cloud_interactable::compute_and_print_curvature_computing_info() {
 /// just for visualize, computing is no problem now
 /// goal: find a good threshold
 void point_cloud_interactable::auto_cluster_kmeans() {
+	// evenly
+	if ((pc.curvinfo.max_mean_curvature - pc.curvinfo.min_mean_curvature) < 1e-6) {
+		pc.curvature_evenly = true;
+		return;
+	}
+
 	// init centroids
 	float centroid_A = pc.curvinfo.max_mean_curvature;
 	float centroid_B = pc.curvinfo.min_mean_curvature;
@@ -3834,7 +3845,7 @@ void point_cloud_interactable::ep_compute_principal_curvature_and_colorize_signe
 void point_cloud_interactable::ep_compute_principal_curvature_and_colorize_unsigned() {
 	std::cout << "computing principal curvature..." << std::endl;
 	compute_principal_curvature_unsigned();
-	fill_curvature_structure();
+	fill_curvature_structure(); // mean curvature 
 	smooth_curvature_and_recolor();
 	//print_curvature_computing_info();
 	//auto_cluster_kmeans();
@@ -3890,8 +3901,8 @@ void point_cloud_interactable::classify_points_and_visualize() {
 	pc.classified_to_be_a_face_point.clear();
 	pc.incident_ids.clear();
 	pc.incident_ids.resize(pc.get_nr_points());
-	pc.valence.clear();
-	pc.valence.resize(pc.get_nr_points());
+	//pc.valence.clear();
+	//pc.valence.resize(pc.get_nr_points());
 
 	//
 	ensure_tree_ds();
@@ -3939,7 +3950,7 @@ void point_cloud_interactable::classify_points_and_visualize() {
 			//
 			pc.classified_to_be_a_corner_point.push_back(i);
 			pc.incident_ids[i] = incident_point_ids;
-			pc.valence[i] = incident_point_ids.size();
+			//pc.valence[i] = incident_point_ids.size();
 			pc.index_in_classified_array[i] = pc.classified_to_be_a_corner_point.size() - 1;
 
 			//
@@ -4019,6 +4030,7 @@ void point_cloud_interactable::corner_extraction() {
 	//
 	pc.corner_incidents_table.clear();
 	pc.point_indices_for_corners.clear();
+	pc.use_this_point_indices_for_this_corner.clear();
 	pc.ranking_within_curr_topo.clear();
 	pc.ranking_within_curr_topo.resize(pc.get_nr_points());
 
@@ -4060,7 +4072,7 @@ void point_cloud_interactable::corner_extraction() {
 				// alternative: 	
 				//for (auto kid : pc.nearest_neighbour_indices[curr_top_pid]) { 
 				//tree_ds->find_neighbor_point_given_radius(pc.pnt(curr_top_pid), 1 ,100, &knn);
-			tree_ds->find_closest_points(pc.pnt(curr_top_pid), 30, &knn); // find knn points 
+			tree_ds->find_closest_points(pc.pnt(curr_top_pid), neighbor_points_corner_extraction, &knn); // find knn points 
 			for(auto kid:knn){
 				if (pc.point_visited[kid])// if visited, ignore 
 					continue;
@@ -4104,6 +4116,35 @@ void point_cloud_interactable::corner_extraction() {
 	pc.num_corner_ids = regions.size();
 	std::cout << "number of corners extracted: " << regions.size()
 		<< " or, curr_corner_id = " << curr_corner_id << std::endl;
+
+	pc.use_this_point_indices_for_this_corner.resize(pc.point_indices_for_corners.size()); // = corner size 
+	for (auto& b : pc.use_this_point_indices_for_this_corner) b = true;
+
+	extract_bboxes_for_corners();
+}
+///
+void point_cloud_interactable::extract_bboxes_for_corners() {
+	//
+	corner_bboxes.clear();
+	corner_bbox_colors.clear();
+
+	// 
+	for (int g = 0; g < pc.point_indices_for_corners.size(); g++) {
+		if (!pc.use_this_point_indices_for_this_corner[g]) // rendering disabled
+			continue;
+		box3 curr_corner_box;
+		std::vector<int> cpoints = pc.point_indices_for_corners[g];
+		for (auto& cpid : cpoints) {
+			// also add neighbor points to enlarge bbox: for a clearer visual effect 
+			for (auto& icpid : pc.nearest_neighbour_indices[cpid]) {
+				curr_corner_box.add_point(pc.pnt(icpid));
+			}
+		}
+
+		//
+		corner_bboxes.push_back(curr_corner_box);
+		corner_bbox_colors.push_back(rgba(1,0,0,0));
+	}
 }
 /// not used 
 void point_cloud_interactable::corner_extraction_loop_all() {
@@ -4266,19 +4307,78 @@ void point_cloud_interactable::extract_high_risk_corners() {
 	}
 }
 /// 
-void point_cloud_interactable::render_high_risk_corners(cgv::render::context& ctx) {
-	if (high_risk_corner_boxes.size() == 0)
+void point_cloud_interactable::render_bboxes_for_corners(cgv::render::context& ctx) {
+	if (corner_bboxes.size() == 0)
 		return;
 	box_wire_style.use_group_color = false;
 	box_wire_style.use_group_transformation = false;
 	bw_renderer.set_render_style(box_wire_style);
-	bw_renderer.set_box_array(ctx, high_risk_corner_boxes);
-	bw_renderer.set_color_array(ctx, high_risk_corners_color);
-	bw_renderer.render(ctx, 0, high_risk_corner_boxes.size());
+	bw_renderer.set_box_array(ctx, corner_bboxes);
+	bw_renderer.set_color_array(ctx, corner_bbox_colors);
+	bw_renderer.render(ctx, 0, corner_bboxes.size());
 }
 ///
 void point_cloud_interactable::merge_high_risk_corners() {
 
+}
+/*
+	adjust searching radius or, direct correction with controllers 
+		again, for simple cases, one will not need this.
+		Interactive Model Reconstruction is designed to accomplish tasks that are hard for traditional methods.
+		The use case may be very complex and hard to adjust parameters. 
+*/
+///
+void point_cloud_interactable::correct_corner_id_of_the_minior_points_within_range(vec3 p, float r) {
+	//
+	int major_corner_id = -1;
+	std::vector<int> points_found_per_corner_id;
+	points_found_per_corner_id.resize(pc.num_corner_ids);
+	for (auto& points : points_found_per_corner_id) points = 0;
+
+	// count 
+	for (auto& pid : pc.classified_to_be_a_corner_point) 
+		if ((pc.pnt(pid) - p).length() < r) 
+			points_found_per_corner_id[pc.ranking_within_curr_topo[pid]]++;
+
+	// find major point corner id
+	int max_num_points = -1;
+	for (int i = 0; i < points_found_per_corner_id.size(); i++) {
+		if (points_found_per_corner_id[i] > max_num_points) {
+			max_num_points = points_found_per_corner_id[i];
+			major_corner_id = i;
+		}
+	}
+
+	// mark all points selected to computed major id 
+	std::set<int> minor_corner_ids;
+	for (auto& pid : pc.classified_to_be_a_corner_point)
+		if ((pc.pnt(pid) - p).length() < r)
+		{
+			if (pc.ranking_within_curr_topo[pid] == major_corner_id) {
+				// do nothing 
+			}
+			else {
+				// trace minor corner ids 
+				minor_corner_ids.insert(pc.ranking_within_curr_topo[pid]);
+
+				// push the current pid 
+				pc.point_indices_for_corners[major_corner_id].push_back(pid);
+
+				// update to major id
+				pc.ranking_within_curr_topo[pid] = major_corner_id;
+			}
+		}
+
+	// update global information 
+		/*
+			pc.point_indices_for_corners
+			corner_bboxes
+			num-of-corners
+		*/
+		for(auto& mid: minor_corner_ids)
+			pc.use_this_point_indices_for_this_corner[mid] = false;
+		// push back to new ...
+		pc.num_corner_ids -= minor_corner_ids.size(); // assume that all minor points represents an error extracted corner  
 }
 
 
