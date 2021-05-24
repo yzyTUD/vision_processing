@@ -71,8 +71,17 @@ struct mV { // "model vertex "
 
 };
 struct mHEdge {
-	mV* orig;
-	mV* dist; // or, he.next.orig
+	// ref. back to edges 
+	int edge_id;
+
+	//
+	std::vector<int> point_indices;
+
+	//
+	int orig;
+	int dist;
+
+	//
 	mHEdge* next;
 	mHEdge* inv;
 	mHEdge* prev;
@@ -85,8 +94,10 @@ struct mEdge { // "model half edge "
 	int valence;
 
 	// he 
-	mHEdge* e0; // split to he
-	mHEdge* e1;
+	int e0; 
+	int e1;
+
+	//
 	std::set<int> incident_corners; // ok 
 	std::set<int> incident_faces; // ok 
 	std::set<int> incident_edges;
@@ -404,6 +415,8 @@ public:
 	std::vector<mV> modelV;
 	/// a model is built from a list of edges
 	std::vector<mEdge> modelEdge;
+	/// list of half edges 
+	std::vector<mHEdge> modelHalfEdges;
 	/// a model is built from a list of surfaces 
 	std::vector<mFace> modelFace;
 	/// incidents per corner, for special case in corner extraction 
@@ -416,6 +429,10 @@ public:
 	void make_explicit();
 	///
 	void extract_boundary_loops();
+	///
+	void orient_faces();
+	///
+	void extract_half_edges();
 	///
 	bool check_valid_parameters(int fid, int which_loop, int edge_rank_within_loop);
 	///

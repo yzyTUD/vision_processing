@@ -570,72 +570,6 @@ void point_cloud::extract_boundary_loops() {
 
 			//
 			f.boundary_loops.push_back(ordered_edges);
-
-			//
-			//int v1 = *(modelEdge[edge_id].incident_corners.begin());
-			//int v2 = *(++modelEdge[edge_id].incident_corners.begin());
-			//int beginning_index = v1;
-			//ordered_edges.push_back(edge_id);
-			//int last_v = v2;
-			//bool can_find_next = true;
-
-			//// find next vertex 
-			//while (can_find_next) {
-			//	int next_edge = -1;
-			//	std::set<int> edges_last_v = modelV[last_v].incident_edges;
-			//	for (auto eid : edges_last_v) {
-			//		//
-			//		bool already_found = false;
-			//		for (auto e : ordered_edges) {
-			//			if (e == eid)
-			//				already_found = true;
-			//		}
-			//		if (already_found) 
-			//			continue;
-
-			//		//
-			//		bool in_curr_face = false;
-			//		for (auto fid : modelEdge[eid].incident_faces) {
-			//			if (fid == f.face_id)
-			//				in_curr_face = true;
-			//		}
-			//		if (!in_curr_face)
-			//			continue;
-
-			//		//
-			//		next_edge = eid;
-			//		break;
-			//	}
-
-			//	//
-			//	if (next_edge == -1) {
-			//		can_find_next = false;
-			//		break;
-			//	}
-
-			//	//
-			//	bool found = false;
-			//	for (auto vid : modelEdge[next_edge].incident_corners) {
-			//		//
-			//		if (vid == last_v)
-			//			continue;
-
-			//		//
-			//		ordered_edges.push_back(next_edge);
-			//		edge_visited[next_edge] = true;
-			//		last_v = vid;
-			//		found = true;
-
-			//		// close the loop
-			//		if (vid == beginning_index)
-			//			can_find_next = false;
-			//	}
-			//	if (!found)
-			//		can_find_next = false;
-			//}
-
-			////
-			//f.boundary_loops.push_back(ordered_edges);
 		}
 
 		//
@@ -651,7 +585,14 @@ void point_cloud::extract_boundary_loops() {
 		//
 	}
 }
+/// orient ref to normal 
+void point_cloud::orient_faces() {
 
+}
+///
+void point_cloud::extract_half_edges() {
+
+}
 ///
 bool point_cloud::check_valid_parameters(int fid, int which_loop, int edge_rank_within_loop) {
 	if (fid > 25 || fid < 0)
@@ -664,7 +605,6 @@ bool point_cloud::check_valid_parameters(int fid, int which_loop, int edge_rank_
 		return false;
 	return true;
 }
-
 ///
 void point_cloud::visualize_boundary_loop(int fid, int which_loop, int edge_rank_within_loop) {
 	if (!check_valid_parameters(fid, which_loop, edge_rank_within_loop))
@@ -682,7 +622,6 @@ void point_cloud::visualize_boundary_loop(int fid, int which_loop, int edge_rank
 	for (auto& pid : modelEdge[modelFace[fid].boundary_loops[which_loop][edge_rank_within_loop]].point_indices)
 		point_visible_conn[pid] = 1;
 }
-
 /// fit one vertex for each corner
 void point_cloud::vertex_fitting() {
 	// goal: fit one vertex for each corner
@@ -750,13 +689,13 @@ void point_cloud::edge_fitting() {
 void point_cloud::surface_fitting() {
 	// manually currently 
 }
-
+///
 void point_cloud::fit_all() {
 	vertex_fitting();
 	edge_fitting();
 	surface_fitting();
 }
-
+///
 point_cloud::point_cloud()
 { 
 	has_clrs = false;
@@ -771,7 +710,7 @@ point_cloud::point_cloud()
 	box_out_of_date = false;
 	pixel_range_out_of_date = false;
 }
-
+///
 point_cloud::point_cloud(const string& file_name)
 {
 	has_clrs = false;
@@ -788,7 +727,7 @@ point_cloud::point_cloud(const string& file_name)
 
 	read(file_name);
 }
-
+///
 void point_cloud::clear_all_for_get_next_shot() {
 	P.clear();
 	N.clear();
@@ -825,7 +764,6 @@ void point_cloud::clear_all_for_get_next_shot() {
 	/// flag to remember whether pixel coordinate range is out of date and will be recomputed in the pixel_range() method
 	pixel_range_out_of_date = true;
 }
-
 /// todo: clear all newly added varibles 
 void point_cloud::clear_all() {
 	/*clear per point varibles */
@@ -924,7 +862,7 @@ void point_cloud::clear_all() {
 	/*triangulation of the points */
 	faces.clear();
 }
-
+///
 void point_cloud::randomize_position(int scan_index) {
 	uniform_real_distribution<float> angle_distribution(0.f, 3.142f);
 	uniform_real_distribution<float> direction_distribution(0.f, 0.05f);
@@ -939,7 +877,7 @@ void point_cloud::randomize_position(int scan_index) {
 	);
 	//translate(trans_intensity * vec3(direction_distribution(rng), direction_distribution(rng), direction_distribution(rng)));
 }
-
+///
 void point_cloud::clear_campose() {
 	num_of_shots = 0;
 	num_of_points_in_campose = 0;
@@ -950,7 +888,7 @@ void point_cloud::clear_campose() {
 	//cam_posi = cgv::math::fvec<float, 3>(-1000);
 	cam_posi_list.clear();
 }
-
+///
 void point_cloud::clear()
 {
 	P.clear();
@@ -979,7 +917,6 @@ void point_cloud::clear()
 	box_out_of_date = true;
 	pixel_range_out_of_date = true;
 }
-
 /// read from list_point_idx.at(cur_shot) to list_point_idx.at(cur_shot + 1)
 /// not trying to append, clear before loading  
 /// no normal information
@@ -1009,7 +946,7 @@ bool point_cloud::get_next_shot(const point_cloud& pc) {
 	box_out_of_date = true;
 	return true;
 }
-
+///
 bool point_cloud::compare_these_two_points_posi(int i, int j, const point_cloud& the_other_pc) {
 	float threshold = 1e-7;
 	bool equal_posi = ((P.at(i).x() - the_other_pc.pnt(j).x()) < threshold) &&
@@ -1017,7 +954,7 @@ bool point_cloud::compare_these_two_points_posi(int i, int j, const point_cloud&
 			((P.at(i).z() - the_other_pc.pnt(j).z()) < threshold);
 	return equal_posi;
 }
-
+///
 bool point_cloud::compare_these_two_points_nml(int i, int j, const point_cloud& the_other_pc) {
 	float threshold = 1e-7;
 	bool equal_normal = true;
@@ -1028,7 +965,7 @@ bool point_cloud::compare_these_two_points_nml(int i, int j, const point_cloud& 
 	}
 	return equal_normal;
 }
-
+///
 void point_cloud::smart_append(const point_cloud& pc) {
 	//if (pc.get_nr_points() == 0)
 	//	return;
@@ -1055,7 +992,7 @@ void point_cloud::smart_append(const point_cloud& pc) {
 
 	//box_out_of_date = true;
 }
-
+///
 void point_cloud::remove_deleted_points_impl() {
 	vector<Pnt> tmp_P;
 	vector<Clr> tmp_C;
@@ -1080,7 +1017,6 @@ void point_cloud::remove_deleted_points_impl() {
 
 	box_out_of_date = true;
 }
-
 /// append another point cloud
 void point_cloud::append_with_mat4(point_cloud& pc, mat4 mvp)
 {
@@ -1111,7 +1047,6 @@ void point_cloud::append_with_mat4(point_cloud& pc, mat4 mvp)
 	}
 	box_out_of_date = true;
 }
-
 /// append another point cloud
 void point_cloud::append(const point_cloud& pc)
 {
@@ -1261,7 +1196,6 @@ void point_cloud::del_with_clip_plane(Dir cur_plane_normal, Pnt a_point_on_the_p
 
 	box_out_of_date = true;
 }
-
 /// non-lazy style 
 void point_cloud::clip_plane(Dir cur_plane_normal, Pnt a_point_on_the_plane) {
 	// or, use the pop swap trick:
@@ -1316,7 +1250,6 @@ void point_cloud::clip_plane(Dir cur_plane_normal, Pnt a_point_on_the_plane) {
 	if (has_pixel_coordinates())
 		pixel_range_out_of_date = true;
 }
-
 /// clip on box
 void point_cloud::clip(const Box clip_box)
 {
@@ -1368,7 +1301,6 @@ void point_cloud::clip(const Box clip_box)
 	if (has_pixel_coordinates())
 		pixel_range_out_of_date = true;
 }
-
 /// permute points
 void point_cloud::permute(std::vector<Idx>& perm, bool permute_component_indices)
 {
@@ -1384,7 +1316,6 @@ void point_cloud::permute(std::vector<Idx>& perm, bool permute_component_indices
 	if (permute_component_indices && has_components())
 		cgv::math::permute_vector(component_indices, perm);
 }
-
 /// translate by direction
 void point_cloud::translate(const Dir& dir, Idx ci)
 {
@@ -1400,7 +1331,6 @@ void point_cloud::translate(const Dir& dir, Idx ci)
 		box_out_of_date = true;
 	}
 }
-
 /// rotate by direction
 void point_cloud::rotate(const Qat& qat, Idx ci)
 {
@@ -1427,7 +1357,6 @@ void point_cloud::rotate_scan_indexi(const Qat& qat, int scanIdx)
 	}
 	box_out_of_date = true;
 }
-
 /// transform with linear transform 
 void point_cloud::transform(const Mat& mat)
 {
@@ -1823,9 +1752,6 @@ bool point_cloud::write_component_transformations(const std::string& file_name, 
 	std::cerr << "write_component_transformations not implemented" << std::endl;
 	return false;
 }
-
-
-
 /// read ascii file with lines of the form i j x y z I, where ij are pixel coordinates, xyz coordinates and I the intensity
 bool point_cloud::read_pct(const std::string& file_name)
 {
@@ -1862,8 +1788,6 @@ bool point_cloud::read_pct(const std::string& file_name)
 	// }
 	return true;
 }
-
-
 /// read ascii file with lines of the form x y z r g b I colors and intensity values, where intensity values are ignored
 bool point_cloud::read_xyz(const std::string& file_name)
 {
