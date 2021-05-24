@@ -63,8 +63,8 @@ struct mV { // "model vertex "
 	int valence; // done
 
 	// he 
-	std::set<int> incident_edges;
-	std::set<int> incident_faces; // done
+	std::set<int> incident_edges; // ok
+	std::set<int> incident_faces; // ok
 
 	// fitting
 	int control_point_index; // implicit fitted position // done 
@@ -87,8 +87,9 @@ struct mEdge { // "model half edge "
 	// he 
 	mHEdge* e0; // split to he
 	mHEdge* e1;
-	std::set<int> incident_corners; 
+	std::set<int> incident_corners; // ok 
 	std::set<int> incident_faces; // ok 
+	std::set<int> incident_edges;
 	bool is_boundary = false;
 
 	// fitting
@@ -101,9 +102,12 @@ struct mFace { //
 	// point based representation 
 	std::vector<int> point_indices;
 
-	// he 
-	std::set<int> incident_corners;
-	std::set<int> incident_edges;
+	// incident info 
+	std::set<int> incident_corners; // ok
+	std::set<int> incident_edges; // ok
+
+	// boundary loops
+	std::vector<std::set<int>> boundary_loops; // loop of edges, int is edge id 
 
 	// fitting
 	std::vector<int> control_point_indices; // typically 16 elements 
@@ -314,6 +318,8 @@ public:
 	/// for rendering and correction 
 	std::vector<Clr> color_mapped_by_incident_ids; // fine 
 
+	/// connectivity inspector 
+	std::vector<int> point_visible_conn;
 
 public:
 	/*fine-grained point classification: 22-05-2021*/
@@ -408,6 +414,10 @@ public:
 	std::vector<bool> use_this_point_indices_for_this_corner;
 	///
 	void make_explicit();
+	///
+	void extract_boundary_loops();
+	///
+	void visualize_boundary_loop(int fid, int which_loop, int edge_index);
 
 	/* parametic surface model extraction
 		the key is to find control points 

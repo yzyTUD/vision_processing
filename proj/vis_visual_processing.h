@@ -189,6 +189,7 @@ protected:
 	bool backward_grow = false;
 	int curr_face_selecting_id;
 	float height_offset = 1;
+	int highlight_edge_rank_within_loop = 0;
 
 	// cam rendering 
 	std::vector<vec3> point_and_cam;
@@ -247,8 +248,9 @@ public:
 	bool self_reflect(cgv::reflect::reflection_handler& rh)
 	{
 		return
-			rh.reflect_member("pick_point_index", pick_point_index) && 
-			rh.reflect_member("curr_region", selection_kit->curr_face_selecting_id);
+			rh.reflect_member("pick_point_index", pick_point_index) &&
+			rh.reflect_member("curr_region", selection_kit->curr_face_selecting_id) &&
+			rh.reflect_member("highlight_edge_rank_within_loop", highlight_edge_rank_within_loop);
 	}
 	///
 	void init_6_points_picking() {
@@ -492,6 +494,12 @@ public:
 	void apply_transfrom_to_pc();
 	void next_topo_ranking();
 	void prev_topo_ranking();
+
+	void visualize_boundary_loop();
+
+	void next_edge_within_curr_boundary();
+
+	void prev_edge_within_curr_boundary();
 
 	void create_gui();
 	void write_trajectory() { draw_kit->write_trajectory(); }

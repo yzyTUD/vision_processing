@@ -386,15 +386,31 @@ void point_cloud::update_scan_index_visibility() {
 /// collect point_indices/ compute he, do further extraction of the connectivity model 
 void point_cloud::make_explicit() {
 	// collect faces 
-	for (int face_id = 0; face_id < num_face_ids; face_id++) {
-		mFace tmp_mFace;
-		tmp_mFace.face_id = face_id;
-		for (auto& fcpid: classified_to_be_a_face_point) {
-			if (ranking_within_curr_topo[fcpid] == face_id) {
-				tmp_mFace.point_indices.push_back(fcpid);
-			}
-		}
-		modelFace.push_back(tmp_mFace);
+	//int curr_face = 0;
+	//int face_id = 0;
+	//while (curr_face < num_of_face_selections_rendered) {
+	//	mFace tmp_mFace;
+	//	for (auto& fcpid : classified_to_be_a_face_point) {
+	//		if (ranking_within_curr_topo[fcpid] == curr_face) {
+	//			tmp_mFace.point_indices.push_back(fcpid);
+	//		}
+	//	}
+	//	if (tmp_mFace.point_indices.size() > 0) {
+	//		tmp_mFace.face_id = face_id;
+	//		modelFace.push_back(tmp_mFace);
+	//		face_id++;
+	//	}
+	//	curr_face++;
+	//}
+
+	// faces are special 
+	modelFace.resize(num_of_face_selections_rendered + 1); // modelface 0 should have 0 points
+	mFace f;
+	f.face_id = -1;
+	for (auto& mf : modelFace) mf = f;
+	for (auto& fcpid : classified_to_be_a_face_point) {
+		modelFace[face_id[fcpid]].face_id = face_id[fcpid];
+		modelFace[face_id[fcpid]].point_indices.push_back(fcpid);
 	}
 
 	// collect vertices, extract connectivity: incident_faces  
@@ -406,7 +422,7 @@ void point_cloud::make_explicit() {
 				tmp_mV.point_indices.push_back(vcpid);
 				tmp_mV.valence = incident_ids[vcpid].size();
 				for (auto& fi : incident_ids[vcpid]) {
-					tmp_mV.incident_faces.insert(fi); // face id starts from 1 
+					tmp_mV.incident_faces.insert(fi); // not face id 
 				}
 			}
 		}
@@ -429,7 +445,7 @@ void point_cloud::make_explicit() {
 		modelEdge.push_back(tmp_mHE);
 	}
 
-	// find incidents, build connectivity graph  
+	// find face-edge incidents 
 	for (auto& mf: modelFace) { // loop faces 
 		int curr_face_id = mf.face_id;
 		// match incident edges 
@@ -443,7 +459,7 @@ void point_cloud::make_explicit() {
 		}
 	}
 
-	//
+	// find edge-vertex incidents 
 	for (auto& me: modelEdge) {
 		std::set<int> curr_ef_incident_ids = me.incident_faces;
 		for (auto& mv: modelV) {
@@ -462,6 +478,210 @@ void point_cloud::make_explicit() {
 			}
 		}
 	}
+
+	// find vertex-edge incidents
+	for (auto& mv : modelV) {
+		int curr_vertex = mv.corner_id;
+		for (auto& me : modelEdge) {
+			auto it = me.incident_corners.find(curr_vertex);
+			if (it != me.incident_corners.end()) {
+				mv.incident_edges.insert(me.edge_id);
+			}
+		}
+	}
+
+	// find face-vertex incidents 
+	for (auto& mf : modelFace)  
+		for (auto& ef : mf.incident_edges) 
+			for (auto& vf : modelEdge[ef].incident_corners) 
+				mf.incident_corners.insert(vf);
+
+	// find edge-edge incidents
+	for (auto& me : modelEdge) {
+		
+	}
+
+}
+///
+void point_cloud::extract_boundary_loops() {
+	for (auto& f : modelFace) {
+		//
+		std::set<int> ordered_edges;
+		int num_edges_curr_face = f.incident_edges.size();
+		
+		//
+		for (auto edge_id : f.incident_edges) {
+			// ignore edge that already found 
+			if (ordered_edges.find(edge_id) != ordered_edges.end())
+				continue;
+			
+			// only one edge and no corners present to current edge, submit
+			if (modelEdge[edge_id].incident_corners.size() == 0) {
+				ordered_edges.insert(edge_id);
+				f.boundary_loops.push_back(ordered_edges);
+				ordered_edges.clear();
+				continue;
+			}
+
+			int v1 = *(modelEdge[edge_id].incident_corners.begin());
+			int v2 = *(++modelEdge[edge_id].incident_corners.begin());
+			ordered_edges.insert(edge_id);
+			int last_v = v2;
+			bool can_find_next = false;
+
+			// find next edge 
+			int next_edge = -1;
+			for (auto neid : f.incident_edges) {
+				if (modelEdge[neid].incident_corners.find(last_v) == modelEdge[neid].incident_corners.end())
+					continue;
+				if (ordered_edges.find(neid) != ordered_edges.end())
+					continue;
+				next_edge = neid;
+				break;
+			}
+
+			while (next_edge != -1) {
+				//
+				ordered_edges.insert(next_edge);
+				for (auto v : modelEdge[next_edge].incident_corners) {
+					if (v != last_v) {
+						last_v = v;
+						break;
+					}
+				}
+
+				// find next edge with in current face 
+				next_edge = -1;
+				for (auto neid : f.incident_edges) {
+					if (modelEdge[neid].incident_corners.find(last_v) == modelEdge[neid].incident_corners.end())
+						continue;
+					if (ordered_edges.find(neid) != ordered_edges.end())
+						continue;
+					next_edge = neid;
+					break;
+				}
+			}
+
+			//
+			f.boundary_loops.push_back(ordered_edges);
+
+			//
+			//int v1 = *(modelEdge[edge_id].incident_corners.begin());
+			//int v2 = *(++modelEdge[edge_id].incident_corners.begin());
+			//int beginning_index = v1;
+			//ordered_edges.push_back(edge_id);
+			//int last_v = v2;
+			//bool can_find_next = true;
+
+			//// find next vertex 
+			//while (can_find_next) {
+			//	int next_edge = -1;
+			//	std::set<int> edges_last_v = modelV[last_v].incident_edges;
+			//	for (auto eid : edges_last_v) {
+			//		//
+			//		bool already_found = false;
+			//		for (auto e : ordered_edges) {
+			//			if (e == eid)
+			//				already_found = true;
+			//		}
+			//		if (already_found) 
+			//			continue;
+
+			//		//
+			//		bool in_curr_face = false;
+			//		for (auto fid : modelEdge[eid].incident_faces) {
+			//			if (fid == f.face_id)
+			//				in_curr_face = true;
+			//		}
+			//		if (!in_curr_face)
+			//			continue;
+
+			//		//
+			//		next_edge = eid;
+			//		break;
+			//	}
+
+			//	//
+			//	if (next_edge == -1) {
+			//		can_find_next = false;
+			//		break;
+			//	}
+
+			//	//
+			//	bool found = false;
+			//	for (auto vid : modelEdge[next_edge].incident_corners) {
+			//		//
+			//		if (vid == last_v)
+			//			continue;
+
+			//		//
+			//		ordered_edges.push_back(next_edge);
+			//		edge_visited[next_edge] = true;
+			//		last_v = vid;
+			//		found = true;
+
+			//		// close the loop
+			//		if (vid == beginning_index)
+			//			can_find_next = false;
+			//	}
+			//	if (!found)
+			//		can_find_next = false;
+			//}
+
+			////
+			//f.boundary_loops.push_back(ordered_edges);
+		}
+
+		//
+		for (int loop = 0; loop < f.boundary_loops.size(); loop++) {
+			std::cout << "boundary loops for face: " << f.face_id << " are: " << std::endl;
+			std::cout << "\t loop " << loop << " : ";
+			for (auto loop_edge : f.boundary_loops[loop]) {
+				std::cout << loop_edge;
+			}
+			std::cout << "\n";
+		}
+
+		//
+	}
+}
+
+///
+void point_cloud::visualize_boundary_loop(int fid, int which_loop, int edge_rank_within_loop) {
+	if (fid > 25 || fid < 0)
+		return;
+	if (modelFace[fid].boundary_loops.size() == 0)
+		return;
+	if (which_loop > modelFace[fid].boundary_loops.size() - 1 || which_loop < 0)
+		return;
+	if (edge_rank_within_loop > modelFace[fid].boundary_loops[which_loop].size() - 1 || edge_rank_within_loop < 0)
+		return;
+	//
+	for (int i = 0; i < get_nr_points(); i++)
+		point_visible_conn[i] = 0;
+
+	//
+	for (int i = 0; i < get_nr_points(); i++) 
+		if (face_id[i] == fid && topo_id[i] == point_cloud::TOPOAttribute::FACE) 
+			point_visible_conn[i] = 1;
+
+	//
+	std::set<int> edges = modelFace[fid].boundary_loops[which_loop];
+	int edge_id = -1;
+	set<int>::iterator it;
+	int index = 0;
+	for (it = edges.begin(); it != edges.end(); ++it) {
+		if (index == edge_rank_within_loop)
+		{
+			edge_id = *it;
+			break;
+		}
+		index++;
+	}
+
+	//
+	for (auto& pid : modelEdge[edge_id].point_indices)
+		point_visible_conn[pid] = 1;
 }
 
 /// fit one vertex for each corner

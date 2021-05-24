@@ -593,6 +593,7 @@ public:
 			//extract_high_risk_corners(); // doesnt work
 		// interactions needed 
 		pc.make_explicit(); // extract to explicit expression 
+		pc.extract_boundary_loops();
 		// extract he ... 
 		//pc.fit_all();
 		//colorize_with_corner_edge_id = true;

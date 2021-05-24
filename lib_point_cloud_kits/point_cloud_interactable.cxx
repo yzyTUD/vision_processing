@@ -3901,6 +3901,9 @@ void point_cloud_interactable::classify_points_and_visualize() {
 	pc.classified_to_be_a_face_point.clear();
 	pc.incident_ids.clear();
 	pc.incident_ids.resize(pc.get_nr_points());
+	pc.point_visible_conn.clear();
+	pc.point_visible_conn.resize(pc.get_nr_points());
+	for (auto& b : pc.point_visible_conn) b = 1;
 	//pc.valence.clear();
 	//pc.valence.resize(pc.get_nr_points());
 
@@ -3922,11 +3925,13 @@ void point_cloud_interactable::classify_points_and_visualize() {
 			incident_point_ids.insert(pc.face_id.at(kid));
 		}
 
+		//
+		pc.incident_ids[i] = incident_point_ids;
+		
 		// interior points, keep the current selection (face id)
 		if (incident_point_ids.size() == 1) {
 			//
 			pc.classified_to_be_a_face_point.push_back(i);
-			pc.incident_ids[i] = incident_point_ids;
 
 			//
 			pc.topo_id.at(i) = point_cloud::TOPOAttribute::FACE;
@@ -3937,7 +3942,6 @@ void point_cloud_interactable::classify_points_and_visualize() {
 		{
 			//
 			pc.classified_to_be_an_edge_point.push_back(i);
-			pc.incident_ids[i] = incident_point_ids;
 			pc.index_in_classified_array[i] = pc.classified_to_be_an_edge_point.size() - 1;
 
 			//
@@ -3949,7 +3953,6 @@ void point_cloud_interactable::classify_points_and_visualize() {
 		{
 			//
 			pc.classified_to_be_a_corner_point.push_back(i);
-			pc.incident_ids[i] = incident_point_ids;
 			//pc.valence[i] = incident_point_ids.size();
 			pc.index_in_classified_array[i] = pc.classified_to_be_a_corner_point.size() - 1;
 
@@ -4024,13 +4027,6 @@ void point_cloud_interactable::compute_color_mapping() {
 }
 /// connectivity extraction: faces 
 void point_cloud_interactable::face_extraction() {
-	std::set<int> regions;
-	for (auto& pid : pc.classified_to_be_a_face_point)
-		regions.insert(pc.face_id[pid]);
-	pc.num_face_ids = regions.size();
-}
-/// region grow to find neighbor points, extract connectivity info of the model: how many vertices/ edges/ faces 
-void point_cloud_interactable::corner_extraction() {
 	//
 	pc.corner_incidents_table.clear();
 	pc.point_indices_for_corners.clear();
@@ -4038,6 +4034,32 @@ void point_cloud_interactable::corner_extraction() {
 	pc.ranking_within_curr_topo.clear();
 	pc.ranking_within_curr_topo.resize(pc.get_nr_points());
 
+	//
+	std::set<int> regions;
+	for (auto& pid : pc.classified_to_be_a_face_point) {
+		regions.insert(pc.face_id[pid] - 1);
+	}
+	pc.num_face_ids = regions.size();
+
+	int fid = 0;
+	int curr_face_id = 0;
+	while (fid < pc.num_of_face_selections_rendered) {
+		bool no_points_in_fid = true;
+		for (auto& pid : pc.classified_to_be_a_face_point) {
+			if (pc.face_id[pid] == fid) {
+				pc.ranking_within_curr_topo[pid] = curr_face_id;
+				no_points_in_fid = false;
+			}
+		}
+		if (!no_points_in_fid)
+			curr_face_id++;
+		fid++;
+	}
+
+	bool check = (curr_face_id + 1) == regions.size();
+}
+/// region grow to find neighbor points, extract connectivity info of the model: how many vertices/ edges/ faces 
+void point_cloud_interactable::corner_extraction() {
 	//
 	std::vector<int> knn;
 	ensure_tree_ds();

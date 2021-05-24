@@ -2011,6 +2011,23 @@ void visual_processing::next_topo_ranking() {
 void visual_processing::prev_topo_ranking() {
 	data_ptr->point_cloud_kit->highlight_topo_ranking--;
 }
+///
+void visual_processing::visualize_boundary_loop() {
+	data_ptr->point_cloud_kit->pc.visualize_boundary_loop(
+		data_ptr->point_cloud_kit->highlight_fid,
+		data_ptr->point_cloud_kit->highlight_which_loop,
+		highlight_edge_rank_within_loop);
+}
+///
+void visual_processing::next_edge_within_curr_boundary() {
+	highlight_edge_rank_within_loop++;
+	visualize_boundary_loop();
+}
+///
+void visual_processing::prev_edge_within_curr_boundary() {
+	highlight_edge_rank_within_loop--;
+	visualize_boundary_loop();
+}
 /*gui */
 ///
 void visual_processing::create_gui() {
@@ -2209,6 +2226,21 @@ void visual_processing::create_gui() {
 			rebind(this, &visual_processing::prev_topo_ranking));
 		connect_copy(add_button("next")->click,
 			rebind(this, &visual_processing::next_topo_ranking));
+
+		add_decorator("// boundary loop visualizer ", "heading", "level=3");
+		add_member_control(this, "enable_point_visible_conn", data_ptr->point_cloud_kit->enable_point_visible_conn, "check");
+		add_member_control(this, "which_face", data_ptr->point_cloud_kit->highlight_fid, // per point? 
+			"value_slider", "min=0;max=22;log=false;ticks=true;");
+		add_member_control(this, "which_loop", data_ptr->point_cloud_kit->highlight_which_loop, // per point? 
+			"value_slider", "min=0;max=22;log=false;ticks=true;");
+		add_member_control(this, "which_edge", highlight_edge_rank_within_loop, 
+			"value_slider", "min=0;max=22;log=false;ticks=true;");
+		connect_copy(add_button("visualize_boundary_loop")->click,
+			rebind(this, &visual_processing::visualize_boundary_loop));
+		connect_copy(add_button("next_edge")->click,
+			rebind(this, &visual_processing::next_edge_within_curr_boundary));
+		connect_copy(add_button("prev_edge")->click,
+			rebind(this, &visual_processing::prev_edge_within_curr_boundary));
 
 		add_decorator("// fitting ", "heading", "level=3");
 		connect_copy(add_button("fitting_render_control_points_test")->click,

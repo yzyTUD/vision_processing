@@ -1004,6 +1004,15 @@ void gl_point_cloud_drawable::set_arrays(context& ctx, size_t offset, size_t cou
 			unsigned(sizeof(Clr)) * show_point_step
 		);
 	}
+
+	if (pc.point_visible_conn.size() > 0) {
+		s_renderer.set_attribute_array_renderer(ctx,
+			"point_visible_conn",
+			&pc.point_visible_conn.at(unsigned(offset)),
+			count,
+			unsigned(sizeof(int)) * show_point_step
+		);
+	}
 }
 /// render with surfel 
 void gl_point_cloud_drawable::draw_points_surfel(context& ctx)
@@ -1054,6 +1063,7 @@ void gl_point_cloud_drawable::draw_points_surfel(context& ctx)
 	s_renderer.ref_prog().set_uniform(ctx, "highlight_topo_id", highlight_topo_id);
 	s_renderer.ref_prog().set_uniform(ctx, "highlight_topo_ranking", highlight_topo_ranking);
 	s_renderer.ref_prog().set_uniform(ctx, "enable_topo_highlight", enable_topo_highlight);
+	s_renderer.ref_prog().set_uniform(ctx, "enable_point_visible_conn", enable_point_visible_conn);
 	
 		
 	
