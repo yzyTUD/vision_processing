@@ -417,6 +417,8 @@ public:
 	///
 	void extract_boundary_loops();
 	///
+	bool check_valid_parameters(int fid, int which_loop, int edge_rank_within_loop);
+	///
 	void visualize_boundary_loop(int fid, int which_loop, int edge_index);
 
 	/* parametic surface model extraction

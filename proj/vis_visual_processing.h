@@ -189,7 +189,6 @@ protected:
 	bool backward_grow = false;
 	int curr_face_selecting_id;
 	float height_offset = 1;
-	int highlight_edge_rank_within_loop = 0;
 
 	// cam rendering 
 	std::vector<vec3> point_and_cam;
@@ -250,7 +249,7 @@ public:
 		return
 			rh.reflect_member("pick_point_index", pick_point_index) &&
 			rh.reflect_member("curr_region", selection_kit->curr_face_selecting_id) &&
-			rh.reflect_member("highlight_edge_rank_within_loop", highlight_edge_rank_within_loop);
+			rh.reflect_member("highlight_edge_rank_within_loop", data_ptr->point_cloud_kit->highlight_edge_rank_within_loop);
 	}
 	///
 	void init_6_points_picking() {
@@ -500,6 +499,10 @@ public:
 	void next_edge_within_curr_boundary();
 
 	void prev_edge_within_curr_boundary();
+
+	void next_face();
+
+	void prev_face();
 
 	void create_gui();
 	void write_trajectory() { draw_kit->write_trajectory(); }

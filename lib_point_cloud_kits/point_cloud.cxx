@@ -647,14 +647,22 @@ void point_cloud::extract_boundary_loops() {
 }
 
 ///
-void point_cloud::visualize_boundary_loop(int fid, int which_loop, int edge_rank_within_loop) {
+bool point_cloud::check_valid_parameters(int fid, int which_loop, int edge_rank_within_loop) {
+	bool valid = true;
 	if (fid > 25 || fid < 0)
-		return;
+		valid = false;
 	if (modelFace[fid].boundary_loops.size() == 0)
-		return;
+		valid = false;
 	if (which_loop > modelFace[fid].boundary_loops.size() - 1 || which_loop < 0)
-		return;
+		valid = false;
 	if (edge_rank_within_loop > modelFace[fid].boundary_loops[which_loop].size() - 1 || edge_rank_within_loop < 0)
+		valid = false;
+	return valid;
+}
+
+///
+void point_cloud::visualize_boundary_loop(int fid, int which_loop, int edge_rank_within_loop) {
+	if (!check_valid_parameters(fid, which_loop, edge_rank_within_loop))
 		return;
 	//
 	for (int i = 0; i < get_nr_points(); i++)

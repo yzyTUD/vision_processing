@@ -2006,26 +2006,52 @@ void visual_processing::apply_transfrom_to_pc() {
 ///
 void visual_processing::next_topo_ranking() {
 	data_ptr->point_cloud_kit->highlight_topo_ranking++;
+	on_set(&data_ptr->point_cloud_kit->highlight_topo_ranking);
 }
 ///
 void visual_processing::prev_topo_ranking() {
 	data_ptr->point_cloud_kit->highlight_topo_ranking--;
+	on_set(&data_ptr->point_cloud_kit->highlight_topo_ranking);
 }
 ///
 void visual_processing::visualize_boundary_loop() {
 	data_ptr->point_cloud_kit->pc.visualize_boundary_loop(
 		data_ptr->point_cloud_kit->highlight_fid,
 		data_ptr->point_cloud_kit->highlight_which_loop,
-		highlight_edge_rank_within_loop);
+		data_ptr->point_cloud_kit->highlight_edge_rank_within_loop);
 }
 ///
 void visual_processing::next_edge_within_curr_boundary() {
-	highlight_edge_rank_within_loop++;
+	if (!data_ptr->point_cloud_kit->pc.check_valid_parameters(
+		data_ptr->point_cloud_kit->highlight_fid,
+		data_ptr->point_cloud_kit->highlight_which_loop,
+		data_ptr->point_cloud_kit->highlight_edge_rank_within_loop+1))
+		return;
+	data_ptr->point_cloud_kit->highlight_edge_rank_within_loop++;
+	on_set(&data_ptr->point_cloud_kit->highlight_edge_rank_within_loop);
 	visualize_boundary_loop();
 }
 ///
 void visual_processing::prev_edge_within_curr_boundary() {
-	highlight_edge_rank_within_loop--;
+	if (!data_ptr->point_cloud_kit->pc.check_valid_parameters(
+		data_ptr->point_cloud_kit->highlight_fid,
+		data_ptr->point_cloud_kit->highlight_which_loop,
+		data_ptr->point_cloud_kit->highlight_edge_rank_within_loop-1))
+		return;
+	data_ptr->point_cloud_kit->highlight_edge_rank_within_loop--;
+	on_set(&data_ptr->point_cloud_kit->highlight_edge_rank_within_loop);
+	visualize_boundary_loop();
+}
+///
+void visual_processing::next_face() {
+	data_ptr->point_cloud_kit->highlight_fid++;
+	on_set(&data_ptr->point_cloud_kit->highlight_fid);
+	visualize_boundary_loop();
+}
+///
+void visual_processing::prev_face() {
+	data_ptr->point_cloud_kit->highlight_fid--;
+	on_set(&data_ptr->point_cloud_kit->highlight_fid);
 	visualize_boundary_loop();
 }
 /*gui */
@@ -2233,14 +2259,18 @@ void visual_processing::create_gui() {
 			"value_slider", "min=0;max=22;log=false;ticks=true;");
 		add_member_control(this, "which_loop", data_ptr->point_cloud_kit->highlight_which_loop, // per point? 
 			"value_slider", "min=0;max=22;log=false;ticks=true;");
-		add_member_control(this, "which_edge", highlight_edge_rank_within_loop, 
+		add_member_control(this, "which_edge", data_ptr->point_cloud_kit->highlight_edge_rank_within_loop,
 			"value_slider", "min=0;max=22;log=false;ticks=true;");
 		connect_copy(add_button("visualize_boundary_loop")->click,
 			rebind(this, &visual_processing::visualize_boundary_loop));
-		connect_copy(add_button("next_edge")->click,
-			rebind(this, &visual_processing::next_edge_within_curr_boundary));
 		connect_copy(add_button("prev_edge")->click,
 			rebind(this, &visual_processing::prev_edge_within_curr_boundary));
+		connect_copy(add_button("next_edge")->click,
+			rebind(this, &visual_processing::next_edge_within_curr_boundary));
+		connect_copy(add_button("prev_face")->click,
+			rebind(this, &visual_processing::prev_face));
+		connect_copy(add_button("next_face")->click,
+			rebind(this, &visual_processing::next_face));
 
 		add_decorator("// fitting ", "heading", "level=3");
 		connect_copy(add_button("fitting_render_control_points_test")->click,

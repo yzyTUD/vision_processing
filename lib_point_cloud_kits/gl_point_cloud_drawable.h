@@ -86,6 +86,7 @@ public:
 
 	int highlight_fid = 1;
 	int highlight_which_loop = 0;
+	int highlight_edge_rank_within_loop = 0;
 
 	/*point rendering */
 	
