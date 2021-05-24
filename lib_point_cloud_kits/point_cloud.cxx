@@ -506,18 +506,22 @@ void point_cloud::make_explicit() {
 void point_cloud::extract_boundary_loops() {
 	for (auto& f : modelFace) {
 		//
-		std::set<int> ordered_edges;
+		std::vector<int> ordered_edges;
+		std::vector<bool> in_ordered_edges_list;
+		in_ordered_edges_list.resize(num_edge_ids);
+		for (auto& b : in_ordered_edges_list)b = false;
 		int num_edges_curr_face = f.incident_edges.size();
 		
 		//
 		for (auto edge_id : f.incident_edges) {
 			// ignore edge that already found 
-			if (ordered_edges.find(edge_id) != ordered_edges.end())
+			if (in_ordered_edges_list[edge_id])
 				continue;
 			
 			// only one edge and no corners present to current edge, submit
 			if (modelEdge[edge_id].incident_corners.size() == 0) {
-				ordered_edges.insert(edge_id);
+				ordered_edges.push_back(edge_id);
+				in_ordered_edges_list[edge_id] = true;
 				f.boundary_loops.push_back(ordered_edges);
 				ordered_edges.clear();
 				continue;
@@ -525,7 +529,8 @@ void point_cloud::extract_boundary_loops() {
 
 			int v1 = *(modelEdge[edge_id].incident_corners.begin());
 			int v2 = *(++modelEdge[edge_id].incident_corners.begin());
-			ordered_edges.insert(edge_id);
+			ordered_edges.push_back(edge_id);
+			in_ordered_edges_list[edge_id] = true;
 			int last_v = v2;
 			bool can_find_next = false;
 
@@ -534,7 +539,7 @@ void point_cloud::extract_boundary_loops() {
 			for (auto neid : f.incident_edges) {
 				if (modelEdge[neid].incident_corners.find(last_v) == modelEdge[neid].incident_corners.end())
 					continue;
-				if (ordered_edges.find(neid) != ordered_edges.end())
+				if (in_ordered_edges_list[neid])
 					continue;
 				next_edge = neid;
 				break;
@@ -542,7 +547,8 @@ void point_cloud::extract_boundary_loops() {
 
 			while (next_edge != -1) {
 				//
-				ordered_edges.insert(next_edge);
+				ordered_edges.push_back(next_edge);
+				in_ordered_edges_list[next_edge] = true;
 				for (auto v : modelEdge[next_edge].incident_corners) {
 					if (v != last_v) {
 						last_v = v;
@@ -555,7 +561,7 @@ void point_cloud::extract_boundary_loops() {
 				for (auto neid : f.incident_edges) {
 					if (modelEdge[neid].incident_corners.find(last_v) == modelEdge[neid].incident_corners.end())
 						continue;
-					if (ordered_edges.find(neid) != ordered_edges.end())
+					if (in_ordered_edges_list[neid])
 						continue;
 					next_edge = neid;
 					break;
@@ -648,16 +654,15 @@ void point_cloud::extract_boundary_loops() {
 
 ///
 bool point_cloud::check_valid_parameters(int fid, int which_loop, int edge_rank_within_loop) {
-	bool valid = true;
 	if (fid > 25 || fid < 0)
-		valid = false;
+		return false;
 	if (modelFace[fid].boundary_loops.size() == 0)
-		valid = false;
+		return false;
 	if (which_loop > modelFace[fid].boundary_loops.size() - 1 || which_loop < 0)
-		valid = false;
+		return false;
 	if (edge_rank_within_loop > modelFace[fid].boundary_loops[which_loop].size() - 1 || edge_rank_within_loop < 0)
-		valid = false;
-	return valid;
+		return false;
+	return true;
 }
 
 ///
@@ -674,21 +679,7 @@ void point_cloud::visualize_boundary_loop(int fid, int which_loop, int edge_rank
 			point_visible_conn[i] = 1;
 
 	//
-	std::set<int> edges = modelFace[fid].boundary_loops[which_loop];
-	int edge_id = -1;
-	set<int>::iterator it;
-	int index = 0;
-	for (it = edges.begin(); it != edges.end(); ++it) {
-		if (index == edge_rank_within_loop)
-		{
-			edge_id = *it;
-			break;
-		}
-		index++;
-	}
-
-	//
-	for (auto& pid : modelEdge[edge_id].point_indices)
+	for (auto& pid : modelEdge[modelFace[fid].boundary_loops[which_loop][edge_rank_within_loop]].point_indices)
 		point_visible_conn[pid] = 1;
 }
 

@@ -2025,8 +2025,8 @@ void visual_processing::next_edge_within_curr_boundary() {
 	if (!data_ptr->point_cloud_kit->pc.check_valid_parameters(
 		data_ptr->point_cloud_kit->highlight_fid,
 		data_ptr->point_cloud_kit->highlight_which_loop,
-		data_ptr->point_cloud_kit->highlight_edge_rank_within_loop+1))
-		return;
+		data_ptr->point_cloud_kit->highlight_edge_rank_within_loop + 1))
+		data_ptr->point_cloud_kit->highlight_edge_rank_within_loop = -1;
 	data_ptr->point_cloud_kit->highlight_edge_rank_within_loop++;
 	on_set(&data_ptr->point_cloud_kit->highlight_edge_rank_within_loop);
 	visualize_boundary_loop();
@@ -2044,12 +2044,16 @@ void visual_processing::prev_edge_within_curr_boundary() {
 }
 ///
 void visual_processing::next_face() {
+	data_ptr->point_cloud_kit->highlight_edge_rank_within_loop = 0;
+	on_set(&data_ptr->point_cloud_kit->highlight_edge_rank_within_loop);
 	data_ptr->point_cloud_kit->highlight_fid++;
 	on_set(&data_ptr->point_cloud_kit->highlight_fid);
 	visualize_boundary_loop();
 }
 ///
 void visual_processing::prev_face() {
+	data_ptr->point_cloud_kit->highlight_edge_rank_within_loop = 0;
+	on_set(&data_ptr->point_cloud_kit->highlight_edge_rank_within_loop);
 	data_ptr->point_cloud_kit->highlight_fid--;
 	on_set(&data_ptr->point_cloud_kit->highlight_fid);
 	visualize_boundary_loop();

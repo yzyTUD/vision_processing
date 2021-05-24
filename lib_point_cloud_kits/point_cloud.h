@@ -107,7 +107,7 @@ struct mFace { //
 	std::set<int> incident_edges; // ok
 
 	// boundary loops
-	std::vector<std::set<int>> boundary_loops; // loop of edges, int is edge id 
+	std::vector<std::vector<int>> boundary_loops; // loop of edges, int is edge id 
 
 	// fitting
 	std::vector<int> control_point_indices; // typically 16 elements 
