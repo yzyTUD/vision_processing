@@ -2308,6 +2308,10 @@ void visual_processing::create_gui() {
 		connect_copy(add_button("find_next_he")->click,
 			rebind(this, &visual_processing::find_next_he));
 
+
+		add_decorator("// orient faces ", "heading", "level=3");
+		connect_copy(add_button("orient_faces")->click, rebind(&data_ptr->point_cloud_kit->pc, &point_cloud::orient_faces));
+
 		add_decorator("// fitting ", "heading", "level=3");
 		connect_copy(add_button("fitting_render_control_points_test")->click,
 			rebind(this, &visual_processing::fitting_render_control_points_test));

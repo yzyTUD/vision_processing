@@ -595,7 +595,7 @@ public:
 		pc.make_explicit(); // extract to explicit expression 
 		pc.extract_boundary_loops();
 		pc.extract_half_edges();
-		pc.orient_faces();
+		//pc.orient_faces();
 		// extract he ... 
 		//pc.fit_all();
 		//colorize_with_corner_edge_id = true;
