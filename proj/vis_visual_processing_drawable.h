@@ -15,6 +15,8 @@
 #include <random>
 
 #include "vr_kit_intersection.h"
+#include <vis_visual_processing.h>
+#include <cgv/gui/key_control.h>
 
 ///
 void visual_processing::init_cameras(vr::vr_kit* kit_ptr)
@@ -143,9 +145,14 @@ void visual_processing::on_device_change(void* kit_handle, bool attach)
 		}
 	}
 }
-/// timer event, freq depends on rendering 
+/// timer event, freq depends on rendering? 
 void visual_processing::timer_event(double t, double dt) {
-
+	delay += speed;
+	if (delay > 1000 && animate_boundary_loop) {
+		//std::cout << "timer comes" << std::endl;
+		next_edge_within_curr_boundary();
+		delay = 0;
+	}
 }
 /// timer event executes in an other parallel thread, fixed freq 
 void visual_processing::parallel_region_growing() {
@@ -188,7 +195,7 @@ visual_processing::visual_processing()
 	sphere_style.radius = 0.01;
 	connect(cgv::gui::ref_vr_server().on_device_change, this, &visual_processing::on_device_change);
 	connect(cgv::gui::ref_vr_server().on_status_change, this, &visual_processing::on_status_change);
-	//connect(get_animation_trigger().shoot, this, &visual_processing::timer_event);
+	connect(get_animation_trigger().shoot, this, &visual_processing::timer_event);
 	//timer_thread = new thread(&visual_processing::parallel_timer_event,this);
 	register_object(base_ptr(light_kit), "");
 
@@ -2022,6 +2029,8 @@ void visual_processing::visualize_boundary_loop() {
 }
 ///
 void visual_processing::next_edge_within_curr_boundary() {
+	if (data_ptr->point_cloud_kit->pc.modelFace.size() == 0)
+		return;
 	if (!data_ptr->point_cloud_kit->pc.check_valid_parameters(
 		data_ptr->point_cloud_kit->highlight_fid,
 		data_ptr->point_cloud_kit->highlight_which_loop,
@@ -2033,6 +2042,8 @@ void visual_processing::next_edge_within_curr_boundary() {
 }
 ///
 void visual_processing::prev_edge_within_curr_boundary() {
+	if (data_ptr->point_cloud_kit->pc.modelFace.size() == 0)
+		return;
 	if (!data_ptr->point_cloud_kit->pc.check_valid_parameters(
 		data_ptr->point_cloud_kit->highlight_fid,
 		data_ptr->point_cloud_kit->highlight_which_loop,
@@ -2057,6 +2068,16 @@ void visual_processing::prev_face() {
 	data_ptr->point_cloud_kit->highlight_fid--;
 	on_set(&data_ptr->point_cloud_kit->highlight_fid);
 	visualize_boundary_loop();
+}
+///
+void visual_processing::find_first_he_curr_settings() {
+	data_ptr->point_cloud_kit->pc.visualize_halfedges(
+		data_ptr->point_cloud_kit->highlight_fid, data_ptr->point_cloud_kit->highlight_which_loop, false);
+}
+///
+void visual_processing::find_next_he() {
+	data_ptr->point_cloud_kit->pc.visualize_halfedges(
+		data_ptr->point_cloud_kit->highlight_fid, data_ptr->point_cloud_kit->highlight_which_loop, true);
 }
 /*gui */
 ///
@@ -2235,14 +2256,14 @@ void visual_processing::create_gui() {
 			rebind(this, &visual_processing::sync_grow_dist_curvature_based));
 
 		add_decorator("// extract connectivity ", "heading", "level=3");
-		connect_copy(add_button("build_connectivity_graph_fitting_and_render_control_points")->click,
-			rebind(this, &visual_processing::build_connectivity_graph_fitting_and_render_control_points));
 		add_member_control(this, "neighbor_points_point_classification", data_ptr->point_cloud_kit->neighbor_points_point_classification, 
 			"value_slider", "min=1;max=300;log=false;ticks=true;");
 		add_member_control(this, "neighbor_points_corner_extraction", data_ptr->point_cloud_kit->neighbor_points_corner_extraction,
 			"value_slider", "min=1;max=300;log=false;ticks=true;");
 		connect_copy(add_button("classify_points_and_visualize")->click,
 			rebind(data_ptr->point_cloud_kit, &point_cloud_interactable::classify_points_and_visualize));
+		connect_copy(add_button("[S]build_connectivity_graph")->click,
+			rebind(this, &visual_processing::build_connectivity_graph_fitting_and_render_control_points));
 		
 		add_decorator("// connectivity info visulization ", "heading", "level=3");
 		add_member_control(this, "enable_topo_highlight", data_ptr->point_cloud_kit->enable_topo_highlight, "check");
@@ -2259,6 +2280,9 @@ void visual_processing::create_gui() {
 
 		add_decorator("// boundary loop visualizer ", "heading", "level=3");
 		add_member_control(this, "enable_point_visible_conn", data_ptr->point_cloud_kit->enable_point_visible_conn, "check");
+		add_member_control(this, "animate_boundary_loop", animate_boundary_loop, "check");
+		add_member_control(this, "speed", speed,
+			"value_slider", "min=0.001;max=1000;log=false;ticks=true;");
 		add_member_control(this, "which_face", data_ptr->point_cloud_kit->highlight_fid, // per point? 
 			"value_slider", "min=0;max=22;log=false;ticks=true;");
 		add_member_control(this, "which_loop", data_ptr->point_cloud_kit->highlight_which_loop, // per point? 
@@ -2267,18 +2291,31 @@ void visual_processing::create_gui() {
 			"value_slider", "min=0;max=22;log=false;ticks=true;");
 		connect_copy(add_button("visualize_boundary_loop")->click,
 			rebind(this, &visual_processing::visualize_boundary_loop));
-		connect_copy(add_button("prev_edge")->click,
-			rebind(this, &visual_processing::prev_edge_within_curr_boundary));
-		connect_copy(add_button("next_edge")->click,
-			rebind(this, &visual_processing::next_edge_within_curr_boundary));
+
 		connect_copy(add_button("prev_face")->click,
 			rebind(this, &visual_processing::prev_face));
 		connect_copy(add_button("next_face")->click,
 			rebind(this, &visual_processing::next_face));
 
+		connect_copy(add_button("prev_edge")->click,
+			rebind(this, &visual_processing::prev_edge_within_curr_boundary));
+		connect_copy(add_button("next_edge")->click,
+			rebind(this, &visual_processing::next_edge_within_curr_boundary));
+
+		add_decorator("// halfedge visualizer ", "heading", "level=3");
+		connect_copy(add_button("find_first_he_curr_settings")->click,
+			rebind(this, &visual_processing::find_first_he_curr_settings));
+		connect_copy(add_button("find_next_he")->click,
+			rebind(this, &visual_processing::find_next_he));
+
 		add_decorator("// fitting ", "heading", "level=3");
 		connect_copy(add_button("fitting_render_control_points_test")->click,
 			rebind(this, &visual_processing::fitting_render_control_points_test));
+	}
+	//
+	if (begin_tree_node("Triangulation", gui_Triangulation, gui_Triangulation, "level=3")) {
+		connect_copy(add_button("triangulation_of_the_points")->click, rebind(this, &visual_processing::triangulation_of_the_points));
+		connect_copy(add_button("export_to_an_obj_file")->click, rebind(this, &visual_processing::export_to_an_obj_file));
 	}
 	//
 	if (begin_tree_node("Region Growing", gui_rg, gui_rg, "level=3")) {
@@ -2438,11 +2475,6 @@ void visual_processing::create_gui() {
 			"value_slider", "min=10;max=100;log=false;ticks=true;");
 		connect_copy(add_button("do_icp_once")->click,
 			rebind(this, &visual_processing::do_icp_once));
-	}
-	//
-	if (begin_tree_node("Triangulation of The Points", gui_Triangulation, false, "level=3")) {
-		connect_copy(add_button("triangulation_of_the_points")->click, rebind(this, &visual_processing::triangulation_of_the_points));
-		connect_copy(add_button("export_to_an_obj_file")->click, rebind(this, &visual_processing::export_to_an_obj_file));
 	}
 	//  
 	if (begin_tree_node("Connectivity Graph", gui_Connectivity, false, "level=3")) {

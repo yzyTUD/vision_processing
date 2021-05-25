@@ -9,6 +9,7 @@
 #include <fstream>
 #include <cgv\base\import.h>
 #include <random>
+#include <queue>
 
 #pragma warning(disable:4996)
 
@@ -507,6 +508,7 @@ void point_cloud::extract_boundary_loops() {
 	for (auto& f : modelFace) {
 		//
 		std::vector<int> ordered_edges;
+		std::vector<int> ordered_vertices;
 		std::vector<bool> in_ordered_edges_list;
 		in_ordered_edges_list.resize(num_edge_ids);
 		for (auto& b : in_ordered_edges_list)b = false;
@@ -523,6 +525,7 @@ void point_cloud::extract_boundary_loops() {
 				ordered_edges.push_back(edge_id);
 				in_ordered_edges_list[edge_id] = true;
 				f.boundary_loops.push_back(ordered_edges);
+				f.vertex_loops.push_back(ordered_vertices); // is empty
 				ordered_edges.clear();
 				continue;
 			}
@@ -530,6 +533,7 @@ void point_cloud::extract_boundary_loops() {
 			int v1 = *(modelEdge[edge_id].incident_corners.begin());
 			int v2 = *(++modelEdge[edge_id].incident_corners.begin());
 			ordered_edges.push_back(edge_id);
+			ordered_vertices.push_back(v1);
 			in_ordered_edges_list[edge_id] = true;
 			int last_v = v2;
 			bool can_find_next = false;
@@ -548,6 +552,7 @@ void point_cloud::extract_boundary_loops() {
 			while (next_edge != -1) {
 				//
 				ordered_edges.push_back(next_edge);
+				ordered_vertices.push_back(last_v);
 				in_ordered_edges_list[next_edge] = true;
 				for (auto v : modelEdge[next_edge].incident_corners) {
 					if (v != last_v) {
@@ -570,6 +575,9 @@ void point_cloud::extract_boundary_loops() {
 
 			//
 			f.boundary_loops.push_back(ordered_edges);
+			f.vertex_loops.push_back(ordered_vertices);
+			ordered_edges.clear();
+			ordered_vertices.clear();
 		}
 
 		//
@@ -585,17 +593,144 @@ void point_cloud::extract_boundary_loops() {
 		//
 	}
 }
-/// orient ref to normal 
-void point_cloud::orient_faces() {
-
-}
 ///
 void point_cloud::extract_half_edges() {
+	// init hes in fixed position 
+	modelHalfEdges.resize(modelEdge.size() * 2); // [+e0 e1 e2 ... ] + [-e0 e1 e2 ... ]
+	mHEdge de;
+	de.edge_id = -1;
+	de.he_id = -1;
+	de.face_id = -1;
+	de.orig = -1;
+	de.next = -1;
+	de.inv = -1;
+	for (auto& e : modelHalfEdges) { e = de; }
+	int current_he_index = -1;
+	int beginning_he_index = -1;
+	int end_he_index = -1;
 
+	//
+	std::vector<bool> halfedge_visited;
+	halfedge_visited.resize(modelHalfEdges.size());
+	for (auto& e : halfedge_visited) { e = false; }
+
+	// loop faces
+	for (auto& f : modelFace) {
+		if (f.face_id == -1)
+			continue;
+		for (int loop_id = 0; loop_id < f.vertex_loops.size(); loop_id++) {
+			// do not have he in this case? no orig and dist, but can have inv 
+			if (f.vertex_loops[loop_id].size() == 0)
+				continue;
+
+			// create all he in curr loop
+			beginning_he_index = current_he_index + 1;
+			end_he_index = current_he_index + f.boundary_loops[loop_id].size();
+			for (auto& ei : f.boundary_loops[loop_id]) {
+				current_he_index++;
+				modelHalfEdges[current_he_index].edge_id = ei;
+				modelHalfEdges[current_he_index].he_id = current_he_index;
+				modelHalfEdges[current_he_index].face_id = f.face_id;
+				f.halfedges.push_back(current_he_index);
+			}
+
+			// convert loop to a list of hes 
+			for (int vei = 0; vei < f.boundary_loops[loop_id].size(); vei++){
+				mHEdge* curr_he = &modelHalfEdges[vei + beginning_he_index];
+				mHEdge* next_he;
+				mHEdge* prev_he;
+				int dist_vi = -1;
+				
+				if (vei == 0) {
+					next_he = &modelHalfEdges[vei + 1 + beginning_he_index];
+					dist_vi = f.vertex_loops[loop_id][vei + 1];
+					prev_he = &modelHalfEdges[end_he_index];
+				}
+				else if (vei == (f.vertex_loops[loop_id].size() - 1)) {
+					next_he = &modelHalfEdges[beginning_he_index];
+					dist_vi = f.vertex_loops[loop_id][0];
+					prev_he = &modelHalfEdges[vei - 1 + beginning_he_index];
+				}
+				else {
+					next_he = &modelHalfEdges[vei + 1 + beginning_he_index];
+					dist_vi = f.vertex_loops[loop_id][vei + 1];
+					prev_he = &modelHalfEdges[vei - 1 + beginning_he_index];
+				}
+				int orig = f.vertex_loops[loop_id][vei];
+				int dist = dist_vi;
+				int k1 = orig;
+				int k2 = dist;
+				int cantor_number = ((k1 + k2) * (k1 + k2 + 1) / 2) + k2;
+				k1 = dist;
+				k2 = orig;
+				int inversed_cantor_number = ((k1 + k2) * (k1 + k2 + 1) / 2) + k2;
+
+				//// loop to find exist
+				//bool exist = false;
+				//for (auto& he : modelHalfEdges) {
+				//	if (he.edge_id == -1)
+				//		continue;
+				//	if (he.cantor_number == cantor_number) {
+				//		// exist found! 
+				//		exist = true;
+				//		break;
+				//	}
+				//}
+
+				curr_he->orig = orig;
+				curr_he->dist = dist;
+				curr_he->cantor_number = cantor_number;
+
+				curr_he->next = next_he->he_id;
+				curr_he->prev = prev_he->he_id;
+
+				// loop to find possible inv 
+				for (auto& he : modelHalfEdges) {
+					if (he.edge_id == -1)
+						continue;
+					if (he.cantor_number == inversed_cantor_number) {
+						// inv found! 
+						curr_he->inv = he.he_id;
+						he.inv = curr_he->he_id;
+						break;
+					}
+				}
+			}
+
+			//
+		}
+
+		//
+		bool one_face_done = true;
+	}
+
+	// 
+	bool all_faces_should_extracted = true;
+}
+/// orient ref to normal 
+void point_cloud::orient_faces() {
+	if (modelFace.size() == 0)
+		return;
+
+	//
+	std::vector<bool> face_visited;
+	std::vector<bool> edge_visited;
+	std::vector<bool> edge_in_queue;
+	face_visited.resize(modelFace.size());
+	for (auto& v : face_visited) v = false;
+	edge_visited.resize(modelEdge.size());
+	for (auto& v : edge_visited) v = false;
+	edge_in_queue.resize(modelEdge.size());
+	for (auto& v : edge_in_queue) v = false;
+
+	// find a loop with vertices
+	// assume it is correct, we can judge with normal info 
 }
 ///
 bool point_cloud::check_valid_parameters(int fid, int which_loop, int edge_rank_within_loop) {
 	if (fid > 25 || fid < 0)
+		return false;
+	if (modelFace.size() == 0)
 		return false;
 	if (modelFace[fid].boundary_loops.size() == 0)
 		return false;
@@ -605,7 +740,7 @@ bool point_cloud::check_valid_parameters(int fid, int which_loop, int edge_rank_
 		return false;
 	return true;
 }
-///
+/// vis given parameters 
 void point_cloud::visualize_boundary_loop(int fid, int which_loop, int edge_rank_within_loop) {
 	if (!check_valid_parameters(fid, which_loop, edge_rank_within_loop))
 		return;
@@ -621,6 +756,27 @@ void point_cloud::visualize_boundary_loop(int fid, int which_loop, int edge_rank
 	//
 	for (auto& pid : modelEdge[modelFace[fid].boundary_loops[which_loop][edge_rank_within_loop]].point_indices)
 		point_visible_conn[pid] = 1;
+}
+/// global vis
+void point_cloud::visualize_halfedges(int fid, int which_loop, bool next_half_edge) {
+	//
+	for (int i = 0; i < get_nr_points(); i++)
+		point_visible_conn[i] = 0;
+
+	//
+	for (int i = 0; i < get_nr_points(); i++)
+		if (face_id[i] == fid && topo_id[i] == point_cloud::TOPOAttribute::FACE)
+			point_visible_conn[i] = 1;
+
+	//
+	if (next_half_edge)
+		curr_he_ptr = &modelHalfEdges[curr_he_ptr->next];
+	else
+		curr_he_ptr = &modelHalfEdges[modelFace[fid].halfedges[0]] ; // test
+	int curr_edge_id = curr_he_ptr->edge_id;
+	for (auto& pid : modelEdge[curr_edge_id].point_indices)
+		point_visible_conn[pid] = 1;
+
 }
 /// fit one vertex for each corner
 void point_cloud::vertex_fitting() {

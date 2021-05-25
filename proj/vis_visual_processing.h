@@ -189,6 +189,8 @@ protected:
 	bool backward_grow = false;
 	int curr_face_selecting_id;
 	float height_offset = 1;
+	float delay = 0, speed = 30;
+	bool animate_boundary_loop = false;
 
 	// cam rendering 
 	std::vector<vec3> point_and_cam;
@@ -503,6 +505,8 @@ public:
 	void next_face();
 
 	void prev_face();
+	void find_first_he_curr_settings();
+	void find_next_he();
 
 	void create_gui();
 	void write_trajectory() { draw_kit->write_trajectory(); }

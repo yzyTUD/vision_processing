@@ -1948,6 +1948,9 @@ void point_cloud_interactable::prepare_grow(bool overwrite_face_selection) {
 	for (auto& v : pc.index_in_classified_array) { v = -1; }
 	pc.ranking_within_curr_topo.resize(pc.get_nr_points());
 	for (auto& v : pc.ranking_within_curr_topo) { v = -1; }
+	pc.point_visible_conn.clear();
+	pc.point_visible_conn.resize(pc.get_nr_points());
+	for (auto& b : pc.point_visible_conn) b = 1;
 
 	// init queue and seed tracking 
 	queue_for_regions.clear();
@@ -3901,9 +3904,6 @@ void point_cloud_interactable::classify_points_and_visualize() {
 	pc.classified_to_be_a_face_point.clear();
 	pc.incident_ids.clear();
 	pc.incident_ids.resize(pc.get_nr_points());
-	pc.point_visible_conn.clear();
-	pc.point_visible_conn.resize(pc.get_nr_points());
-	for (auto& b : pc.point_visible_conn) b = 1;
 	//pc.valence.clear();
 	//pc.valence.resize(pc.get_nr_points());
 

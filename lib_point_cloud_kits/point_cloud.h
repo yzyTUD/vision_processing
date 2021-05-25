@@ -72,19 +72,24 @@ struct mV { // "model vertex "
 };
 struct mHEdge {
 	// ref. back to edges 
+	int he_id;
 	int edge_id;
+	int face_id;
+
+	// using the cantor pairing to map two integers to one integer for checking if an edge has already been added
+	int cantor_number; // ok 
 
 	//
 	std::vector<int> point_indices;
 
 	//
-	int orig;
-	int dist;
+	int orig; // vertex id 
+	int dist; // vertex id 
 
 	//
-	mHEdge* next;
-	mHEdge* inv;
-	mHEdge* prev;
+	int next; // he_id of next halfedge in half edge pool 
+	int inv;  // he_id of inv halfedge in half edge pool 
+	int prev; // he_id of prev halfedge in half edge pool 
 };
 struct mEdge { // "model half edge "
 	int edge_id; // to which edge it belones to 
@@ -116,9 +121,12 @@ struct mFace { //
 	// incident info 
 	std::set<int> incident_corners; // ok
 	std::set<int> incident_edges; // ok
+	int adjacent_he; // one adjacent halfegde of the mesh
+	std::vector<int> halfedges; // he_id
 
 	// boundary loops
 	std::vector<std::vector<int>> boundary_loops; // loop of edges, int is edge id 
+	std::vector<std::vector<int>> vertex_loops; // loop of vertices, int is vertex id 
 
 	// fitting
 	std::vector<int> control_point_indices; // typically 16 elements 
@@ -417,6 +425,10 @@ public:
 	std::vector<mEdge> modelEdge;
 	/// list of half edges 
 	std::vector<mHEdge> modelHalfEdges;
+	///
+	mHEdge* curr_he_ptr;
+	/// mapped 
+	std::map<int, mHEdge> mapped_modelHalfEdges;
 	/// a model is built from a list of surfaces 
 	std::vector<mFace> modelFace;
 	/// incidents per corner, for special case in corner extraction 
@@ -437,6 +449,8 @@ public:
 	bool check_valid_parameters(int fid, int which_loop, int edge_rank_within_loop);
 	///
 	void visualize_boundary_loop(int fid, int which_loop, int edge_index);
+	///
+	void visualize_halfedges(int fid, int which_loop, bool next_half_edge);
 
 	/* parametic surface model extraction
 		the key is to find control points 

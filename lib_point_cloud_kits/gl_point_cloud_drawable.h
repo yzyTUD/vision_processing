@@ -82,7 +82,7 @@ public:
 	int highlight_topo_id = 4;
 	int highlight_topo_ranking = 0;
 	bool enable_topo_highlight = false;
-	bool enable_point_visible_conn = false;
+	bool enable_point_visible_conn = true;
 
 	int highlight_fid = 1;
 	int highlight_which_loop = 0;
