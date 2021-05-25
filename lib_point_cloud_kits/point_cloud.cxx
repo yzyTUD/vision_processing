@@ -446,6 +446,8 @@ void point_cloud::make_explicit() {
 		modelEdge.push_back(tmp_mHE);
 	}
 
+
+	/**/
 	// find face-edge incidents 
 	for (auto& mf: modelFace) { // loop faces 
 		int curr_face_id = mf.face_id;
@@ -455,6 +457,19 @@ void point_cloud::make_explicit() {
 				if (fi == curr_face_id) {
 					// face-edge inciednt found 
 					mf.incident_edges.insert(me.edge_id);
+				}
+			}
+		}
+	}
+
+	// find face-face incidents 
+	for (auto& mf : modelFace) {
+		if (mf.face_id == -1)
+			continue;
+		for (auto& ef : mf.incident_edges) {
+			for (auto& cnf : modelEdge[ef].incident_faces) {
+				if (cnf != mf.face_id) {
+					mf.incident_faces.insert(cnf);
 				}
 			}
 		}
@@ -714,17 +729,91 @@ void point_cloud::orient_faces() {
 
 	//
 	std::vector<bool> face_visited;
-	std::vector<bool> edge_visited;
-	std::vector<bool> edge_in_queue;
+	std::vector<bool> face_oriented;
+	std::vector<bool> face_in_queue;
+	
 	face_visited.resize(modelFace.size());
 	for (auto& v : face_visited) v = false;
-	edge_visited.resize(modelEdge.size());
-	for (auto& v : edge_visited) v = false;
-	edge_in_queue.resize(modelEdge.size());
-	for (auto& v : edge_in_queue) v = false;
+	face_in_queue.resize(modelFace.size());
+	for (auto& v : face_in_queue) v = false;
+	face_oriented.resize(modelFace.size());
+	for (auto& v : face_oriented) v = true; // orient faces that have face_oriented = false
 
-	// find a loop with vertices
-	// assume it is correct, we can judge with normal info 
+	//
+	int oriented_face_id = 1; // as a test 
+	face_oriented[1] = true; // as a test 
+	face_visited[oriented_face_id] = true; // seed
+
+	//
+	std::queue<int> face_queue;
+	face_queue.push(oriented_face_id);
+
+	while (!face_queue.empty()) {
+		int curr_f = face_queue.front();
+		face_queue.pop();
+
+		//
+		face_visited[curr_f] = true;
+
+		// 
+		for (auto& ef : modelFace[curr_f].incident_edges) {
+			for (auto& cnf : modelEdge[ef].incident_faces) {
+				if (cnf != modelFace[curr_f].face_id) {
+					int new_f = cnf;
+
+					// check edge
+					int v0 = -1;
+					int v1 = -1;
+					for (auto& ci : modelEdge[ef].incident_corners) {
+						if (v0 == -1)
+							v0 = ci;
+						else
+							v1 = ci;
+					}
+					mHEdge* he0 = nullptr;
+					mHEdge* he1 = nullptr;
+
+					for (auto& he : modelHalfEdges) {
+						if (((he.orig == v0) && (he.dist == v1)) || (he.dist == v0) && (he.orig == v1))
+							if (he0 == nullptr) {
+								he0 = &he;
+							}
+							else {
+								he1 = &he;
+							}
+					}
+					if (he0->orig == he1->orig) {
+						face_oriented[new_f] = false;
+
+						// must orient now...
+						for (auto& heid : modelFace[new_f].halfedges) {
+							int tmpdist = modelHalfEdges[heid].dist;
+							modelHalfEdges[heid].dist = modelHalfEdges[heid].orig;
+							modelHalfEdges[heid].orig = tmpdist;
+
+							int tmpnext = modelHalfEdges[heid].next;
+							modelHalfEdges[heid].next = modelHalfEdges[heid].prev;
+							modelHalfEdges[heid].prev = tmpnext;
+						}
+					}
+
+					//
+					bool push_to_queue = true;
+					if (face_in_queue[new_f])
+						push_to_queue = false;
+					if (face_visited[new_f])
+						push_to_queue = false;
+					if (push_to_queue) {
+						face_queue.push(new_f);
+						face_in_queue[new_f] = true;
+					}
+				}
+			}
+		}
+	}
+	
+	//
+	bool orientation_finished = true;
 }
 ///
 bool point_cloud::check_valid_parameters(int fid, int which_loop, int edge_rank_within_loop) {

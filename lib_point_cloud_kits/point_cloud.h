@@ -121,6 +121,7 @@ struct mFace { //
 	// incident info 
 	std::set<int> incident_corners; // ok
 	std::set<int> incident_edges; // ok
+	std::set<int> incident_faces;
 	int adjacent_he; // one adjacent halfegde of the mesh
 	std::vector<int> halfedges; // he_id
 
