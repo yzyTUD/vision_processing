@@ -150,7 +150,9 @@ void visual_processing::timer_event(double t, double dt) {
 	delay += speed;
 	if (delay > 1000 && animate_boundary_loop) {
 		//std::cout << "timer comes" << std::endl;
-		next_edge_within_curr_boundary();
+		//next_edge_within_curr_boundary();
+		//next_percentage_progress();
+		data_ptr->point_cloud_kit->pc.progress_all_halfedges();
 		delay = 0;
 	}
 }
@@ -2079,6 +2081,11 @@ void visual_processing::find_next_he() {
 	data_ptr->point_cloud_kit->pc.visualize_halfedges(
 		data_ptr->point_cloud_kit->highlight_fid, data_ptr->point_cloud_kit->highlight_which_loop, true);
 }
+///
+void visual_processing::update_halfedge_visulization() {
+	data_ptr->point_cloud_kit->pc.update_halfedge_visulization(
+		data_ptr->point_cloud_kit->highlight_fid, data_ptr->point_cloud_kit->highlight_which_loop);
+}
 /*gui */
 ///
 void visual_processing::create_gui() {
@@ -2303,10 +2310,16 @@ void visual_processing::create_gui() {
 			rebind(this, &visual_processing::next_edge_within_curr_boundary));
 
 		add_decorator("// halfedge visualizer ", "heading", "level=3");
+		add_member_control(this, "progress_percentage", data_ptr->point_cloud_kit->pc.progress_percentage,
+			"value_slider", "min=0.001;max=1;log=false;ticks=true;");
 		connect_copy(add_button("find_first_he_curr_settings")->click,
 			rebind(this, &visual_processing::find_first_he_curr_settings));
 		connect_copy(add_button("find_next_he")->click,
 			rebind(this, &visual_processing::find_next_he));
+		connect_copy(add_button("[N]update_halfedge_visulization")->click,
+			rebind(this, &visual_processing::update_halfedge_visulization));
+		
+		
 
 
 		add_decorator("// orient faces ", "heading", "level=3");

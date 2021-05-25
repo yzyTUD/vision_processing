@@ -848,6 +848,10 @@ void point_cloud::visualize_boundary_loop(int fid, int which_loop, int edge_rank
 }
 /// global vis
 void point_cloud::visualize_halfedges(int fid, int which_loop, bool next_half_edge) {
+	// safty check 
+	if (!check_valid_parameters(fid, which_loop, 0))
+		return;
+
 	//
 	for (int i = 0; i < get_nr_points(); i++)
 		point_visible_conn[i] = 0;
@@ -862,11 +866,99 @@ void point_cloud::visualize_halfedges(int fid, int which_loop, bool next_half_ed
 		curr_he_ptr = &modelHalfEdges[curr_he_ptr->next];
 	else
 		curr_he_ptr = &modelHalfEdges[modelFace[fid].halfedges[0]] ; // test
-	int curr_edge_id = curr_he_ptr->edge_id;
-	for (auto& pid : modelEdge[curr_edge_id].point_indices)
-		point_visible_conn[pid] = 1;
 
+	int curr_he_orig = curr_he_ptr->orig;
+	int curr_he_dist = curr_he_ptr->dist;
+	int curr_edge_id = curr_he_ptr->edge_id;
+	for (auto& pid : modelEdge[curr_edge_id].point_indices) {
+		float d_to_orig = (pnt(pid) - pnt(modelV[curr_he_orig].point_indices[0])).length();
+		float d_to_dist = (pnt(pid) - pnt(modelV[curr_he_dist].point_indices[0])).length();
+		float factor = 0;
+		factor = d_to_orig / (d_to_orig + d_to_dist);
+		if (factor > progress_percentage)
+			continue;
+
+		if (face_id[pid] != fid)
+			continue;
+
+		point_visible_conn[pid] = 1;
+	}
 }
+/// update_halfedge_visulization with percentage 
+void point_cloud::update_halfedge_visulization(int fid, int which_loop) {
+	// safty check 
+	if (!check_valid_parameters(fid, which_loop, 0))
+		return;
+
+	// have to enable this if you want to excute current function saparately 
+	//for (int i = 0; i < get_nr_points(); i++)
+	//	point_visible_conn[i] = 0;
+
+	//
+	for (int i = 0; i < get_nr_points(); i++)
+		if (face_id[i] == fid && topo_id[i] == point_cloud::TOPOAttribute::FACE)
+			point_visible_conn[i] = 1;
+
+	// initialize he 
+	curr_he_ptr = &modelHalfEdges[modelFace[fid].halfedges[0]];
+	mHEdge* starting_he = curr_he_ptr;
+
+	// find next hes 
+	do {
+		//
+		int curr_he_orig = curr_he_ptr->orig;
+		int curr_he_dist = curr_he_ptr->dist;
+		int curr_edge_id = curr_he_ptr->edge_id;
+		for (auto& pid : modelEdge[curr_edge_id].point_indices) {
+			float d_to_orig = (pnt(pid) - pnt(modelV[curr_he_orig].point_indices[0])).length();
+			float d_to_dist = (pnt(pid) - pnt(modelV[curr_he_dist].point_indices[0])).length();
+			float factor = 0;
+			factor = d_to_orig / (d_to_orig + d_to_dist);
+
+			if (factor > progress_percentage && positive_direction)
+				continue;
+
+			if (factor < progress_percentage && !positive_direction)
+				continue;
+
+			if (face_id[pid] != fid)
+				continue;
+			
+			point_visible_conn[pid] = 1;
+		}
+	
+		//
+		curr_he_ptr = &modelHalfEdges[curr_he_ptr->next];
+	} while (curr_he_ptr != starting_he);
+}
+/// this is done on CPU, can be excuted in saparate thread. points will be flushed to GPU in real time  
+void point_cloud::update_all_halfedges() {
+	//
+	for (int i = 0; i < get_nr_points(); i++)
+		point_visible_conn[i] = 0;
+
+	//
+	for (auto& f : modelFace) {
+		for (int loop_id = 0; loop_id < f.boundary_loops.size(); loop_id++) {
+			update_halfedge_visulization(f.face_id, loop_id);
+		}
+	}
+}
+///
+void point_cloud::progress_all_halfedges() {
+	if (progress_percentage > 1) {
+		progress_percentage = 0;
+		positive_direction = !positive_direction;
+	}
+	else {
+		progress_percentage += 0.1;
+	}
+
+	//if(progress_percentage<1e-6) // == 0
+	//	positive_direction = true;
+	update_all_halfedges();
+}
+
 /// fit one vertex for each corner
 void point_cloud::vertex_fitting() {
 	// goal: fit one vertex for each corner

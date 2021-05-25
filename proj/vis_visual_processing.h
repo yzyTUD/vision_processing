@@ -501,12 +501,18 @@ public:
 	void next_edge_within_curr_boundary();
 
 	void prev_edge_within_curr_boundary();
-
+	///
 	void next_face();
-
+	///
 	void prev_face();
+	///
 	void find_first_he_curr_settings();
+	///
 	void find_next_he();
+	///
+	void update_halfedge_visulization();
+	///
+	void next_percentage_progress();
 
 	void create_gui();
 	void write_trajectory() { draw_kit->write_trajectory(); }

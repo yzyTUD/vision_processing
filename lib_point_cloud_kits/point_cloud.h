@@ -426,8 +426,12 @@ public:
 	std::vector<mEdge> modelEdge;
 	/// list of half edges 
 	std::vector<mHEdge> modelHalfEdges;
-	///
+	/// for visulization 
 	mHEdge* curr_he_ptr;
+	/// for all edges 
+	float progress_percentage = 0.5;
+	///
+	bool positive_direction = true;
 	/// mapped 
 	std::map<int, mHEdge> mapped_modelHalfEdges;
 	/// a model is built from a list of surfaces 
@@ -452,6 +456,12 @@ public:
 	void visualize_boundary_loop(int fid, int which_loop, int edge_index);
 	///
 	void visualize_halfedges(int fid, int which_loop, bool next_half_edge);
+	///
+	void update_halfedge_visulization(int fid, int which_loop);
+	///
+	void update_all_halfedges();
+	///
+	void progress_all_halfedges();
 
 	/* parametic surface model extraction
 		the key is to find control points 
