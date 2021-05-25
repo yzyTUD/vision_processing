@@ -977,6 +977,8 @@ void point_cloud::progress_all_halfedges() {
 void point_cloud::estimate_face_orientations() {
 	for (auto& f : modelFace) {
 		//
+		if (f.face_id == -1)
+			continue;
 		if (f.boundary_loops.size() > 1)
 			continue;
 
@@ -996,8 +998,8 @@ void point_cloud::estimate_face_orientations() {
 			continue;
 		int he0 = f.halfedges[0];
 		int he1 = modelHalfEdges[he0].next;
-		vec3 hedir0 = modelHalfEdges[he0].dist - modelHalfEdges[he0].orig;
-		vec3 hedir1 = modelHalfEdges[he1].dist - modelHalfEdges[he1].orig;
+		vec3 hedir0 = pnt(modelV[modelHalfEdges[he0].dist].point_indices[0]) - pnt(modelV[modelHalfEdges[he0].orig].point_indices[0]);
+		vec3 hedir1 = pnt(modelV[modelHalfEdges[he1].dist].point_indices[0]) - pnt(modelV[modelHalfEdges[he1].orig].point_indices[0]);
 		vec3 cross_direction = cross(hedir0, hedir1);
 		normalize(cross_direction);
 		f.face_orientation = cross_direction;

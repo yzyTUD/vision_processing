@@ -2321,11 +2321,12 @@ void visual_processing::create_gui() {
 		
 		
 		add_decorator("// orient faces ", "heading", "level=3");
-		connect_copy(add_button("orient_faces")->click, rebind(&data_ptr->point_cloud_kit->pc, &point_cloud::orient_faces));
-		connect_copy(add_button("flip_orientation")->click, rebind(&data_ptr->point_cloud_kit->pc, &point_cloud::flip_orientation));
-
 		connect_copy(add_button("estimate_face_orientations [req: he]")->click, 
 			rebind(data_ptr->point_cloud_kit, &point_cloud_interactable::estimate_face_orientations));
+		connect_copy(add_button("orient_faces")->click, 
+			rebind(data_ptr->point_cloud_kit, &point_cloud_interactable::orient_faces));
+		connect_copy(add_button("flip_orientation")->click, 
+			rebind(data_ptr->point_cloud_kit, &point_cloud_interactable::flip_faces));
 		
 
 		add_decorator("// fitting ", "heading", "level=3");

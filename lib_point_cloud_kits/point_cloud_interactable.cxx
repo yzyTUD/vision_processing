@@ -4349,15 +4349,25 @@ void point_cloud_interactable::estimate_face_orientations() {
 	pc.estimate_face_orientations();
 	face_estimated_dir_out_of_date = true;
 }
+void point_cloud_interactable::orient_faces() {
+	pc.orient_faces();
+	pc.estimate_face_orientations();
+	face_estimated_dir_out_of_date = true;
+}
+void point_cloud_interactable::flip_faces() {
+	pc.flip_orientation();
+	pc.estimate_face_orientations();
+	face_estimated_dir_out_of_date = true;
+}
 ///
 void point_cloud_interactable::render_arrow_for_estimated_face_orientations(cgv::render::context& ctx) {
 	if (face_estimated_dir_out_of_date) {
+		face_centers.clear();
+		face_dirs.clear();
+		face_colors.clear();
 		for (auto& f : pc.modelFace) {
 			if (!f.has_estimated_center_and_ori)
 				continue;
-			face_centers.clear();
-			face_dirs.clear();
-			face_colors.clear();
 			face_centers.push_back(f.face_center_position);
 			face_dirs.push_back(f.face_orientation);
 			face_colors.push_back(rgb(0, 1, 0));
@@ -4367,6 +4377,7 @@ void point_cloud_interactable::render_arrow_for_estimated_face_orientations(cgv:
 	if (face_centers.size() == 0)
 		return;
 	cgv::render::arrow_render_style arrow_style;
+	arrow_style.length_scale = 0.3;
 	cgv::render::arrow_renderer& a_renderer = cgv::render::ref_arrow_renderer(ctx);
 	a_renderer.set_render_style(arrow_style);
 	a_renderer.set_position_array(ctx, face_centers);

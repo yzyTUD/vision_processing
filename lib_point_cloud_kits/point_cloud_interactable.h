@@ -594,6 +594,10 @@ public:
 	///
 	void estimate_face_orientations();
 	///
+	void orient_faces();
+	///
+	void flip_faces();
+	///
 	void render_arrow_for_estimated_face_orientations(cgv::render::context& ctx);
 	/// used for flipping,, blinking, change in timer event 
 	bool is_rendering_high_risk_corners = false;
