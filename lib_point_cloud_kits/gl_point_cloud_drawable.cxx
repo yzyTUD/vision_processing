@@ -19,6 +19,7 @@ using namespace cgv::utils::file;
 //#include <point_cloud_shader_inc.h>
 #endif
 #include <cgv/gui/file_dialog.h>
+#include <libs/cgv_gl/arrow_renderer.h>
 ///
 gl_point_cloud_drawable::gl_point_cloud_drawable() 
 {
@@ -246,6 +247,8 @@ bool gl_point_cloud_drawable::init(cgv::render::context& ctx)
 		return false;
 	bw_renderer.set_render_style(box_wire_style);
 	bw_renderer.set_position_is_center(false);
+
+	cgv::render::ref_arrow_renderer(ctx, 1);
 	return true;
 }
 ///

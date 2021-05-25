@@ -816,6 +816,20 @@ void point_cloud::orient_faces() {
 	bool orientation_finished = true;
 }
 ///
+void point_cloud::flip_orientation() {
+	for (auto& he : modelHalfEdges) {
+		int heid = he.he_id;
+
+		int tmpdist = modelHalfEdges[heid].dist;
+		modelHalfEdges[heid].dist = modelHalfEdges[heid].orig;
+		modelHalfEdges[heid].orig = tmpdist;
+
+		int tmpnext = modelHalfEdges[heid].next;
+		modelHalfEdges[heid].next = modelHalfEdges[heid].prev;
+		modelHalfEdges[heid].prev = tmpnext;
+	}
+}
+///
 bool point_cloud::check_valid_parameters(int fid, int which_loop, int edge_rank_within_loop) {
 	if (fid > 25 || fid < 0)
 		return false;
@@ -957,6 +971,40 @@ void point_cloud::progress_all_halfedges() {
 	//if(progress_percentage<1e-6) // == 0
 	//	positive_direction = true;
 	update_all_halfedges();
+}
+
+/// for a better checking: center and orientation 
+void point_cloud::estimate_face_orientations() {
+	for (auto& f : modelFace) {
+		//
+		if (f.boundary_loops.size() > 1)
+			continue;
+
+		// compute a center 
+		vec3 center = vec3(0);
+		int num_pnts_used_to_compute_center = 0;
+		for (auto& pid : f.point_indices) {
+			center += pnt(pid);
+			num_pnts_used_to_compute_center++;
+		}
+		center /= num_pnts_used_to_compute_center;
+		f.face_center_position = center;
+
+		// compute a direction 
+		vec3 ori = vec3(0);
+		if (f.halfedges.size() < 2)
+			continue;
+		int he0 = f.halfedges[0];
+		int he1 = modelHalfEdges[he0].next;
+		vec3 hedir0 = modelHalfEdges[he0].dist - modelHalfEdges[he0].orig;
+		vec3 hedir1 = modelHalfEdges[he1].dist - modelHalfEdges[he1].orig;
+		vec3 cross_direction = cross(hedir0, hedir1);
+		normalize(cross_direction);
+		f.face_orientation = cross_direction;
+
+		//
+		f.has_estimated_center_and_ori = true;
+	}
 }
 
 /// fit one vertex for each corner

@@ -226,6 +226,7 @@ void point_cloud_interactable::draw(cgv::render::context& ctx)
 
 	//render_high_risk_corners(ctx);
 	render_bboxes_for_corners(ctx);
+	render_arrow_for_estimated_face_orientations(ctx);
 
 	//if (interact_state != IS_DRAW_FULL_FRAME) {
 	//	std::swap(show_point_step, interact_point_step);
@@ -3894,6 +3895,7 @@ void point_cloud_interactable::clear_before_point_classification() {
 /// pre-requirement: rg is done, per point selection ready. after marked.
 /// result will be stored and visualized with TOPOAttribute
 #include <set>
+#include <libs/cgv_gl/arrow_renderer.h>
 void point_cloud_interactable::classify_points_and_visualize() {
 	//
 	for (auto& pv : pc.point_visited) pv = false;
@@ -4342,6 +4344,35 @@ void point_cloud_interactable::render_bboxes_for_corners(cgv::render::context& c
 	bw_renderer.set_box_array(ctx, corner_bboxes);
 	bw_renderer.set_color_array(ctx, corner_bbox_colors);
 	bw_renderer.render(ctx, 0, corner_bboxes.size());
+}
+void point_cloud_interactable::estimate_face_orientations() {
+	pc.estimate_face_orientations();
+	face_estimated_dir_out_of_date = true;
+}
+///
+void point_cloud_interactable::render_arrow_for_estimated_face_orientations(cgv::render::context& ctx) {
+	if (face_estimated_dir_out_of_date) {
+		for (auto& f : pc.modelFace) {
+			if (!f.has_estimated_center_and_ori)
+				continue;
+			face_centers.clear();
+			face_dirs.clear();
+			face_colors.clear();
+			face_centers.push_back(f.face_center_position);
+			face_dirs.push_back(f.face_orientation);
+			face_colors.push_back(rgb(0, 1, 0));
+		}
+		face_estimated_dir_out_of_date = false;
+	}
+	if (face_centers.size() == 0)
+		return;
+	cgv::render::arrow_render_style arrow_style;
+	cgv::render::arrow_renderer& a_renderer = cgv::render::ref_arrow_renderer(ctx);
+	a_renderer.set_render_style(arrow_style);
+	a_renderer.set_position_array(ctx, face_centers);
+	a_renderer.set_color_array(ctx, face_colors);
+	a_renderer.set_direction_array(ctx, face_dirs);
+	a_renderer.render(ctx, 0, face_centers.size());
 }
 ///
 void point_cloud_interactable::merge_high_risk_corners() {

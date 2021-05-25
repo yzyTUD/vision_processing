@@ -113,6 +113,8 @@ struct mEdge { // "model half edge "
 
 };
 struct mFace { // 
+	typedef cgv::math::fvec<float, 3> vec3;
+
 	int face_id; // to which face it belones to, globally
 
 	// point based representation 
@@ -130,6 +132,9 @@ struct mFace { //
 	std::vector<std::vector<int>> vertex_loops; // loop of vertices, int is vertex id 
 
 	// fitting
+	bool has_estimated_center_and_ori = false;
+	vec3 face_orientation; // estimeted orientation direction from he 
+	vec3 face_center_position; // estimated center position 
 	std::vector<int> control_point_indices; // typically 16 elements 
 	bool ready_for_rendering = false; // fitted 
 };
@@ -449,6 +454,8 @@ public:
 	///
 	void orient_faces();
 	///
+	void flip_orientation();
+	///
 	void extract_half_edges();
 	///
 	bool check_valid_parameters(int fid, int which_loop, int edge_rank_within_loop);
@@ -462,6 +469,8 @@ public:
 	void update_all_halfedges();
 	///
 	void progress_all_halfedges();
+	///
+	void estimate_face_orientations();
 
 	/* parametic surface model extraction
 		the key is to find control points 

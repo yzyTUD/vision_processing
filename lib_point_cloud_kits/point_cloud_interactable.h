@@ -567,6 +567,14 @@ public:
 	/// render corner bboxes and easier correction with controller 
 	std::vector<box3> corner_bboxes;
 	std::vector<rgb> corner_bbox_colors;
+	///
+	bool face_estimated_dir_out_of_date = false;
+	///
+	std::vector<vec3> face_centers;
+	///
+	std::vector<rgb> face_colors;
+	///
+	std::vector<vec3> face_dirs;
 	///  extract faces from points 
 	void face_extraction();
 	/// extract corners from points 
@@ -583,6 +591,10 @@ public:
 	void extract_high_risk_corners();
 	///
 	void render_bboxes_for_corners(cgv::render::context& ctx);
+	///
+	void estimate_face_orientations();
+	///
+	void render_arrow_for_estimated_face_orientations(cgv::render::context& ctx);
 	/// used for flipping,, blinking, change in timer event 
 	bool is_rendering_high_risk_corners = false;
 	/// all-in-one quick test 
