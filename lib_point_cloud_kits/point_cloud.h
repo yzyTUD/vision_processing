@@ -128,7 +128,7 @@ struct mFace { //
 	std::vector<int> halfedges; // he_id
 
 	// boundary loops
-	std::vector<std::vector<int>> boundary_loops; // loop of edges, int is edge id 
+	std::vector<std::vector<int>> boundary_loops; // loop of edges, int is edge id -> edge_loops
 	std::vector<std::vector<int>> vertex_loops; // loop of vertices, int is vertex id 
 
 	// fitting
