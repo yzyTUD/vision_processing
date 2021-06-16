@@ -97,7 +97,7 @@ struct mFace { //
 	std::set<int> incident_vertices; 
 	std::set<int> incident_edges; 
 	std::set<int> incident_faces;
-	// do we need he? 
+	int one_he;
 };
 
 // storage for boundary loops 
@@ -463,7 +463,7 @@ public:
 	///
 	void make_explicit();
 	///
-	std::set<int> find_incident_vertices(int edge_id);
+	std::set<int> find_vertices_for_a_given_edge(int edge_id);
 	///
 	void extract_boundary_loops();
 	///
