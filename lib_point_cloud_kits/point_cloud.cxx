@@ -659,6 +659,10 @@ void point_cloud::extract_half_edges() {
 			set<int> vertices_edge0 = find_vertices_for_a_given_edge(boundary_loops[f.face_id][loop_id][0]);
 			set<int> vertices_edge1 = find_vertices_for_a_given_edge(boundary_loops[f.face_id][loop_id][1]);
 			set<int> commonv = find_common(vertices_edge0, vertices_edge1);
+			if (commonv.size() == 0) {
+				std::cout << "errors with common vertex! check model! " << std::endl;
+				continue;
+			}
 			int dist_vertex_edge0 = *(commonv.begin());
 			int orig_vertex_edge0 = -1;
 			for (auto& v : vertices_edge0) {
@@ -795,6 +799,8 @@ void point_cloud::orient_faces() {
 			set<int> vertices = find_vertices_for_a_given_edge(ef);
 			if (vertices.size() == 0)
 				continue;
+			if (vertices.size() == 1)
+				continue;
 			for (auto& cnf : modelEdge[ef].incident_faces) { // two faces typically 
 				if (cnf != modelFace[curr_f].face_id) {
 					int new_f = cnf;
@@ -806,12 +812,15 @@ void point_cloud::orient_faces() {
 					// match the two half-edges in the pool and check their compatibility 
 					mHEdge* he0 = nullptr;
 					mHEdge* he1 = nullptr;
-					for (auto& he : modelHalfEdges)
-						if (((he.orig == v0) && (he.dist == v1)) || (he.dist == v0) && (he.orig == v1))
+					for (auto& he : modelHalfEdges) {
+						if (((he.orig == v0) && (he.dist == v1)) || (he.dist == v0) && (he.orig == v1)) {
 							if (he0 == nullptr)
 								he0 = &he;
 							else 
-								he1 = &he;
+								he1 = &he;							
+						}
+					}
+
 
 					//
 					if (he0->orig == he1->orig) {
@@ -857,6 +866,9 @@ void point_cloud::orient_faces() {
 ///
 void point_cloud::flip_orientation() {
 	for (auto& he : modelHalfEdges) {
+		if (he.he_id == -1)
+			continue;
+
 		int heid = he.he_id;
 
 		int tmpdist = modelHalfEdges[heid].dist;
