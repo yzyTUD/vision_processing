@@ -53,91 +53,100 @@
 
 	or, inverse. Similar to the storage of surfaces in visualization library.
 */
+
+/*
+	structures for holding the adjacency information
+*/ 
 struct mV { // "model vertex "
-	typedef cgv::math::fvec<float, 3> Pnt;
+	// properties 
+	int vertex_id;
+	int valence; 
+	std::vector<int> point_indices; // point based representation 
+	int control_point_index; // used to refer fitted position 
 
-	int corner_id; // to which corner it belones to 
-
-	// point based representation 
-	std::vector<int> point_indices; // done
-	int valence; // done
-
-	// he 
-	std::set<int> incident_edges; // ok
-	std::set<int> incident_faces; // ok
-
-	// fitting
-	int control_point_index; // implicit fitted position // done 
-
+	// adjacencies
+	std::set<int> incident_faces; // only one adjacent face? 
+	// incident vertices and edges are not stored as can be computed on the fly 
 };
-struct mHEdge {
-	// ref. back to edges 
-	int he_id;
-	int edge_id;
+struct mEdge { // "model edge "
+	// properties
+	int edge_id; // to which edge it belones to 
+	std::vector<int> point_indices; // point based representation 
+	std::vector<int> control_point_indices; // fitted information 
+
+	// adjacencies 
+	std::set<int> incident_faces; // typically two 
+	// incident vertices and edges are implicitly stored
+	// incident verteices: faces -> vertices in common 
+	// incident edges: faces -> edges -> match 
+};
+struct mFace { // 
+	// properties 
 	int face_id;
+	std::vector<int> point_indices; // point based representation
+	std::vector<int> control_point_indices; // typically 16 elements 
 
-	// using the cantor pairing to map two integers to one integer for checking if an edge has already been added
-	int cantor_number; // ok 
+	// for rendering, can be ignored when writting to file 
+	typedef cgv::math::fvec<float, 3> vec3;
+	bool has_estimated_center_and_ori = false;
+	vec3 face_orientation; // estimeted orientation direction from he 
+	vec3 face_center_position; // estimated center position 
+	bool ready_for_rendering = false;
 
-	//
-	std::vector<int> point_indices;
+	// adjacencies 
+	std::set<int> incident_vertices; 
+	std::set<int> incident_edges; 
+	std::set<int> incident_faces;
+	// do we need he? 
+};
 
-	//
-	int orig; // vertex id 
+// storage for boundary loops 
+// std:vector<std::vector<std::vector<int>>> boundary_loops; // face->loop->edge
+
+/*structure for holding halfe-edge information */
+struct mHEdge { // "model half edge", remains the same 
+	// properties 
+	int he_id; // ref the current half edge 
+	int edge_id; // ref. back to edges 
+	int face_id; // belongs to only one particular face 
+	int cantor_number; // map two integers to one integer for checking
+	std::vector<int> point_indices; // point based representation 
+
+	// adjacencies 
+	int orig; // origin vertex id 
 	int dist; // vertex id 
-
-	//
 	int next; // he_id of next halfedge in half edge pool 
 	int inv;  // he_id of inv halfedge in half edge pool 
 	int prev; // he_id of prev halfedge in half edge pool 
 };
-struct mEdge { // "model half edge "
-	int edge_id; // to which edge it belones to 
 
-	// point based representation 
-	std::vector<int> point_indices;
-	int valence;
 
-	// he 
-	int e0; 
-	int e1;
-
-	//
-	std::set<int> incident_corners; // ok 
-	std::set<int> incident_faces; // ok 
-	std::set<int> incident_edges;
-	bool is_boundary = false;
-
-	// fitting
-	std::vector<int> control_point_indices; // typically 4 elements 
-
-};
-struct mFace { // 
-	typedef cgv::math::fvec<float, 3> vec3;
-
-	int face_id; // to which face it belones to, globally
-
-	// point based representation 
-	std::vector<int> point_indices;
-
-	// incident info 
-	std::set<int> incident_corners; // ok
-	std::set<int> incident_edges; // ok
-	std::set<int> incident_faces;
-	int adjacent_he; // one adjacent halfegde of the mesh
-	std::vector<int> halfedges; // he_id
-
-	// boundary loops
-	std::vector<std::vector<int>> boundary_loops; // loop of edges, int is edge id -> edge_loops
-	std::vector<std::vector<int>> vertex_loops; // loop of vertices, int is vertex id 
-
-	// fitting
-	bool has_estimated_center_and_ori = false;
-	vec3 face_orientation; // estimeted orientation direction from he 
-	vec3 face_center_position; // estimated center position 
-	std::vector<int> control_point_indices; // typically 16 elements 
-	bool ready_for_rendering = false; // fitted 
-};
+//struct mFace { // 
+//	typedef cgv::math::fvec<float, 3> vec3;
+//
+//	int face_id; // to which face it belones to, globally
+//
+//	// point based representation 
+//	std::vector<int> point_indices;
+//
+//	// incident info 
+//	std::set<int> incident_corners; // ok
+//	std::set<int> incident_edges; // ok
+//	std::set<int> incident_faces;
+//	int adjacent_he; // one adjacent halfegde of the mesh
+//	std::vector<int> halfedges; // he_id
+//
+//	// boundary loops
+//	std::vector<std::vector<int>> boundary_loops; // loop of edges, int is edge id -> edge_loops
+//	std::vector<std::vector<int>> vertex_loops; // loop of vertices, int is vertex id 
+//
+//	// fitting
+//	bool has_estimated_center_and_ori = false;
+//	vec3 face_orientation; // estimeted orientation direction from he 
+//	vec3 face_center_position; // estimated center position 
+//	std::vector<int> control_point_indices; // typically 16 elements 
+//	bool ready_for_rendering = false; // fitted 
+//};
 
 /** define all point cloud relevant types in this helper class */
 struct point_cloud_types
@@ -418,19 +427,25 @@ public:
 		/// all-in-one function: invoke functions above 
 		void extract_incidents();
 	*/
-	/// explicit storage of connectivity information:  
+	/// connectivity model 
+
+	// explicit model representation with adjacencies 
+	std::vector<mV> modelV;
+	std::vector<mEdge> modelEdge;
+	std::vector<mFace> modelFace;
+
+	// boundary loops 
+	std::vector<std::vector<std::vector<int>>> boundary_loops; // face->loop->edge
+
+	// extracted half-edges 
+	std::vector<mHEdge> modelHalfEdges;
+
 	/// how many faces in this model 
 	int num_face_ids;
 	/// how many edges in this model 
 	int num_edge_ids;
 	/// how many vertices in this model 
-	int num_corner_ids;
-	/// a model is built from a list of vertices 
-	std::vector<mV> modelV;
-	/// a model is built from a list of edges
-	std::vector<mEdge> modelEdge;
-	/// list of half edges 
-	std::vector<mHEdge> modelHalfEdges;
+	int num_vertex_ids;
 	/// for visulization 
 	mHEdge* curr_he_ptr;
 	/// for all edges 
@@ -439,8 +454,6 @@ public:
 	bool positive_direction = true;
 	/// mapped 
 	std::map<int, mHEdge> mapped_modelHalfEdges;
-	/// a model is built from a list of surfaces 
-	std::vector<mFace> modelFace;
 	/// incidents per corner, for special case in corner extraction 
 	std::vector<std::set<int>> corner_incidents_table;
 	///
@@ -449,6 +462,8 @@ public:
 	std::vector<bool> use_this_point_indices_for_this_corner;
 	///
 	void make_explicit();
+	///
+	std::set<int> find_incident_vertices(int edge_id);
 	///
 	void extract_boundary_loops();
 	///

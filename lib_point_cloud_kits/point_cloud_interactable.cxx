@@ -787,7 +787,7 @@ void point_cloud_interactable::print_pc_information() {
 	std::cout << "points_grown: " << points_grown << std::endl;
 	std::cout << "pc.suggested_point_size: " << pc.suggested_point_size << std::endl;
 
-	std::cout << "pc.num_corner_ids: " << pc.num_corner_ids << std::endl;
+	std::cout << "pc.num_vertex_ids: " << pc.num_vertex_ids << std::endl;
 	std::cout << "pc.num_edge_ids: " << pc.num_edge_ids << std::endl;
 	std::cout << "pc.num_face_ids: " << pc.num_face_ids << std::endl;
 	std::cout << "pc.modelV.size(): " << pc.modelV.size() << std::endl;
@@ -4141,7 +4141,7 @@ void point_cloud_interactable::corner_extraction() {
 	std::set<int> regions;
 	for (auto& pid : pc.classified_to_be_a_corner_point)
 		regions.insert(pc.ranking_within_curr_topo[pid]);
-	pc.num_corner_ids = regions.size();
+	pc.num_vertex_ids = regions.size();
 	std::cout << "number of corners extracted: " << regions.size()
 		<< " or, curr_corner_id = " << curr_corner_id << std::endl;
 
@@ -4304,7 +4304,7 @@ void point_cloud_interactable::extract_incidents() {
 void point_cloud_interactable::extract_high_risk_corners() {
 	// clear variables first 
 	corner_incidents_is_in_high_risk.clear();
-	corner_incidents_is_in_high_risk.resize(pc.num_corner_ids);
+	corner_incidents_is_in_high_risk.resize(pc.num_vertex_ids);
 	high_risk_corner_boxes.clear();
 	high_risk_corners_color.clear();
 
@@ -4324,7 +4324,7 @@ void point_cloud_interactable::extract_high_risk_corners() {
 		}
 	}
 
-	for (int cid = 0; cid < pc.num_corner_ids; cid++) {
+	for (int cid = 0; cid < pc.num_vertex_ids; cid++) {
 		if (corner_incidents_is_in_high_risk[cid]) {
 			box3 curr_box;
 			for(auto& pid: pc.point_indices_for_corners[cid])
@@ -4400,7 +4400,7 @@ void point_cloud_interactable::correct_corner_id_of_the_minior_points_within_ran
 	//
 	int major_corner_id = -1;
 	std::vector<int> points_found_per_corner_id;
-	points_found_per_corner_id.resize(pc.num_corner_ids);
+	points_found_per_corner_id.resize(pc.num_vertex_ids);
 	for (auto& points : points_found_per_corner_id) points = 0;
 
 	// count 
@@ -4446,7 +4446,7 @@ void point_cloud_interactable::correct_corner_id_of_the_minior_points_within_ran
 		for(auto& mid: minor_corner_ids)
 			pc.use_this_point_indices_for_this_corner[mid] = false;
 		// push back to new ...
-		pc.num_corner_ids -= minor_corner_ids.size(); // assume that all minor points represents an error extracted corner  
+		pc.num_vertex_ids -= minor_corner_ids.size(); // assume that all minor points represents an error extracted corner  
 }
 
 

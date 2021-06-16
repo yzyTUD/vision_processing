@@ -414,12 +414,12 @@ void point_cloud::make_explicit() {
 		modelFace[face_id[fcpid]].point_indices.push_back(fcpid);
 	}
 
-	// collect vertices, extract connectivity: incident_faces  
-	for (int corner_id = 0; corner_id < num_corner_ids; corner_id++) {
+	// collect vertices, incident faces will be extracted at the same time 
+	for (int vertex_id = 0; vertex_id < num_vertex_ids; vertex_id++) {
 		mV tmp_mV;
-		tmp_mV.corner_id = corner_id;
+		tmp_mV.vertex_id = vertex_id;
 		for (auto& vcpid : classified_to_be_a_corner_point) {
-			if (ranking_within_curr_topo[vcpid] == corner_id) {
+			if (ranking_within_curr_topo[vcpid] == vertex_id) {
 				tmp_mV.point_indices.push_back(vcpid);
 				tmp_mV.valence = incident_ids[vcpid].size();
 				for (auto& fi : incident_ids[vcpid]) {
@@ -430,14 +430,13 @@ void point_cloud::make_explicit() {
 		modelV.push_back(tmp_mV);
 	}
 
-	// collect edges  
+	// collect edges, incident faces will ba assigned 
 	for (int edge_id = 0; edge_id < num_edge_ids; edge_id++) {
 		mEdge tmp_mHE;
 		tmp_mHE.edge_id = edge_id;
 		for (auto& ecpid : classified_to_be_an_edge_point) {
 			if (ranking_within_curr_topo[ecpid] == edge_id) {
 				tmp_mHE.point_indices.push_back(ecpid);
-				tmp_mHE.valence = incident_ids[ecpid].size();
 				for (auto& fi : incident_ids[ecpid]) {
 					tmp_mHE.incident_faces.insert(fi); // extract edge - face incident info 
 				}
@@ -446,23 +445,33 @@ void point_cloud::make_explicit() {
 		modelEdge.push_back(tmp_mHE);
 	}
 
-
-	/**/
-	// find face-edge incidents 
-	for (auto& mf: modelFace) { // loop faces 
-		int curr_face_id = mf.face_id;
-		// match incident edges 
+	// find face-edge incidents by matching: based on edge - face incidents 
+	for (auto& mf: modelFace) {
+		if (mf.face_id == -1)
+			continue;
 		for (auto& me: modelEdge) {
 			for (int fi : me.incident_faces) {
-				if (fi == curr_face_id) {
-					// face-edge inciednt found 
+				if (fi == mf.face_id) {
 					mf.incident_edges.insert(me.edge_id);
 				}
 			}
 		}
 	}
 
-	// find face-face incidents 
+	// find face-vertex incidents by matching: based on vertex - face incidents 
+	for (auto& mf : modelFace) {
+		if (mf.face_id == -1)
+			continue;
+		for (auto& mv : modelV) {
+			for (int fi : mv.incident_faces) {
+				if (fi == mf.face_id) {
+					mf.incident_vertices.insert(mv.vertex_id);
+				}
+			}
+		}
+	}
+
+	// find face-face incidents, based on face - edge incidents 
 	for (auto& mf : modelFace) {
 		if (mf.face_id == -1)
 			continue;
@@ -474,59 +483,40 @@ void point_cloud::make_explicit() {
 			}
 		}
 	}
-
-	// find edge-vertex incidents 
-	for (auto& me: modelEdge) {
-		std::set<int> curr_ef_incident_ids = me.incident_faces;
-		for (auto& mv: modelV) {
-			std::set<int> curr_vf_incident_ids = mv.incident_faces;
-			// goal: check if included 
-			bool included_by_vf_incidents = true;
-			for (int k :curr_ef_incident_ids) {
-				auto it = curr_vf_incident_ids.find(k);
-				if (it == curr_vf_incident_ids.end()) {
-					included_by_vf_incidents = false;
-				}
-			}
-			if (included_by_vf_incidents) {
-				// state: edge-vertex incident found! 
-				me.incident_corners.insert(mv.corner_id);
-			}
-		}
-	}
-
-	// find vertex-edge incidents
-	for (auto& mv : modelV) {
-		int curr_vertex = mv.corner_id;
-		for (auto& me : modelEdge) {
-			auto it = me.incident_corners.find(curr_vertex);
-			if (it != me.incident_corners.end()) {
-				mv.incident_edges.insert(me.edge_id);
-			}
-		}
-	}
-
-	// find face-vertex incidents 
-	for (auto& mf : modelFace)  
-		for (auto& ef : mf.incident_edges) 
-			for (auto& vf : modelEdge[ef].incident_corners) 
-				mf.incident_corners.insert(vf);
-
-	// find edge-edge incidents
-	for (auto& me : modelEdge) {
-		
-	}
-
 }
+
+/// implicitly stored, lower space but more complex algorithm 
+std::set<int> point_cloud::find_incident_vertices(int edge_id) {
+	int inci_f0 = *(modelEdge[edge_id].incident_faces.begin());
+	int inci_f1 = *(++modelEdge[edge_id].incident_faces.begin());
+	std::set<int> vertices_f0 = modelFace[inci_f0].incident_vertices;
+	std::set<int> vertices_f1 = modelFace[inci_f1].incident_vertices;
+	set<int> intersect;
+	set_intersection(vertices_f0.begin(), vertices_f0.end(), vertices_f1.begin(), vertices_f1.end(),
+		std::inserter(intersect, intersect.begin()));
+
+	return intersect;
+}
+
 ///
 void point_cloud::extract_boundary_loops() {
+	//
+	boundary_loops.resize(modelFace.size());
+
+	//
 	for (auto& f : modelFace) {
-		//
+		if (f.face_id == -1)
+			continue;
+
+		// the output
 		std::vector<int> ordered_edges;
-		std::vector<int> ordered_vertices;
-		std::vector<bool> in_ordered_edges_list;
+
+		// reset every new face 
+		std::vector<bool> in_ordered_edges_list; 
 		in_ordered_edges_list.resize(num_edge_ids);
-		for (auto& b : in_ordered_edges_list)b = false;
+		for (auto& b : in_ordered_edges_list) b = false;
+
+		//
 		int num_edges_curr_face = f.incident_edges.size();
 		
 		//
@@ -534,21 +524,32 @@ void point_cloud::extract_boundary_loops() {
 			// ignore edge that already found 
 			if (in_ordered_edges_list[edge_id])
 				continue;
+
+			// init/ clean veriables 
+			ordered_edges.clear();
+
+			// check if vertices present in current edge 
+			bool no_vertices = false;
+			set<int> vertices_for_edge_id = find_incident_vertices(edge_id);
+			if (vertices_for_edge_id.size() == 0)
+				no_vertices = true;
 			
 			// only one edge and no corners present to current edge, submit
-			if (modelEdge[edge_id].incident_corners.size() == 0) {
+			if (no_vertices) {
 				ordered_edges.push_back(edge_id);
 				in_ordered_edges_list[edge_id] = true;
-				f.boundary_loops.push_back(ordered_edges);
-				f.vertex_loops.push_back(ordered_vertices); // is empty
-				ordered_edges.clear();
+				boundary_loops[f.face_id].push_back(ordered_edges); // create a new loop and add the edges 
 				continue;
 			}
 
-			int v1 = *(modelEdge[edge_id].incident_corners.begin());
-			int v2 = *(++modelEdge[edge_id].incident_corners.begin());
+			if (vertices_for_edge_id.size() != 2) {
+				std::cout << "error number of vertices for edge: " << edge_id << std::endl;
+				continue;
+			}
+
+			int v1 = *(vertices_for_edge_id.begin());
+			int v2 = *(++vertices_for_edge_id.begin());
 			ordered_edges.push_back(edge_id);
-			ordered_vertices.push_back(v1);
 			in_ordered_edges_list[edge_id] = true;
 			int last_v = v2;
 			bool can_find_next = false;
@@ -556,7 +557,8 @@ void point_cloud::extract_boundary_loops() {
 			// find next edge 
 			int next_edge = -1;
 			for (auto neid : f.incident_edges) {
-				if (modelEdge[neid].incident_corners.find(last_v) == modelEdge[neid].incident_corners.end())
+				set<int> vertices_for_the_next_edge = find_incident_vertices(neid);
+				if (vertices_for_the_next_edge.find(last_v) == vertices_for_the_next_edge.end())
 					continue;
 				if (in_ordered_edges_list[neid])
 					continue;
@@ -567,9 +569,9 @@ void point_cloud::extract_boundary_loops() {
 			while (next_edge != -1) {
 				//
 				ordered_edges.push_back(next_edge);
-				ordered_vertices.push_back(last_v);
 				in_ordered_edges_list[next_edge] = true;
-				for (auto v : modelEdge[next_edge].incident_corners) {
+				set<int> vertex_candidates = find_incident_vertices(next_edge);
+				for (auto v : vertex_candidates) {
 					if (v != last_v) {
 						last_v = v;
 						break;
@@ -579,7 +581,8 @@ void point_cloud::extract_boundary_loops() {
 				// find next edge with in current face 
 				next_edge = -1;
 				for (auto neid : f.incident_edges) {
-					if (modelEdge[neid].incident_corners.find(last_v) == modelEdge[neid].incident_corners.end())
+					set<int> vertices_for_the_next_edge = find_incident_vertices(neid);
+					if (vertices_for_the_next_edge.find(last_v) == vertices_for_the_next_edge.end())
 						continue;
 					if (in_ordered_edges_list[neid])
 						continue;
@@ -589,231 +592,230 @@ void point_cloud::extract_boundary_loops() {
 			}
 
 			//
-			f.boundary_loops.push_back(ordered_edges);
-			f.vertex_loops.push_back(ordered_vertices);
+			boundary_loops[f.face_id].push_back(ordered_edges);
 			ordered_edges.clear();
-			ordered_vertices.clear();
 		}
 
 		//
-		for (int loop = 0; loop < f.boundary_loops.size(); loop++) {
+		for (int loop = 0; loop < boundary_loops[f.face_id].size(); loop++) {
 			std::cout << "boundary loops for face: " << f.face_id << " are: " << std::endl;
 			std::cout << "\t loop " << loop << " : ";
-			for (auto loop_edge : f.boundary_loops[loop]) {
+			for (auto loop_edge : boundary_loops[f.face_id][loop]) {
 				std::cout << loop_edge;
 			}
 			std::cout << "\n";
 		}
-
-		//
 	}
+
+	//
+	bool success = true;
 }
 ///
 void point_cloud::extract_half_edges() {
-	// init hes in fixed position 
-	modelHalfEdges.resize(modelEdge.size() * 2); // [+e0 e1 e2 ... ] + [-e0 e1 e2 ... ]
-	mHEdge de;
-	de.edge_id = -1;
-	de.he_id = -1;
-	de.face_id = -1;
-	de.orig = -1;
-	de.next = -1;
-	de.inv = -1;
-	for (auto& e : modelHalfEdges) { e = de; }
-	int current_he_index = -1;
-	int beginning_he_index = -1;
-	int end_he_index = -1;
+	//// init hes in fixed position 
+	//modelHalfEdges.resize(modelEdge.size() * 2); // [+e0 e1 e2 ... ] + [-e0 e1 e2 ... ]
+	//mHEdge de;
+	//de.edge_id = -1;
+	//de.he_id = -1;
+	//de.face_id = -1;
+	//de.orig = -1;
+	//de.next = -1;
+	//de.inv = -1;
+	//for (auto& e : modelHalfEdges) { e = de; }
+	//int current_he_index = -1;
+	//int beginning_he_index = -1;
+	//int end_he_index = -1;
 
-	//
-	std::vector<bool> halfedge_visited;
-	halfedge_visited.resize(modelHalfEdges.size());
-	for (auto& e : halfedge_visited) { e = false; }
+	////
+	//std::vector<bool> halfedge_visited;
+	//halfedge_visited.resize(modelHalfEdges.size());
+	//for (auto& e : halfedge_visited) { e = false; }
 
-	// loop faces
-	for (auto& f : modelFace) {
-		if (f.face_id == -1)
-			continue;
-		for (int loop_id = 0; loop_id < f.vertex_loops.size(); loop_id++) {
-			// do not have he in this case? no orig and dist, but can have inv 
-			if (f.vertex_loops[loop_id].size() == 0)
-				continue;
+	//// loop faces
+	//for (auto& f : modelFace) {
+	//	if (f.face_id == -1)
+	//		continue;
+	//	for (int loop_id = 0; loop_id < f.vertex_loops.size(); loop_id++) {
+	//		// do not have he in this case? no orig and dist, but can have inv 
+	//		if (f.vertex_loops[loop_id].size() == 0)
+	//			continue;
 
-			// create all he in curr loop
-			beginning_he_index = current_he_index + 1;
-			end_he_index = current_he_index + f.boundary_loops[loop_id].size();
-			for (auto& ei : f.boundary_loops[loop_id]) {
-				current_he_index++;
-				modelHalfEdges[current_he_index].edge_id = ei;
-				modelHalfEdges[current_he_index].he_id = current_he_index;
-				modelHalfEdges[current_he_index].face_id = f.face_id;
-				f.halfedges.push_back(current_he_index);
-			}
+	//		// create all he in curr loop
+	//		beginning_he_index = current_he_index + 1;
+	//		end_he_index = current_he_index + f.boundary_loops[loop_id].size();
+	//		for (auto& ei : f.boundary_loops[loop_id]) {
+	//			current_he_index++;
+	//			modelHalfEdges[current_he_index].edge_id = ei;
+	//			modelHalfEdges[current_he_index].he_id = current_he_index;
+	//			modelHalfEdges[current_he_index].face_id = f.face_id;
+	//			f.halfedges.push_back(current_he_index);
+	//		}
 
-			// convert loop to a list of hes 
-			for (int vei = 0; vei < f.boundary_loops[loop_id].size(); vei++){
-				mHEdge* curr_he = &modelHalfEdges[vei + beginning_he_index];
-				mHEdge* next_he;
-				mHEdge* prev_he;
-				int dist_vi = -1;
-				
-				if (vei == 0) {
-					next_he = &modelHalfEdges[vei + 1 + beginning_he_index];
-					dist_vi = f.vertex_loops[loop_id][vei + 1];
-					prev_he = &modelHalfEdges[end_he_index];
-				}
-				else if (vei == (f.vertex_loops[loop_id].size() - 1)) {
-					next_he = &modelHalfEdges[beginning_he_index];
-					dist_vi = f.vertex_loops[loop_id][0];
-					prev_he = &modelHalfEdges[vei - 1 + beginning_he_index];
-				}
-				else {
-					next_he = &modelHalfEdges[vei + 1 + beginning_he_index];
-					dist_vi = f.vertex_loops[loop_id][vei + 1];
-					prev_he = &modelHalfEdges[vei - 1 + beginning_he_index];
-				}
-				int orig = f.vertex_loops[loop_id][vei];
-				int dist = dist_vi;
-				int k1 = orig;
-				int k2 = dist;
-				int cantor_number = ((k1 + k2) * (k1 + k2 + 1) / 2) + k2;
-				k1 = dist;
-				k2 = orig;
-				int inversed_cantor_number = ((k1 + k2) * (k1 + k2 + 1) / 2) + k2;
+	//		// convert loop to a list of hes 
+	//		for (int vei = 0; vei < f.boundary_loops[loop_id].size(); vei++){
+	//			mHEdge* curr_he = &modelHalfEdges[vei + beginning_he_index];
+	//			mHEdge* next_he;
+	//			mHEdge* prev_he;
+	//			int dist_vi = -1;
+	//			
+	//			if (vei == 0) {
+	//				next_he = &modelHalfEdges[vei + 1 + beginning_he_index];
+	//				dist_vi = f.vertex_loops[loop_id][vei + 1];
+	//				prev_he = &modelHalfEdges[end_he_index];
+	//			}
+	//			else if (vei == (f.vertex_loops[loop_id].size() - 1)) {
+	//				next_he = &modelHalfEdges[beginning_he_index];
+	//				dist_vi = f.vertex_loops[loop_id][0];
+	//				prev_he = &modelHalfEdges[vei - 1 + beginning_he_index];
+	//			}
+	//			else {
+	//				next_he = &modelHalfEdges[vei + 1 + beginning_he_index];
+	//				dist_vi = f.vertex_loops[loop_id][vei + 1];
+	//				prev_he = &modelHalfEdges[vei - 1 + beginning_he_index];
+	//			}
+	//			int orig = f.vertex_loops[loop_id][vei];
+	//			int dist = dist_vi;
+	//			int k1 = orig;
+	//			int k2 = dist;
+	//			int cantor_number = ((k1 + k2) * (k1 + k2 + 1) / 2) + k2;
+	//			k1 = dist;
+	//			k2 = orig;
+	//			int inversed_cantor_number = ((k1 + k2) * (k1 + k2 + 1) / 2) + k2;
 
-				//// loop to find exist
-				//bool exist = false;
-				//for (auto& he : modelHalfEdges) {
-				//	if (he.edge_id == -1)
-				//		continue;
-				//	if (he.cantor_number == cantor_number) {
-				//		// exist found! 
-				//		exist = true;
-				//		break;
-				//	}
-				//}
+	//			//// loop to find exist
+	//			//bool exist = false;
+	//			//for (auto& he : modelHalfEdges) {
+	//			//	if (he.edge_id == -1)
+	//			//		continue;
+	//			//	if (he.cantor_number == cantor_number) {
+	//			//		// exist found! 
+	//			//		exist = true;
+	//			//		break;
+	//			//	}
+	//			//}
 
-				curr_he->orig = orig;
-				curr_he->dist = dist;
-				curr_he->cantor_number = cantor_number;
+	//			curr_he->orig = orig;
+	//			curr_he->dist = dist;
+	//			curr_he->cantor_number = cantor_number;
 
-				curr_he->next = next_he->he_id;
-				curr_he->prev = prev_he->he_id;
+	//			curr_he->next = next_he->he_id;
+	//			curr_he->prev = prev_he->he_id;
 
-				// loop to find possible inv 
-				for (auto& he : modelHalfEdges) {
-					if (he.edge_id == -1)
-						continue;
-					if (he.cantor_number == inversed_cantor_number) {
-						// inv found! 
-						curr_he->inv = he.he_id;
-						he.inv = curr_he->he_id;
-						break;
-					}
-				}
-			}
+	//			// loop to find possible inv 
+	//			for (auto& he : modelHalfEdges) {
+	//				if (he.edge_id == -1)
+	//					continue;
+	//				if (he.cantor_number == inversed_cantor_number) {
+	//					// inv found! 
+	//					curr_he->inv = he.he_id;
+	//					he.inv = curr_he->he_id;
+	//					break;
+	//				}
+	//			}
+	//		}
 
-			//
-		}
+	//		//
+	//	}
 
-		//
-		bool one_face_done = true;
-	}
+	//	//
+	//	bool one_face_done = true;
+	//}
 
-	// 
-	bool all_faces_should_extracted = true;
+	//// 
+	//bool all_faces_should_extracted = true;
 }
 /// orient ref to normal 
 void point_cloud::orient_faces() {
-	if (modelFace.size() == 0)
-		return;
+	//if (modelFace.size() == 0)
+	//	return;
 
+	////
+	//std::vector<bool> face_visited;
+	//std::vector<bool> face_oriented;
+	//std::vector<bool> face_in_queue;
 	//
-	std::vector<bool> face_visited;
-	std::vector<bool> face_oriented;
-	std::vector<bool> face_in_queue;
-	
-	face_visited.resize(modelFace.size());
-	for (auto& v : face_visited) v = false;
-	face_in_queue.resize(modelFace.size());
-	for (auto& v : face_in_queue) v = false;
-	face_oriented.resize(modelFace.size());
-	for (auto& v : face_oriented) v = true; // orient faces that have face_oriented = false
+	//face_visited.resize(modelFace.size());
+	//for (auto& v : face_visited) v = false;
+	//face_in_queue.resize(modelFace.size());
+	//for (auto& v : face_in_queue) v = false;
+	//face_oriented.resize(modelFace.size());
+	//for (auto& v : face_oriented) v = true; // orient faces that have face_oriented = false
 
+	////
+	//int oriented_face_id = 1; // as a test 
+	//face_oriented[1] = true; // as a test 
+	//face_visited[oriented_face_id] = true; // seed
+
+	////
+	//std::queue<int> face_queue;
+	//face_queue.push(oriented_face_id);
+
+	//while (!face_queue.empty()) {
+	//	int curr_f = face_queue.front();
+	//	face_queue.pop();
+
+	//	//
+	//	face_visited[curr_f] = true;
+
+	//	// 
+	//	for (auto& ef : modelFace[curr_f].incident_edges) {
+	//		for (auto& cnf : modelEdge[ef].incident_faces) {
+	//			if (cnf != modelFace[curr_f].face_id) {
+	//				int new_f = cnf;
+
+	//				// check edge
+	//				int v0 = -1;
+	//				int v1 = -1;
+	//				for (auto& ci : modelEdge[ef].incident_corners) {
+	//					if (v0 == -1)
+	//						v0 = ci;
+	//					else
+	//						v1 = ci;
+	//				}
+	//				mHEdge* he0 = nullptr;
+	//				mHEdge* he1 = nullptr;
+
+	//				for (auto& he : modelHalfEdges) {
+	//					if (((he.orig == v0) && (he.dist == v1)) || (he.dist == v0) && (he.orig == v1))
+	//						if (he0 == nullptr) {
+	//							he0 = &he;
+	//						}
+	//						else {
+	//							he1 = &he;
+	//						}
+	//				}
+	//				if (he0->orig == he1->orig) {
+	//					face_oriented[new_f] = false;
+
+	//					// must orient now...
+	//					for (auto& heid : modelFace[new_f].halfedges) {
+	//						int tmpdist = modelHalfEdges[heid].dist;
+	//						modelHalfEdges[heid].dist = modelHalfEdges[heid].orig;
+	//						modelHalfEdges[heid].orig = tmpdist;
+
+	//						int tmpnext = modelHalfEdges[heid].next;
+	//						modelHalfEdges[heid].next = modelHalfEdges[heid].prev;
+	//						modelHalfEdges[heid].prev = tmpnext;
+	//					}
+	//				}
+
+	//				//
+	//				bool push_to_queue = true;
+	//				if (face_in_queue[new_f])
+	//					push_to_queue = false;
+	//				if (face_visited[new_f])
+	//					push_to_queue = false;
+	//				if (push_to_queue) {
+	//					face_queue.push(new_f);
+	//					face_in_queue[new_f] = true;
+	//				}
+	//			}
+	//		}
+	//	}
+	//}
 	//
-	int oriented_face_id = 1; // as a test 
-	face_oriented[1] = true; // as a test 
-	face_visited[oriented_face_id] = true; // seed
-
-	//
-	std::queue<int> face_queue;
-	face_queue.push(oriented_face_id);
-
-	while (!face_queue.empty()) {
-		int curr_f = face_queue.front();
-		face_queue.pop();
-
-		//
-		face_visited[curr_f] = true;
-
-		// 
-		for (auto& ef : modelFace[curr_f].incident_edges) {
-			for (auto& cnf : modelEdge[ef].incident_faces) {
-				if (cnf != modelFace[curr_f].face_id) {
-					int new_f = cnf;
-
-					// check edge
-					int v0 = -1;
-					int v1 = -1;
-					for (auto& ci : modelEdge[ef].incident_corners) {
-						if (v0 == -1)
-							v0 = ci;
-						else
-							v1 = ci;
-					}
-					mHEdge* he0 = nullptr;
-					mHEdge* he1 = nullptr;
-
-					for (auto& he : modelHalfEdges) {
-						if (((he.orig == v0) && (he.dist == v1)) || (he.dist == v0) && (he.orig == v1))
-							if (he0 == nullptr) {
-								he0 = &he;
-							}
-							else {
-								he1 = &he;
-							}
-					}
-					if (he0->orig == he1->orig) {
-						face_oriented[new_f] = false;
-
-						// must orient now...
-						for (auto& heid : modelFace[new_f].halfedges) {
-							int tmpdist = modelHalfEdges[heid].dist;
-							modelHalfEdges[heid].dist = modelHalfEdges[heid].orig;
-							modelHalfEdges[heid].orig = tmpdist;
-
-							int tmpnext = modelHalfEdges[heid].next;
-							modelHalfEdges[heid].next = modelHalfEdges[heid].prev;
-							modelHalfEdges[heid].prev = tmpnext;
-						}
-					}
-
-					//
-					bool push_to_queue = true;
-					if (face_in_queue[new_f])
-						push_to_queue = false;
-					if (face_visited[new_f])
-						push_to_queue = false;
-					if (push_to_queue) {
-						face_queue.push(new_f);
-						face_in_queue[new_f] = true;
-					}
-				}
-			}
-		}
-	}
-	
-	//
-	bool orientation_finished = true;
+	////
+	//bool orientation_finished = true;
 }
 ///
 void point_cloud::flip_orientation() {
@@ -835,11 +837,11 @@ bool point_cloud::check_valid_parameters(int fid, int which_loop, int edge_rank_
 		return false;
 	if (modelFace.size() == 0)
 		return false;
-	if (modelFace[fid].boundary_loops.size() == 0)
+	if (boundary_loops[fid].size() == 0) // no loop present 
 		return false;
-	if (which_loop > modelFace[fid].boundary_loops.size() - 1 || which_loop < 0)
+	if (which_loop > boundary_loops[fid].size() - 1 || which_loop < 0)
 		return false;
-	if (edge_rank_within_loop > modelFace[fid].boundary_loops[which_loop].size() - 1 || edge_rank_within_loop < 0)
+	if (edge_rank_within_loop > boundary_loops[fid][which_loop].size() - 1 || edge_rank_within_loop < 0)
 		return false;
 	return true;
 }
@@ -857,106 +859,106 @@ void point_cloud::visualize_boundary_loop(int fid, int which_loop, int edge_rank
 			point_visible_conn[i] = 1;
 
 	//
-	for (auto& pid : modelEdge[modelFace[fid].boundary_loops[which_loop][edge_rank_within_loop]].point_indices)
+	for (auto& pid : modelEdge[boundary_loops[fid][which_loop][edge_rank_within_loop]].point_indices)
 		point_visible_conn[pid] = 1;
 }
 /// global vis
 void point_cloud::visualize_halfedges(int fid, int which_loop, bool next_half_edge) {
-	// safty check 
-	if (!check_valid_parameters(fid, which_loop, 0))
-		return;
+	//// safty check 
+	//if (!check_valid_parameters(fid, which_loop, 0))
+	//	return;
 
-	//
-	for (int i = 0; i < get_nr_points(); i++)
-		point_visible_conn[i] = 0;
-
-	//
-	for (int i = 0; i < get_nr_points(); i++)
-		if (face_id[i] == fid && topo_id[i] == point_cloud::TOPOAttribute::FACE)
-			point_visible_conn[i] = 1;
-
-	//
-	if (next_half_edge)
-		curr_he_ptr = &modelHalfEdges[curr_he_ptr->next];
-	else
-		curr_he_ptr = &modelHalfEdges[modelFace[fid].halfedges[0]] ; // test
-
-	int curr_he_orig = curr_he_ptr->orig;
-	int curr_he_dist = curr_he_ptr->dist;
-	int curr_edge_id = curr_he_ptr->edge_id;
-	for (auto& pid : modelEdge[curr_edge_id].point_indices) {
-		float d_to_orig = (pnt(pid) - pnt(modelV[curr_he_orig].point_indices[0])).length();
-		float d_to_dist = (pnt(pid) - pnt(modelV[curr_he_dist].point_indices[0])).length();
-		float factor = 0;
-		factor = d_to_orig / (d_to_orig + d_to_dist);
-		if (factor > progress_percentage)
-			continue;
-
-		if (face_id[pid] != fid)
-			continue;
-
-		point_visible_conn[pid] = 1;
-	}
-}
-/// update_halfedge_visulization with percentage 
-void point_cloud::update_halfedge_visulization(int fid, int which_loop) {
-	// safty check 
-	if (!check_valid_parameters(fid, which_loop, 0))
-		return;
-
-	// have to enable this if you want to excute current function saparately 
+	////
 	//for (int i = 0; i < get_nr_points(); i++)
 	//	point_visible_conn[i] = 0;
 
+	////
+	//for (int i = 0; i < get_nr_points(); i++)
+	//	if (face_id[i] == fid && topo_id[i] == point_cloud::TOPOAttribute::FACE)
+	//		point_visible_conn[i] = 1;
+
+	////
+	//if (next_half_edge)
+	//	curr_he_ptr = &modelHalfEdges[curr_he_ptr->next];
+	//else
+	//	curr_he_ptr = &modelHalfEdges[modelFace[fid].halfedges[0]] ; // test
+
+	//int curr_he_orig = curr_he_ptr->orig;
+	//int curr_he_dist = curr_he_ptr->dist;
+	//int curr_edge_id = curr_he_ptr->edge_id;
+	//for (auto& pid : modelEdge[curr_edge_id].point_indices) {
+	//	float d_to_orig = (pnt(pid) - pnt(modelV[curr_he_orig].point_indices[0])).length();
+	//	float d_to_dist = (pnt(pid) - pnt(modelV[curr_he_dist].point_indices[0])).length();
+	//	float factor = 0;
+	//	factor = d_to_orig / (d_to_orig + d_to_dist);
+	//	if (factor > progress_percentage)
+	//		continue;
+
+	//	if (face_id[pid] != fid)
+	//		continue;
+
+	//	point_visible_conn[pid] = 1;
+	//}
+}
+/// update_halfedge_visulization with percentage 
+void point_cloud::update_halfedge_visulization(int fid, int which_loop) {
+	//// safty check 
+	//if (!check_valid_parameters(fid, which_loop, 0))
+	//	return;
+
+	//// have to enable this if you want to excute current function saparately 
+	////for (int i = 0; i < get_nr_points(); i++)
+	////	point_visible_conn[i] = 0;
+
+	////
+	//for (int i = 0; i < get_nr_points(); i++)
+	//	if (face_id[i] == fid && topo_id[i] == point_cloud::TOPOAttribute::FACE)
+	//		point_visible_conn[i] = 1;
+
+	//// initialize he 
+	//curr_he_ptr = &modelHalfEdges[modelFace[fid].halfedges[0]];
+	//mHEdge* starting_he = curr_he_ptr;
+
+	//// find next hes 
+	//do {
+	//	//
+	//	int curr_he_orig = curr_he_ptr->orig;
+	//	int curr_he_dist = curr_he_ptr->dist;
+	//	int curr_edge_id = curr_he_ptr->edge_id;
+	//	for (auto& pid : modelEdge[curr_edge_id].point_indices) {
+	//		float d_to_orig = (pnt(pid) - pnt(modelV[curr_he_orig].point_indices[0])).length();
+	//		float d_to_dist = (pnt(pid) - pnt(modelV[curr_he_dist].point_indices[0])).length();
+	//		float factor = 0;
+	//		factor = d_to_orig / (d_to_orig + d_to_dist);
+
+	//		if (factor > progress_percentage && positive_direction)
+	//			continue;
+
+	//		if (factor < progress_percentage && !positive_direction)
+	//			continue;
+
+	//		if (face_id[pid] != fid)
+	//			continue;
+	//		
+	//		point_visible_conn[pid] = 1;
+	//	}
 	//
-	for (int i = 0; i < get_nr_points(); i++)
-		if (face_id[i] == fid && topo_id[i] == point_cloud::TOPOAttribute::FACE)
-			point_visible_conn[i] = 1;
-
-	// initialize he 
-	curr_he_ptr = &modelHalfEdges[modelFace[fid].halfedges[0]];
-	mHEdge* starting_he = curr_he_ptr;
-
-	// find next hes 
-	do {
-		//
-		int curr_he_orig = curr_he_ptr->orig;
-		int curr_he_dist = curr_he_ptr->dist;
-		int curr_edge_id = curr_he_ptr->edge_id;
-		for (auto& pid : modelEdge[curr_edge_id].point_indices) {
-			float d_to_orig = (pnt(pid) - pnt(modelV[curr_he_orig].point_indices[0])).length();
-			float d_to_dist = (pnt(pid) - pnt(modelV[curr_he_dist].point_indices[0])).length();
-			float factor = 0;
-			factor = d_to_orig / (d_to_orig + d_to_dist);
-
-			if (factor > progress_percentage && positive_direction)
-				continue;
-
-			if (factor < progress_percentage && !positive_direction)
-				continue;
-
-			if (face_id[pid] != fid)
-				continue;
-			
-			point_visible_conn[pid] = 1;
-		}
-	
-		//
-		curr_he_ptr = &modelHalfEdges[curr_he_ptr->next];
-	} while (curr_he_ptr != starting_he);
+	//	//
+	//	curr_he_ptr = &modelHalfEdges[curr_he_ptr->next];
+	//} while (curr_he_ptr != starting_he);
 }
 /// this is done on CPU, can be excuted in saparate thread. points will be flushed to GPU in real time  
 void point_cloud::update_all_halfedges() {
-	//
-	for (int i = 0; i < get_nr_points(); i++)
-		point_visible_conn[i] = 0;
+	////
+	//for (int i = 0; i < get_nr_points(); i++)
+	//	point_visible_conn[i] = 0;
 
-	//
-	for (auto& f : modelFace) {
-		for (int loop_id = 0; loop_id < f.boundary_loops.size(); loop_id++) {
-			update_halfedge_visulization(f.face_id, loop_id);
-		}
-	}
+	////
+	//for (auto& f : modelFace) {
+	//	for (int loop_id = 0; loop_id < f.boundary_loops.size(); loop_id++) {
+	//		update_halfedge_visulization(f.face_id, loop_id);
+	//	}
+	//}
 }
 ///
 void point_cloud::progress_all_halfedges() {
@@ -975,38 +977,38 @@ void point_cloud::progress_all_halfedges() {
 
 /// for a better checking: center and orientation 
 void point_cloud::estimate_face_orientations() {
-	for (auto& f : modelFace) {
-		//
-		if (f.face_id == -1)
-			continue;
-		if (f.boundary_loops.size() > 1)
-			continue;
+	//for (auto& f : modelFace) {
+	//	//
+	//	if (f.face_id == -1)
+	//		continue;
+	//	if (f.boundary_loops.size() > 1)
+	//		continue;
 
-		// compute a center 
-		vec3 center = vec3(0);
-		int num_pnts_used_to_compute_center = 0;
-		for (auto& pid : f.point_indices) {
-			center += pnt(pid);
-			num_pnts_used_to_compute_center++;
-		}
-		center /= num_pnts_used_to_compute_center;
-		f.face_center_position = center;
+	//	// compute a center 
+	//	vec3 center = vec3(0);
+	//	int num_pnts_used_to_compute_center = 0;
+	//	for (auto& pid : f.point_indices) {
+	//		center += pnt(pid);
+	//		num_pnts_used_to_compute_center++;
+	//	}
+	//	center /= num_pnts_used_to_compute_center;
+	//	f.face_center_position = center;
 
-		// compute a direction 
-		vec3 ori = vec3(0);
-		if (f.halfedges.size() < 2)
-			continue;
-		int he0 = f.halfedges[0];
-		int he1 = modelHalfEdges[he0].next;
-		vec3 hedir0 = pnt(modelV[modelHalfEdges[he0].dist].point_indices[0]) - pnt(modelV[modelHalfEdges[he0].orig].point_indices[0]);
-		vec3 hedir1 = pnt(modelV[modelHalfEdges[he1].dist].point_indices[0]) - pnt(modelV[modelHalfEdges[he1].orig].point_indices[0]);
-		vec3 cross_direction = cross(hedir0, hedir1);
-		normalize(cross_direction);
-		f.face_orientation = cross_direction;
+	//	// compute a direction 
+	//	vec3 ori = vec3(0);
+	//	if (f.halfedges.size() < 2)
+	//		continue;
+	//	int he0 = f.halfedges[0];
+	//	int he1 = modelHalfEdges[he0].next;
+	//	vec3 hedir0 = pnt(modelV[modelHalfEdges[he0].dist].point_indices[0]) - pnt(modelV[modelHalfEdges[he0].orig].point_indices[0]);
+	//	vec3 hedir1 = pnt(modelV[modelHalfEdges[he1].dist].point_indices[0]) - pnt(modelV[modelHalfEdges[he1].orig].point_indices[0]);
+	//	vec3 cross_direction = cross(hedir0, hedir1);
+	//	normalize(cross_direction);
+	//	f.face_orientation = cross_direction;
 
-		//
-		f.has_estimated_center_and_ori = true;
-	}
+	//	//
+	//	f.has_estimated_center_and_ori = true;
+	//}
 }
 
 /// fit one vertex for each corner
@@ -1032,45 +1034,45 @@ void point_cloud::vertex_fitting() {
 /// just fit to lines currently 
 /// todo: cubic bezier curve fitting 
 void point_cloud::edge_fitting() {
-	// loop edges 
-	for (auto& me: modelEdge) {
-		// check error 
-		if (me.incident_corners.size() < 2) {
-			std::cout << "err incident corner numbers..." << std::endl;
-			continue;
-		}
-		// typically, we have two 
-		std::set<int>::iterator it = me.incident_corners.begin();
-		int v0 = *it;
-		int v3 = *(++it);
+	//// loop edges 
+	//for (auto& me: modelEdge) {
+	//	// check error 
+	//	if (me.incident_corners.size() < 2) {
+	//		std::cout << "err incident corner numbers..." << std::endl;
+	//		continue;
+	//	}
+	//	// typically, we have two 
+	//	std::set<int>::iterator it = me.incident_corners.begin();
+	//	int v0 = *it;
+	//	int v3 = *(++it);
 
-		int pidx0 = modelV.at(v0).control_point_index;
-		int pidx3 = modelV.at(v3).control_point_index;
-		Pnt p0 = control_points.at(pidx0);
-		Pnt p3 = control_points.at(pidx3);
+	//	int pidx0 = modelV.at(v0).control_point_index;
+	//	int pidx3 = modelV.at(v3).control_point_index;
+	//	Pnt p0 = control_points.at(pidx0);
+	//	Pnt p3 = control_points.at(pidx3);
 
-		// interpolate the other two points, find two new points 
-		Pnt p1 = (1.0f / 3.0f) * p0 + (2.0f / 3.0f) * p3;
-		Pnt p2 = (2.0f / 3.0f) * p0 + (1.0f / 3.0f) * p3;
+	//	// interpolate the other two points, find two new points 
+	//	Pnt p1 = (1.0f / 3.0f) * p0 + (2.0f / 3.0f) * p3;
+	//	Pnt p2 = (2.0f / 3.0f) * p0 + (1.0f / 3.0f) * p3;
 
-		// update 
-		int pidx1 = control_points.size();
-		me.control_point_indices.push_back(pidx1);
-		control_points.push_back(p1);
-		control_point_colors.push_back(rgb(
-			(float)me.edge_id / num_edge_ids, 
-			1.0f - (float)me.edge_id / num_edge_ids, 
-			(float)me.edge_id / num_edge_ids)
-		);
-		int pidx2 = control_points.size();
-		me.control_point_indices.push_back(pidx2);
-		control_points.push_back(p2);
-		control_point_colors.push_back(rgb(
-			(float)me.edge_id / num_edge_ids,
-			1.0f - (float)me.edge_id / num_edge_ids,
-			(float)me.edge_id / num_edge_ids)
-		);
-	}
+	//	// update 
+	//	int pidx1 = control_points.size();
+	//	me.control_point_indices.push_back(pidx1);
+	//	control_points.push_back(p1);
+	//	control_point_colors.push_back(rgb(
+	//		(float)me.edge_id / num_edge_ids, 
+	//		1.0f - (float)me.edge_id / num_edge_ids, 
+	//		(float)me.edge_id / num_edge_ids)
+	//	);
+	//	int pidx2 = control_points.size();
+	//	me.control_point_indices.push_back(pidx2);
+	//	control_points.push_back(p2);
+	//	control_point_colors.push_back(rgb(
+	//		(float)me.edge_id / num_edge_ids,
+	//		1.0f - (float)me.edge_id / num_edge_ids,
+	//		(float)me.edge_id / num_edge_ids)
+	//	);
+	//}
 }
 
 void point_cloud::surface_fitting() {
@@ -3908,184 +3910,185 @@ bool point_cloud::read_cgvmodel(const string& _file_name)
 /// high-lev structural model 
 bool point_cloud::write_cgvmodel(const std::string& file_name)
 {
-	ofstream os(file_name.c_str());
-	if (os.fail())
-		return false;
-	unsigned int i;
-	// used to split lines 
-	int num_v_per_line = 0; int num_wanted_per_line = 10;
-	// camera position, if present 
-	if (cam_posi_list.size() > 0)
-		for (auto c : cam_posi_list)
-			os << "cam " << c << std::endl;
-	// save points with attributes 
-	// format: p n c scanidx faceid topoid 
-	for (i = 0; i < get_nr_points(); ++i) {
-		// always has positions 
-		os << "v " << P[i][0] << " " << P[i][1] << " " << P[i][2] << " ";
-		if (has_normals());
-		os << N[i][0] << " " << N[i][1] << " " << N[i][2] << " ";
-		if (has_colors())
-			os << color_component_to_float(C[i][0]) << " " << color_component_to_float(C[i][1])
-			<< " " << color_component_to_float(C[i][2]) << " ";
-		if (has_scan_indices())
-			os << point_scan_index.at(i) << " ";
-		//  
-		if (has_face_selections()) // additional attributes 
-			os << face_id.at(i) << " ";
-		if (has_topo_selections())
-			os << topo_id.at(i) << " ";
-		os << std::endl; // end of the line 
-	}
+	//ofstream os(file_name.c_str());
+	//if (os.fail())
+	//	return false;
+	//unsigned int i;
+	//// used to split lines 
+	//int num_v_per_line = 0; int num_wanted_per_line = 10;
+	//// camera position, if present 
+	//if (cam_posi_list.size() > 0)
+	//	for (auto c : cam_posi_list)
+	//		os << "cam " << c << std::endl;
+	//// save points with attributes 
+	//// format: p n c scanidx faceid topoid 
+	//for (i = 0; i < get_nr_points(); ++i) {
+	//	// always has positions 
+	//	os << "v " << P[i][0] << " " << P[i][1] << " " << P[i][2] << " ";
+	//	if (has_normals());
+	//	os << N[i][0] << " " << N[i][1] << " " << N[i][2] << " ";
+	//	if (has_colors())
+	//		os << color_component_to_float(C[i][0]) << " " << color_component_to_float(C[i][1])
+	//		<< " " << color_component_to_float(C[i][2]) << " ";
+	//	if (has_scan_indices())
+	//		os << point_scan_index.at(i) << " ";
+	//	//  
+	//	if (has_face_selections()) // additional attributes 
+	//		os << face_id.at(i) << " ";
+	//	if (has_topo_selections())
+	//		os << topo_id.at(i) << " ";
+	//	os << std::endl; // end of the line 
+	//}
 
-	// write control points as global info 
-	os << "# control points: " << endl;
-	os << "cp ";
-	os << control_points.size() << " ";
-	num_v_per_line = 0;
-	for (auto cp : control_points) {
-		os << cp << " ";
-		num_v_per_line++;
-		if (num_v_per_line > (num_wanted_per_line - 1)) {
-			os << endl;
-			num_v_per_line = 0;
-		}
-	}
-	os << endl;
+	//// write control points as global info 
+	//os << "# control points: " << endl;
+	//os << "cp ";
+	//os << control_points.size() << " ";
+	//num_v_per_line = 0;
+	//for (auto cp : control_points) {
+	//	os << cp << " ";
+	//	num_v_per_line++;
+	//	if (num_v_per_line > (num_wanted_per_line - 1)) {
+	//		os << endl;
+	//		num_v_per_line = 0;
+	//	}
+	//}
+	//os << endl;
 
-	// 
-	for (auto mv : modelV) {
-		/*
-		* format: not the same as stored in memory! avoid ambigus 
-		*/ 
+	//// 
+	//for (auto mv : modelV) {
+	//	/*
+	//	* format: not the same as stored in memory! avoid ambigus 
+	//	*/ 
 
-		// pbr: point based representation 
-		os << "mvpb " << mv.corner_id << " ";
-		os << mv.valence << " ";
-		os << mv.point_indices.size() << " ";
-		num_v_per_line = 0;
-		for (auto pid : mv.point_indices) {
-			os << pid << " ";
-			num_v_per_line++;
-			if (num_v_per_line > (num_wanted_per_line - 1)) {
-				os << endl;
-				num_v_per_line = 0;
-			}
-		}
-		os << endl;
+	//	// pbr: point based representation 
+	//	os << "mvpb " << mv.vertex_id << " ";
+	//	os << mv.valence << " ";
+	//	os << mv.point_indices.size() << " ";
+	//	num_v_per_line = 0;
+	//	for (auto pid : mv.point_indices) {
+	//		os << pid << " ";
+	//		num_v_per_line++;
+	//		if (num_v_per_line > (num_wanted_per_line - 1)) {
+	//			os << endl;
+	//			num_v_per_line = 0;
+	//		}
+	//	}
+	//	os << endl;
 
-		// he 
-		os << "mvinci_e ";
-		os << mv.incident_edges.size() << " ";
-		for (auto ie : mv.incident_edges) {
-			os << ie << " ";
-		}
-		os << endl;
+	//	// he 
+	//	os << "mvinci_e ";
+	//	os << mv.incident_edges.size() << " ";
+	//	for (auto ie : mv.incident_edges) {
+	//		os << ie << " ";
+	//	}
+	//	os << endl;
 
-		os << "mvinci_f ";
-		os << mv.incident_faces.size() << " ";
-		for (auto incif : mv.incident_faces) {
-			os << incif << " ";
-		}
-		os << endl;
+	//	os << "mvinci_f ";
+	//	os << mv.incident_faces.size() << " ";
+	//	for (auto incif : mv.incident_faces) {
+	//		os << incif << " ";
+	//	}
+	//	os << endl;
 
-		// fitting 
-		os << "mvfit ";
-		os << mv.control_point_index << " ";
-		os << endl;
-	}
-	if (modelV.size() == 0)
-		os << "# no modelV info" << endl;
+	//	// fitting 
+	//	os << "mvfit ";
+	//	os << mv.control_point_index << " ";
+	//	os << endl;
+	//}
+	//if (modelV.size() == 0)
+	//	os << "# no modelV info" << endl;
 
-	//
-	for (auto me : modelEdge) {
+	////
+	//for (auto me : modelEdge) {
 
-		// pbr: point based representation 
-		os << "mepb " << me.edge_id << " ";
-		os << me.valence << " ";
-		os << me.point_indices.size() << " ";
-		num_v_per_line = 0;
-		for (auto pid : me.point_indices) {
-			os << pid << " ";
-			num_v_per_line++;
-			if (num_v_per_line > (num_wanted_per_line - 1)) {
-				os << endl;
-				num_v_per_line = 0;
-			}
-		}
-		os << endl;
+	//	// pbr: point based representation 
+	//	os << "mepb " << me.edge_id << " ";
+	//	os << me.valence << " ";
+	//	os << me.point_indices.size() << " ";
+	//	num_v_per_line = 0;
+	//	for (auto pid : me.point_indices) {
+	//		os << pid << " ";
+	//		num_v_per_line++;
+	//		if (num_v_per_line > (num_wanted_per_line - 1)) {
+	//			os << endl;
+	//			num_v_per_line = 0;
+	//		}
+	//	}
+	//	os << endl;
 
-		// he 
-		os << "meinci_c ";
-		os << me.incident_corners.size() << " ";
-		for (auto ic : me.incident_corners) {
-			os << ic << " ";
-		}
-		os << endl;
+	//	// he 
+	//	os << "meinci_c ";
+	//	os << me.incident_corners.size() << " ";
+	//	for (auto ic : me.incident_corners) {
+	//		os << ic << " ";
+	//	}
+	//	os << endl;
 
-		os << "meinci_f ";
-		os << me.incident_faces.size() << " ";
-		for (auto incif : me.incident_faces) {
-			os << incif << " ";
-		}
-		os << endl;
+	//	os << "meinci_f ";
+	//	os << me.incident_faces.size() << " ";
+	//	for (auto incif : me.incident_faces) {
+	//		os << incif << " ";
+	//	}
+	//	os << endl;
 
-		// fitting 
-		os << "mefit ";
-		os << me.control_point_indices.size() << " ";
-		for (auto cpi : me.control_point_indices) {
-			os << cpi << " ";
-		}
-		os << endl;
-	}
-	if (modelEdge.size() == 0)
-		os << "# no modelEdge info" << endl;
+	//	// fitting 
+	//	os << "mefit ";
+	//	os << me.control_point_indices.size() << " ";
+	//	for (auto cpi : me.control_point_indices) {
+	//		os << cpi << " ";
+	//	}
+	//	os << endl;
+	//}
+	//if (modelEdge.size() == 0)
+	//	os << "# no modelEdge info" << endl;
 
-	//
-	for (auto mf : modelFace) {
+	////
+	//for (auto mf : modelFace) {
 
-		// pbr: point based representation 
-		os << "mfpb " << mf.face_id << " ";
-		os << mf.point_indices.size() << " ";
-		num_v_per_line = 0;
-		for (auto pid : mf.point_indices) {
-			os << pid << " ";
-			num_v_per_line++;
-			if (num_v_per_line > (num_wanted_per_line - 1)) {
-				os << endl;
-				num_v_per_line = 0;
-			}
-		}
-		os << endl;
+	//	// pbr: point based representation 
+	//	os << "mfpb " << mf.face_id << " ";
+	//	os << mf.point_indices.size() << " ";
+	//	num_v_per_line = 0;
+	//	for (auto pid : mf.point_indices) {
+	//		os << pid << " ";
+	//		num_v_per_line++;
+	//		if (num_v_per_line > (num_wanted_per_line - 1)) {
+	//			os << endl;
+	//			num_v_per_line = 0;
+	//		}
+	//	}
+	//	os << endl;
 
-		// he 
-		os << "mfinci_c ";
-		os << mf.incident_corners.size() << " ";
-		for (auto ic : mf.incident_corners) {
-			os << ic << " ";
-		}
-		os << endl;
+	//	// he 
+	//	os << "mfinci_c ";
+	//	os << mf.incident_corners.size() << " ";
+	//	for (auto ic : mf.incident_corners) {
+	//		os << ic << " ";
+	//	}
+	//	os << endl;
 
-		os << "meinci_e ";
-		os << mf.incident_edges.size() << " ";
-		for (auto incif : mf.incident_edges) {
-			os << incif << " ";
-		}
-		os << endl;
+	//	os << "meinci_e ";
+	//	os << mf.incident_edges.size() << " ";
+	//	for (auto incif : mf.incident_edges) {
+	//		os << incif << " ";
+	//	}
+	//	os << endl;
 
-		// fitting 
-		os << "mffit ";
-		os << mf.ready_for_rendering ? 1 : 0; os << " ";
-		os << mf.control_point_indices.size() << " ";
-		for (auto cpi : mf.control_point_indices) {
-			os << cpi << " ";
-		}
-		os << endl;
-	}
-	if (modelFace.size() == 0)
-		os << "# no modelFace info" << endl;
+	//	// fitting 
+	//	os << "mffit ";
+	//	os << mf.ready_for_rendering ? 1 : 0; os << " ";
+	//	os << mf.control_point_indices.size() << " ";
+	//	for (auto cpi : mf.control_point_indices) {
+	//		os << cpi << " ";
+	//	}
+	//	os << endl;
+	//}
+	//if (modelFace.size() == 0)
+	//	os << "# no modelFace info" << endl;
 
-	return !os.fail();
+	//return !os.fail();
+	return false;
 }
 
 bool point_cloud::has_colors() const
