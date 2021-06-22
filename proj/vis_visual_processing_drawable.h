@@ -179,6 +179,7 @@ visual_processing::visual_processing()
 	//mesh_kit_2 = new vis_kit_meshes();
 	selection_kit = new vis_kit_selection(); // for 2d->3d selection, and 3d selection, point cloud selection included 
 	parametric_surface_kit = new parametric_surface(); // parametric surface rendering 
+	pw_renderer = new vis_pw_renderer();
 
 	//imagebox_kit = new vr_kit_imagebox();
 	//motioncap_kit = new vr_kit_motioncap(); //read_tj_file();
@@ -324,8 +325,8 @@ bool visual_processing::init(cgv::render::context& ctx)
 	stored_cloud->init(ctx);*/
 	if (draw_kit != nullptr) draw_kit->init(ctx);
 	if (imagebox_kit != nullptr) imagebox_kit->init(ctx);
-
 	if(env_render_kit!=nullptr) env_render_kit->setup_scene();
+	pw_renderer->init(ctx);
 
 	// light sources are not ava. now 
 	//ctx.disable_light_source(ctx.get_enabled_light_source_handle(0));
@@ -1112,6 +1113,9 @@ void visual_processing::draw(cgv::render::context& ctx)
 
 	if (instance_redraw)
 		post_redraw();
+
+	if(use_pw_render)
+		pw_renderer->draw(ctx);
 }
 ///	
 void visual_processing::finish_draw(cgv::render::context& ctx)
@@ -1165,6 +1169,8 @@ void visual_processing::finish_draw(cgv::render::context& ctx)
 	//}
 	//glDepthMask(GL_TRUE);
 	//glDisable(GL_BLEND);
+	if (use_pw_render)
+		pw_renderer->finish_draw(ctx);
 }
 ///	
 void visual_processing::read_campose() {
@@ -2086,39 +2092,45 @@ void visual_processing::update_halfedge_visulization() {
 	data_ptr->point_cloud_kit->pc.update_halfedge_visulization(
 		data_ptr->point_cloud_kit->highlight_fid, data_ptr->point_cloud_kit->highlight_which_loop);
 }
+///
+void visual_processing::camera_ready_version() {
+	render_skybox = false;
+	render_env = false;
+	camera_ready = true; // white bkg 
+}
 /*gui */
 ///
 void visual_processing::create_gui() {
 	add_decorator("visual_computing", "heading", "level=2");
 	
 	//
-	bool gui_render_control = false;
+	bool gui_render_control = true;
 	bool gui_io = false;
 	bool gui_irg = false;
-	bool gui_Fitting = true;
+	bool gui_Fitting = false;
 
 	bool gui_rg = false;
-	bool gui_pc_cleaning = true;
-	bool gui_pc_rendering_style = true;
-	bool gui_point_Scale = true;
-	bool gui_icp = true;
-	bool gui_Connectivity = true;
-	bool gui_Triangulation = true;
-	bool gui_scanindex = true;
-	bool gui_copy_points = true;
-	bool gui_Tube = true;
-	bool gui_addition = true;
-	bool gui_Generation = true;
-	bool gui_ControlLOD = true;
-	bool gui_Merging = true;
-	bool gui_Nml_computing = true;
-	bool gui_Semantic = true;
-	bool gui_Mesh = true;
-	bool gui_Teleportation = true;
-	bool gui_Roller_Coaster = true;
-	bool gui_Draw = true;
-	bool gui_mocap = true;
-	bool gui_selection = true;
+	bool gui_pc_cleaning = false;
+	bool gui_pc_rendering_style = false;
+	bool gui_point_Scale = false;
+	bool gui_icp = false;
+	bool gui_Connectivity = false;
+	bool gui_Triangulation = false;
+	bool gui_scanindex = false;
+	bool gui_copy_points = false;
+	bool gui_Tube = false;
+	bool gui_addition = false;
+	bool gui_Generation = false;
+	bool gui_ControlLOD = false;
+	bool gui_Merging = false;
+	bool gui_Nml_computing = false;
+	bool gui_Semantic = false;
+	bool gui_Mesh = false;
+	bool gui_Teleportation = false;
+	bool gui_Roller_Coaster = false;
+	bool gui_Draw = false;
+	bool gui_mocap = false;
+	bool gui_selection = false;
 
 	if (begin_tree_node("Render Control", gui_render_control, gui_render_control, "level=3")) {
 		//
@@ -2131,9 +2143,11 @@ void visual_processing::create_gui() {
 			add_member_control(this, "paratone_3", data_ptr->paratone_3, "value_slider", "min=-1;max=1;log=false;ticks=true;");
 			add_member_control(this, "paratone_4", data_ptr->paratone_4, "value_slider", "min=-1;max=1;log=false;ticks=true;");
 			add_member_control(this, "paratone_5", data_ptr->paratone_5, "value_slider", "min=-1;max=1;log=false;ticks=true;");*/
+		connect_copy(add_button("camera ready version")->click, rebind(this,&visual_processing::camera_ready_version));
 		add_member_control(this, "render_skybox", render_skybox, "check");
 		add_member_control(this, "render_env", render_env, "check");
 		add_member_control(this, "show_box", data_ptr->point_cloud_kit->show_box, "check");
+		add_member_control(this, "use_pw_render", use_pw_render, "check");
 		add_member_control(this, "put_points_to_table", put_points_to_table, "check");
 		add_member_control(this, "camera_ready", camera_ready, "check");
 		add_member_control(this, "render_handhold_gui", render_handhold_gui, "check");
@@ -2425,7 +2439,7 @@ void visual_processing::create_gui() {
 
 	}
 	//
-	if (begin_tree_node("Effecient Point Cloud Rendering And Marking", gui_pc_cleaning, false, "level=3")) {
+	if (begin_tree_node("Effecient Point Cloud Rendering And Marking", gui_pc_cleaning, gui_pc_cleaning, "level=3")) {
 		connect_copy(add_button("[B,SingleFile]load and convert, poission lod")->click, rebind(this,
 			&visual_processing::batch__load_and_convert_add_lod_single_file));
 		connect_copy(add_button("[B]load and convert, poission lod")->click, rebind(this,
@@ -2445,7 +2459,7 @@ void visual_processing::create_gui() {
 		
 	}
 	//
-	if (begin_tree_node("Point Cloud Rendering Style", gui_pc_rendering_style, false, "level=3")) {
+	if (begin_tree_node("Point Cloud Rendering Style", gui_pc_rendering_style, gui_pc_rendering_style, "level=3")) {
 		/*add_member_control(this, "RENDERING_STRATEGY", data_ptr->point_cloud_kit->RENDERING_STRATEGY,
 			"value_slider", "min=0;max=4;log=false;ticks=true;");*/
 			//stich_rendering_mode_point_based 
@@ -2459,7 +2473,7 @@ void visual_processing::create_gui() {
 			&visual_processing::switch_rendering_mode_clod_based));
 	}
 	//
-	if (begin_tree_node("Point Scale", gui_point_Scale, false, "level=3")) {
+	if (begin_tree_node("Point Scale", gui_point_Scale, gui_point_Scale, "level=3")) {
 		connect_copy(add_button("scale_points_to_disk")->click,
 			rebind(this, &visual_processing::scale_points_to_desk));
 		connect_copy(add_button("drop_other_info_points_only")->click,
@@ -2467,7 +2481,7 @@ void visual_processing::create_gui() {
 		//
 	}
 	//
-	if (begin_tree_node("VR ICP", gui_icp , false, "level=3")) {
+	if (begin_tree_node("VR ICP", gui_icp , gui_icp, "level=3")) {
 		//
 		connect_copy(add_button("randomize_current_pc")->click, rebind(this, &visual_processing::randomize_current_pc));
 		//
@@ -2498,12 +2512,12 @@ void visual_processing::create_gui() {
 			rebind(this, &visual_processing::do_icp_once));
 	}
 	//  
-	if (begin_tree_node("Connectivity Graph", gui_Connectivity, false, "level=3")) {
+	if (begin_tree_node("Connectivity Graph", gui_Connectivity, gui_Connectivity, "level=3")) {
 		connect_copy(add_button("boundary_extraction")->click, rebind(this, &visual_processing::boundary_extraction));
 		connect_copy(add_button("topology_extraction")->click, rebind(this, &visual_processing::extract_connectivity_graph));
 	}
 	//
-	if (begin_tree_node("Scan Index", gui_scanindex, false, "level=3")) {
+	if (begin_tree_node("Scan Index", gui_scanindex, gui_scanindex, "level=3")) {
 		add_member_control(this, "scan_index", data_ptr->point_cloud_kit->pc.currentScanIdx_Recon, 
 			"value_slider", "min=0;max=10;log=false;ticks=true;");
 		add_member_control(this, "surfel point size", data_ptr->point_cloud_kit->surfel_style.point_size,
@@ -2521,7 +2535,7 @@ void visual_processing::create_gui() {
 		add_member_control(this, "renderScan5", data_ptr->point_cloud_kit->renderScan5, "check");
 	}
 	// point copy 
-	if (begin_tree_node("Copy Points", gui_copy_points, false, "level=3")) {
+	if (begin_tree_node("Copy Points", gui_copy_points, gui_copy_points, "level=3")) {
 		add_member_control(this, "render_handhold_pc", data_ptr->render_handhold_pc, "check");
 		connect_copy(add_button("point_copy_btn_pressed")->click, rebind(this,
 			&visual_processing::point_copy_btn_pressed));
@@ -2532,7 +2546,7 @@ void visual_processing::create_gui() {
 		add_member_control(this, "use_current_matrix", data_ptr->point_cloud_in_hand->use_current_matrix, "check");
 	}
 	// tube 
-	if (begin_tree_node("Tube Rendering", gui_Tube, false, "level=3")) {
+	if (begin_tree_node("Tube Rendering", gui_Tube, gui_Tube, "level=3")) {
 		add_member_control(this, "render_an_animating_tube", data_ptr->render_an_animating_tube, "check");
 		connect_copy(add_button("enlarge_tube_length")->click, rebind(this,
 			&visual_processing::enlarge_tube_length));
@@ -2540,7 +2554,7 @@ void visual_processing::create_gui() {
 			&visual_processing::schrink_tube_length));
 	}
 	// 
-	if (begin_tree_node("point addition", gui_addition, false, "level=3")) {
+	if (begin_tree_node("point addition", gui_addition, gui_addition, "level=3")) {
 		add_member_control(this, "render_the_quad", data_ptr->render_a_quad_on_righthand, "check");
 		connect_copy(add_button("quad_addition_menu_btn_press")->click, rebind(this,
 			&visual_processing::quad_addition_menu_btn_press));
@@ -2562,7 +2576,7 @@ void visual_processing::create_gui() {
 			&visual_processing::selective_downsampling_menu_btn_release));
 	}
 	//
-	if (begin_tree_node("Point Cloud Generation", gui_Generation, false, "level=3")) {
+	if (begin_tree_node("Point Cloud Generation", gui_Generation, gui_Generation, "level=3")) {
 		connect_copy(add_button("generate_pc_hemisphere")->click, 
 			rebind(this, &visual_processing::generate_pc_hemisphere));
 		connect_copy(add_button("generate_pc_cube")->click,
@@ -2593,7 +2607,7 @@ void visual_processing::create_gui() {
 		connect_copy(add_button("higher_y")->click, rebind(this, &visual_processing::higher_y));
 	}
 	//
-	if (begin_tree_node("Point Cloud ControlLOD", gui_ControlLOD, false, "level=3")) {
+	if (begin_tree_node("Point Cloud ControlLOD", gui_ControlLOD, gui_ControlLOD, "level=3")) {
 		connect_copy(add_button("render_with_fullpc")->click, rebind(this, &visual_processing::render_with_fullpc));
 		connect_copy(add_button("auto_downsampling")->click, rebind(this, &visual_processing::auto_downsampling));
 		connect_copy(add_button("supersampling_with_bbox")->click, rebind(this, &visual_processing::supersampling_with_bbox));
@@ -2601,7 +2615,7 @@ void visual_processing::create_gui() {
 		connect_copy(add_button("prepare_grow")->click, rebind(this, &visual_processing::prepare_grow));
 	}
 	//
-	if (begin_tree_node("Point Cloud Merging Tool", gui_Merging, false, "level=3")) {
+	if (begin_tree_node("Point Cloud Merging Tool", gui_Merging, gui_Merging, "level=3")) {
 		connect_copy(add_button("read_pc_append")->click, rebind(this, &visual_processing::read_pc_append));
 		add_member_control(this, "[0]step", step, "value_slider","min=1;max=1000;log=false;ticks=true;");
 		add_member_control(this, "[1]num_of_points_wanted", num_of_points_wanted, "value_slider", "min=1;max=100000000;log=false;ticks=true;");
@@ -2612,7 +2626,7 @@ void visual_processing::create_gui() {
 			rebind(this, &visual_processing::start_writting_pc_parallel));
 	}
 	//
-	if (begin_tree_node("Point Cloud Nml Computing", gui_Nml_computing, false, "level=3")) {
+	if (begin_tree_node("Point Cloud Nml Computing", gui_Nml_computing, gui_Nml_computing, "level=3")) {
 		//connect_copy(add_button("add_to_file_list")->click, rebind(this, &visual_processing::add_to_file_list));
 		//connect_copy(add_button("clean_file_list")->click, rebind(this, &visual_processing::clean_file_list));
 		connect_copy(add_button("batch_compute_nmls_given_file_list")->click, rebind(this, &visual_processing::batch_compute_nmls_given_file_list));
@@ -2632,26 +2646,26 @@ void visual_processing::create_gui() {
 		connect_copy(add_control("direct_write", direct_write, "check")->value_change, rebind(static_cast<drawable*>(this), &visual_processing::post_redraw));
 	}
 	//
-	if (begin_tree_node("Point Cloud Semantic Tool", gui_Semantic, false, "level=3")) {
+	if (begin_tree_node("Point Cloud Semantic Tool", gui_Semantic, gui_Semantic, "level=3")) {
 		connect_copy(add_button("read_pc")->click, rebind(this, &visual_processing::read_pc));
 		connect_copy(add_button("read_pc_queue")->click, rebind(this, &visual_processing::read_pc_queue));
 		//connect_copy(add_button("compute_feature_points")->click, rebind(this, &visual_processing::compute_feature_points));
 
 	}
 	//
-	if (begin_tree_node("Mesh Tool (partial)", gui_Mesh, false, "level=3")) {
+	if (begin_tree_node("Mesh Tool (partial)", gui_Mesh, gui_Mesh, "level=3")) {
 		//compute_coordinates_with_rot_correction
 		connect_copy(add_button("compute_coordinates_with_rot_correction")->click, rebind(this, &visual_processing::compute_coordinates_with_rot_correction));
 	}
 	//
 	if(teleportation_kit!=nullptr)
-	if (begin_tree_node("Teleportation tool", gui_Teleportation, false, "level=3")) {
+	if (begin_tree_node("Teleportation tool", gui_Teleportation, gui_Teleportation, "level=3")) {
 		add_member_control(this, "is_lifting", teleportation_kit->is_lifting, "check");
 		add_member_control(this, "enable_gravity", teleportation_kit->enable_gravity, "check");
 	}
 	//
 	if(roller_coaster_kit_1!=nullptr)
-	if (begin_tree_node("Roller Coaster 1", gui_Roller_Coaster, false, "level=3")) {
+	if (begin_tree_node("Roller Coaster 1", gui_Roller_Coaster, gui_Roller_Coaster, "level=3")) {
 		add_member_control(roller_coaster_kit_1, "para_x_0", roller_coaster_kit_1->para_x_0, "value_slider", "min=1;max=100;log=false;ticks=false;");
 		add_member_control(roller_coaster_kit_1, "para_z_0", roller_coaster_kit_1->para_z_0, "value_slider", "min=1;max=100;log=false;ticks=false;");
 		add_member_control(roller_coaster_kit_1, "para_x", roller_coaster_kit_1->para_x, "value_slider", "min=1;max=100;log=false;ticks=false;");
@@ -2662,7 +2676,7 @@ void visual_processing::create_gui() {
 	}
 	//
 	if (draw_kit != nullptr)
-	if (begin_tree_node("Draw kit", gui_Draw, false, "level=3")) {
+	if (begin_tree_node("Draw kit", gui_Draw, gui_Draw, "level=3")) {
 		connect_copy(add_button("write_trajectory")->click, rebind(this, &visual_processing::write_trajectory));
 		connect_copy(add_button("read_trajectory")->click, rebind(this, &visual_processing::read_trajectory));
 		connect_copy(add_button("clear_drawing")->click, rebind(this, &visual_processing::clear_drawing));
@@ -2672,7 +2686,7 @@ void visual_processing::create_gui() {
 	//
 	bool show_motioncap_kit = motioncap_kit != nullptr;
 	if(show_motioncap_kit)
-	if (begin_tree_node("Mocap kit", gui_mocap, false, "level=3")) {
+	if (begin_tree_node("Mocap kit", gui_mocap, gui_mocap, "level=3")) {
 		connect_copy(add_button("save_to_tj_file")->click, rebind(this, &visual_processing::save_to_tj_file));
 		connect_copy(add_button("read_tj_file")->click, rebind(this, &visual_processing::read_tj_file));
 		add_member_control(this, "start_rec", data_ptr->rec_pose, "check");
@@ -2706,7 +2720,7 @@ void visual_processing::create_gui() {
 		add_member_control(this, "frame_factor", data_ptr->frame_factor, "value_slider", "min=1;max=43;log=false;ticks=true;");
 	}
 	//
-	if (begin_tree_node("Selection kit", gui_selection, false, "level=3")) {
+	if (begin_tree_node("Selection kit", gui_selection, gui_selection, "level=3")) {
 		add_member_control(this, "pick_point_index", pick_point_index, "value_slider", "min=0;max=5;log=false;ticks=true;");
 	}
 }
