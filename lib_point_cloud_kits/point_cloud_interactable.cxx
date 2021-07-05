@@ -2383,6 +2383,27 @@ void point_cloud_interactable::undo_curr_region(int curr_region) {
 									dequeue current point 
 			j. restore queue (push points from suspend_queue back to queue)
 			k. final grow to fill the gap.
+	v3: 
+face extraction based on interactive region growing
+	I: correctly aligned point cloud 
+	O: point cloud with per-point face index 
+
+	estimate per-point curvature, compute a threshold with Algorithm 1 mentioned above;
+	observe the curvature, adjust the threshold T if required;
+	while users want to extract further faces from input point cloud;
+		select one seed for the current face Fi;
+		if the seed point locates in low curvature region
+			set the growing_strategy to LOWER_CURVATURE_FIRST;
+		else 
+			set the growing_strategy to HIGH_CURVATURE_FIRST;
+		start the growing process when users are ready;
+		control the growing process by direct manipulating the grown points 
+			or the queue mentioned above;
+		correct the boundaries with undo functions mentioned above;
+
+
+				
+
 
 */
 void point_cloud_interactable::step_back_one_point() {
@@ -2540,14 +2561,16 @@ void point_cloud_interactable::show_num_of_points_per_region() {
 }
 /*
 	algorithm:
-		if the priority queue is not empty:  
-			a. pop the priority queue and visit current point 
-			b. restore point attribute after dequeue 
-				point_in_queue is a flag indicates if current point in queue used for redundancy checking
-			check all neighbour points:
-				c. decrease searching radius when high curvature points found 
-				d. compute a property eg. accumulated distance 
-				e. push to queue and set flags 
+		for all regions ri 
+			while the priority queue pq_ri is not empty and the growing is allowed by users
+				current_p = pq_ri.top(); // dequeue with lowest property first
+				pq_ri.pop(); 
+				visit current point current_p;
+				for the nearest K neighbour points ni
+					decrease searching range K when high curvature points found 
+					compute the property based on the 
+						scaled accumulated distance (scaled by curvature) 
+					push to queue with the property
 
 	in this work, the computed property is a "scaled accumulated distance", here is the impl:
 		property = distance_scale * distance_between_current_point_and_neighbor_point + accumulated_distance_of_current_point;
@@ -2721,7 +2744,7 @@ bool point_cloud_interactable::grow_one_step_bfs(bool grow_with_queue, int which
 
 		// pure curvature based 
 		if (gm == growing_mode::UNSIGNED_MEAN_CURVATURE_BASED) { // does work 
-			curr_property = -pc.curvature.at(kid).mean_curvature;
+			curr_property = pc.curvature.at(kid).mean_curvature;
 		}
 
 		// stop with bounary condition
@@ -2734,7 +2757,7 @@ bool point_cloud_interactable::grow_one_step_bfs(bool grow_with_queue, int which
 			float maxinum_accu_dist = pc.get_nr_points() * max_dist;
 			float revertable_scaling_factor; 
 			if(pc.curvinfo.minimum_curvature_difference > 0 && false)
-				revertable_scaling_factor = maxinum_accu_dist * 1e12;
+				revertable_scaling_factor = maxinum_accu_dist * 1e8;
 			else 
 				revertable_scaling_factor = pc.get_nr_points() * pc.get_nr_points();
 			float scale_dist_by_curva = 1.0f + revertable_scaling_factor * pc.curvature.at(kid).mean_curvature; // ok-todo: find a upper bound 
@@ -2748,7 +2771,7 @@ bool point_cloud_interactable::grow_one_step_bfs(bool grow_with_queue, int which
 			if (pc.curvinfo.minimum_curvature_difference > 0 && false)
 				revertable_scaling_factor = maxinum_accu_dist / pc.curvinfo.minimum_curvature_difference;
 			else
-				revertable_scaling_factor = maxinum_accu_dist * 1e12;
+				revertable_scaling_factor = maxinum_accu_dist * 1e8;
 			// revertable_scaling_factor can also be scaled ... but do not have to do that 
 			float scaled_mean_curvature = 
 				(pc.curvature.at(kid).mean_curvature - pc.curvinfo.min_mean_curvature) 
@@ -2759,9 +2782,10 @@ bool point_cloud_interactable::grow_one_step_bfs(bool grow_with_queue, int which
 
 		// lower normal dist will be dequeued first 
 		if (gm == growing_mode::NORMAL_BASED) {
-			float a_very_large_factor = pc.get_nr_points() * pc.get_nr_points();
+			/*float a_very_large_factor = pc.get_nr_points() * pc.get_nr_points();
 			float scale_dist_by_nml_diff = 1.0f + a_very_large_factor * (1 - dot(pc.nml(kid), pc.nml(seed_for_regions[which_group]))) / 2.0f;
-			curr_property = scale_dist_by_nml_diff * dist + std::get<DIST>(to_visit);
+			curr_property = scale_dist_by_nml_diff * dist + std::get<DIST>(to_visit);*/
+			curr_property = -dot(pc.nml(kid), pc.nml(seed_for_regions[which_group]));
 		}
 
 		// queue visualization, diff color for diff groups 
@@ -3762,6 +3786,27 @@ void point_cloud_interactable::compute_and_print_curvature_computing_info() {
 		d. if centers does not move any more (compared to last iteration, with a threshold), done
 		f. else, goto b.
 
+	v2 
+		C_High = max_mean_curvature
+		C_Low = min_mean_curvature
+		while true
+			initialize local varibles
+			for all points pi with index i
+				if |Curv(i) - C_High| < |Curv(i) - C_Low|
+					mark pi as high curvature
+				else
+					mark pi as low curvature
+			update the C_High and C_Low as C_High_new and C_Low_new
+				by calculating the average curvature value.
+				Trace the minimum curvature in high curvature region as
+					min_value_in_HighRegion and maximum curvature
+					in low curvature region as max_value_in_LowRegion.
+			if |C_High_new - C_High| < d and |C_High_new - C_High| < d
+				break
+
+			C_High = C_High_new
+			C_Low = C_Low_new
+
 */
 /// just for visualize, computing is no problem now
 /// goal: find a good threshold
@@ -3776,6 +3821,10 @@ void point_cloud_interactable::auto_cluster_kmeans() {
 	float centroid_A = pc.curvinfo.max_mean_curvature;
 	float centroid_B = pc.curvinfo.min_mean_curvature;
 
+	float max_value_in_B = std::numeric_limits<float>::min();
+	float min_value_in_A = std::numeric_limits<float>::max();
+
+
 	std::vector<int> points_belongs_to_A;
 	std::vector<int> points_belongs_to_B;
 
@@ -3784,6 +3833,10 @@ void point_cloud_interactable::auto_cluster_kmeans() {
 	while (true) {
 		points_belongs_to_A.clear();
 		points_belongs_to_B.clear();
+
+		// reset min max value, previously computed are not valid any more
+		max_value_in_B = std::numeric_limits<float>::min();
+		min_value_in_A = std::numeric_limits<float>::max();
 
 		// try classify, either A or B 
 		for (int i = 0; i < pc.get_nr_points(); i++) {
@@ -3795,19 +3848,28 @@ void point_cloud_interactable::auto_cluster_kmeans() {
 			}
 		}
 
-		// compute new center 
+		// compute new center, iterate all points in A  
 		float new_centroid_A = 0;
 		for (auto& pid_A : points_belongs_to_A) {
-			if (!isnan(pc.curvature.at(pid_A).mean_curvature))
+			if (!isnan(pc.curvature.at(pid_A).mean_curvature)) {
 				new_centroid_A += pc.curvature.at(pid_A).mean_curvature;
+				// trace min value 
+				if (pc.curvature.at(pid_A).mean_curvature < min_value_in_A)
+					min_value_in_A = pc.curvature.at(pid_A).mean_curvature;
+			}
 		}
 		assert(points_belongs_to_A.size() > 0);
 		new_centroid_A = new_centroid_A / points_belongs_to_A.size();
 
+		// compute new center for B, iterate all points in B 
 		float new_centroid_B = 0;
 		for (auto& pid_B : points_belongs_to_B) {
-			if(!isnan(pc.curvature.at(pid_B).mean_curvature))
+			if (!isnan(pc.curvature.at(pid_B).mean_curvature)) {
 				new_centroid_B += pc.curvature.at(pid_B).mean_curvature;
+				// trace max value 
+				if (pc.curvature.at(pid_B).mean_curvature > max_value_in_B)
+					max_value_in_B = pc.curvature.at(pid_B).mean_curvature;
+			}
 		}
 		assert(points_belongs_to_B.size() > 0);
 		new_centroid_B = new_centroid_B / points_belongs_to_B.size();
@@ -3828,13 +3890,14 @@ void point_cloud_interactable::auto_cluster_kmeans() {
 		centroid_B = new_centroid_B;
 	}
 	std::cout << "auto_cluster_kmeans: done" << std::endl;
-	float max_value_in_B = std::numeric_limits<float>::min();
-	for (auto& pid_b: points_belongs_to_B) {
-		if (pc.curvature.at(pid_b).mean_curvature > max_value_in_B) {
-			max_value_in_B = pc.curvature.at(pid_b).mean_curvature;
-		}
-	}
-	pc.curvinfo.coloring_threshold = max_value_in_B;
+	//for (auto& pid_b: points_belongs_to_B) {
+	//	if (pc.curvature.at(pid_b).mean_curvature > max_value_in_B) {
+	//		max_value_in_B = pc.curvature.at(pid_b).mean_curvature;
+	//	}
+	//}
+	std::cout << "max_value_in_B: " << max_value_in_B << std::endl;
+	std::cout << "min_value_in_A: " << min_value_in_A << std::endl;
+	pc.curvinfo.coloring_threshold = (max_value_in_B + min_value_in_A) / 2.0f;
 	std::cout << "threshold selected by kmeans: " << pc.curvinfo.coloring_threshold << std::endl;
 	pc.has_curv_information = true;
 }
@@ -3879,6 +3942,101 @@ void point_cloud_interactable::ep_force_recolor() {
 			find one boundary point that is not visited, if can not find, terminate.
 			do region growing with stopping criteria: find non edge point or edge point whose face indices are not
 					the same face indices of reference point.
+
+	v2 
+		point classification by valence checking 
+
+			point cloud with faces extracted 
+			the topology attribute for each point 
+
+
+			for each point pi 
+				collect all face indices of neighbors with knn as a set incident_point_ids
+				if incident_point_ids.size() == 1
+					topo_id[pi] = FACE
+				if incident_point_ids.size() == 2
+					topo_id[pi] = EDGE
+				if incident_point_ids.size() >= 3
+					topo_id[pi] = VERTEX
+
+		edge extraction 
+
+			classified points
+			ranking_within_curr_topo[] ... point with global topology index
+			num_of_edges ... how many edges are extracted 
+
+
+			find one point marked as EDGE that is not visited.
+			if found
+				not_done = true;
+				set seed_point_idx to the point index found;
+			else, terminate;
+			current_edge_id = 0;
+			while not_done
+				Q.push(seed_point_idx);
+				while !Q.empty()
+					current_p = Q.top(); 
+					Q.pop();
+					curr_incident_ids = incident_ids[current_p];
+					ranking_within_curr_topo[current_p] = current_edge_id;
+					point_visited[current_p] = true;
+					point_in_queue[curr_top_pid] = false;
+					for each neighbor point ni 
+						if point_visited[ni] == true
+							continue;
+						if point_in_queue[ni] == true
+							continue;
+						if incident_ids[ni] != curr_incident_ids 
+							continue;
+						Q.push(ni);
+						point_in_queue[ni] = true;
+				
+				curr_edge_id++;
+				reset the boolean flag: not_done = false;
+
+				find one point marked as EDGE that is not visited. 
+				if found 
+					not_done = true;
+					set seed_point_idx to the point index found;
+				else, terminate;	
+			num_of_edges = curr_edge_id;
+
+		vertex extraction 
+
+			find one point marked as VERTEX that is not visited.
+			if found
+				not_done = true;
+				set seed_point_idx to the point index found;
+			else, terminate;
+			current_vertex_id = 0;
+			while not_done
+				Q.push(seed_point_idx);
+				while !Q.empty()
+					current_p = Q.top();
+					Q.pop();
+					curr_incident_ids = incident_ids[current_p];
+					ranking_within_curr_topo[current_p] = current_vertex_id;
+					point_visited[current_p] = true;
+					point_in_queue[curr_top_pid] = false;
+					for each neighbor point ni
+						if point_visited[ni] == true, continue;
+						if point_in_queue[ni] == true, continue;
+						if topo_id[ni] != VERTEX, continue;
+						Q.push(ni);
+						point_in_queue[ni] = true;
+
+				current_vertex_id++;
+				reset the boolean flag: not_done = false;
+
+				find one point marked as VERTEX that is not visited.
+				if found
+					not_done = true;
+					set seed_point_idx to the point index found;
+				else, terminate;
+			num_of_vertices = current_vertex_id;
+
+		
+				
 */
 /// currently not used
 void point_cloud_interactable::clear_before_point_classification() {
@@ -4340,6 +4498,7 @@ void point_cloud_interactable::render_bboxes_for_corners(cgv::render::context& c
 		return;
 	box_wire_style.use_group_color = false;
 	box_wire_style.use_group_transformation = false;
+	box_wire_style.line_width = 4;
 	bw_renderer.set_render_style(box_wire_style);
 	bw_renderer.set_box_array(ctx, corner_bboxes);
 	bw_renderer.set_color_array(ctx, corner_bbox_colors);

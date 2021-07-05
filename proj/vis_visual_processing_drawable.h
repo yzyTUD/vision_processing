@@ -1342,7 +1342,7 @@ void visual_processing::grow_with_highest_curvature_only() {
 ///
 void visual_processing::backward_growing() {
 	backward_grow = true;
-	force_start_grow();
+	//force_start_grow();
 }
 /// check, for it will access queue 
 void visual_processing::undo_sync_grow() {
@@ -1865,6 +1865,13 @@ void visual_processing::single_hit__regrow_accu_distance_based() {
 	start_parallel_region_growing(); // start 
 }
 ///
+void visual_processing::single_hit__regrow_normal_based() {
+	data_ptr->point_cloud_kit->gm = data_ptr->point_cloud_kit->growing_mode::NORMAL_BASED;
+	data_ptr->point_cloud_kit->reset_queue_with_seeds(); // reset growing parameters, faces are marked as unmarked  
+	stop_parallel_region_growing(); // stop if thread is not stopped 
+	//start_parallel_region_growing(); // start 
+}
+///
 void visual_processing::single_hit__regrow_seed_distance_based() {
 	data_ptr->point_cloud_kit->gm = data_ptr->point_cloud_kit->growing_mode::SEED_DISTANCE_BASED;
 	data_ptr->point_cloud_kit->reset_queue_with_seeds(); // reset growing parameters, faces are marked as unmarked  
@@ -2221,6 +2228,8 @@ void visual_processing::create_gui() {
 			rebind(this, &visual_processing::debug_region_growing_step_by_step_test));
 		connect_copy(add_button("backward_grow_one_step")->click, rebind(data_ptr->point_cloud_kit,
 			&point_cloud_interactable::backward_grow_one_step,selection_kit->curr_face_selecting_id));
+		connect_copy(add_button("grow_one_step_bfs")->click, rebind(data_ptr->point_cloud_kit,
+			&point_cloud_interactable::grow_one_step_bfs, false, 0));
 
 		add_decorator("// loading seed ", "heading", "level=3");
 		connect_copy(add_button("mark_sample_seed")->click, rebind(this, &visual_processing::mark_sample_seed));
@@ -2399,6 +2408,8 @@ void visual_processing::create_gui() {
 			rebind(this, &visual_processing::single_hit__regrow_accu_distance_based));
 		connect_copy(add_button("[S]grow_with_seed_distance")->click,
 			rebind(this, &visual_processing::single_hit__regrow_seed_distance_based));
+		connect_copy(add_button("[S]grow_with_normal")->click,
+			rebind(this, &visual_processing::single_hit__regrow_normal_based));
 		connect_copy(add_button("[S]grow_with_unsigned_mean_curvature")->click,
 			rebind(this, &visual_processing::single_hit__regrow_unsigned_mean_curvature_based));
 		connect_copy(add_button("[S]grow_with_distance_and_curvature")->click,

@@ -446,6 +446,17 @@ void point_cloud::make_explicit() {
 	}
 
 	// find face-edge incidents by matching: based on edge - face incidents 
+	/*
+		face-edge incident extraction 
+
+		extracted faces, edges with incident information traced 
+		incident_edges[] ... incident edges for each face
+
+		for each face fi 
+			for each edge ei 
+				for each incident face of ei as efi
+					if fi == efi, fi.incident_edges.insert(ei)
+	*/
 	for (auto& mf: modelFace) {
 		if (mf.face_id == -1)
 			continue;
@@ -459,6 +470,17 @@ void point_cloud::make_explicit() {
 	}
 
 	// find face-vertex incidents by matching: based on vertex - face incidents 
+		/*
+		face-vertex incident extraction
+
+		extracted faces, vertices with incident information traced
+		incident_vertices[] ... incident vertices for each face
+
+		for each face fi
+			for each vertex vi
+				for each incident face of vi as vfi
+					if fi == vfi, fi.incident_vertices.insert(vi)
+	*/
 	for (auto& mf : modelFace) {
 		if (mf.face_id == -1)
 			continue;
@@ -472,6 +494,17 @@ void point_cloud::make_explicit() {
 	}
 
 	// find face-face incidents, based on face - edge incidents 
+	/*
+		face-face incident extraction
+
+		extracted faces, vertices, edges and face-edge incidents
+		incident_faces[] ... incident faces for each face 
+
+		for each face fi
+			for each incident edge ei
+				for each incident face of ei as efi
+					if fi != efi, fi.incident_faces.insert(efi)
+	*/
 	for (auto& mf : modelFace) {
 		if (mf.face_id == -1)
 			continue;
@@ -501,6 +534,40 @@ std::set<int> point_cloud::find_vertices_for_a_given_edge(int edge_id) {
 	std::set<int> vertices_f1 = modelFace[inci_f1].incident_vertices;
 	return find_common(vertices_f0, vertices_f1);
 }
+
+/*
+	edge loop extraction 
+
+	extracted faces, edges and vertices 
+	edge loops for faces 
+
+	for each face fi 
+		in_ordered_edges_list.clear();
+		for each incident edge fi_ej 
+			if in_ordered_edges_list[fi_ej] == true, continue;
+			vertices_for_fi_ej = find_vertices_for_a_given_edge(fi_ej);
+			if vertices_for_fi_ej.size() == 0
+				ordered_edges.push(fi_ej);
+				in_ordered_edges_list[fi_ej] = true;
+				edge_loops[fi].push(fi_ej);
+				continue;
+			query the two vertices of the edge fi_ej v1 and v2 
+			last_v = v2 
+			ordered_edges.push(fi_ej);
+			in_ordered_edges_list[fi_ej] = true;
+			for neid in fi.incident_edges
+				if last_v is the common vertex between fi_ej and neid and neid not visited
+					next_edge = neid
+			while next_edge != -1
+				if can find next_edge
+					ordered_edges.push(next_edge);
+					in_ordered_edges_list[next_edge] = true;
+					assign last_v as the vertex that is not in common but belongs to the next_edge
+				for neid in fi.incident_edges
+					if last_v is the common vertex between fi_ej and neid and neid not visited
+						next_edge = neid
+			edge_loops[fi].push(ordered_edges);
+*/
 
 ///
 void point_cloud::extract_boundary_loops() {
@@ -571,7 +638,7 @@ void point_cloud::extract_boundary_loops() {
 			}
 
 			while (next_edge != -1) {
-				//
+				// add to ordered edges and update last_v 
 				ordered_edges.push_back(next_edge);
 				in_ordered_edges_list[next_edge] = true;
 				set<int> vertex_candidates = find_vertices_for_a_given_edge(next_edge);
@@ -605,7 +672,7 @@ void point_cloud::extract_boundary_loops() {
 			std::cout << "boundary loops for face: " << f.face_id << " are: " << std::endl;
 			std::cout << "\t loop " << loop << " : ";
 			for (auto loop_edge : boundary_loops[f.face_id][loop]) {
-				std::cout << loop_edge;
+				std::cout << loop_edge << " ";
 			}
 			std::cout << "\n";
 		}
@@ -614,6 +681,60 @@ void point_cloud::extract_boundary_loops() {
 	//
 	bool success = true;
 }
+
+
+/*
+	halfedge extraction 
+
+	extracted faces, edges, vertices and edge loops  
+	HalfEdges[] ... a list of extracted halfedges 
+
+	HalfEdges.resize(modelEdge.size() * 2);
+	initialize HalfEdges
+	current_he_index = -1 
+	for each face fi 
+		for each loop in the current face fi_loopj
+			if edge_loops[fi][fi_loopj].size() == 1, continue;
+			beginning_he_index = current_he_index + 1;
+			end_he_index = current_he_index + edge_loops[fi][fi_loopj].size();
+			for each vertex in the current loop as vk
+				curr_he = &modelHalfEdges[vk + beginning_he_index];
+				if vk is the first vertex in the loop, vk == 0
+					dist_vi is the common vertex of edge 0 and edge 1; 
+					orig_vi is the other vertex in edge 0; 
+					next_he = &HalfEdges[beginning_he_index + 1];
+					prev_he = &HalfEdges[end_he_index];
+				if vk is the last vertex in the loop, vk == edge_loops[fi][fi_loopj].size() - 1
+					dist_vi is the first vertex;
+					orig_vi is the common vertex of last_edge and the second_last_edge;
+					next_he = &modelHalfEdges[beginning_he_index];
+					prev_he = &modelHalfEdges[vk - 1 + beginning_he_index];
+				else 
+					dist_vi is the common vertex of edge_loops[fi][fi_loopj][vk] and edge_loops[fi][fi_loopj][vk+1];
+					orig_vi is the other vertex of edge edge_loops[fi][fi_loopj][vk];
+					next_he = &modelHalfEdges[vk + 1 + beginning_he_index];
+					prev_he = &modelHalfEdges[vk - 1 + beginning_he_index];
+								int orig = orig_vi;
+				dist = dist_vi;
+				k1 = orig;
+				k2 = dist;
+				cantor_number = ((k1 + k2) * (k1 + k2 + 1) / 2) + k2;
+				k1 = dist;
+				k2 = orig;
+				inversed_cantor_number = ((k1 + k2) * (k1 + k2 + 1) / 2) + k2;
+				curr_he->orig = orig;
+				curr_he->dist = dist;
+				curr_he->cantor_number = cantor_number;
+				curr_he->next = next_he->he_id;
+				curr_he->prev = prev_he->he_id;
+				for each halfedge he
+					if he.edge_id == -1, continue;
+					if he.cantor_number == inversed_cantor_number 
+						curr_he->inv = he.he_id;
+						he.inv = curr_he->he_id;
+						break;
+*/
+
 ///
 void point_cloud::extract_half_edges() {
 	modelHalfEdges.resize(modelEdge.size() * 2); // [+e0 e1 e2 ... ] + [-e0 e1 e2 ... ] // init half-edges in fixed position 
@@ -761,6 +882,58 @@ void point_cloud::extract_half_edges() {
 	// 
 	bool all_faces_should_extracted = true;
 }
+
+
+/*
+	orient faces 
+
+	extracted faces, edges, vertices, edge loops and halfedges 
+	oriented half edges 
+
+
+	obtain oriented_face_id from user interaction;
+	face_oriented[oriented_face_id] = true;
+	face_visited[oriented_face_id] = true;
+	face_queue.push(oriented_face_id);
+	while (!face_queue.empty()) 
+		curr_f = face_queue.top();
+		face_queue.pop();
+		face_visited[curr_f] = true;
+		for each edge ef in modelFace[curr_f].incident_edges
+			two_common_vertices = find_vertices_for_a_given_edge(ef);
+			if two_common_vertices.size() <= 1, continue;
+			for each cnf in modelEdge[ef].incident_faces
+				if cnf == modelFace[curr_f].face_id, continue;
+				new_f = cnf;
+				assign v1 and v2 randomly from two_common_vertices 
+				he0 = nullptr;
+				he1 = nullptr;
+				for each halfedge he in HalfEdges
+					if (((he.orig == v0) && (he.dist == v1)) || (he.dist == v0) && (he.orig == v1)) 
+						if he0 == nullptr, he0 = &he;
+						else, he1 = &he;
+				if these two halfedges are not coherent, that is, he0->orig == he1->orig
+					face_oriented[new_f] = false;
+					heid = modelFace[new_f].one_he;
+					starting_he = heid;
+					do
+						tmpdist = modelHalfEdges[heid].dist;
+						modelHalfEdges[heid].dist = modelHalfEdges[heid].orig;
+						modelHalfEdges[heid].orig = tmpdist;
+						tmpnext = modelHalfEdges[heid].next;
+						modelHalfEdges[heid].next = modelHalfEdges[heid].prev;
+						modelHalfEdges[heid].prev = tmpnext;
+						heid = modelHalfEdges[heid].prev; 
+					while heid != starting_he
+				push_to_queue = true;
+				if face_in_queue[new_f], push_to_queue = false;
+				if face_visited[new_f], push_to_queue = false;
+				if push_to_queue
+					face_queue.push(new_f);
+					face_in_queue[new_f] = true;
+*/
+
+
 /// orient ref to normal 
 void point_cloud::orient_faces() {
 	if (modelFace.size() == 0)
@@ -805,7 +978,7 @@ void point_cloud::orient_faces() {
 				if (cnf != modelFace[curr_f].face_id) {
 					int new_f = cnf;
 
-					// assign vertices order does not matter  
+					// assign vertices, order does not matter  
 					int v0 = *(vertices.begin());
 					int v1 = *(++vertices.begin());
 

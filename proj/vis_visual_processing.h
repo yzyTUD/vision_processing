@@ -479,6 +479,7 @@ public:
 	void single_hit__prepare_region_grow(bool overwrite_face_id);
 	void single_hit__prepare_region_grow_worker(bool overwrite_face_id);
 	void single_hit__regrow_accu_distance_based();
+	void single_hit__regrow_normal_based();
 	void single_hit__regrow_seed_distance_based();
 	void single_hit__regrow_unsigned_mean_curvature_based();
 	void single_hit__regrow_distance_and_curvature_based();
