@@ -177,7 +177,7 @@ protected:
 	bool camera_ready = false;
 	bool render_handhold_gui = false;
 	bool render_env = true;
-	bool use_pw_render = true;
+	bool use_pw_render = false;
 	bool force_correct_num_pcs = true;
 	bool direct_write = false;
 	bool render_img = false;

@@ -2169,6 +2169,7 @@ void visual_processing::create_gui() {
 		
 		add_member_control(this, "force_render_with_original_color", data_ptr->point_cloud_kit->force_render_with_original_color, "check");
 		add_member_control(this, "highlight_unmarked_points", data_ptr->point_cloud_kit->highlight_unmarked_points, "check");
+		add_member_control(this, "highlight_boundaries", data_ptr->point_cloud_kit->highlight_boundaries, "check");
 		add_member_control(this, "render_nmls", data_ptr->point_cloud_kit->show_nmls, "check");
 		add_member_control(this, "colorize_with_scan_index", data_ptr->point_cloud_kit->colorize_with_scan_index, "check");
 		add_member_control(this, "hmd_culling", data_ptr->point_cloud_kit->enable_headset_culling, "check");

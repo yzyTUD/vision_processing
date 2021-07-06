@@ -333,6 +333,8 @@ public:
 	std::vector<float> smoothed_mean_curvature;
 	/// per point lod information 
 	std::vector<int> lods;
+	/// 
+	std::vector<int> is_high_curv_region;
 
 	/*used for region growing, continuely changing */
 	/// mark if current point already visited 
@@ -383,6 +385,7 @@ public:
 	bool has_curv_information = false;
 	bool has_lods() { return (lods.size() > 0) || has_lod; }
 	bool has_curvatures() { return curvature.size() > 0; }
+	bool has_curvature_flags() { return is_high_curv_region.size() > 0; }
 	bool has_neighbors() { return nearest_neighbour_indices.size() > 0; }
 	bool has_curvinfo() { return curvature.size() > 0; }
 

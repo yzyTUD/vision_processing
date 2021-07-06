@@ -543,6 +543,17 @@ void point_cloud_interactable::on_point_cloud_change_callback(PointCloudChangeEv
 			}
 			pc.has_scan_index = true;
 		}
+		// reconstruct curvature flags 
+		if (!pc.has_curvature_flags() && pc.has_curvatures()) {
+			pc.is_high_curv_region.resize(pc.get_nr_points());
+			for (int i = 0; i < pc.get_nr_points(); i++) {
+				if (pc.curvature.at(i).mean_curvature > pc.curvinfo.coloring_threshold)
+					pc.is_high_curv_region.at(i) = 1;
+				else
+					pc.is_high_curv_region.at(i) = 0;
+			}
+		}
+		///
 		reading_from_raw_scan = false;
 		// prepare scan indices visibility, create if not present: not used currently 
 		/*pc.scan_index_visibility.resize(pc.num_of_scan_indices);
@@ -1872,7 +1883,7 @@ void point_cloud_interactable::put_to_table() {
 	//
 	surfel_style.point_size = pc.suggested_point_size > 0 ? pc.suggested_point_size : 0.2f;
 
-	//
+	// just scale first 
 	float ext = (pc.box().get_max_pnt() - pc.box().get_min_pnt()).length();
 	model_scale = 1.0f / ext;
 	std::cout << "model has been scaled with factor of: " << model_scale << std::endl;
@@ -1880,12 +1891,19 @@ void point_cloud_interactable::put_to_table() {
 	vec3 target_center = pc.box().get_center();
 	mat4 inv_mt = cgv::math::translate4(-target_center);
 	mat4 mt = cgv::math::translate4(target_center);
-	pc.last_additional_model_matrix = inv_mt * pc.last_additional_model_matrix;
-	pc.last_additional_model_matrix = scale_matrix * pc.last_additional_model_matrix;
-	pc.last_additional_model_matrix = mt * pc.last_additional_model_matrix;
+	pc.last_additional_model_matrix = mt * scale_matrix * inv_mt;
 
-	//
-	mat4 table_offset = cgv::math::translate4(vec3(0, 2, 0));
+	// apply 
+	apply_transfrom_to_pc();
+
+	// recompute center, move to center 
+	pc.box_out_of_date = true;
+	vec3 new_center = pc.box().get_center();
+	mat4 inv_mt_new = cgv::math::translate4(-new_center);
+	pc.last_additional_model_matrix = inv_mt_new * pc.last_additional_model_matrix;
+
+	// move to desired position 
+	mat4 table_offset = cgv::math::translate4(vec3(0, 1.5, 0));
 	mat4 t; t.identity();
 	target_center = pc.box().get_center();
 	float buttom_gap = target_center.y() - pc.box().get_min_pnt().y() + 0.1f; // 0.1 is table dick 
@@ -1893,7 +1911,9 @@ void point_cloud_interactable::put_to_table() {
 	t = table_offset * buttom_offset;
 	pc.last_additional_model_matrix = t * pc.last_additional_model_matrix;
 
+	// apply again 
 	apply_transfrom_to_pc();
+
 }
 /// apply model scalling 
 void point_cloud_interactable::scale_model() {
@@ -3525,8 +3545,9 @@ void point_cloud_interactable::apply_smoothed_curvature() {
 	for (int i = 0; i < pc.get_nr_points(); i++) 
 		pc.curvature.at(i).mean_curvature = pc.smoothed_mean_curvature.at(i);
 }
-/// recolor point cloud with curvature
+/// recolor point cloud with curvature and assign flags 
 void point_cloud_interactable::colorize_with_computed_curvature_unsigned() {
+	pc.is_high_curv_region.resize(pc.get_nr_points());
 	if (pc.curvature_evenly) {
 		for (int i = 0; i < pc.get_nr_points(); i++) {
 			pc.clr(i) = rgb(153.0f / 255, 204.0f / 255, 255.0f / 255);
@@ -3535,10 +3556,14 @@ void point_cloud_interactable::colorize_with_computed_curvature_unsigned() {
 	else {
 		for (int i = 0; i < pc.get_nr_points(); i++) {
 			//std::cout << "pc.curvature.at(i).gaussian_curvature: " << pc.curvature.at(i).gaussian_curvature << std::endl;
-			if (pc.curvature.at(i).mean_curvature > pc.curvinfo.coloring_threshold)
+			if (pc.curvature.at(i).mean_curvature > pc.curvinfo.coloring_threshold) {
 				pc.clr(i) = rgb(102.0f / 255, 0, 102.0f / 255);
-			else
+				pc.is_high_curv_region.at(i) = 1;
+			}
+			else {
 				pc.clr(i) = rgb(153.0f / 255, 204.0f / 255, 255.0f / 255);
+				pc.is_high_curv_region.at(i) = 0;
+			}
 		}
 	}
 }
