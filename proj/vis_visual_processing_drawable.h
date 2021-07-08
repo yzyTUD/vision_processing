@@ -795,7 +795,6 @@ bool visual_processing::handle(cgv::gui::event& e)
 					data_ptr->point_cloud_kit->pc.randomize_position(data_ptr->point_cloud_kit->src_scan_idx);
 				}
 				/*region growing */
-				//
 				if (data_ptr->check_roulette_selection(data_ptr->get_id_with_name("PointCloud\nBindPCtoRHand"))) {
 					data_ptr->point_cloud_kit->use_controller_transformations = true;
 					data_ptr->point_cloud_kit->bind_point_cloud_to_rhand = !data_ptr->point_cloud_kit->bind_point_cloud_to_rhand;
@@ -827,6 +826,12 @@ bool visual_processing::handle(cgv::gui::event& e)
 				}
 				if (data_ptr->check_roulette_selection(data_ptr->get_id_with_name("RegionGrowing\nHighlightUnmarked"))) {
 					data_ptr->point_cloud_kit->highlight_unmarked_points = !data_ptr->point_cloud_kit->highlight_unmarked_points;
+				}
+				if (data_ptr->check_roulette_selection(data_ptr->get_id_with_name("RegionGrowing\nToggleHighLight\nBoundaries"))) {
+					data_ptr->point_cloud_kit->highlight_boundaries = !data_ptr->point_cloud_kit->highlight_boundaries;
+				}
+				if (data_ptr->check_roulette_selection(data_ptr->get_id_with_name("RegionGrowing\nDropUngrown"))) {
+					data_ptr->point_cloud_kit->drop_ungrown();
 				}
 				/*topology extraction */
 				if (data_ptr->check_roulette_selection(data_ptr->get_id_with_name("TopologyExtraction\nBoundary\nExtraction"))) {
@@ -2382,6 +2387,12 @@ void visual_processing::create_gui() {
 			rebind(this, &visual_processing::sync_grow_curv_based));
 		connect_copy(add_button("undo_sync_grow")->click,
 			rebind(this, &visual_processing::undo_sync_grow));
+
+		add_decorator("// drop the rest ", "heading", "level=3");
+		connect_copy(add_button("drop_ungrown")->click, rebind(data_ptr->point_cloud_kit,
+			&point_cloud_interactable::drop_ungrown));
+		connect_copy(add_button("recover_all_deleted_points")->click, rebind(data_ptr->point_cloud_kit,
+			&point_cloud_interactable::recover_all_deleted_points));
 	}
 	// 
 	if (begin_tree_node("Connectivity Extraction", gui_Fitting, gui_Fitting, "level=3")) {

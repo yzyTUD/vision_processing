@@ -318,15 +318,18 @@ public:
 
 
 		//////////////////////////////////////////////////////////////////
-		// parameters 
+		// parameters, legacy support, not always used 
 		//////////////////////////////////////////////////////////////////
 		gp_btn_tmp.clear();
 		gp_btn_tmp.push_back("PointCloud\nBindPCtoRHand");
-		gp_btn_tmp.push_back("RegionGrowing\nScaleModel");
-		gp_btn_tmp.push_back("RegionGrowing\nRenderTopoSel");
 		gp_btn_tmp.push_back("PointCloud\nPointSize"); 
 		gp_btn_tmp.push_back("PointCloud\nShowNml");
+
+		gp_btn_tmp.push_back("RegionGrowing\nScaleModel");
+		gp_btn_tmp.push_back("RegionGrowing\nRenderTopoSel");
 		gp_btn_tmp.push_back("RegionGrowing\nSaveToFile\nQuiet");
+		gp_btn_tmp.push_back("RegionGrowing\nSyncGrow"); // down press to grow sync, left undo. hard to control ... 
+		gp_btn_tmp.push_back("RegionGrowing\nToggle\nCheckNmls");
 		gps.push_back(gp_btn_tmp);
 
 
@@ -339,6 +342,7 @@ public:
 		gp_btn_tmp.push_back("RegionGrowing\nReset\nMarking");
 		gp_btn_tmp.push_back("RegionGrowing\nHighlightUnmarked");
 		gp_btn_tmp.push_back("RegionGrowing\nCurvatureViewer");
+		gp_btn_tmp.push_back("RegionGrowing\nToggleHighLight\nBoundaries");
 
 		// pick up seeds for regions 
 		gp_btn_tmp.push_back("RegionGrowing\nSeedPicker");
@@ -354,29 +358,31 @@ public:
 		gp_btn_tmp.push_back("RegionGrowing\nBackGrow");
 
 		//
-		gp_btn_tmp.push_back("RegionGrowing\nSyncGrow"); // down press to grow sync, left undo 
+		gp_btn_tmp.push_back("RegionGrowing\nDropUngrown"); // placeholder
 
-		//
-		gp_btn_tmp.push_back("RegionGrowing\nOurMethod\nToggleIgnore\nHighCurvatureRegions");
-		//gp_btn_tmp.push_back("RegionGrowing\nOurMethod\nUndoCurrRegion"); // integrated to left press. typically, we do not have to delete seeds 
-		//gp_btn_tmp.push_back("RegionGrowing\nOurMethod\nFinalizeGrow"); // menu press 
-		//gp_btn_tmp.push_back("RegionGrowing\nAccuDistanceBased");
-		//gp_btn_tmp.push_back("RegionGrowing\nSeedDistanceBased");
-		//gp_btn_tmp.push_back("RegionGrowing\nUnsignedMeanCurvature");
-		//gp_btn_tmp.push_back("RegionGrowing\nAutoRegion\nGrowing");
-		//gp_btn_tmp.push_back("RegionGrowing\nToggle\nCheckNmls");
-		//bkp: gp_btn_tmp.push_back("PointCloud\nDelPoints\nTouchTo\nActivate");
-		//bkp: gp_btn_tmp.push_back("PointCloud\nMarkAs\nOrig");
-		//bkp: gp_btn_tmp.push_back("PointCloud\nToggle\npcColor");
-		//bkp: gp_btn_tmp.push_back("PointCloud\nFoldingPoints");
-		//bkp: gp_btn_tmp.push_back("PointCloud\nSuperSampling");
-		//bkp: gp_btn_tmp.push_back("PointCloud\nToggle\nACloud");
-		//bkp: gp_btn_tmp.push_back("PointCloud\nACloud\nCtrl\nRange");
+		/*
+			//gp_btn_tmp.push_back("RegionGrowing\nOurMethod\nToggleIgnore\nHighCurvatureRegions");
+			//gp_btn_tmp.push_back("RegionGrowing\nOurMethod\nUndoCurrRegion"); // integrated to left press. typically, we do not have to delete seeds 
+			//gp_btn_tmp.push_back("RegionGrowing\nOurMethod\nFinalizeGrow"); // menu press 
+			//gp_btn_tmp.push_back("RegionGrowing\nAccuDistanceBased");
+			//gp_btn_tmp.push_back("RegionGrowing\nSeedDistanceBased");
+			//gp_btn_tmp.push_back("RegionGrowing\nUnsignedMeanCurvature");
+			//gp_btn_tmp.push_back("RegionGrowing\nAutoRegion\nGrowing");
+			//gp_btn_tmp.push_back("RegionGrowing\nToggle\nCheckNmls");
+			//bkp: gp_btn_tmp.push_back("PointCloud\nDelPoints\nTouchTo\nActivate");
+			//bkp: gp_btn_tmp.push_back("PointCloud\nMarkAs\nOrig");
+			//bkp: gp_btn_tmp.push_back("PointCloud\nToggle\npcColor");
+			//bkp: gp_btn_tmp.push_back("PointCloud\nFoldingPoints");
+			//bkp: gp_btn_tmp.push_back("PointCloud\nSuperSampling");
+			//bkp: gp_btn_tmp.push_back("PointCloud\nToggle\nACloud");
+			//bkp: gp_btn_tmp.push_back("PointCloud\nACloud\nCtrl\nRange");
+		*/
+
 		gps.push_back(gp_btn_tmp);
 
 
 		//////////////////////////////////////////////////////////////////
-		// point cloud: topology extraction 
+		// point cloud: vertex, edge, face extaction 
 		//////////////////////////////////////////////////////////////////
 		gp_btn_tmp.clear();
 		gp_btn_tmp.push_back("TopologyExtraction\nBoundary\nExtraction");

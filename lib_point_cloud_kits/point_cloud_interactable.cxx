@@ -3059,6 +3059,20 @@ void point_cloud_interactable::register_cur_and_last_pc_if_present() {
 	else { std::cout << "icp: error point cloud size" << std::endl; }
 }
 ///
+void point_cloud_interactable::drop_ungrown() {
+	for (int i = 0; i < pc.get_nr_points(); i++) {
+		if (pc.face_id[i] == 0)
+			pc.topo_id[i] = point_cloud::TOPOAttribute::DEL;
+	}
+}
+/// 
+void point_cloud_interactable::recover_all_deleted_points() {
+	for (int i = 0; i < pc.get_nr_points(); i++) {
+		if (pc.topo_id[i] == point_cloud::TOPOAttribute::DEL)
+			pc.topo_id[i] = point_cloud::TOPOAttribute::ORI;
+	}
+}
+///
 void point_cloud_interactable::register_with_subsampled_pcs(point_cloud& _pc) {
 	if(!pc_last_subsampled.get_nr_points())
 		collect_to_subsampled_pcs();

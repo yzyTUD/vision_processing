@@ -230,7 +230,7 @@ public:
 	/*point scale (M)*/
 	///
 	void scale_points_to_desk();
-	
+
 	/*point sampling (M) */
 	/// down sample a point cloud 
 	void downsampling(int step, int num_of_points_wanted, int which_strategy);
@@ -316,6 +316,10 @@ public:
 	void register_with_subsampled_pcs(point_cloud& _pc);
 	/// perform ICP algo. with given source and target clouds  
 	void register_cur_and_last_pc_if_present();
+	///
+	void drop_ungrown();
+	///
+	void recover_all_deleted_points();
 
 	/* Master Thesis Related */
 	/*Feature Computation*/	
