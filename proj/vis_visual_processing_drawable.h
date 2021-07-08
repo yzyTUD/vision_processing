@@ -1910,6 +1910,96 @@ void visual_processing::find_pointcloud()
 		view_ptr->move(view_ptr->get_depth_of_focus() - 1.0);
 	}
 }
+/// to memory 
+void visual_processing::record_camera_parameters() {
+	cgv::render::view* view_ptr = find_view_as_node();
+	if (view_ptr) {
+		// fetch from view ptr 
+		camera_focus = view_ptr->get_focus();
+		camera_view_up_dir = view_ptr->get_view_up_dir();
+		camera_view_dir = view_ptr->get_view_dir();
+		camera_y_view_angle = view_ptr->get_y_view_angle();
+		camera_y_extent_at_focus = view_ptr->get_y_extent_at_focus();
+
+		// write to file in binary format 
+		std::string fdir = cgv::gui::file_save_dialog("Save", "CameraParas:*.*");
+		FILE* fp = fopen(fdir.c_str(), "wb");
+		if (!fp)
+			return;
+		bool success = true;
+		success = success && fwrite(&camera_focus, sizeof(dvec3), 1, fp) == 1;
+		success = success && fwrite(&camera_view_up_dir, sizeof(dvec3), 1, fp) == 1;
+		success = success && fwrite(&camera_view_dir, sizeof(dvec3), 1, fp) == 1;
+		success = success && fwrite(&camera_y_view_angle, sizeof(double), 1, fp) == 1;
+		success = success && fwrite(&camera_y_extent_at_focus, sizeof(double), 1, fp) == 1;
+		success = fclose(fp) == 0 && success;
+		if (success)
+			std::cout << "camera parameters save successfully!" << std::endl;
+	}
+}
+/// 
+void visual_processing::apply_camera_parameters() {
+	cgv::render::view* view_ptr = find_view_as_node();
+	if (view_ptr) {
+		// load from disk to memory 
+		std::string fdir = cgv::gui::file_open_dialog("Open", "CameraParas:*.*");
+		FILE* fp = fopen(fdir.c_str(), "rb");
+		if (!fp)
+			return;
+		bool success = true;
+		success = success && fread(&camera_focus, sizeof(dvec3), 1, fp) == 1;
+		success = success && fread(&camera_view_up_dir, sizeof(dvec3), 1, fp) == 1;
+		success = success && fread(&camera_view_dir, sizeof(dvec3), 1, fp) == 1;
+		success = success && fread(&camera_y_view_angle, sizeof(double), 1, fp) == 1;
+		success = success && fread(&camera_y_extent_at_focus, sizeof(double), 1, fp) == 1;
+		success = fclose(fp) == 0 && success;
+
+		// apply memory to view ptr 
+		view_ptr->set_focus(camera_focus);
+		view_ptr->set_view_up_dir(camera_view_up_dir);
+		view_ptr->set_view_dir(camera_view_dir);
+		view_ptr->set_y_view_angle(camera_y_view_angle);
+		view_ptr->set_y_extent_at_focus(camera_y_extent_at_focus);
+	}
+}
+///
+void visual_processing::capture_screen_320x320_quiet() {
+	if (view_ptr) {
+		//
+		vr_view_ptr = dynamic_cast<vr_view_interactor*>(view_ptr);
+		vr_view_ptr->write_images = true;
+		vr_view_ptr->write_depth = false;
+		vr_view_ptr->write_color = true;
+		vr_view_ptr->write_stereo = false;
+		vr_view_ptr->auto_view_images = false;
+		vr_view_ptr->write_width = 320;
+		vr_view_ptr->write_height = 320;
+		auto microsecondsUTC = std::chrono::duration_cast<std::chrono::microseconds>(
+			std::chrono::system_clock::now().time_since_epoch()).count();
+		vr_view_ptr->image_file_name_prefix = std::to_string(microsecondsUTC);
+		// need two times ...
+		vr_view_ptr->write_images_to_file();
+	}
+}
+///
+void visual_processing::capture_screen_720x720_quiet() {
+	if (view_ptr) {
+		//
+		vr_view_ptr = dynamic_cast<vr_view_interactor*>(view_ptr);
+		vr_view_ptr->write_images = true;
+		vr_view_ptr->write_depth = false;
+		vr_view_ptr->write_color = true;
+		vr_view_ptr->write_stereo = false;
+		vr_view_ptr->auto_view_images = false;
+		vr_view_ptr->write_width = 720;
+		vr_view_ptr->write_height = 720;
+		auto microsecondsUTC = std::chrono::duration_cast<std::chrono::microseconds>(
+			std::chrono::system_clock::now().time_since_epoch()).count();
+		vr_view_ptr->image_file_name_prefix = std::to_string(microsecondsUTC);
+		// need two times ...
+		vr_view_ptr->write_images_to_file();
+	}
+}
 ///
 bool visual_processing::find_next_and_increase_curr_region() {
 	if (selection_kit->curr_face_selecting_id == -1) {
@@ -2111,10 +2201,11 @@ void visual_processing::create_gui() {
 	add_decorator("visual_computing", "heading", "level=2");
 	
 	//
-	bool gui_render_control = true;
-	bool gui_io = false;
+	bool gui_render_control = false;
+	bool gui_io = true;
 	bool gui_irg = false;
 	bool gui_Fitting = false;
+	bool gui_camera_ready = true;
 
 	bool gui_rg = false;
 	bool gui_pc_cleaning = false;
@@ -2190,6 +2281,23 @@ void visual_processing::create_gui() {
 			&visual_processing::switch_rendering_mode_clod_based));
 		add_member_control(this, "use_octree_sampling", data_ptr->point_cloud_kit->use_octree_sampling, "check");
 	}
+
+	// 
+	if (begin_tree_node("Camera Ready", gui_camera_ready, gui_camera_ready, "level=3")) {
+		connect_copy(add_button("find_pointcloud")->click, 
+			rebind(this, &visual_processing::find_pointcloud));
+		connect_copy(add_button("clean background")->click, 
+			rebind(this, &visual_processing::camera_ready_version));
+		connect_copy(add_button("fix_camera_parameters_to_file")->click, 
+			rebind(this, &visual_processing::record_camera_parameters));
+		connect_copy(add_button("rewind_camera_parameters_from_file")->click,
+			rebind(this, &visual_processing::apply_camera_parameters));
+		connect_copy(add_button("capture_screen_720x720_quiet")->click,
+			rebind(this, &visual_processing::capture_screen_720x720_quiet));
+		connect_copy(add_button("capture_screen_320x320_quiet")->click,
+			rebind(this, &visual_processing::capture_screen_320x320_quiet));
+	}
+
 	//
 	if (begin_tree_node("IO", gui_io, gui_io, "level=3")) {
 		connect_copy(add_button("read_pc")->click, rebind(this, &visual_processing::start_reading_pc_parallel));

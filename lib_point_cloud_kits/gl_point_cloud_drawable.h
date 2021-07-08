@@ -71,7 +71,7 @@ public:
 	cgv::render::surfel_render_style surfel_style;
 	cgv::render::attribute_array_manager sl_manager;
 	bool highlight_unmarked_points = false;
-	bool highlight_boundaries = false;
+	bool highlight_boundaries = true;
 	bool force_render_with_original_color = false;
 
 	bool render_with_topo_selction = false;

@@ -1394,6 +1394,7 @@ void point_cloud::clear_all() {
 	curvature.clear();
 	smoothed_mean_curvature.clear();
 	lods.clear();
+	is_high_curv_region.clear();
 
 	point_visited.clear();
 	point_in_queue.clear();

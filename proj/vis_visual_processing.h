@@ -193,6 +193,24 @@ protected:
 	float height_offset = 1;
 	float delay = 0, speed = 30;
 	bool animate_boundary_loop = false;
+	dvec3 camera_focus;
+	dvec3 camera_view_up_dir;
+	dvec3 camera_view_dir;
+	double camera_y_view_angle;
+	double camera_y_extent_at_focus;
+	/*
+		/// focus of the view
+		dvec3 focus;
+		/// 
+		dvec3 view_up_dir;
+		///
+		dvec3 view_dir;
+		///
+		double y_view_angle;
+		///
+		double y_extent_at_focus;
+	
+	*/
 
 	// cam rendering 
 	std::vector<vec3> point_and_cam;
@@ -485,6 +503,10 @@ public:
 	void single_hit__regrow_distance_and_curvature_based();
 	void single_hit__regrow_stop_at_high_curvature();
 	void find_pointcloud();
+	void record_camera_parameters();
+	void apply_camera_parameters();
+	void capture_screen_320x320_quiet();
+	void capture_screen_720x720_quiet();
 	bool find_next_and_increase_curr_region();
 	void drop_unwanted_regions();
 	void automatic_region_extraction();
