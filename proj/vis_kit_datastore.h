@@ -321,10 +321,12 @@ public:
 		// parameters, legacy support, not always used 
 		//////////////////////////////////////////////////////////////////
 		gp_btn_tmp.clear();
-		gp_btn_tmp.push_back("PointCloud\nBindPCtoRHand");
+		//gp_btn_tmp.push_back("PointCloud\nBindPCtoRHand");
 		gp_btn_tmp.push_back("PointCloud\nPointSize"); 
 		gp_btn_tmp.push_back("PointCloud\nShowNml");
 
+		gp_btn_tmp.push_back("RegionGrowing\nCurvatureViewer");
+		gp_btn_tmp.push_back("RegionGrowing\nReset\nMarking");
 		gp_btn_tmp.push_back("RegionGrowing\nScaleModel");
 		gp_btn_tmp.push_back("RegionGrowing\nRenderTopoSel");
 		gp_btn_tmp.push_back("RegionGrowing\nSaveToFile\nQuiet");
@@ -338,27 +340,26 @@ public:
 		// max 12 items
 		//////////////////////////////////////////////////////////////////
 		gp_btn_tmp.clear();
-		//gp_btn_tmp.push_back("RegionGrowing\nGroupPicker");
-		gp_btn_tmp.push_back("RegionGrowing\nReset\nMarking");
-		gp_btn_tmp.push_back("RegionGrowing\nHighlightUnmarked");
-		gp_btn_tmp.push_back("RegionGrowing\nCurvatureViewer");
-		gp_btn_tmp.push_back("RegionGrowing\nToggleHighLight\nBoundaries");
-
+		// basic marking support, without rg: only face_id will be recorded 
+		gp_btn_tmp.push_back("RegionGrowing\nCorrection"); 
 		// pick up seeds for regions 
 		gp_btn_tmp.push_back("RegionGrowing\nSeedPicker");
-
 		// novel region growing scheme 
 		gp_btn_tmp.push_back("RegionGrowing\nOurMethod");
+
+		gp_btn_tmp.push_back("PointCloud\nBindPCtoRHand");
+		gp_btn_tmp.push_back("RegionGrowing\nHighlightUnmarked");
+		gp_btn_tmp.push_back("RegionGrowing\nToggleHighLight\nBoundaries");
 
 		// control the growing process 
 		gp_btn_tmp.push_back("RegionGrowing\nMarkAsOrig");
 		gp_btn_tmp.push_back("RegionGrowing\nMarkQueue\nToOrig");
-		gp_btn_tmp.push_back("RegionGrowing\nMarkAsCurr"); // basic marking support, without rg: only face_id will be recorded 
 		gp_btn_tmp.push_back("RegionGrowing\nMarkSpawn\nQueue");
 		gp_btn_tmp.push_back("RegionGrowing\nBackGrow");
 
+
 		//
-		gp_btn_tmp.push_back("RegionGrowing\nDropUngrown"); // placeholder
+		//gp_btn_tmp.push_back("RegionGrowing\nDropUngrown"); // placeholder
 
 		/*
 			//gp_btn_tmp.push_back("RegionGrowing\nOurMethod\nToggleIgnore\nHighCurvatureRegions");
@@ -385,11 +386,11 @@ public:
 		// point cloud: vertex, edge, face extaction 
 		//////////////////////////////////////////////////////////////////
 		gp_btn_tmp.clear();
-		gp_btn_tmp.push_back("TopologyExtraction\nBoundary\nExtraction");
-		gp_btn_tmp.push_back("TopologyExtraction\nStepBack");
-		gp_btn_tmp.push_back("TopologyExtraction\nToggle\nOnlyRender\nFunctionIdx"); // finalize viewing of the points 
-		gp_btn_tmp.push_back("TopologyExtraction\nTopology\nExtraction");
-		gp_btn_tmp.push_back("TopologyExtraction\nSaveToFile"); // write to a .cgvconnectivity file 
+		gp_btn_tmp.push_back("ConnectivityGraph\nExtraction");
+		gp_btn_tmp.push_back("ConnectivityGraph\nStepBack");
+		//gp_btn_tmp.push_back("TopologyExtraction\nToggle\nOnlyRender\nFunctionIdx"); // finalize viewing of the points 
+		//gp_btn_tmp.push_back("TopologyExtraction\nTopology\nExtraction");
+		//gp_btn_tmp.push_back("TopologyExtraction\nSaveToFile"); // write to a .cgvconnectivity file 
 		gps.push_back(gp_btn_tmp);
 
 		//////////////////////////////////////////////////////////////////

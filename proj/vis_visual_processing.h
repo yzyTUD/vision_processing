@@ -715,6 +715,13 @@ public:
 	void build_connectivity_graph_fitting_and_render_control_points() {
 		data_ptr->point_cloud_kit->connectivity_extraction();
 	}
+	void rewind_to_face_extraction() {
+		data_ptr->point_cloud_kit->corner_bboxes.clear();
+		// rewind rendering 
+		data_ptr->point_cloud_kit->render_with_topo_selction = false;
+		data_ptr->point_cloud_kit->colorize_with_face_selection = true;
+		data_ptr->point_cloud_kit->colorize_with_corner_edge_id = false;
+	}
 	void read_cgvcad_with_dialog() {
 		data_ptr->point_cloud_kit->read_cgvcad_with_dialog();
 	}

@@ -567,7 +567,8 @@ bool visual_processing::handle(cgv::gui::event& e)
 					if (data_ptr->check_roulette_selection(data_ptr->get_id_with_name("RegionGrowing\nOurMethod"))) {
 						//force_start_grow();
 						//pause_continue_parallel_region_growing(); 
-						ep_start_grow_auto_curv_direction(); // automatic select which grow strategy 
+						//ep_start_grow_auto_curv_direction(); // automatic select which grow strategy 
+						grow_with_dist_and_lowest_curvature();
 					}
 					if (data_ptr->check_roulette_selection(data_ptr->get_id_with_name("RegionGrowing\nBackGrow"))) {
 						//force_start_grow();
@@ -833,19 +834,15 @@ bool visual_processing::handle(cgv::gui::event& e)
 				if (data_ptr->check_roulette_selection(data_ptr->get_id_with_name("RegionGrowing\nDropUngrown"))) {
 					data_ptr->point_cloud_kit->drop_ungrown();
 				}
-				/*topology extraction */
-				if (data_ptr->check_roulette_selection(data_ptr->get_id_with_name("TopologyExtraction\nBoundary\nExtraction"))) {
-					//data_ptr->point_cloud_kit->point_classification();
+
+				/*topology extraction with a touch */
+				if (data_ptr->check_roulette_selection(data_ptr->get_id_with_name("ConnectivityGraph\nExtraction"))) {
+					build_connectivity_graph_fitting_and_render_control_points();
 				}
-				if (data_ptr->check_roulette_selection(data_ptr->get_id_with_name("TopologyExtraction\nStepBack"))) {
-					data_ptr->point_cloud_kit->step_back_last_selection();
+				if (data_ptr->check_roulette_selection(data_ptr->get_id_with_name("ConnectivityGraph\nStepBack"))) {
+					rewind_to_face_extraction();
 				}
-				if (data_ptr->check_roulette_selection(data_ptr->get_id_with_name("TopologyExtraction\nToggle\nOnlyRender\nFunctionIdx"))) {
-					//data_ptr->point_cloud_kit->render_with_functional_ids_only = !data_ptr->point_cloud_kit->render_with_functional_ids_only;
-				}
-				if (data_ptr->check_roulette_selection(data_ptr->get_id_with_name("TopologyExtraction\nTopology\nExtraction"))) {
-					//data_ptr->point_cloud_kit->extract_connectivity_graph();
-				}
+
 				/*point cleaning */
 				if (data_ptr->check_roulette_selection(data_ptr->get_id_with_name("PCCleaning\nStepBackWard"))) {
 					data_ptr->point_cloud_kit->step_back_last_selection();
@@ -2263,6 +2260,8 @@ void visual_processing::create_gui() {
 		add_member_control(this, "colorize_with_face_selection_only", data_ptr->point_cloud_kit->colorize_with_face_selection_only, "check");
 		add_member_control(this, "colorize_with_corner_edge_id", data_ptr->point_cloud_kit->colorize_with_corner_edge_id, "check");
 		
+		add_member_control(this, "visualize_queue", data_ptr->point_cloud_kit->visualize_queue, "check");
+
 		add_member_control(this, "force_render_with_original_color", data_ptr->point_cloud_kit->force_render_with_original_color, "check");
 		add_member_control(this, "highlight_unmarked_points", data_ptr->point_cloud_kit->highlight_unmarked_points, "check");
 		add_member_control(this, "highlight_boundaries", data_ptr->point_cloud_kit->highlight_boundaries, "check");
@@ -2373,6 +2372,11 @@ void visual_processing::create_gui() {
 		connect_copy(add_button("pause_continue_parallel_region_growing")->click,
 			rebind(this, &visual_processing::pause_continue_parallel_region_growing));
 
+		///
+		add_member_control(this, "rg_scale_factor", 
+			data_ptr->point_cloud_kit->rg_scale_factor,
+				"value_slider", "min=1;max=10000000;log=false;ticks=true;");
+
 		add_decorator("// undo functions ", "heading", "level=3");
 		connect_copy(add_button("backward_growing")->click, rebind(this, &visual_processing::backward_growing));
 		connect_copy(add_button("undo curr region")->click,
@@ -2387,6 +2391,12 @@ void visual_processing::create_gui() {
 			rebind(this, &visual_processing::sync_grow_curv_based));
 		connect_copy(add_button("undo_sync_grow")->click,
 			rebind(this, &visual_processing::undo_sync_grow));
+
+		add_member_control(this, "growing_latency", data_ptr->point_cloud_kit->growing_latency, // per point? 
+			"value_slider", "min=1;max=500;log=false;ticks=true;");
+		connect_copy(add_button("pause/continue")->click, rebind(this, &visual_processing::pause_continue_parallel_region_growing));
+		connect_copy(add_button("start")->click, rebind(this, &visual_processing::start_parallel_region_growing));
+		connect_copy(add_button("terminate")->click, rebind(this, &visual_processing::stop_parallel_region_growing));
 
 		add_decorator("// drop the rest ", "heading", "level=3");
 		connect_copy(add_button("drop_ungrown")->click, rebind(data_ptr->point_cloud_kit,
@@ -2414,6 +2424,8 @@ void visual_processing::create_gui() {
 			rebind(data_ptr->point_cloud_kit, &point_cloud_interactable::classify_points_and_visualize));
 		connect_copy(add_button("[S]build_connectivity_graph")->click,
 			rebind(this, &visual_processing::build_connectivity_graph_fitting_and_render_control_points));
+		connect_copy(add_button("[S]rewind_to_face_extraction")->click,
+			rebind(this, &visual_processing::rewind_to_face_extraction));
 		
 		add_decorator("// connectivity info visulization ", "heading", "level=3");
 		add_member_control(this, "enable_topo_highlight", data_ptr->point_cloud_kit->enable_topo_highlight, "check");

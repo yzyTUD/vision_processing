@@ -251,7 +251,7 @@ public:
 								marking_style.radius = 0.001f;
 						}
 					}
-					if (data_ptr->check_roulette_selection(data_ptr->get_id_with_name("RegionGrowing\nMarkAsCurr"))) { // selection 
+					if (data_ptr->check_roulette_selection(data_ptr->get_id_with_name("RegionGrowing\nCorrection"))) { // selection 
 						if (vrse.get_y() > 0) {
 							marking_style.radius += 0.001f;
 						}
@@ -440,7 +440,7 @@ public:
 						}
 					}
 				}
-				if (data_ptr->check_roulette_selection(data_ptr->get_id_with_name("RegionGrowing\nMarkAsCurr"))) {
+				if (data_ptr->check_roulette_selection(data_ptr->get_id_with_name("RegionGrowing\nCorrection"))) {
 					if (v > 0) {
 						// face selection with controller, on lower side  
 						if (curr_active_selection == 1 && curr_face_selecting_id != -1) {
@@ -623,7 +623,9 @@ public:
 					}*/
 				}
 				if (ci != -1) {
-					if (data_ptr->check_roulette_selection(data_ptr->get_id_with_name("RegionGrowing\nSeedPicker"))) {
+					//RegionGrowing\nCorrection
+					if (data_ptr->check_roulette_selection(data_ptr->get_id_with_name("RegionGrowing\nSeedPicker")) 
+						|| data_ptr->check_roulette_selection(data_ptr->get_id_with_name("RegionGrowing\nCorrection"))) {
 						// check and update current point group selection -> which color are we using 
 						int smallestpalleteIdx = -1;
 						bool hasOverlaping = false;
@@ -793,7 +795,8 @@ public:
 		if (data_ptr->check_roulette_selection(data_ptr->get_id_with_name("RegionGrowing\nMarkQueue\nToOrig"))) {
 			render_palette_sphere_on_righthand(ctx);
 		}
-		if (data_ptr->check_roulette_selection(data_ptr->get_id_with_name("RegionGrowing\nMarkAsCurr"))) {
+		if (data_ptr->check_roulette_selection(data_ptr->get_id_with_name("RegionGrowing\nCorrection"))) {
+			render_palette_on_left_hand(ctx);
 			render_palette_sphere_on_righthand(ctx);
 		}
 		if (data_ptr->check_roulette_selection(data_ptr->get_id_with_name("RegionGrowing\nMarkSpawn\nQueue"))) {

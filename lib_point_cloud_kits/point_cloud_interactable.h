@@ -515,7 +515,7 @@ public:
 	///
 	std::vector<int> num_of_points_curr_region;
 	///
-	bool decrease_searching_radius_on_high_curvature = true;
+	bool decrease_searching_radius_on_high_curvature = false;
 	///
 	//bool final_grow = false;
 	///
@@ -524,6 +524,8 @@ public:
 	bool is_synchronous_growth = false;
 	///
 	bool use_property_scale = false;
+	///
+	bool visualize_queue = false;
 	///
 	int minimum_searching_neighbor_points = 10;
 	///
@@ -549,6 +551,9 @@ public:
 	//additionally, queue should be restored, but it is easy 
 	/// for backward growing 
 	std::vector<std::vector<growing_history_element>> growing_history_for_region; // hard to track 
+	///
+	float rg_scale_factor = 1;
+		
 
 
 

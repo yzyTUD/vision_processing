@@ -2775,12 +2775,8 @@ bool point_cloud_interactable::grow_one_step_bfs(bool grow_with_queue, int which
 		// dequeue first in low distance and low curvature regions. Just like fill water to a pool.
 		if (gm == growing_mode::DISTANCE_AND_MEAN_CURVATURE_BASED_LOWERFIRST) {
 			float maxinum_accu_dist = pc.get_nr_points() * max_dist;
-			float revertable_scaling_factor; 
-			if(pc.curvinfo.minimum_curvature_difference > 0 && false)
-				revertable_scaling_factor = maxinum_accu_dist * 1e8;
-			else 
-				revertable_scaling_factor = pc.get_nr_points() * pc.get_nr_points();
-			float scale_dist_by_curva = 1.0f + revertable_scaling_factor * pc.curvature.at(kid).mean_curvature; // ok-todo: find a upper bound 
+			float revertable_scaling_factor = maxinum_accu_dist;
+			float scale_dist_by_curva = 1 + maxinum_accu_dist * 1e8 * pc.curvature.at(kid).mean_curvature; // ok-todo: find a upper bound 
 			curr_property = scale_dist_by_curva * dist + std::get<DIST>(to_visit);
 		}
 
@@ -2791,7 +2787,7 @@ bool point_cloud_interactable::grow_one_step_bfs(bool grow_with_queue, int which
 			if (pc.curvinfo.minimum_curvature_difference > 0 && false)
 				revertable_scaling_factor = maxinum_accu_dist / pc.curvinfo.minimum_curvature_difference;
 			else
-				revertable_scaling_factor = maxinum_accu_dist * 1e8;
+				revertable_scaling_factor = maxinum_accu_dist * 1e12;
 			// revertable_scaling_factor can also be scaled ... but do not have to do that 
 			float scaled_mean_curvature = 
 				(pc.curvature.at(kid).mean_curvature - pc.curvinfo.min_mean_curvature) 
@@ -2809,7 +2805,8 @@ bool point_cloud_interactable::grow_one_step_bfs(bool grow_with_queue, int which
 		}
 
 		// queue visualization, diff color for diff groups 
-		pc.face_id.at(kid) = 26 - which_group;
+		if(visualize_queue)
+			pc.face_id.at(kid) = 26 - which_group;
 
 		//
 		if (curr_curvature > pc.curvinfo.coloring_threshold && !grow_with_queue && decrease_searching_radius_on_high_curvature) {

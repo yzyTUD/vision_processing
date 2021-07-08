@@ -458,7 +458,9 @@ public:
 					data_ptr->cur_left_hand_posi + data_ptr->cur_off_left;
 
 				// update palette positions for left hand 
-				if (data_ptr->check_roulette_selection(data_ptr->get_id_with_name("RegionGrowing\nSeedPicker"))) {
+				// RegionGrowing\nCorrection
+				if (data_ptr->check_roulette_selection(data_ptr->get_id_with_name("RegionGrowing\nSeedPicker"))
+					|| data_ptr->check_roulette_selection(data_ptr->get_id_with_name("RegionGrowing\nCorrection"))) {
 					for (int i = 0; i < data_ptr->palette_lefthand_object_positions.size();i++) {
 						// to a temp varible, make sure the original positions not changed 
 						off = data_ptr->palette_lefthand_palette_initialpose_positions[i];
