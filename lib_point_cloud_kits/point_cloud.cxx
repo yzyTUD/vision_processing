@@ -994,6 +994,8 @@ void point_cloud::orient_faces() {
 						}
 					}
 
+					if (he0 == nullptr || he1 == nullptr)
+						continue;
 
 					//
 					if (he0->orig == he1->orig) {
@@ -1147,22 +1149,24 @@ void point_cloud::update_halfedge_visulization(int fid, int which_loop) {
 		int curr_he_orig = curr_he_ptr->orig;
 		int curr_he_dist = curr_he_ptr->dist;
 		int curr_edge_id = curr_he_ptr->edge_id;
-		for (auto& pid : modelEdge[curr_edge_id].point_indices) {
-			float d_to_orig = (pnt(pid) - pnt(modelV[curr_he_orig].point_indices[0])).length();
-			float d_to_dist = (pnt(pid) - pnt(modelV[curr_he_dist].point_indices[0])).length();
-			float factor = 0;
-			factor = d_to_orig / (d_to_orig + d_to_dist);
+		if (curr_he_orig != -1 && curr_he_dist != -1) {
+			for (auto& pid : modelEdge[curr_edge_id].point_indices) {
+				float d_to_orig = (pnt(pid) - pnt(modelV[curr_he_orig].point_indices[0])).length();
+				float d_to_dist = (pnt(pid) - pnt(modelV[curr_he_dist].point_indices[0])).length();
+				float factor = 0;
+				factor = d_to_orig / (d_to_orig + d_to_dist);
 
-			if (factor > progress_percentage && positive_direction)
-				continue;
+				if (factor > progress_percentage && positive_direction)
+					continue;
 
-			if (factor < progress_percentage && !positive_direction)
-				continue;
+				if (factor < progress_percentage && !positive_direction)
+					continue;
 
-			if (face_id[pid] != fid)
-				continue;
+				if (face_id[pid] != fid)
+					continue;
 			
-			point_visible_conn[pid] = 1;
+				point_visible_conn[pid] = 1;
+			}		
 		}
 	
 		//
