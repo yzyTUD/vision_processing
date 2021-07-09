@@ -1078,6 +1078,10 @@ void gl_point_cloud_drawable::draw_points_surfel(context& ctx)
 	s_renderer.ref_prog().set_uniform(ctx, "highlight_topo_ranking", highlight_topo_ranking);
 	s_renderer.ref_prog().set_uniform(ctx, "enable_topo_highlight", enable_topo_highlight);
 	s_renderer.ref_prog().set_uniform(ctx, "enable_point_visible_conn", enable_point_visible_conn);
+
+
+	s_renderer.ref_prog().set_uniform(ctx, "enable_lighting", enable_lighting);
+	
 	
 
 	std::size_t n = pc.get_nr_points();

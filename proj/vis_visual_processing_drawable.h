@@ -2261,6 +2261,7 @@ void visual_processing::create_gui() {
 		add_member_control(this, "colorize_with_corner_edge_id", data_ptr->point_cloud_kit->colorize_with_corner_edge_id, "check");
 		
 		add_member_control(this, "visualize_queue", data_ptr->point_cloud_kit->visualize_queue, "check");
+		add_member_control(this, "enable_lighting", data_ptr->point_cloud_kit->enable_lighting, "check");
 
 		add_member_control(this, "force_render_with_original_color", data_ptr->point_cloud_kit->force_render_with_original_color, "check");
 		add_member_control(this, "highlight_unmarked_points", data_ptr->point_cloud_kit->highlight_unmarked_points, "check");

@@ -525,7 +525,7 @@ public:
 	///
 	bool use_property_scale = false;
 	///
-	bool visualize_queue = false;
+	bool visualize_queue = true;
 	///
 	int minimum_searching_neighbor_points = 10;
 	///
